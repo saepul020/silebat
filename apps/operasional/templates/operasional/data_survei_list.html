@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+
+{% block title %}Data Kegiatan Survei{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{{ page_title }}</h1>
+    <p>{{ page_subtitle }}</p>
+</div>
+
+<div class="table-wrapper table-panel">
+    <div class="table-toolbar">
+        <h3 class="table-title">Daftar Kegiatan Survei</h3>
+        <a href="{% url 'operasional:tambah_survei' %}" class="btn btn-primary"><i class="bi bi-plus-circle"></i>&nbsp;Tambah Survei</a>
+    </div>
+
+    {% include 'components/master_entries_control.html' %}
+
+    <div class="table-scroll-area table-scroll--list" tabindex="0" aria-label="Scroll tabel data kegiatan survei">
+        <table class="table-data list-table--operasional-simple">
+            <thead>
+                <tr>
+                    <th class="cell-wrap">Jenis Survei</th>
+                    <th class="cell-action">Aksi</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    <td class="cell-wrap">{{ item.jenis_survei }}</td>
+                    <td class="cell-action">
+                        <div class="table-action-group">
+                            <a href="{% url 'operasional:edit_survei' item.pk %}" class="btn btn-warning btn-sm">
+                                <i class="bi bi-pencil-square"></i>
+                            </a>
+                            <button
+                                type="button"
+                                class="btn btn-danger btn-sm js-delete-btn" data-delete-modal="operasional"
+                                data-delete-url="{% url 'operasional:hapus_survei' item.pk %}"
+                                data-item-name="{{ item.jenis_survei }}"
+                                data-item-meta="Jenis kegiatan survei"
+                            >
+                                <i class="bi bi-trash3-fill"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="2"><div class="empty-state">Belum ada data kegiatan survei.</div></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% include 'components/master_pagination.html' %}
+</div>
+
+<div class="delete-modal" id="operasionalDeleteModal">
+    <div class="delete-modal-backdrop" id="operasionalDeleteModalBackdrop"></div>
+
+    <div class="delete-modal-card" role="dialog" aria-modal="true" aria-labelledby="operasionalDeleteModalTitle">
+        <div class="delete-modal-header">
+            <h3 id="operasionalDeleteModalTitle">Konfirmasi Hapus</h3>
+            <button type="button" class="delete-modal-close" id="operasionalDeleteModalClose" aria-label="Tutup">&times;</button>
+        </div>
+
+        <div class="delete-modal-body">
+            <p>Apakah Anda yakin ingin menghapus data operasional berikut?</p>
+
+            <div class="delete-user-info">
+                <p><strong>Jenis Survei:</strong> <span id="operasionalDeleteItemName">-</span></p>
+                <p><strong>Info:</strong> <span id="operasionalDeleteItemMeta">-</span></p>
+            </div>
+
+            <p class="delete-warning-text">Tindakan ini tidak dapat dibatalkan.</p>
+        </div>
+
+        <div class="delete-modal-actions">
+            <button type="button" class="btn btn-secondary" id="operasionalDeleteModalCancel">Batal</button>
+
+            <form method="post" id="operasionalDeleteForm">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger">Ya, Hapus</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,123 @@
+{% extends 'base.html' %}
+
+{% block title %}Daftar Pengguna{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Daftar Pengguna</h1>
+    <p>Kelola data pengguna aplikasi SILEBAT.</p>
+</div>
+
+<div class="table-wrapper table-panel">
+    <div class="table-toolbar">
+        <h3 class="table-title">Data Pengguna</h3>
+        {% if can_manage_user_app %}
+            <div class="table-toolbar-actions">
+                <button type="button" class="btn btn-secondary js-import-data-btn" data-import-target="#penggunaImportModal">
+                    <i class="bi bi-file-earmark-spreadsheet"></i>&nbsp;Import Data
+                </button>
+                <a href="{% url 'pengguna:tambah' %}" class="btn btn-primary"><i class="bi bi-plus-circle"></i>&nbsp;Tambah Pengguna</a>
+            </div>
+        {% endif %}
+    </div>
+
+    {% include 'components/master_entries_control.html' %}
+
+    <div class="table-scroll-area table-scroll--list" tabindex="0" aria-label="Scroll tabel data pengguna">
+        <table class="table-data list-table--pengguna">
+            <thead>
+                <tr>
+                    <th>Username</th>
+                    <th class="cell-wrap">Nama</th>
+                    <th class="cell-wrap">Email</th>
+                    <th>Role</th>
+                    <th class="cell-action">Aksi</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr>
+                    <td>{{ user.username }}</td>
+                    <td class="cell-wrap">{{ user.get_full_name|default:"-" }}</td>
+                    <td class="cell-wrap">{{ user.email|default:"-" }}</td>
+                    <td>{{ user.profile.role|default:"-" }}</td>
+                    <td class="cell-action">
+                        <div class="table-action-group">
+                            <a href="{% url 'pengguna:detail' user.id %}" class="btn btn-secondary btn-sm">
+                                <i class="bi bi-eye-fill"></i>
+                            </a>
+                            <a href="{% url 'pengguna:edit' user.id %}" class="btn btn-warning btn-sm">
+                                <i class="bi bi-pencil-square"></i>
+                            </a>
+
+                            {% if request.user.id != user.id %}
+                            <button
+                                type="button"
+                                class="btn btn-danger btn-sm js-delete-btn" data-delete-modal="user"
+                                data-delete-url="{% url 'pengguna:hapus' user.id %}"
+                                data-user-name="{{ user.get_full_name|default:user.username }}"
+                                data-username="{{ user.username }}"
+                            >
+                                <i class="bi bi-trash3-fill"></i>
+                            </button>
+                            {% else %}
+                            <button type="button" class="btn btn-danger btn-sm" disabled title="Akun aktif tidak dapat dihapus">
+                                <i class="bi bi-trash3-fill"></i>
+                            </button>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5">
+                        <div class="empty-state">Belum ada data pengguna.</div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% include 'components/master_pagination.html' %}
+</div>
+
+{% if can_manage_user_app %}
+    {% url 'pengguna:import_pengguna' as import_action_url %}
+    {% url 'pengguna:download_format_import_pengguna' as import_download_url %}
+    {% include 'components/import_excel_modal.html' with import_context=import_context import_modal_id='penggunaImportModal' import_file_id='penggunaImportFile' import_title='Import Daftar Pengguna' import_action_url=import_action_url import_download_url=import_download_url import_help_text='Gunakan file .xlsx maksimal 7 MB. Username, email, NIP / NIK, dan Nomor HP duplikat akan ditolak.' %}
+{% endif %}
+
+<div class="delete-modal" id="deleteModal">
+    <div class="delete-modal-backdrop" id="deleteModalBackdrop"></div>
+
+    <div class="delete-modal-card" role="dialog" aria-modal="true" aria-labelledby="deleteModalTitle">
+        <div class="delete-modal-header">
+            <h3 id="deleteModalTitle">Konfirmasi Hapus</h3>
+            <button type="button" class="delete-modal-close" id="deleteModalClose" aria-label="Tutup">
+                &times;
+            </button>
+        </div>
+
+        <div class="delete-modal-body">
+            <p>Apakah Anda yakin ingin menghapus data pengguna berikut?</p>
+
+            <div class="delete-user-info">
+                <p><strong>Nama:</strong> <span id="deleteUserName">-</span></p>
+                <p><strong>Username:</strong> <span id="deleteUsername">-</span></p>
+            </div>
+
+            <p class="delete-warning-text">Tindakan ini tidak dapat dibatalkan.</p>
+        </div>
+
+        <div class="delete-modal-actions">
+            <button type="button" class="btn btn-secondary" id="deleteModalCancel">Batal</button>
+
+            <form method="post" id="deleteForm">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger">Ya, Hapus</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,352 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{{ page_title }}</h1>
+    <p>{{ page_subtitle }}</p>
+</div>
+
+<div class="card user-form-card">
+    <form method="post" enctype="multipart/form-data" class="pengguna-form"{% if not is_edit %} data-pengguna-create-form="true" novalidate{% endif %}>
+        {% csrf_token %}
+
+        {% if form_user.non_field_errors or form_profile.non_field_errors %}
+        <div class="alert alert-danger">
+            {% for error in form_user.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+            {% for error in form_profile.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+        </div>
+        {% endif %}
+
+        {% if is_edit %}
+        <div class="form-profile-top">
+            <div class="avatar-preview avatar-preview--large">
+                {% if obj.profile and obj.profile.foto_profil %}
+                    <img src="{{ obj.profile.foto_profil.url }}" alt="Foto Profil {{ obj.get_full_name|default:obj.username }}">
+                {% else %}
+                    <div class="avatar-fallback">
+                        {{ obj.get_full_name|default:obj.username|slice:":1"|upper }}
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="form-profile-meta">
+                <h2>{{ obj.get_full_name|default:obj.username }}</h2>
+                <p>@{{ obj.username }}</p>
+            </div>
+        </div>
+        {% endif %}
+
+        <fieldset>
+            <legend>Data Akun</legend>
+
+            <div class="form-row">
+                <div class="form-group {% if form_user.username.errors %}has-error{% endif %}">
+                    <label for="{{ form_user.username.id_for_label }}">{{ form_user.username.label }}</label>
+                    {{ form_user.username }}
+                    {% if form_user.username.help_text %}
+                        <p class="input-help-text">{{ form_user.username.help_text }}</p>
+                    {% endif %}
+                    {% for error in form_user.username.errors %}
+                        <p class="input-error-text">*{{ error }}</p>
+                    {% endfor %}
+                </div>
+
+                <div class="form-group {% if form_user.nama_lengkap.errors %}has-error{% endif %}">
+                    <label for="{{ form_user.nama_lengkap.id_for_label }}">{{ form_user.nama_lengkap.label }}</label>
+                    {{ form_user.nama_lengkap }}
+                    {% for error in form_user.nama_lengkap.errors %}
+                        <p class="input-error-text">*{{ error }}</p>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group {% if form_user.email.errors %}has-error{% endif %}">
+                    <label for="{{ form_user.email.id_for_label }}">{{ form_user.email.label }}</label>
+                    {{ form_user.email }}
+                    {% for error in form_user.email.errors %}
+                        <p class="input-error-text">*{{ error }}</p>
+                    {% endfor %}
+                </div>
+
+                <div class="form-group {% if form_user.nip.errors %}has-error{% endif %}">
+                    <label for="{{ form_user.nip.id_for_label }}">{{ form_user.nip.label }}</label>
+                    {{ form_user.nip }}
+                    {% for error in form_user.nip.errors %}
+                        <p class="input-error-text">*{{ error }}</p>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group {% if form_user.no_hp.errors %}has-error{% endif %}">
+                    <label for="{{ form_user.no_hp.id_for_label }}">{{ form_user.no_hp.label }}</label>
+                    {{ form_user.no_hp }}
+                    {% for error in form_user.no_hp.errors %}
+                        <p class="input-error-text">*{{ error }}</p>
+                    {% endfor %}
+                </div>
+
+                {% if not is_edit %}
+                <div class="form-group {% if form_user.password1.errors %}has-error{% endif %}">
+                    <label for="{{ form_user.password1.id_for_label }}">{{ form_user.password1.label }}</label>
+                    <div class="password-field-wrap">
+                        {{ form_user.password1 }}
+                        <button type="button" class="password-toggle-button" data-password-toggle data-password-target="{{ form_user.password1.id_for_label }}" aria-label="Tampilkan atau sembunyikan password">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </div>
+                    {% for error in form_user.password1.errors %}
+                        <p class="input-error-text">*{{ error }}</p>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+
+            {% if not is_edit %}
+            <div class="form-row">
+                <div class="form-group {% if form_user.password2.errors %}has-error{% endif %}">
+                    <label for="{{ form_user.password2.id_for_label }}">{{ form_user.password2.label }}</label>
+                    <div class="password-field-wrap">
+                        {{ form_user.password2 }}
+                        <button type="button" class="password-toggle-button" data-password-toggle data-password-target="{{ form_user.password2.id_for_label }}" aria-label="Tampilkan atau sembunyikan password">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </div>
+                    {% for error in form_user.password2.errors %}
+                        <p class="input-error-text">*{{ error }}</p>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </fieldset>
+
+        {% if is_edit %}
+        <fieldset>
+            <legend>Ubah Password</legend>
+            <div class="form-row">
+                <div class="form-group {% if form_user.password_lama.errors %}has-error{% endif %}">
+                    <label for="{{ form_user.password_lama.id_for_label }}">{{ form_user.password_lama.label }}</label>
+                    <div class="password-field-wrap">
+                        {{ form_user.password_lama }}
+                        <button type="button" class="password-toggle-button" data-password-toggle data-password-target="{{ form_user.password_lama.id_for_label }}" aria-label="Tampilkan atau sembunyikan password">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </div>
+                    {% for error in form_user.password_lama.errors %}
+                        <p class="input-error-text">*{{ error }}</p>
+                    {% endfor %}
+                </div>
+
+                <div class="form-group {% if form_user.password_baru1.errors %}has-error{% endif %}">
+                    <label for="{{ form_user.password_baru1.id_for_label }}">{{ form_user.password_baru1.label }}</label>
+                    <div class="password-field-wrap">
+                        {{ form_user.password_baru1 }}
+                        <button type="button" class="password-toggle-button" data-password-toggle data-password-target="{{ form_user.password_baru1.id_for_label }}" aria-label="Tampilkan atau sembunyikan password">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </div>
+                    {% for error in form_user.password_baru1.errors %}
+                        <p class="input-error-text">*{{ error }}</p>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group {% if form_user.password_baru2.errors %}has-error{% endif %}">
+                    <label for="{{ form_user.password_baru2.id_for_label }}">{{ form_user.password_baru2.label }}</label>
+                    <div class="password-field-wrap">
+                        {{ form_user.password_baru2 }}
+                        <button type="button" class="password-toggle-button" data-password-toggle data-password-target="{{ form_user.password_baru2.id_for_label }}" aria-label="Tampilkan atau sembunyikan password">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </div>
+                    {% for error in form_user.password_baru2.errors %}
+                        <p class="input-error-text">*{{ error }}</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </fieldset>
+        {% endif %}
+
+        <fieldset>
+            <legend>Profil Pengguna</legend>
+
+            <div class="form-group {% if form_profile.role.errors %}has-error{% endif %}">
+                <label for="{{ form_profile.role.id_for_label }}">{{ form_profile.role.label }}</label>
+                {{ form_profile.role }}
+                {% if form_profile.role.help_text %}
+                    <p class="input-help-text">{{ form_profile.role.help_text }}</p>
+                {% endif %}
+                {% for error in form_profile.role.errors %}
+                    <p class="input-error-text">*{{ error }}</p>
+                {% endfor %}
+            </div>
+
+            <div class="upload-grid">
+                <div
+                    class="upload-card {% if form_profile.foto_profil.errors %}has-error{% endif %}"
+                    data-upload-control
+                    data-upload-mode="replace-only"
+                    data-hidden-input-id="{{ form_profile.hapus_foto_profil.id_for_label }}"
+                    data-hidden-input-name="{{ form_profile.hapus_foto_profil.html_name }}"
+                    data-existing-url="{% if form_profile.instance and form_profile.instance.foto_profil %}{{ form_profile.instance.foto_profil.url }}{% endif %}"
+                    data-file-label="Foto profil"
+                >
+                    {{ form_profile.hapus_foto_profil }}
+
+                    <div class="upload-card__head">
+                        <label for="{{ form_profile.foto_profil.id_for_label }}">{{ form_profile.foto_profil.label }}</label>
+                        <span class="upload-card__hint">Auto crop 1:1</span>
+                    </div>
+
+                    <div class="upload-preview-stack">
+                        <div class="upload-preview-section {% if not form_profile.instance or not form_profile.instance.foto_profil %}is-hidden{% endif %}" data-stored-preview-section>
+                            <div class="upload-preview-section__label">Foto Profil Saat Ini:</div>
+                            <div class="upload-preview-card {% if form_profile.instance and form_profile.instance.foto_profil %}{% else %}is-empty{% endif %}" data-stored-preview-card>
+                                <div class="upload-preview-card__empty">Belum ada file tersimpan</div>
+                                <div class="upload-preview-card__body">
+                                    <div class="upload-preview-frame">
+                                        <img alt="Foto Profil Tersimpan" data-stored-preview-image {% if form_profile.instance and form_profile.instance.foto_profil %}src="{{ form_profile.instance.foto_profil.url }}"{% endif %}>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="upload-input-wrap upload-input-wrap--inline upload-input-wrap--file-proxy" data-inline-file-proxy>
+                            <div class="upload-input-wrap__field">
+                                {{ form_profile.foto_profil }}
+                                <label for="{{ form_profile.foto_profil.id_for_label }}" class="file-input-proxy">
+                                    <span class="file-input-proxy__button" aria-hidden="true"><i class="bi bi-image"></i></span>
+                                    <span class="file-input-proxy__text is-placeholder" data-inline-file-text>Pilih file</span>
+                                </label>
+                            </div>
+                            <div class="upload-file-state upload-file-state--inline is-hidden" data-file-state data-inline-file-state>
+                                <button type="button" class="upload-file-state__action upload-file-state__action--icon" data-file-state-action data-inline-file-clear data-mode="clear-selected" title="Batalkan Upload" aria-label="Batalkan Upload">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <p class="input-error-text" data-inline-file-error-node hidden></p>
+                        {% for error in form_profile.foto_profil.errors %}
+                            <p class="input-error-text">*{{ error }}</p>
+                        {% endfor %}
+
+                        <div class="upload-preview-section" data-selected-preview-section>
+                            <div class="upload-preview-section__label">Foto Profil Baru:</div>
+                            <div class="upload-preview-card is-empty" id="foto-profil-preview" data-selected-preview-card>
+                                <div class="upload-preview-card__empty">Belum ada gambar baru dipilih</div>
+                                <div class="upload-preview-card__body">
+                                    <div class="upload-preview-frame">
+                                        <img alt="Preview Upload Foto Profil Baru" data-selected-preview-image>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div
+                    class="upload-card {% if form_profile.ttd_digital.errors %}has-error{% endif %}"
+                    data-upload-control
+                    data-upload-mode="replace-only"
+                    data-hidden-input-id="{{ form_profile.hapus_ttd_digital.id_for_label }}"
+                    data-hidden-input-name="{{ form_profile.hapus_ttd_digital.html_name }}"
+                    data-existing-url="{% if form_profile.instance and form_profile.instance.ttd_digital %}{{ form_profile.instance.ttd_digital.url }}{% endif %}"
+                    data-file-label="TTD digital"
+                >
+                    {{ form_profile.hapus_ttd_digital }}
+
+                    <div class="upload-card__head">
+                        <label for="{{ form_profile.ttd_digital.id_for_label }}">{{ form_profile.ttd_digital.label }}</label>
+                        <span class="upload-card__hint">Auto crop 1:1</span>
+                    </div>
+
+                    <div class="upload-preview-stack">
+                        <div class="upload-preview-section {% if not form_profile.instance or not form_profile.instance.ttd_digital %}is-hidden{% endif %}" data-stored-preview-section>
+                            <div class="upload-preview-section__label">TTD Digital Saat Ini:</div>
+                            <div class="upload-preview-card {% if form_profile.instance and form_profile.instance.ttd_digital %}{% else %}is-empty{% endif %}" data-stored-preview-card>
+                                <div class="upload-preview-card__empty">Belum ada file tersimpan</div>
+                                <div class="upload-preview-card__body">
+                                    <div class="upload-preview-frame">
+                                        <img alt="TTD Digital Tersimpan" data-stored-preview-image {% if form_profile.instance and form_profile.instance.ttd_digital %}src="{{ form_profile.instance.ttd_digital.url }}"{% endif %}>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="upload-input-wrap upload-input-wrap--inline upload-input-wrap--file-proxy" data-inline-file-proxy>
+                            <div class="upload-input-wrap__field">
+                                {{ form_profile.ttd_digital }}
+                                <label for="{{ form_profile.ttd_digital.id_for_label }}" class="file-input-proxy">
+                                    <span class="file-input-proxy__button" aria-hidden="true"><i class="bi bi-image"></i></span>
+                                    <span class="file-input-proxy__text is-placeholder" data-inline-file-text>Pilih file</span>
+                                </label>
+                            </div>
+                            <div class="upload-file-state upload-file-state--inline is-hidden" data-file-state data-inline-file-state>
+                                <button type="button" class="upload-file-state__action upload-file-state__action--icon" data-file-state-action data-inline-file-clear data-mode="clear-selected" title="Batalkan Upload" aria-label="Batalkan Upload">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <p class="input-error-text" data-inline-file-error-node hidden></p>
+                        {% for error in form_profile.ttd_digital.errors %}
+                            <p class="input-error-text">*{{ error }}</p>
+                        {% endfor %}
+
+                        <div class="upload-preview-section" data-selected-preview-section>
+                            <div class="upload-preview-section__label">TTD Digital Baru:</div>
+                            <div class="upload-preview-card is-empty" id="ttd-digital-preview" data-selected-preview-card>
+                                <div class="upload-preview-card__empty">Belum ada gambar baru dipilih</div>
+                                <div class="upload-preview-card__body">
+                                    <div class="upload-preview-frame">
+                                        <img alt="Preview Upload TTD Digital Baru" data-selected-preview-image>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group {% if form_profile.jabatan.errors %}has-error{% endif %}">
+                    <label for="{{ form_profile.jabatan.id_for_label }}">{{ form_profile.jabatan.label }}</label>
+                    {{ form_profile.jabatan }}
+                    {% for error in form_profile.jabatan.errors %}
+                        <p class="input-error-text">*{{ error }}</p>
+                    {% endfor %}
+                </div>
+
+                <div class="form-group {% if form_profile.nama_tim.errors %}has-error{% endif %}">
+                    <label for="{{ form_profile.nama_tim.id_for_label }}">{{ form_profile.nama_tim.label }}</label>
+                    {{ form_profile.nama_tim }}
+                    {% for error in form_profile.nama_tim.errors %}
+                        <p class="input-error-text">*{{ error }}</p>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="form-group {% if form_profile.alamat.errors %}has-error{% endif %}">
+                <label for="{{ form_profile.alamat.id_for_label }}">{{ form_profile.alamat.label }}</label>
+                {{ form_profile.alamat }}
+                {% for error in form_profile.alamat.errors %}
+                    <p class="input-error-text">*{{ error }}</p>
+                {% endfor %}
+            </div>
+        </fieldset>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">{{ submit_label }}</button>
+            {% if is_edit and obj %}
+                <a href="{% url 'pengguna:detail' obj.pk %}" class="btn btn-secondary">Kembali</a>
+            {% else %}
+                <a href="{% url 'pengguna:daftar' %}" class="btn btn-secondary">Kembali</a>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+
+{% endblock %}

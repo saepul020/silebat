@@ -1,0 +1,144 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ page_title }} - SILEBAT{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{{ page_title }}</h1>
+    <p>{{ page_subtitle }}</p>
+</div>
+
+<div class="table-wrapper table-panel">
+    <div class="table-toolbar">
+        <div>
+            <h2 class="table-title">{% if is_report %}Riwayat Pengajuan{% else %}Daftar Pengajuan{% endif %}</h2>
+        </div>
+        {% if can_add %}
+        <a href="{% url 'peminjaman:tambah' %}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i>&nbsp;Tambah Pengajuan
+        </a>
+        {% endif %}
+    </div>
+
+    {% include 'components/master_entries_control.html' %}
+
+    <div class="table-scroll-area table-scroll--list" tabindex="0" aria-label="Scroll tabel daftar pengajuan">
+        <table class="table-data list-table--peminjaman">
+            <thead>
+                <tr>
+                    <th>Nomor</th>
+                    <th class="cell-wrap">Peminjam</th>
+                    <th class="cell-wrap">Layanan</th>
+                    <th class="cell-wrap">Instansi Tujuan</th>
+                    <th>Periode</th>
+                    <th class="cell-status">Proses Peminjaman</th>
+                    <th class="cell-status">Proses Pengembalian</th>
+                    <th class="cell-action">Aksi</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    <td>{{ item.nomor_pengajuan }}</td>
+                    <td class="cell-wrap">
+                        <strong>{{ item.nama_peminjam }}</strong>
+                    </td>
+                    <td class="cell-wrap">{{ item.layanan_kegiatan.jenis_layanan|default:'-' }}</td>
+                    <td class="cell-wrap">{{ item.instansi_tujuan.nama_instansi|default:item.instansi_tujuan_lainnya|default:'-' }}</td>
+                    <td>{{ item.tanggal_mulai|date:'d M Y' }}<br><small>s/d {{ item.tanggal_selesai|date:'d M Y' }}</small></td>
+                    <td class="cell-status">
+                        <span class="status-badge {{ item.proses_peminjaman_badge_class }}">{{ item.proses_peminjaman_label }}</span>
+                    </td>
+                    <td class="cell-status">
+                        <span class="status-badge {{ item.proses_pengembalian_badge_class }}">{{ item.proses_pengembalian_label }}</span>
+                        {% if item.pengembalian_status_tags %}
+                        <div class="status-tag-list">
+                            {% for tag in item.pengembalian_status_tags %}
+                            <span class="status-badge badge-secondary">{{ tag }}</span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </td>
+                    <td class="cell-action">
+                        <div class="table-action-group">
+                            <a href="{% if is_report %}{% url 'peminjaman:laporan_detail' item.pk %}{% else %}{% url 'peminjaman:detail' item.pk %}{% endif %}" class="btn btn-secondary btn-sm" title="Detail">
+                                <i class="bi bi-eye-fill"></i>
+                            </a>
+                            {% if item.can_download_pdf %}
+                            <a href="{% if is_report %}{% url 'peminjaman:download_laporan_pdf' item.pk %}{% else %}{% url 'peminjaman:download_pdf' item.pk %}{% endif %}" class="btn btn-secondary btn-sm" title="Unduh PDF">
+                                <i class="bi bi-file-earmark-pdf-fill"></i>
+                            </a>
+                            {% endif %}
+                            {% if item.can_download_berita_acara %}
+                            <a href="{% url 'peminjaman:download_berita_acara_pdf' item.pk %}" class="btn btn-warning btn-sm" title="Unduh Berita Acara PDF">
+                                <i class="bi bi-file-earmark-medical-fill"></i>
+                            </a>
+                            {% endif %}
+                            {% if can_access_pengembalian and item.can_open_pengembalian and item.return_current_step != 'completed' %}
+                            <a href="{% url 'peminjaman:pengembalian' item.pk %}" class="btn btn-primary btn-sm" title="Proses Pengembalian">
+                                <i class="bi bi-arrow-return-left"></i>
+                            </a>
+                            {% endif %}
+                            {% if can_delete %}
+                            <button
+                                type="button"
+                                class="btn btn-danger btn-sm js-delete-btn" data-delete-modal="peminjaman"
+                                data-delete-url="{% url 'peminjaman:hapus' item.pk %}"
+                                data-item-name="{{ item.nomor_pengajuan }}"
+                                data-item-meta="{{ item.nama_peminjam }} • {{ item.proses_peminjaman_label }}"
+                            >
+                                <i class="bi bi-trash3-fill"></i>
+                            </button>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8">
+                        <div class="empty-state">Belum ada data pengajuan.</div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% include 'components/master_pagination.html' %}
+</div>
+
+{% if can_delete %}
+<div class="delete-modal" id="peminjamanDeleteModal">
+    <div class="delete-modal-backdrop" id="peminjamanDeleteModalBackdrop"></div>
+
+    <div class="delete-modal-card" role="dialog" aria-modal="true" aria-labelledby="peminjamanDeleteModalTitle">
+        <div class="delete-modal-header">
+            <h3 id="peminjamanDeleteModalTitle">Konfirmasi Hapus Pengajuan</h3>
+            <button type="button" class="delete-modal-close" id="peminjamanDeleteModalClose" aria-label="Tutup">
+                &times;
+            </button>
+        </div>
+
+        <div class="delete-modal-body">
+            <p>Apakah Anda yakin ingin menghapus data peminjaman berikut?</p>
+
+            <div class="delete-user-info">
+                <p><strong>Nomor Pengajuan:</strong> <span id="peminjamanDeleteItemName">-</span></p>
+                <p><strong>Informasi:</strong> <span id="peminjamanDeleteItemMeta">-</span></p>
+            </div>
+
+            <p class="delete-warning-text">Jika pengajuan sudah mengalokasikan aset, stok akan dikembalikan secara otomatis.</p>
+        </div>
+
+        <div class="delete-modal-actions">
+            <button type="button" class="btn btn-secondary" id="peminjamanDeleteModalCancel">Batal</button>
+
+            <form method="post" id="peminjamanDeleteForm">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger">Ya, Hapus</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

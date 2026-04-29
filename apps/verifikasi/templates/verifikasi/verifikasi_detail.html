@@ -1,0 +1,554 @@
+{% extends 'base.html' %}
+{% load core_tags %}
+{% load static %}
+
+{% block title %}Detail Verifikasi - SILEBAT{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{{ page_title }}</h1>
+    <p>{{ page_subtitle }}</p>
+</div>
+
+{% if verification_mode == 'pengembalian' %}
+<div class="card detail-header-card">
+    <div class="detail-header-shell detail-shell">
+        <div class="detail-header-primary detail-main detail-main--loan">
+            <div class="detail-header-number">{{ obj.nomor_pengajuan }}</div>
+
+            <div class="detail-list">
+                <div class="detail-row">
+                    <span class="detail-label">Tanggal Peminjaman</span>
+                    <span class="detail-sep">:</span>
+                    <strong class="detail-value">
+                        {{ obj.submitted_at|date:'d M Y' }} | {{ obj.submitted_at|date:'H:i' }} WIB
+                    </strong>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Tanggal Pengembalian</span>
+                    <span class="detail-sep">:</span>
+                    <strong class="detail-value">
+                        {% if obj.return_started_at %}
+                            {{ obj.return_started_at|date:'d M Y' }} | {{ obj.return_started_at|date:'H:i' }} WIB
+                        {% else %}
+                            -
+                        {% endif %}
+                    </strong>
+                </div>
+            </div>
+        </div>
+
+        <div class="detail-header-panel">
+            <div class="detail-state-row">
+                <div class="detail-state">
+                    <span class="detail-header-tile-label">Proses Peminjaman</span>
+                    <span class="status-badge {{ obj.proses_peminjaman_badge_class }}">{{ obj.proses_peminjaman_label }}</span>
+                </div>
+                <div class="detail-state">
+                    <span class="detail-header-tile-label">Proses Pengembalian</span>
+                    <span class="status-badge {{ obj.proses_pengembalian_badge_class }}">{{ obj.proses_pengembalian_label }}</span>
+                </div>
+                <div class="detail-state detail-stat">
+                    <span class="detail-header-tile-label">Status Pengembalian Tercatat</span>
+                    <p class="detail-header-tile-value detail-value-compact">{{ obj.pengembalian_status_text }}</p>
+                </div>
+            </div>
+
+            <div class="detail-action-row">
+                {% if obj.can_download_pdf %}
+                <a href="{% url 'peminjaman:download_pdf' obj.pk %}" class="btn btn-primary detail-action-btn">Export PDF</a>
+                {% else %}
+                <button type="button" class="btn btn-secondary detail-action-btn" disabled>Export PDF</button>
+                {% endif %}
+
+                {% if can_delete_pengajuan %}
+                <form method="post" action="{% url 'peminjaman:hapus' obj.pk %}" data-confirm-submit="Yakin ingin menghapus pengajuan ini? Jika aset sudah dialokasikan, stok akan dikembalikan otomatis.">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger detail-action-btn">Hapus Peminjaman</button>
+                </form>
+                {% endif %}
+
+                <a href="{% url 'verifikasi:index' %}" class="btn btn-secondary detail-action-btn">Kembali</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="card detail-header-card">
+    <div class="detail-header-top">
+        <div>
+            <h2 class="card-title">{{ obj.nomor_pengajuan }}</h2>
+            <p class="detail-meta">Diajukan oleh {{ obj.nama_peminjam }} pada {{ obj.submitted_at|date:'d M Y H:i' }}</p>
+        </div>
+        <div class="detail-header-actions">
+            <span class="status-badge {{ obj.active_verification_badge_class }}">{{ obj.active_verification_label }}</span>
+            <a href="{% url 'verifikasi:index' %}" class="btn btn-secondary">Kembali</a>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="detail-layout-grid">
+    <div class="card">
+        <h3 class="card-title">Data Peminjam</h3>
+        <div class="detail-grid">
+            <div class="detail-item"><label>Nama</label><p>{{ obj.nama_peminjam }}</p></div>
+            <div class="detail-item"><label>Nomor Telepon</label><p>{{ obj.no_hp_peminjam|default:'-' }}</p></div>
+            <div class="detail-item"><label>Email</label><p>{{ obj.email_peminjam|default:'-' }}</p></div>
+            <div class="detail-item"><label>NIP / NIK</label><p>{{ obj.nip_peminjam|default:'-' }}</p></div>
+            <div class="detail-item detail-item-full"><label>Alamat</label><p>{{ obj.alamat_peminjam|default:'-' }}</p></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3 class="card-title">Data Kegiatan</h3>
+        <div class="detail-grid detail-grid--kegiatan">
+            <div class="detail-item detail-item--span-2"><label>Layanan Kegiatan</label><p>{{ obj.layanan_kegiatan.jenis_layanan|default:'-' }}</p></div>
+            <div class="detail-item detail-item--span-2"><label>Tim Kegiatan</label><p>{{ obj.tim_kegiatan.nama_tim|default:'-' }}</p></div>
+            <div class="detail-item detail-item--span-2"><label>Berkas Pendukung</label><p>{% if obj.berkas_pendukung %}<a href="{{ obj.berkas_pendukung.url }}" target="_blank" rel="noopener">Buka dokumen PDF</a>{% else %}-{% endif %}</p></div>
+            <div class="detail-item detail-item-full">
+                <label>Kegiatan Survei</label>
+                <p>
+                    {% for survei in survei_items %}
+                        {{ survei.jenis_survei }}{% if not forloop.last %}, {% endif %}
+                    {% empty %}
+                        -
+                    {% endfor %}
+                    {% if obj.survei_lainnya %}{% if survei_items %}, {% endif %}Lainnya: {{ obj.survei_lainnya }}{% endif %}
+                </p>
+            </div>
+            <div class="detail-item detail-item-full"><label>Instansi Tujuan</label><p>{{ obj.instansi_tujuan.nama_instansi|default:obj.instansi_tujuan_lainnya|default:'-' }}</p></div>
+            <div class="detail-item detail-item--span-2"><label>Mulai Tanggal</label><p>{{ obj.tanggal_mulai|date:'d M Y' }}</p></div>
+            <div class="detail-item detail-item--span-2"><label>Selesai Tanggal</label><p>{{ obj.tanggal_selesai|date:'d M Y' }}</p></div>
+            <div class="detail-item detail-item--span-2"><label>Total Hari</label><p>{{ obj.total_hari }} hari</p></div>
+        </div>
+    </div>
+</div>
+
+{% if verification_mode == 'pengembalian' %}
+{% if has_lab_return_rows %}
+<div class="card">
+    <h3 class="card-title">Data Peralatan Survei Lapangan</h3>
+    <div class="table-wrapper table-responsive compact-table table-shell">
+        <div class="table-scroll-area table-scroll" tabindex="0" aria-label="Scroll tabel verifikasi pengembalian peralatan survei lapangan">
+            <table class="table-mobile-scroll table-mobile-scroll--detail-lab">
+                <thead>
+                    <tr>
+                        <th>Nama Barang</th>
+                        <th>Tipe / Merek Barang</th>
+                        <th>Jenis Barang</th>
+                        <th>Status Barang</th>
+                        <th>Kode Aset BMN</th>
+                        <th>Kode Laboratorium</th>
+                        <th>Volume</th>
+                        <th>Satuan</th>
+                        <th>Kondisi Barang</th>
+                        <th>Tahun Perolehan</th>
+                        <th>Status Pengembalian</th>
+                        <th>Tujuan Transfer</th>
+                        <th>Asal Peminjaman</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in lab_rows %}
+                    <tr>
+                        <td data-label="Nama Barang" class="cell-wrap">{{ row.item.barang.nama_barang }}</td>
+                        <td data-label="Tipe / Merek Barang" class="cell-wrap">{{ row.item.barang.tipe_merek_barang|default:'-' }}</td>
+                        <td data-label="Jenis Barang" class="cell-wrap">{{ row.item.barang.jenis_barang|default:'-' }}</td>
+                        <td data-label="Status Barang">{{ row.item.barang.status_barang|default:'-' }}</td>
+                        <td data-label="Kode Aset BMN">{{ row.item.barang.kode_aset_bmn|default:'-' }}</td>
+                        <td data-label="Kode Laboratorium">{{ row.item.barang.kode_laboratorium|default:'-' }}</td>
+                        <td data-label="Volume" class="cell-center">{{ row.item.barang.volume|dash_if_zero }}</td>
+                        <td data-label="Satuan">{{ row.item.barang.satuan|default:'-' }}</td>
+                        <td data-label="Kondisi Barang">{{ row.item.barang.kondisi_barang|default:'-' }}</td>
+                        <td data-label="Tahun Perolehan">{{ row.item.barang.tahun_perolehan|default:'-' }}</td>
+                        <td data-label="Status Pengembalian">{{ row.item.get_status_display }}</td>
+                        <td data-label="Tujuan Transfer">{% if row.item.transfer_target %}{{ row.item.transfer_target.nomor_pengajuan }} - {{ row.item.transfer_target.nama_peminjam }}{% else %}-{% endif %}</td>
+                        <td data-label="Asal Peminjaman" class="cell-wrap">{{ row.asal_peminjaman_label|default:'Laboratorium' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if has_penunjang_return_rows %}
+<div class="card">
+    <h3 class="card-title">Data Barang Penunjang Lapangan</h3>
+    <div class="table-wrapper table-responsive compact-table table-shell">
+        <div class="table-scroll-area table-scroll" tabindex="0" aria-label="Scroll tabel verifikasi pengembalian barang penunjang lapangan">
+            <table class="table-mobile-scroll table-mobile-scroll--detail-lab">
+                <thead>
+                    <tr>
+                        <th>Nama Barang</th>
+                        <th>Tipe / Merek Barang</th>
+                        <th>Kategori Barang</th>
+                        <th>Volume Dipinjam</th>
+                        <th>Satuan</th>
+                        <th>Dikembalikan</th>
+                        <th>Rusak</th>
+                        <th>Hilang</th>
+                        <th>Transfer</th>
+                        <th>Tujuan Transfer</th>
+                        <th>Asal Peminjaman</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in penunjang_rows %}
+                    <tr>
+                        <td data-label="Nama Barang" class="cell-wrap">{{ row.item.barang.nama_barang }}</td>
+                        <td data-label="Tipe / Merek Barang" class="cell-wrap">{{ row.item.barang.tipe_merek_barang|default:'-' }}</td>
+                        <td data-label="Kategori Barang" class="cell-wrap">{{ row.item.barang.kategori_barang|default:'-' }}</td>
+                        <td data-label="Volume Dipinjam" class="cell-center">{{ row.borrowed_volume|dash_if_zero }}</td>
+                        <td data-label="Satuan">{{ row.item.barang.satuan|default:'-' }}</td>
+                        <td data-label="Dikembalikan">{{ row.item.qty_dikembalikan|dash_if_zero }}</td>
+                        <td data-label="Rusak">{{ row.item.qty_rusak|dash_if_zero }}</td>
+                        <td data-label="Hilang">{{ row.item.qty_hilang|dash_if_zero }}</td>
+                        <td data-label="Transfer">{{ row.item.qty_transfer|dash_if_zero }}</td>
+                        <td data-label="Tujuan Transfer">{% if row.item.transfer_target %}{{ row.item.transfer_target.nomor_pengajuan }} - {{ row.item.transfer_target.nama_peminjam }}{% else %}-{% endif %}</td>
+                        <td data-label="Asal Peminjaman" class="cell-wrap">{{ row.asal_peminjaman_label|default:'Laboratorium' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+
+{% if has_bahan_return_rows %}
+<div class="card">
+    <h3 class="card-title">Data Bahan Operasional</h3>
+    <div class="table-wrapper table-responsive compact-table table-shell">
+        <div class="table-scroll-area table-scroll" tabindex="0" aria-label="Scroll tabel verifikasi pengembalian bahan operasional">
+            <table class="table-mobile-scroll table-mobile-scroll--detail-lab">
+                <thead>
+                    <tr>
+                        <th>Nama Barang</th>
+                        <th>Volume Dipinjam</th>
+                        <th>Satuan</th>
+                        <th>Sisa</th>
+                        <th>Transfer</th>
+                        <th>Tujuan Transfer</th>
+                        <th>Asal Peminjaman</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in bahan_rows %}
+                    <tr>
+                        <td data-label="Nama Barang" class="cell-wrap">{{ row.item.bahan.nama_barang }}</td>
+                        <td data-label="Volume Dipinjam" class="cell-center">{{ row.borrowed_volume|dash_if_zero }}</td>
+                        <td data-label="Satuan">{{ row.item.bahan.satuan|default:'-' }}</td>
+                        <td data-label="Sisa">{{ row.item.qty_sisa|dash_if_zero }}</td>
+                        <td data-label="Transfer">{{ row.item.qty_transfer|dash_if_zero }}</td>
+                        <td data-label="Tujuan Transfer">{% if row.item.transfer_target %}{{ row.item.transfer_target.nomor_pengajuan }} - {{ row.item.transfer_target.nama_peminjam }}{% else %}-{% endif %}</td>
+                        <td data-label="Asal Peminjaman" class="cell-wrap">{{ row.asal_peminjaman_label|default:'Laboratorium' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if has_peralatan_lab_return_rows %}
+<div class="card">
+    <h3 class="card-title">Data Peralatan Laboratorium</h3>
+    <div class="table-wrapper table-responsive compact-table table-shell">
+        <div class="table-scroll-area table-scroll" tabindex="0" aria-label="Scroll tabel verifikasi pengembalian peralatan laboratorium">
+            <table class="table-mobile-scroll table-mobile-scroll--detail-lab">
+                <thead>
+                    <tr>
+                        <th>Nama Barang</th>
+                        <th>Tipe / Merek Barang</th>
+                        <th>Kode Laboratorium</th>
+                        <th>Volume Dipinjam</th>
+                        <th>Satuan</th>
+                        <th>Dikembalikan</th>
+                        <th>Rusak</th>
+                        <th>Hilang</th>
+                        <th>Transfer</th>
+                        <th>Tujuan Transfer</th>
+                        <th>Asal Peminjaman</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in peralatan_lab_rows %}
+                    <tr>
+                        <td data-label="Nama Barang" class="cell-wrap">{{ row.item.barang.nama_barang }}</td>
+                        <td data-label="Tipe / Merek Barang" class="cell-wrap">{{ row.item.barang.tipe_merek_barang|default:'-' }}</td>
+                        <td data-label="Kode Laboratorium" class="cell-wrap">{{ row.item.barang.kode_laboratorium|default:'-' }}</td>
+                        <td data-label="Volume Dipinjam" class="cell-center">{{ row.borrowed_volume|dash_if_zero }}</td>
+                        <td data-label="Satuan">{{ row.item.barang.satuan|default:'-' }}</td>
+                        <td data-label="Dikembalikan">{{ row.item.qty_dikembalikan|dash_if_zero }}</td>
+                        <td data-label="Rusak">{{ row.item.qty_rusak|dash_if_zero }}</td>
+                        <td data-label="Hilang">{{ row.item.qty_hilang|dash_if_zero }}</td>
+                        <td data-label="Transfer">{{ row.item.qty_transfer|dash_if_zero }}</td>
+                        <td data-label="Tujuan Transfer">{% if row.item.transfer_target %}{{ row.item.transfer_target.nomor_pengajuan }} - {{ row.item.transfer_target.nama_peminjam }}{% else %}-{% endif %}</td>
+                        <td data-label="Asal Peminjaman" class="cell-wrap">{{ row.asal_peminjaman_label|default:'Laboratorium' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="card">
+    <h3 class="card-title">Data Pengukuran Lapangan</h3>
+    <div class="detail-grid detail-grid--pengukuran">
+        {% for item in pengukuran_data %}
+        <div class="detail-item">
+            <label>{{ item.label }}</label>
+            <p>{{ item.display|dash_if_zero }}</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+{% if not has_lab_return_rows and not has_penunjang_return_rows and not has_peralatan_lab_return_rows and not has_bahan_return_rows %}
+<div class="card">
+    <div class="empty-state">Tidak ada item barang pada data pengembalian ini.</div>
+</div>
+{% endif %}
+{% else %}
+{% if has_lab_items %}
+<div class="card">
+    <h3 class="card-title">Data Peralatan Survei Lapangan yang Dipinjam</h3>
+    <div class="table-wrapper table-responsive compact-table table-shell">
+        <div class="table-scroll-area table-scroll" tabindex="0" aria-label="Scroll tabel detail peralatan survei lapangan">
+            <table class="table-mobile-scroll table-mobile-scroll--detail-lab">
+                <thead>
+                    <tr>
+                        <th>Nama Barang</th>
+                        <th>Tipe / Merek Barang</th>
+                        <th>Jenis Barang</th>
+                        <th>Status Barang</th>
+                        <th>Kode Aset BMN</th>
+                        <th>Kode Laboratorium</th>
+                        <th>Volume</th>
+                        <th>Satuan</th>
+                        <th>Kondisi Barang</th>
+                        <th>Tahun Perolehan</th>
+                        <th>Asal Peminjaman</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in lab_items %}
+                    <tr>
+                        <td data-label="Nama Barang" class="cell-wrap">{{ item.barang.nama_barang }}</td>
+                        <td data-label="Tipe / Merek Barang" class="cell-wrap">{{ item.barang.tipe_merek_barang|default:'-' }}</td>
+                        <td data-label="Jenis Barang" class="cell-wrap">{{ item.barang.jenis_barang|default:'-' }}</td>
+                        <td data-label="Status Barang">{{ item.barang.status_barang|default:'-' }}</td>
+                        <td data-label="Kode Aset BMN">{{ item.barang.kode_aset_bmn|default:'-' }}</td>
+                        <td data-label="Kode Laboratorium">{{ item.barang.kode_laboratorium|default:'-' }}</td>
+                        <td data-label="Volume" class="cell-center">{{ item.barang.volume|dash_if_zero }}</td>
+                        <td data-label="Satuan">{{ item.barang.satuan|default:'-' }}</td>
+                        <td data-label="Kondisi Barang">{{ item.barang.kondisi_barang|default:'-' }}</td>
+                        <td data-label="Tahun Perolehan">{{ item.barang.tahun_perolehan|default:'-' }}</td>
+                        <td data-label="Asal Peminjaman" class="cell-wrap">{{ item.asal_peminjaman_label|default:'Laboratorium' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if has_penunjang_items %}
+<div class="card">
+    <h3 class="card-title">Data Barang Penunjang Lapangan yang Dipinjam</h3>
+    <div class="table-wrapper table-responsive compact-table table-shell">
+        <div class="table-scroll-area table-scroll" tabindex="0" aria-label="Scroll tabel detail barang penunjang lapangan">
+            <table class="table-mobile-scroll table-mobile-scroll--detail-lab">
+                <thead>
+                    <tr>
+                        <th>Nama Barang</th>
+                        <th>Tipe / Merek Barang</th>
+                        <th>Kategori Barang</th>
+                        <th>Volume Dipinjam</th>
+                        <th>Satuan</th>
+                        <th>Asal Peminjaman</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in penunjang_items %}
+                    <tr>
+                        <td data-label="Nama Barang" class="cell-wrap">{{ item.barang.nama_barang }}</td>
+                        <td data-label="Tipe / Merek Barang" class="cell-wrap">{{ item.barang.tipe_merek_barang|default:'-' }}</td>
+                        <td data-label="Kategori Barang" class="cell-wrap">{{ item.barang.kategori_barang|default:'-' }}</td>
+                        <td data-label="Volume Dipinjam" class="cell-center">{{ item.volume|dash_if_zero }}</td>
+                        <td data-label="Satuan">{{ item.barang.satuan|default:'-' }}</td>
+                        <td data-label="Asal Peminjaman" class="cell-wrap">{{ item.asal_peminjaman_label|default:'Laboratorium' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if has_bahan_items %}
+<div class="card">
+    <h3 class="card-title">Data Bahan Operasional yang Dipinjam</h3>
+    <div class="table-wrapper table-responsive compact-table table-shell">
+        <div class="table-scroll-area table-scroll" tabindex="0" aria-label="Scroll tabel detail bahan operasional">
+            <table class="table-mobile-scroll table-mobile-scroll--detail-lab">
+                <thead>
+                    <tr>
+                        <th>Nama Barang</th>
+                        <th>Volume Dipinjam</th>
+                        <th>Satuan</th>
+                        <th>Asal Peminjaman</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in bahan_items %}
+                    <tr>
+                        <td data-label="Nama Barang" class="cell-wrap">{{ item.bahan.nama_barang }}</td>
+                        <td data-label="Volume Dipinjam" class="cell-center">{{ item.volume|dash_if_zero }}</td>
+                        <td data-label="Satuan">{{ item.bahan.satuan|default:'-' }}</td>
+                        <td data-label="Asal Peminjaman" class="cell-wrap">{{ item.asal_peminjaman_label|default:'Laboratorium' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if has_peralatan_lab_items %}
+<div class="card">
+    <h3 class="card-title">Data Peralatan Laboratorium yang Dipinjam</h3>
+    <div class="table-wrapper table-responsive compact-table table-shell">
+        <div class="table-scroll-area table-scroll" tabindex="0" aria-label="Scroll tabel detail peralatan laboratorium">
+            <table class="table-mobile-scroll table-mobile-scroll--detail-lab">
+                <thead>
+                    <tr>
+                        <th>Nama Barang</th>
+                        <th>Tipe / Merek Barang</th>
+                        <th>Kode Aset BMN</th>
+                        <th>Kode Laboratorium</th>
+                        <th>Volume Dipinjam</th>
+                        <th>Satuan</th>
+                        <th>Asal Peminjaman</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in peralatan_lab_items %}
+                    <tr>
+                        <td data-label="Nama Barang" class="cell-wrap">{{ item.barang.nama_barang }}</td>
+                        <td data-label="Tipe / Merek Barang" class="cell-wrap">{{ item.barang.tipe_merek_barang|default:'-' }}</td>
+                        <td data-label="Kode Aset BMN" class="cell-wrap">{{ item.barang.kode_aset_bmn|default:'-' }}</td>
+                        <td data-label="Kode Laboratorium" class="cell-wrap">{{ item.barang.kode_laboratorium|default:'-' }}</td>
+                        <td data-label="Volume Dipinjam" class="cell-center">{{ item.volume|dash_if_zero }}</td>
+                        <td data-label="Satuan">{{ item.barang.satuan|default:'-' }}</td>
+                        <td data-label="Asal Peminjaman" class="cell-wrap">{{ item.asal_peminjaman_label|default:'Laboratorium' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endif %}
+
+<div class="card verify-action-card">
+    {% if action_buttons %}
+    <div class="verify-action-grid verify-action-grid--{% if can_edit_pengajuan or can_edit_pengembalian %}{{ action_buttons|length|add:'1' }}{% else %}{{ action_buttons|length }}{% endif %}">
+        {% if can_edit_pengajuan %}
+        <a href="{% url 'peminjaman:edit' obj.pk %}" class="btn btn-warning js-verify-action">Edit Peminjaman</a>
+        {% endif %}
+        {% if can_edit_pengembalian %}
+        <a href="{% url 'peminjaman:pengembalian' obj.pk %}" class="btn btn-warning js-verify-action">Edit Pengembalian</a>
+        {% endif %}
+        {% for action in action_buttons %}
+        <button
+            type="button"
+            class="btn {{ action.button_class }} js-verify-action"
+            data-action="{{ action.value }}"
+            data-label="{{ action.label }}"
+            data-requires-note="{% if action.requires_note %}true{% else %}false{% endif %}"
+            data-modal-title="{{ action.modal_title }}"
+            data-submit-label="{{ action.modal_submit_label }}"
+            data-note-label="{{ action.note_label }}"
+            data-note-placeholder="{{ action.note_placeholder }}"
+            data-note-help="{{ action.note_help_text }}"
+            data-submit-class="{{ action.submit_class }}"
+        >
+            {{ action.label }}
+        </button>
+        {% endfor %}
+    </div>
+    {% elif show_return_process_link %}
+    <a href="{% url 'peminjaman:pengembalian' obj.pk %}" class="btn btn-primary js-verify-action">{{ return_process_label|default:'Buka Form Pengembalian' }}</a>
+    {% else %}
+    <div class="empty-state">Tidak ada aksi verifikasi yang tersedia untuk tahap ini.</div>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h3 class="card-title">{{ timeline_title }}</h3>
+    <div class="timeline-list">
+        {% for item in obj.timeline_entries.all %}
+        <div class="timeline-item">
+            <div class="timeline-point"></div>
+            <div class="timeline-content">
+                <strong>{{ item.action }}</strong>
+                <p>{{ item.stage }} • {{ item.created_at|date:'d M Y H:i' }}{% if item.actor %} • {{ item.actor.get_full_name|default:item.actor.username }}{% endif %}</p>
+                {% if item.note %}<div class="card-soft">{{ item.note }}</div>{% endif %}
+            </div>
+        </div>
+        {% empty %}
+        <div class="empty-state">Belum ada riwayat verifikasi.</div>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="delete-modal {% if open_action_modal %}show{% endif %}" id="verificationNoteModal" data-open-on-load="{% if open_action_modal %}true{% else %}false{% endif %}">
+    <div class="delete-modal-backdrop" id="verificationNoteModalBackdrop"></div>
+    <div class="delete-modal-card verify-note-modal" role="dialog" aria-modal="true" aria-labelledby="verificationNoteModalTitle">
+        <div class="delete-modal-header">
+            <h3 id="verificationNoteModalTitle">{{ active_action.modal_title|default:'Input Catatan' }}</h3>
+            <button type="button" class="delete-modal-close" id="verificationNoteModalClose" aria-label="Tutup">&times;</button>
+        </div>
+
+        <form method="post" id="verificationActionForm" class="verify-note-form" novalidate>
+            {% csrf_token %}
+            <input type="hidden" name="aksi" id="verificationActionInput" value="{{ selected_action|default:'' }}">
+
+            <div class="delete-modal-body">
+                <div class="form-group {% if form.catatan.errors %}has-error{% endif %}">
+                    <label for="verificationCatatanInput" id="verificationNoteLabel">{{ active_action.note_label|default:'Catatan / Alasan' }}</label>
+                    <textarea
+                        name="catatan"
+                        id="verificationCatatanInput"
+                        rows="5"
+                        placeholder="{{ active_action.note_placeholder|default:'Tulis catatan verifikasi di sini.' }}"
+                        {% if active_action.requires_note %}required{% endif %}
+                    >{{ catatan_value }}</textarea>
+                    {% for error in form.catatan.errors %}
+                    <p class="input-error-text verify-note-error">{{ error }}</p>
+                    {% endfor %}
+                    <p class="helper-text" id="verificationNoteHelp" {% if not active_action.note_help_text %}hidden{% endif %}>{{ active_action.note_help_text|default:'' }}</p>
+                </div>
+            </div>
+
+            <div class="delete-modal-actions verify-note-actions">
+                <button type="button" class="btn btn-secondary" id="verificationNoteModalCancel">Kembali</button>
+                <button type="submit" class="btn {{ active_action.submit_class|default:'btn-primary' }}" id="verificationModalSubmitButton">{{ active_action.modal_submit_label|default:'Kirim' }}</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+

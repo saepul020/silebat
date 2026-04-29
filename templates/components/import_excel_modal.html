@@ -1,0 +1,89 @@
+{% if role_access.is_super_admin %}
+<div class="delete-modal import-data-modal{% if import_context.show_modal %} show{% endif %}" id="{{ import_modal_id }}" data-import-modal data-import-modal-open="{% if import_context.show_modal %}true{% else %}false{% endif %}">
+    <div class="delete-modal-backdrop" data-import-modal-backdrop></div>
+
+    <div class="delete-modal-card import-data-modal-card" role="dialog" aria-modal="true" aria-labelledby="{{ import_modal_id }}Title">
+        <div class="delete-modal-header">
+            <div>
+                <h3 id="{{ import_modal_id }}Title">{{ import_title }}</h3>
+                {% if import_subtitle %}<p class="import-modal-subtitle">{{ import_subtitle }}</p>{% endif %}
+            </div>
+            <button type="button" class="delete-modal-close" data-import-modal-close aria-label="Tutup">&times;</button>
+        </div>
+
+        <form method="post" enctype="multipart/form-data" action="{{ import_action_url }}" data-import-form>
+            {% csrf_token %}
+            <div class="delete-modal-body import-modal-body">
+                <div class="import-download-row">
+                    <a href="{{ import_download_url }}" class="btn btn-secondary">
+                        <i class="bi bi-download"></i>&nbsp;Download Format Import
+                    </a>
+                </div>
+
+                <div class="form-group import-file-group">
+                    <label for="{{ import_file_id }}">File Excel Import</label>
+                    <div class="upload-input-wrap upload-input-wrap--inline upload-input-wrap--file-proxy import-file-upload-wrap" data-inline-file-proxy>
+                        <div class="upload-input-wrap__field">
+                            <input
+                                type="file"
+                                name="file_import"
+                                id="{{ import_file_id }}"
+                                class="input-file input-file--proxy"
+                                accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                                data-import-file-input
+                                data-inline-file-input="true"
+                                data-inline-file-placeholder="Pilih file Excel"
+                                data-inline-file-extensions="xlsx"
+                                data-inline-file-error="File import hanya boleh berupa file Excel .xlsx."
+                                data-inline-file-max-size="7340032"
+                                data-inline-file-max-size-error="Ukuran file import maksimal 7 MB."
+                            >
+                            <label for="{{ import_file_id }}" class="file-input-proxy import-file-input-proxy">
+                                <span class="file-input-proxy__button" aria-hidden="true"><i class="bi bi-filetype-xlsx"></i></span>
+                                <span class="file-input-proxy__text is-placeholder import-file-input-proxy__text" data-inline-file-text>Pilih file Excel</span>
+                            </label>
+                        </div>
+                        <div class="upload-file-state upload-file-state--inline import-file-clear-state is-hidden" data-file-state data-inline-file-state>
+                            <button type="button" class="upload-file-state__action upload-file-state__action--icon" data-file-state-action data-inline-file-clear data-mode="clear-selected" title="Batalkan Upload" aria-label="Batalkan Upload">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <p class="input-error-text" data-inline-file-error-node hidden></p>
+                    <small class="form-help-text">{{ import_help_text|default:'Gunakan file .xlsx maksimal 7 MB. Data duplikat akan ditolak.' }}</small>
+                </div>
+
+                <div class="import-feedback-area" data-import-feedback aria-live="polite">
+                    {% if import_context.validated %}
+                        <div class="import-validation-box import-validation-success">
+                            <strong>Validasi berhasil.</strong>
+                            <span>{{ import_context.total_rows }} data siap disimpan.</span>
+                        </div>
+                    {% endif %}
+
+                    {% if import_context.errors %}
+                        <div class="import-validation-box import-validation-error">
+                            <strong>Validasi belum berhasil.</strong>
+                            <ul>
+                                {% for error in import_context.errors %}
+                                    <li>{{ error }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="delete-modal-actions import-modal-actions">
+                <button type="button" class="btn btn-secondary" data-import-modal-cancel>Kembali</button>
+                <button type="submit" class="btn btn-warning" name="import_action" value="validate">
+                    <i class="bi bi-check2-square"></i>&nbsp;Validasi Data
+                </button>
+                <button type="submit" class="btn btn-primary" name="import_action" value="save" {% if not import_context.can_save %}disabled{% endif %}>
+                    <i class="bi bi-save"></i>&nbsp;Simpan Data
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}

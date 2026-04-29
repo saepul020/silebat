@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+
+{% block title %}Notifikasi | SILEBAT{% endblock %}
+
+{% block content %}
+<div class="page-header notif-page-header">
+    <div>
+        <h1>{{ page_title }}</h1>
+        <p>{{ page_subtitle }}</p>
+    </div>
+    <div class="notif-header-actions">
+        {% if can_create_announcement %}
+            <a href="{% url 'notifikasi:riwayat_pengumuman' %}" class="btn btn-secondary">
+                <i class="bi bi-clock-history"></i>
+                <span>Riwayat Pengumuman</span>
+            </a>
+            <a href="{% url 'notifikasi:tambah_pengumuman' %}" class="btn btn-primary">
+                <i class="bi bi-megaphone"></i>
+                <span>Buat Pengumuman</span>
+            </a>
+        {% endif %}
+        <form action="{% url 'notifikasi:tandai_semua_dibaca' %}" method="post">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-secondary">
+                <i class="bi bi-check2-all"></i>
+                <span>Tandai Dibaca</span>
+            </button>
+        </form>
+    </div>
+</div>
+
+<div class="card notif-filter-card">
+    <a href="{% url 'notifikasi:index' %}" class="notif-filter-link {% if not filter_status %}active{% endif %}">Semua</a>
+    <a href="{% url 'notifikasi:index' %}?status=belum-dibaca" class="notif-filter-link {% if filter_status == 'belum-dibaca' %}active{% endif %}">Belum Dibaca</a>
+    <a href="{% url 'notifikasi:index' %}?status=sudah-dibaca" class="notif-filter-link {% if filter_status == 'sudah-dibaca' %}active{% endif %}">Sudah Dibaca</a>
+</div>
+
+<div class="notif-list-card">
+    {% for item in items %}
+        <a href="{% url 'notifikasi:baca' item.pk %}" class="notif-list-item {% if not item.is_read %}unread{% endif %}">
+            <div class="notif-list-icon">
+                <i class="bi {{ item.icon_class }}"></i>
+            </div>
+            <div class="notif-list-content">
+                <div class="notif-list-topline">
+                    <strong>{{ item.title }}</strong>
+                    <span class="badge {{ item.category_badge_class }}">{{ item.get_category_display }}</span>
+                </div>
+                <p>{{ item.message }}</p>
+                <small>{{ item.visible_from|date:"d M Y H:i" }} WIB</small>
+            </div>
+            {% if not item.is_read %}
+                <span class="notif-unread-dot" aria-label="Belum dibaca"></span>
+            {% endif %}
+        </a>
+    {% empty %}
+        <div class="notif-empty-state">
+            <i class="bi bi-bell-slash"></i>
+            <strong>Belum ada notifikasi.</strong>
+            <p>Notifikasi verifikasi, status proses, dan pengumuman akan tampil di halaman ini.</p>
+        </div>
+    {% endfor %}
+</div>
+
+{% include 'components/master_pagination.html' %}
+{% endblock %}

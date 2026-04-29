@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+
+{% block title %}Data Sarana Prasarana Ruangan{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{{ page_title }}</h1>
+    <p>{{ page_subtitle }}</p>
+</div>
+
+<div class="table-wrapper table-panel">
+    <div class="table-toolbar">
+        <h3 class="table-title">Daftar Sarana Prasarana Ruangan</h3>
+        <div class="table-toolbar-actions">
+            {% if role_access.is_super_admin %}
+                <button type="button" class="btn btn-secondary js-import-data-btn" data-import-target="#fasilitasRuanganImportModal">
+                    <i class="bi bi-file-earmark-spreadsheet"></i>&nbsp;Import Data
+                </button>
+            {% endif %}
+            <a href="{% url 'master_data:tambah_fasilitas_ruangan' %}" class="btn btn-primary"><i class="bi bi-plus-circle"></i>&nbsp;Tambah Barang</a>
+        </div>
+    </div>
+
+    {% include 'components/master_entries_control.html' %}
+
+    <div class="table-scroll-area table-scroll--list" tabindex="0" aria-label="Scroll tabel data sarana prasarana ruangan">
+        <table class="table-data list-table--master-wide">
+            <thead>
+                <tr>
+                    <th class="cell-wrap">Nama Barang</th>
+                    <th>Status</th>
+                    <th>Kode Laboratorium</th>
+                    <th class="cell-wrap">Kategori Barang</th>
+                    <th>Volume Baik</th>
+                    <th>Volume Rusak</th>
+                    <th>Total Volume</th>
+                    <th>Kondisi</th>
+                    <th class="cell-status">Ketersediaan</th>
+                    <th class="cell-wrap">Lokasi</th>
+                    <th class="cell-action">Aksi</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    <td class="cell-wrap">
+                        <strong>{{ item.nama_barang }}</strong><br>
+                        <small>{{ item.tipe_merek_barang }}</small>
+                    </td>
+                    <td>{{ item.status_barang }}</td>
+                    <td>{{ item.kode_laboratorium }}</td>
+                    <td class="cell-wrap">{{ item.kategori_barang }}</td>
+                    <td>{{ item.volume_baik }}</td>
+                    <td>{{ item.volume_rusak }}</td>
+                    <td>{{ item.total_volume }}</td>
+                    <td>{% if item.status_barang == 'BMN' %}{{ item.kondisi_barang }}{% else %}-{% endif %}</td>
+                    <td class="cell-status"><span class="status-badge {{ item.status_badge_class }}">{{ item.ketersediaan }}</span></td>
+                    <td class="cell-wrap">{{ item.lokasi_barang }}</td>
+                    <td class="cell-action">
+                        <div class="table-action-group">
+                            <a href="{% url 'master_data:detail_fasilitas_ruangan' item.pk %}" class="btn btn-secondary btn-sm"><i class="bi bi-eye-fill"></i></a>
+                            <a href="{% url 'master_data:edit_fasilitas_ruangan' item.pk %}" class="btn btn-warning btn-sm"><i class="bi bi-pencil-square"></i></a>
+                            <button type="button" class="btn btn-danger btn-sm js-delete-btn" data-delete-modal="master" data-delete-url="{% url 'master_data:hapus_fasilitas_ruangan' item.pk %}" data-item-name="{{ item.nama_barang }}" data-item-meta="{{ item.kode_laboratorium|default:'-' }}">
+                                <i class="bi bi-trash3-fill"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="11"><div class="empty-state">Belum ada data sarana prasarana ruangan.</div></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% include 'components/master_pagination.html' %}
+</div>
+
+{% if role_access.is_super_admin %}
+    {% url 'master_data:import_fasilitas_ruangan' as import_action_url %}
+    {% url 'master_data:download_format_import_fasilitas_ruangan' as import_download_url %}
+    {% include 'components/import_excel_modal.html' with import_context=import_context import_modal_id='fasilitasRuanganImportModal' import_file_id='fasilitasRuanganImportFile' import_title='Import Data Sarana Prasarana Ruangan' import_action_url=import_action_url import_download_url=import_download_url import_help_text='Gunakan file .xlsx maksimal 7 MB. Data duplikat pada Kode Aset BMN dan Kode Laboratorium akan ditolak.' %}
+{% endif %}
+
+<div class="delete-modal" id="masterDeleteModal">
+    <div class="delete-modal-backdrop" id="masterDeleteModalBackdrop"></div>
+
+    <div class="delete-modal-card" role="dialog" aria-modal="true" aria-labelledby="masterDeleteModalTitle">
+        <div class="delete-modal-header">
+            <h3 id="masterDeleteModalTitle">Konfirmasi Hapus</h3>
+            <button type="button" class="delete-modal-close" id="masterDeleteModalClose" aria-label="Tutup">&times;</button>
+        </div>
+
+        <div class="delete-modal-body">
+            <p>Apakah Anda yakin ingin menghapus data master berikut?</p>
+
+            <div class="delete-user-info">
+                <p><strong>Nama Barang:</strong> <span id="masterDeleteItemName">-</span></p>
+                <p><strong>Info:</strong> <span id="masterDeleteItemMeta">-</span></p>
+            </div>
+
+            <p class="delete-warning-text">Tindakan ini tidak dapat dibatalkan.</p>
+        </div>
+
+        <div class="delete-modal-actions">
+            <button type="button" class="btn btn-secondary" id="masterDeleteModalCancel">Batal</button>
+
+            <form method="post" id="masterDeleteForm">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger">Ya, Hapus</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+
+{% block title %}Detail Pengguna{% endblock %}
+
+{% block content %}
+<div class="page-header detail-header">
+    <div>
+        <h1>Detail Pengguna</h1>
+        <p>Informasi lengkap pengguna aplikasi.</p>
+    </div>
+</div>
+
+<div class="card detail-user-card">
+    <div class="detail-profile-top">
+        <div class="detail-avatar">
+            {% if obj.profile and obj.profile.foto_profil %}
+                <img src="{{ obj.profile.foto_profil.url }}" alt="Foto Profil {{ obj.get_full_name|default:obj.username }}">
+            {% else %}
+                <div class="detail-avatar__fallback">
+                    {{ obj.get_full_name|default:obj.username|slice:":1"|upper }}
+                </div>
+            {% endif %}
+        </div>
+        <div class="detail-profile-meta">
+            <h2>{{ obj.get_full_name|default:"-" }}</h2>
+            <p>@{{ obj.username|default:"-" }}</p>
+            {% if obj.profile.role %}
+                <span class="detail-role-chip">{{ obj.profile.role }}</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="detail-grid detail-grid--info">
+        <div class="detail-item">
+            <label>Email</label>
+            <p>{{ obj.email|default:"-" }}</p>
+        </div>
+
+        <div class="detail-item">
+            <label>NIP / NIK</label>
+            <p>{{ obj.nip|default:"-" }}</p>
+        </div>
+
+        <div class="detail-item">
+            <label>Nomor HP</label>
+            <p>{{ obj.no_hp|default:"-" }}</p>
+        </div>
+
+        <div class="detail-item">
+            <label>Jabatan</label>
+            <p>{{ obj.profile.jabatan|default:"-" }}</p>
+        </div>
+
+        <div class="detail-item">
+            <label>Divisi Tim Kegiatan</label>
+            <p>{{ obj.profile.nama_tim|default:"-" }}</p>
+        </div>
+
+        <div class="detail-item">
+            <label>TTD Digital</label>
+            <p>
+                {% if obj.profile.ttd_digital %}
+                    <a href="{{ obj.profile.ttd_digital.url }}" target="_blank" rel="noopener noreferrer">Lihat TTD Digital</a>
+                {% else %}
+                    -
+                {% endif %}
+            </p>
+        </div>
+
+        <div class="detail-item detail-item--full">
+            <label>Alamat</label>
+            <p>{{ obj.profile.alamat|default:"-" }}</p>
+        </div>
+    </div>
+
+    <div class="detail-card-action detail-card-actions">
+        {% if can_edit_obj %}
+            <a href="{% url 'pengguna:edit' obj.pk %}" class="btn btn-primary">Edit Pengguna</a>
+        {% endif %}
+        <a href="{% url 'pengguna:daftar' %}" class="btn btn-secondary">Kembali</a>
+    </div>
+</div>
+{% endblock %}

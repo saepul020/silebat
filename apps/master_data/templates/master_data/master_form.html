@@ -1,0 +1,196 @@
+{% extends 'base.html' %}
+{% load master_data_tags %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{{ page_title }}</h1>
+    <p>{{ page_subtitle }}</p>
+</div>
+
+<div class="form-card user-form-card master-data-form-card">
+    <form method="post" enctype="multipart/form-data" class="pengguna-form master-data-form" data-master-data-form="true" novalidate>
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+        <div class="form-global-errors">
+            {% for error in form.non_field_errors %}
+                <p class="input-error-text">*{{ error }}</p>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% with has_status_field=form.fields.status_barang %}
+        {% for group_title, field_rows in field_groups %}
+            <fieldset>
+                <legend>{{ group_title }}</legend>
+
+                {% if group_title == 'Lampiran' %}
+                    <div class="master-upload-stack is-status-dependent {% if has_status_field and form.status_barang.value|default:'' == '' %}is-locked{% endif %}" {% if has_status_field %}data-status-dependent-group="true"{% endif %}>
+                        {% for row in field_rows %}
+                            {% for field_name in row %}
+                                {% with field=form|get_item:field_name %}
+                                    {% if field %}
+                                        {% if field_name == 'foto_barang' %}
+                                        <div
+                                            class="upload-card {% if field.errors %}has-error{% endif %}"
+                                            data-upload-control
+                                            data-upload-mode="replace-only"
+                                            {% if form.hapus_foto_barang %}data-hidden-input-id="{{ form.hapus_foto_barang.id_for_label }}" data-hidden-input-name="{{ form.hapus_foto_barang.html_name }}"{% endif %}
+                                            data-existing-url="{% if form.instance and form.instance.foto_barang %}{{ form.instance.foto_barang.url }}{% endif %}"
+                                            data-file-label="Foto barang"
+                                        >
+                                            {% if form.hapus_foto_barang %}{{ form.hapus_foto_barang }}{% endif %}
+
+                                            <div class="upload-card__head">
+                                                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                            </div>
+
+                                            <div class="upload-preview-stack">
+                                                <div class="upload-preview-section {% if not form.instance or not form.instance.foto_barang %}is-hidden{% endif %}" data-stored-preview-section>
+                                                    <div class="upload-preview-section__label">Foto Barang Saat Ini:</div>
+                                                    <div class="upload-preview-card upload-preview-card--master {% if form.instance and form.instance.foto_barang %}{% else %}is-empty{% endif %}" data-stored-preview-card>
+                                                        <div class="upload-preview-card__empty">Belum ada file tersimpan</div>
+                                                        <div class="upload-preview-card__body">
+                                                            <div class="upload-preview-frame upload-preview-frame--master">
+                                                                <img alt="Foto Barang Tersimpan" data-stored-preview-image {% if form.instance and form.instance.foto_barang %}src="{{ form.instance.foto_barang.url }}"{% endif %}>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div class="upload-input-wrap upload-input-wrap--inline upload-input-wrap--file-proxy" data-inline-file-proxy>
+                                                    <div class="upload-input-wrap__field">
+                                                        {{ field }}
+                                                        <label for="{{ field.id_for_label }}" class="file-input-proxy">
+                                                            <span class="file-input-proxy__button" aria-hidden="true"><i class="bi bi-image"></i></span>
+                                                            <span class="file-input-proxy__text is-placeholder" data-inline-file-text>Pilih file</span>
+                                                        </label>
+                                                    </div>
+                                                    <div class="upload-file-state upload-file-state--inline is-hidden" data-file-state data-inline-file-state>
+                                                        <button type="button" class="upload-file-state__action upload-file-state__action--icon" data-file-state-action data-inline-file-clear data-mode="clear-selected" title="Batalkan Upload" aria-label="Batalkan Upload">
+                                                            <i class="bi bi-x-lg"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <p class="input-error-text" data-inline-file-error-node hidden></p>
+                                                {% for error in field.errors %}
+                                                    <p class="input-error-text">*{{ error }}</p>
+                                                {% endfor %}
+
+                                                <div class="upload-preview-section" data-selected-preview-section>
+                                                    <div class="upload-preview-section__label">Foto Barang Baru:</div>
+                                                    <div class="upload-preview-card upload-preview-card--master is-empty" data-selected-preview-card>
+                                                        <div class="upload-preview-card__empty">Belum ada gambar baru dipilih</div>
+                                                        <div class="upload-preview-card__body">
+                                                            <div class="upload-preview-frame upload-preview-frame--master">
+                                                                <img alt="Preview Upload Foto Barang Baru" data-selected-preview-image>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {% elif field_name == 'ik_alat' %}
+                                        <div
+                                            class="upload-card upload-card--document {% if field.errors %}has-error{% endif %}"
+                                            data-upload-control
+                                            data-upload-mode="replace-only"
+                                            {% if form.hapus_ik_alat %}data-hidden-input-id="{{ form.hapus_ik_alat.id_for_label }}" data-hidden-input-name="{{ form.hapus_ik_alat.html_name }}"{% endif %}
+                                            data-existing-url="{% if form.instance and form.instance.ik_alat %}{{ form.instance.ik_alat.url }}{% endif %}"
+                                            data-file-label="IK Alat"
+                                        >
+                                            {% if form.hapus_ik_alat %}{{ form.hapus_ik_alat }}{% endif %}
+
+                                            <div class="upload-card__head">
+                                                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                            </div>
+
+                                            <div class="document-file-link-wrap {% if not form.instance or not form.instance.ik_alat %}is-disabled{% endif %}" data-existing-file-link-wrap>
+                                                <div class="document-file-link-wrap__info">
+                                                    <span class="document-file-link-wrap__icon">
+                                                        <i class="bi bi-file-earmark-pdf-fill"></i>
+                                                    </span>
+                                                    <span class="document-file-link-wrap__title" data-existing-file-title>
+                                                        {% if form.instance and form.instance.ik_alat %}
+                                                            Dokumen IK Saat Ini
+                                                        {% else %}
+                                                            Dokumen IK Belum Tersedia
+                                                        {% endif %}
+                                                    </span>
+                                                </div>
+                                                {% if form.instance and form.instance.ik_alat %}
+                                                    <a href="{{ form.instance.ik_alat.url }}" target="_blank" rel="noopener" class="document-file-link" data-existing-file-link>
+                                                        <i class="bi bi-box-arrow-up-right"></i>
+                                                        <span>Buka dokumen PDF</span>
+                                                    </a>
+                                                {% else %}
+                                                    <span class="document-file-link document-file-link--disabled" aria-disabled="true" data-existing-file-link>
+                                                        <i class="bi bi-box-arrow-up-right"></i>
+                                                        <span>Buka dokumen PDF</span>
+                                                    </span>
+                                                {% endif %}
+                                            </div>
+
+                                            <div class="upload-input-wrap upload-input-wrap--inline upload-input-wrap--file-proxy" data-inline-file-proxy>
+                                                <div class="upload-input-wrap__field">
+                                                    {{ field }}
+                                                    <label for="{{ field.id_for_label }}" class="file-input-proxy">
+                                                        <span class="file-input-proxy__button" aria-hidden="true"><i class="bi bi-filetype-pdf"></i></span>
+                                                        <span class="file-input-proxy__text is-placeholder" data-inline-file-text>Pilih file</span>
+                                                    </label>
+                                                </div>
+                                                <div class="upload-file-state upload-file-state--inline is-hidden" data-file-state data-inline-file-state>
+                                                    <button type="button" class="upload-file-state__action upload-file-state__action--icon" data-file-state-action data-inline-file-clear data-mode="clear-selected" title="Batalkan Upload" aria-label="Batalkan Upload">
+                                                        <i class="bi bi-x-lg"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <p class="input-error-text" data-inline-file-error-node hidden></p>
+                                            {% for error in field.errors %}
+                                                <p class="input-error-text">*{{ error }}</p>
+                                            {% endfor %}
+                                        </div>
+                                        {% endif %}
+                                    {% endif %}
+                                {% endwith %}
+                            {% endfor %}
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="master-fieldset-stack {% if has_status_field and group_title != 'Status Barang' %}is-status-dependent {% if form.status_barang.value|default:'' == '' %}is-locked{% endif %}{% endif %}" {% if has_status_field and group_title != 'Status Barang' %}data-status-dependent-group="true"{% endif %}>
+                        {% for row in field_rows %}
+                            <div class="form-row master-form-row master-form-row--{{ row|length }}">
+                                {% for field_name in row %}
+                                    {% with field=form|get_item:field_name %}
+                                        {% if field %}
+                                        <div class="form-group {% if field.errors %}has-error{% endif %} {% if field_name == 'catatan' or row|length == 1 %}form-group-full{% endif %} {% if field_name == 'kode_aset_bmn' and form.status_barang.value|default:'' != 'BMN' %}is-hidden{% endif %}" {% if field_name == 'kode_aset_bmn' %}data-bmn-code-wrapper="true"{% endif %}>
+                                            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                            {{ field }}
+                                            {% for error in field.errors %}
+                                                <p class="input-error-text">*{{ error }}</p>
+                                            {% endfor %}
+                                        </div>
+                                        {% endif %}
+                                    {% endwith %}
+                                {% endfor %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </fieldset>
+        {% endfor %}
+        {% endwith %}
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">{{ submit_label }}</button>
+            {% if cancel_url_kwargs %}
+                <a href="{% url cancel_url cancel_url_kwargs.pk %}" class="btn btn-secondary">Kembali</a>
+            {% else %}
+                <a href="{% url cancel_url %}" class="btn btn-secondary">Kembali</a>
+            {% endif %}
+        </div>
+    </form>
+</div>
+{% endblock %}

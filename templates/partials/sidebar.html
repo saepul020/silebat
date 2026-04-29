@@ -1,0 +1,157 @@
+{% load static %}
+
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+        <div class="brand-logo">
+            <img src="{% static 'assets/img/silebat-logo.png' %}" alt="SILEBAT Logo">
+        </div>
+        <div>
+            <h2>SILEBAT</h2>
+            <p>Sistem Elektronik Lab<br>Balai Air Tanah</p>
+        </div>
+    </div>
+
+    <hr class="line-separator">
+
+    <nav class="sidebar-nav">
+        {% if role_access.show_dashboard %}
+        <a href="{% url 'dashboard:index' %}" class="nav-link">
+            <span class="nav-left">
+                <span class="nav-icon"><i class="bi bi-house-door-fill"></i></span>
+                <span class="nav-text">Dashboard</span>
+            </span>
+        </a>
+        {% endif %}
+
+        {% if role_access.show_permintaan %}
+        <div class="nav-group">
+            <button type="button" class="nav-link nav-toggle" aria-expanded="false">
+                <span class="nav-left">
+                    <span class="nav-icon">
+                        <i class="bi bi-clipboard2-plus-fill"></i>
+                    </span>
+                    <span class="nav-text">Permintaan</span>
+                </span>
+                <span class="nav-arrow"><i class="bi bi-chevron-down"></i></span>
+            </button>
+            <div class="sub-menu">
+                <a href="{% url 'peminjaman:list' %}" class="sub-link">Peminjaman</a>
+                <a href="#" class="sub-link">Pemeliharaan</a>
+                <a href="#" class="sub-link">Perbaikan</a>
+                <a href="#" class="sub-link">Pembelian</a>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if role_access.show_verifikasi %}
+        <div class="nav-group">
+            <button type="button" class="nav-link nav-toggle" aria-expanded="false">
+                <span class="nav-left">
+                    <span class="nav-icon">
+                        <i class="bi bi-check-square-fill"></i>
+                    </span>
+                    <span class="nav-text">Verifikasi</span>
+                </span>
+                <span class="nav-arrow"><i class="bi bi-chevron-down"></i></span>
+            </button>
+            <div class="sub-menu">
+                <a href="{% url 'verifikasi:index' %}" class="sub-link">Verifikasi Permintaan</a>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if role_access.show_laporan %}
+        <div class="nav-group">
+            <button type="button" class="nav-link nav-toggle" aria-expanded="false">
+                <span class="nav-left">
+                    <span class="nav-icon">
+                        <i class="bi bi-file-earmark-bar-graph-fill"></i>
+                    </span>
+                    <span class="nav-text">Laporan</span>
+                </span>
+                <span class="nav-arrow"><i class="bi bi-chevron-down"></i></span>
+            </button>
+            <div class="sub-menu">
+                <a href="{% url 'peminjaman:laporan' %}" class="sub-link">Laporan Peminjaman</a>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if role_access.show_master_data %}
+        <div class="nav-group">
+            <button type="button" class="nav-link nav-toggle" aria-expanded="false">
+                <span class="nav-left">
+                    <span class="nav-icon">
+                        <i class="bi bi-box-seam-fill"></i>
+                    </span>
+                    <span class="nav-text">Data Master</span>
+                </span>
+                <span class="nav-arrow"><i class="bi bi-chevron-down"></i></span>
+            </button>
+            <div class="sub-menu">
+                <a href="{% url 'master_data:data_barang_laboratorium' %}" class="sub-link">Data Peralatan Survei Lapangan</a>
+                <a href="{% url 'master_data:data_barang_penunjang' %}" class="sub-link">Data Barang Penunjang Lapangan</a>
+                <a href="{% url 'master_data:data_bahan_operasional' %}" class="sub-link">Data Bahan Operasional</a>
+                <a href="{% url 'master_data:data_peralatan_laboratorium' %}" class="sub-link">Data Peralatan Laboratorium</a>
+                <a href="{% url 'master_data:data_fasilitas_ruangan' %}" class="sub-link">Data Sarana Prasarana Ruangan</a>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if role_access.show_operasional %}
+        <div class="nav-group">
+            <button type="button" class="nav-link nav-toggle" aria-expanded="false">
+                <span class="nav-left">
+                    <span class="nav-icon">
+                        <i class="bi bi-gear-fill"></i>
+                    </span>
+                    <span class="nav-text">Manajemen Operasional</span>
+                </span>
+                <span class="nav-arrow"><i class="bi bi-chevron-down"></i></span>
+            </button>
+            <div class="sub-menu">
+                <a href="{% url 'operasional:data_tim' %}" class="sub-link">Data Tim Kegiatan</a>
+                <a href="{% url 'operasional:data_layanan' %}" class="sub-link">Data Layanan Kegiatan</a>
+                <a href="{% url 'operasional:data_survei' %}" class="sub-link">Data Kegiatan Survei</a>
+                <a href="{% url 'operasional:data_instansi' %}" class="sub-link">Data Instansi (Klien)</a>
+                <a href="{% url 'operasional:data_kop_dokumen' %}" class="sub-link">Data Kop Dokumen</a>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if role_access.show_pengguna %}
+        <div class="nav-group">
+            <button type="button" class="nav-link nav-toggle" aria-expanded="false">
+                <span class="nav-left">
+                    <span class="nav-icon">
+                        <i class="bi bi-person-fill-gear"></i>
+                    </span>
+                    <span class="nav-text">Manajemen Pengguna</span>
+                </span>
+                <span class="nav-arrow"><i class="bi bi-chevron-down"></i></span>
+            </button>
+            <div class="sub-menu">
+                <a href="{% url 'pengguna:daftar' %}" class="sub-link">Data Pengguna</a>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if role_access.is_super_admin %}
+        <div class="nav-group">
+            <button type="button" class="nav-link nav-toggle" aria-expanded="false">
+                <span class="nav-left">
+                    <span class="nav-icon">
+                        <i class="bi bi-bell-fill"></i>
+                    </span>
+                    <span class="nav-text">Notifikasi</span>
+                </span>
+                <span class="nav-arrow"><i class="bi bi-chevron-down"></i></span>
+            </button>
+            <div class="sub-menu">
+                <a href="{% url 'notifikasi:riwayat_pengumuman' %}" class="sub-link">Riwayat Pengumuman</a>
+                <a href="{% url 'notifikasi:tambah_pengumuman' %}" class="sub-link">Tambah Pengumuman</a>
+            </div>
+        </div>
+        {% endif %}
+    </nav>
+</aside>

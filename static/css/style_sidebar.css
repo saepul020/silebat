@@ -1,0 +1,220 @@
+/* =========================
+   SIDEBAR
+   File ini khusus style untuk area sidebar.
+========================= */
+.sidebar {
+    width: var(--sidebar-width);
+    background: linear-gradient(180deg, var(--sidebar) 25%, var(--color-aqua-teal) 125%);
+    color: var(--color-white);
+    padding: 20px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    overflow-y: auto;
+    transition: transform 0.3s ease;
+    z-index: 1000;
+    scrollbar-width: thin;
+}
+
+.sidebar-brand {
+    min-height: 90px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    padding: 12px 14px;
+    background-color: var(--color6);
+    border-radius: 14px;
+}
+
+.brand-logo img {
+    width: 64px;
+}
+
+.sidebar-brand h2 {
+    margin: 0;
+    font-weight: 800;
+    color: var(--color1);
+    line-height: 1.1;
+    font-size: 1.25rem;
+}
+
+.sidebar-brand p {
+    margin: 5px 0 0;
+    color: var(--color5);
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+.line-separator {
+    margin: 16px 0 18px;
+    border: none;
+    border-top: 1px solid rgba(255,255,255,0.35);
+}
+
+.sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.nav-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.nav-link {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 16px 14px;
+    border-radius: 12px;
+    color: rgba(255,255,255,0.88);
+    transition: all 0.25s ease;
+    font-size: 0.95rem;
+    font-weight: 600;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    text-align: left;
+}
+
+.nav-link:hover {
+    background: rgba(255,255,255,0.08);
+    color: var(--color-white);
+    transform: translateX(2px);
+}
+
+.nav-link.active,
+.nav-group.active > .nav-link {
+    background: rgba(255,255,255,0.14);
+    color: var(--color-white);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
+}
+
+.nav-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    flex: 1;
+    font-size: 14px;
+}
+
+.nav-icon {
+    width: 22px;
+    min-width: 22px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+}
+
+.nav-text {
+    flex: 1;
+    min-width: 0;
+    line-height: 1.4;
+}
+
+.nav-arrow {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.25s ease;
+    font-size: 0.8rem;
+    flex-shrink: 0;
+}
+
+.nav-group.active .nav-arrow {
+    transform: rotate(180deg);
+}
+
+/* =========================
+   SUBMENU
+========================= */
+.sub-menu {
+    display: none;
+    flex-direction: column;
+    gap: 6px;
+    padding-left: 16px;
+    margin-top: -2px;
+}
+
+.nav-group.active .sub-menu {
+    display: flex;
+}
+
+.sub-link {
+    display: flex;
+    align-items: center;
+    min-height: 40px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    color: rgba(255,255,255,0.78);
+    font-size: 0.88rem;
+    transition: all 0.2s ease;
+    position: relative;
+    line-height: 1.4;
+}
+
+.sub-link::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    min-width: 6px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.55);
+    margin-right: 10px;
+    flex-shrink: 0;
+}
+
+.sub-link:hover {
+    background: rgba(255,255,255,0.08);
+    color: var(--color-white);
+    transform: translateX(2px);
+}
+
+.sub-link.active {
+    background: rgba(255,255,255,0.12);
+    color: var(--color-white);
+    font-weight: 600;
+}
+
+.sub-link.active::before {
+    background: var(--color-white);
+}
+
+.sub-link[href="#"] {
+    opacity: 0.88;
+}
+
+/* =========================
+   RESPONSIVE SIDEBAR
+========================= */
+@media (max-width: 992px) {
+    .sidebar {
+        transform: translateX(-100%);
+    }
+
+    .sidebar.show {
+        transform: translateX(0);
+    }
+}
+
+@media (max-width: 640px) {
+    .sidebar {
+        width: 280px;
+        max-width: 85vw;
+    }
+
+    .sidebar-brand {
+        padding: 10px 12px;
+    }
+
+    .brand-logo img {
+        width: 56px;
+    }
+}

@@ -1,0 +1,142 @@
+<header class="navbar">
+    <div class="navbar-left">
+        <button
+            class="menu-toggle"
+            id="menuToggle"
+            type="button"
+            aria-label="Buka menu"
+            aria-controls="sidebar"
+            aria-expanded="false"
+        >
+            ☰
+        </button>
+        <div>
+            <h1 class="page-title">SILEBAT</h1>
+            <p class="page-subtitle">Sistem Elektronik Lab Balai Air Tanah</p>
+        </div>
+    </div>
+
+    <div class="navbar-right">
+        <div class="notification-dropdown" id="notificationDropdown">
+            <button
+                class="notification-btn"
+                id="notificationDropdownToggle"
+                type="button"
+                aria-label="Notifikasi"
+                aria-expanded="false"
+                aria-haspopup="true"
+            >
+                <i class="bi bi-bell-fill"></i>
+                {% if notification_unread_count %}
+                    <span class="notification-badge">{{ notification_unread_count }}</span>
+                {% endif %}
+            </button>
+
+            <div class="notification-card" id="notificationCard">
+                <div class="notification-card-header">
+                    <div>
+                        <strong>Notifikasi</strong>
+                        <span>{{ notification_unread_count|default:0 }} belum dibaca</span>
+                    </div>
+                    <a href="{% url 'notifikasi:index' %}">Lihat Semua</a>
+                </div>
+
+                <div class="notification-card-list">
+                    {% for notif in notification_recent_items %}
+                        <a href="{% url 'notifikasi:baca' notif.pk %}" class="notification-item {% if not notif.is_read %}unread{% endif %}">
+                            <span class="notification-item-icon">
+                                <i class="bi {{ notif.icon_class }}"></i>
+                            </span>
+                            <span class="notification-item-body">
+                                <strong>{{ notif.title }}</strong>
+                                <small>{{ notif.message|truncatechars:92 }}</small>
+                                <em>{{ notif.visible_from|date:"d M Y H:i" }} WIB</em>
+                            </span>
+                        </a>
+                    {% empty %}
+                        <div class="notification-empty">
+                            <i class="bi bi-bell-slash"></i>
+                            <span>Belum ada notifikasi.</span>
+                        </div>
+                    {% endfor %}
+                </div>
+
+            </div>
+        </div>
+
+        <div class="user-dropdown" id="userDropdown">
+            <button
+                class="user-box"
+                id="userDropdownToggle"
+                type="button"
+                aria-expanded="false"
+                aria-haspopup="true"
+            >
+                <div class="user-avatar">
+                    {% if request.user.safe_profile.foto_profil %}
+                        <img src="{{ request.user.safe_profile.foto_profil.url }}" alt="Foto profil {{ request.user.get_full_name|default:request.user.username }}">
+                    {% elif request.user.first_name %}
+                        <span class="user-avatar-fallback">{{ request.user.first_name|slice:":1"|upper }}</span>
+                    {% else %}
+                        <span class="user-avatar-fallback">{{ request.user.username|slice:":1"|upper }}</span>
+                    {% endif %}
+                </div>
+
+                <div class="user-meta">
+                    <strong>{{ request.user.get_full_name|default:request.user.username }}</strong>
+                    <span>{{ request.user.safe_profile.role|default:'Pengguna' }}</span>
+                </div>
+
+                <span class="user-dropdown-icon">
+                    <i class="bi bi-chevron-down"></i>
+                </span>
+            </button>
+
+            <div class="user-card" id="userCard">
+                <div class="user-card-header">
+                    <div class="user-card-avatar">
+                        {% if request.user.safe_profile.foto_profil %}
+                            <img src="{{ request.user.safe_profile.foto_profil.url }}" alt="Foto profil {{ request.user.get_full_name|default:request.user.username }}">
+                        {% elif request.user.first_name %}
+                            <span class="user-avatar-fallback">{{ request.user.first_name|slice:":1"|upper }}</span>
+                        {% else %}
+                            <span class="user-avatar-fallback">{{ request.user.username|slice:":1"|upper }}</span>
+                        {% endif %}
+                    </div>
+
+                    <div class="user-card-info">
+                        <strong>{{ request.user.get_full_name|default:request.user.username }}</strong>
+                        <span>@{{ request.user.username }}</span>
+                    </div>
+                </div>
+
+                <div class="user-card-body">
+                    <div class="user-card-role">
+                        <small>Role:</small>
+                        <span>{{ request.user.safe_profile.role|default:'Pengguna' }}</span>
+                    </div>
+
+                    <div class="user-card-role">
+                        <small>Divisi Tim Kegiatan:</small>
+                        <span>{{ request.user.safe_profile.nama_tim|default:'-' }}</span>
+                    </div>
+                </div>
+
+                <div class="user-card-actions">
+                    <a href="{% url 'pengguna:detail' request.user.pk %}" class="user-card-btn btn-profile">
+                        <i class="bi bi-person-circle"></i>
+                        <span>Profil</span>
+                    </a>
+
+                    <form action="{% url 'logout' %}" method="post" class="logout-form">
+                        {% csrf_token %}
+                        <button type="submit" class="user-card-btn btn-logout">
+                            <i class="bi bi-box-arrow-right"></i>
+                            <span>Keluar</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>

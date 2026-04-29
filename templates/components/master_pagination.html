@@ -1,0 +1,41 @@
+{% if total_count %}
+<div class="master-pagination-bar">
+    <p class="master-pagination-summary">
+        {% if selected_entries == 'all' %}
+            Semua data ditampilkan.
+        {% else %}
+            Halaman {{ page_obj.number }} dari {{ page_obj.paginator.num_pages }}
+        {% endif %}
+    </p>
+
+    {% if is_paginated %}
+    <nav class="master-pagination" aria-label="Navigasi halaman data">
+        {% if page_obj.has_previous %}
+            <a class="master-page-link" href="?{{ pagination_base_query }}entries={{ selected_entries }}&page=1" aria-label="Halaman pertama">&laquo;</a>
+            <a class="master-page-link master-page-link--prev" href="?{{ pagination_base_query }}entries={{ selected_entries }}&page={{ page_obj.previous_page_number }}" aria-label="Halaman sebelumnya"><span class="master-page-label-full">Sebelumnya</span><span class="master-page-label-short">&lsaquo;</span></a>
+        {% else %}
+            <span class="master-page-link is-disabled" aria-disabled="true">&laquo;</span>
+            <span class="master-page-link master-page-link--prev is-disabled" aria-disabled="true" aria-label="Halaman sebelumnya"><span class="master-page-label-full">Sebelumnya</span><span class="master-page-label-short">&lsaquo;</span></span>
+        {% endif %}
+
+        {% for page_number in page_range %}
+            {% if page_number == page_obj.paginator.ELLIPSIS %}
+                <span class="master-page-link is-ellipsis">{{ page_number }}</span>
+            {% elif page_number == page_obj.number %}
+                <span class="master-page-link is-active" aria-current="page">{{ page_number }}</span>
+            {% else %}
+                <a class="master-page-link" href="?{{ pagination_base_query }}entries={{ selected_entries }}&page={{ page_number }}">{{ page_number }}</a>
+            {% endif %}
+        {% endfor %}
+
+        {% if page_obj.has_next %}
+            <a class="master-page-link master-page-link--next" href="?{{ pagination_base_query }}entries={{ selected_entries }}&page={{ page_obj.next_page_number }}" aria-label="Halaman berikutnya"><span class="master-page-label-full">Berikutnya</span><span class="master-page-label-short">&rsaquo;</span></a>
+            <a class="master-page-link" href="?{{ pagination_base_query }}entries={{ selected_entries }}&page={{ page_obj.paginator.num_pages }}" aria-label="Halaman terakhir">&raquo;</a>
+        {% else %}
+            <span class="master-page-link master-page-link--next is-disabled" aria-disabled="true" aria-label="Halaman berikutnya"><span class="master-page-label-full">Berikutnya</span><span class="master-page-label-short">&rsaquo;</span></span>
+            <span class="master-page-link is-disabled" aria-disabled="true">&raquo;</span>
+        {% endif %}
+    </nav>
+    {% endif %}
+</div>
+{% endif %}

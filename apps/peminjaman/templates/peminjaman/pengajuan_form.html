@@ -1,0 +1,469 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ page_title }} - SILEBAT{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{{ page_title }}</h1>
+    <p>{{ page_subtitle }}</p>
+</div>
+
+<div class="form-card master-data-form-card peminjaman-form-card">
+    <form method="post" enctype="multipart/form-data" class="master-data-form peminjaman-form" data-peminjaman-form="true">
+        {% csrf_token %}
+
+        <div class="form-global-errors{% if not inventory_form_errors %} is-hidden{% endif %}" id="inventorySelectionError"{% if not inventory_form_errors %} hidden{% endif %}>
+            {% for error in inventory_form_errors %}
+                <p class="input-error-text">*{{ error }}</p>
+            {% endfor %}
+        </div>
+
+        <fieldset class="peminjaman-section-card">
+            <legend>Data Peminjam</legend>
+            <div class="form-row form-row-4">
+                <div class="detail-item">
+                    <label>Nama</label>
+                    <p>{% if form.instance.pk %}{{ form.instance.nama_peminjam|default:'-' }}{% else %}{{ request.user.get_full_name|default:request.user.username }}{% endif %}</p>
+                </div>
+                <div class="detail-item">
+                    <label>Nomor Telepon</label>
+                    <p>{% if form.instance.pk %}{{ form.instance.no_hp_peminjam|default:'-' }}{% else %}{{ request.user.no_hp|default:'-' }}{% endif %}</p>
+                </div>
+                <div class="detail-item">
+                    <label>Email</label>
+                    <p>{% if form.instance.pk %}{{ form.instance.email_peminjam|default:'-' }}{% else %}{{ request.user.email|default:'-' }}{% endif %}</p>
+                </div>
+                <div class="detail-item">
+                    <label>Alamat</label>
+                    <p>{% if form.instance.pk %}{{ form.instance.alamat_peminjam|default:'-' }}{% else %}{{ request.user.safe_profile.alamat|default:'-' }}{% endif %}</p>
+                </div>
+            </div>
+        </fieldset>
+
+        <fieldset class="peminjaman-section-card">
+            <legend>Data Kegiatan</legend>
+
+            <div class="activity-subsection">
+                <div class="form-row form-row-3">
+                    <div class="form-group {% if form.layanan_kegiatan.errors %}has-error{% endif %}">
+                        <label for="{{ form.layanan_kegiatan.id_for_label }}">{{ form.layanan_kegiatan.label }}</label>
+                        {{ form.layanan_kegiatan }}
+                        {% for error in form.layanan_kegiatan.errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
+                    </div>
+                    <div class="form-group {% if form.tim_kegiatan.errors %}has-error{% endif %}">
+                        <label for="{{ form.tim_kegiatan.id_for_label }}">{{ form.tim_kegiatan.label }}</label>
+                        {{ form.tim_kegiatan }}
+                        {% for error in form.tim_kegiatan.errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
+                    </div>
+                    <div class="form-group {% if form.berkas_pendukung.errors %}has-error{% endif %}">
+                        <label for="{{ form.berkas_pendukung.id_for_label }}">{{ form.berkas_pendukung.label }}</label>
+                        {% if form.instance.pk and form.instance.berkas_pendukung %}
+                        <div class="document-file-link-wrap">
+                            <div class="document-file-link-wrap__info">
+                                <span class="document-file-link-wrap__icon"><i class="bi bi-file-earmark-pdf-fill"></i></span>
+                                <span class="document-file-link-wrap__title">{{ form.instance.berkas_pendukung.name|cut:'peminjaman/berkas_pendukung/' }}</span>
+                            </div>
+                            <a href="{{ form.instance.berkas_pendukung.url }}" target="_blank" rel="noopener" class="document-file-link">Buka dokumen PDF</a>
+                        </div>
+                        {% endif %}
+                        <div class="upload-input-wrap upload-input-wrap--inline upload-input-wrap--file-proxy" data-inline-file-proxy>
+                            <div class="upload-input-wrap__field">
+                                {{ form.berkas_pendukung }}
+                                <label for="{{ form.berkas_pendukung.id_for_label }}" class="file-input-proxy">
+                                    <span class="file-input-proxy__button" aria-hidden="true"><i class="bi bi-upload"></i></span>
+                                    <span class="file-input-proxy__text" data-inline-file-text>{% if form.instance.pk and form.instance.berkas_pendukung %}{{ form.instance.berkas_pendukung.name|cut:'peminjaman/berkas_pendukung/' }}{% else %}Dokumen Permintaan Pengukuran/SPT{% endif %}</span>
+                                </label>
+                            </div>
+                            <div class="upload-file-state upload-file-state--inline is-hidden" data-inline-file-state>
+                                <button type="button" class="upload-file-state__action upload-file-state__action--icon" data-inline-file-clear title="Batalkan Upload" aria-label="Batalkan Upload">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <p class="input-error-text" data-inline-file-error-node hidden></p>
+                        {% for error in form.berkas_pendukung.errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="activity-subsection">
+                <div class="form-group {% if form.kegiatan_survei.errors %}has-error{% endif %}">
+                    <label>{{ form.kegiatan_survei.label }}</label>
+                    <div class="survey-choice-grid choice-grid-list">
+                        {% for checkbox in form.kegiatan_survei %}
+                            <label class="survey-choice-card">
+                                {{ checkbox.tag }}
+                                <span>{{ checkbox.choice_label }}</span>
+                            </label>
+                        {% empty %}
+                            <div class="empty-state">Belum ada data kegiatan survei.</div>
+                        {% endfor %}
+                    </div>
+                    {% for error in form.kegiatan_survei.errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
+                </div>
+
+                <div class="survey-choice-grid choice-grid-option">
+                    <label class="survey-choice-card choice-card-toggle" for="{{ form.gunakan_survei_lainnya.id_for_label }}">
+                        {{ form.gunakan_survei_lainnya }}
+                        <span>Lainnya</span>
+                    </label>
+                </div>
+                <div
+                    class="form-group conditional-panel {% if form.gunakan_survei_lainnya.value or form.survei_lainnya.value %}is-active{% endif %} {% if form.survei_lainnya.errors %}has-error{% endif %}"
+                    data-conditional-panel="survei-lainnya"
+                >
+                    <label for="{{ form.survei_lainnya.id_for_label }}">{{ form.survei_lainnya.label }}</label>
+                    {{ form.survei_lainnya }}
+                    {% for error in form.survei_lainnya.errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
+                </div>
+            </div>
+
+            <div class="activity-subsection">
+                <div class="form-row form-row-instansi">
+                    <div class="form-group {% if form.instansi_tujuan.errors %}has-error{% endif %}">
+                        <label for="{{ form.instansi_tujuan.id_for_label }}">{{ form.instansi_tujuan.label }}</label>
+                        {{ form.instansi_tujuan }}
+                        {% for error in form.instansi_tujuan.errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
+                    </div>
+                    <div class="form-group form-group-toggle">
+                        <label class="survey-choice-card choice-card-toggle choice-card-instansi" for="{{ form.gunakan_instansi_lainnya.id_for_label }}">
+                            {{ form.gunakan_instansi_lainnya }}
+                            <span>Lainnya</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div
+                    class="form-group conditional-panel panel-inline panel-full {% if form.gunakan_instansi_lainnya.value or form.instansi_tujuan_lainnya.value %}is-active{% endif %} {% if form.instansi_tujuan_lainnya.errors %}has-error{% endif %}"
+                    data-conditional-panel="instansi-lainnya"
+                >
+                    <label for="{{ form.instansi_tujuan_lainnya.id_for_label }}">{{ form.instansi_tujuan_lainnya.label }}</label>
+                    {{ form.instansi_tujuan_lainnya }}
+                    {% for error in form.instansi_tujuan_lainnya.errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
+                </div>
+            </div>
+
+            <div class="activity-subsection section-soft">
+                <div class="form-row form-row-2-inner form-row--date-stack">
+                    <div class="form-group {% if form.tanggal_mulai.errors %}has-error{% endif %}">
+                        <label for="{{ form.tanggal_mulai.id_for_label }}">{{ form.tanggal_mulai.label }}</label>
+                        {{ form.tanggal_mulai }}
+                        <p class="input-help-text input-help-text--tight">Format Valid: 01 Januari 2026, 01/01/2026, 01-01-2026, atau 01 Jan 2026.</p>
+                        {% for error in form.tanggal_mulai.errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
+                    </div>
+                    <div class="form-group {% if form.tanggal_selesai.errors %}has-error{% endif %}">
+                        <label for="{{ form.tanggal_selesai.id_for_label }}">{{ form.tanggal_selesai.label }}</label>
+                        {{ form.tanggal_selesai }}
+                        <p class="input-help-text input-help-text--tight">Format Valid: 01 Januari 2026, 01/01/2026, 01-01-2026, atau 01 Jan 2026.</p>
+                        {% for error in form.tanggal_selesai.errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
+                    </div>
+                </div>
+            </div>
+        </fieldset>
+
+        <fieldset class="peminjaman-section-card inventory-toggle-section is-collapsed" data-inventory-toggle-section data-lab-inventory-section>
+            <legend>Data Peralatan Survei Lapangan yang akan Dipinjam</legend>
+            <div class="inventory-section-toolbar">
+                <button type="button" class="btn btn-secondary inventory-toggle-button" data-inventory-toggle data-show-text="Tampilkan" data-hide-text="Sembunyikan" aria-expanded="false" aria-controls="inventorySectionSurvey">
+                    <i class="bi bi-eye" aria-hidden="true"></i>
+                    <span>Tampilkan</span>
+                </button>
+            </div>
+            <div id="inventorySectionSurvey" class="inventory-toggle-content" data-inventory-toggle-content hidden>
+            <p class="table-scroll-hint">Pilih terlebih dahulu opsi "Kegiatan Survei" yang sesuai jika item barang tidak ada.</p>
+            <div class="table-wrapper table-responsive compact-table table-shell">
+                <div class="table-scroll-area table-scroll" tabindex="0" aria-label="Scroll tabel peralatan survei lapangan">
+                <table class="table-mobile-scroll table-mobile-scroll--lab">
+                    <colgroup>
+                        <col class="col-select">
+                        <col class="col-name">
+                        <col class="col-type">
+                        <col class="col-code">
+                        <col class="col-status">
+                        <col class="col-condition">
+                        <col class="col-date">
+                        <col class="col-date">
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th>Pilih</th>
+                            <th>Nama Barang</th>
+                            <th>Tipe / Merek</th>
+                            <th>Kode Laboratorium</th>
+                            <th>Ketersediaan</th>
+                            <th>Kondisi</th>
+                            <th>Tgl Pemeliharaan</th>
+                            <th>Tgl Perbaikan</th>
+                        </tr>
+                    </thead>
+                    <tbody data-lab-inventory-body>
+                        {% for group in lab_item_groups %}
+                        <tr data-lab-category-group data-lab-category="{{ group.kategori_barang|default:'' }}" class="lab-category-row {% if not group.is_visible %}is-hidden{% endif %}">
+                            <td colspan="8">
+                                <strong class="lab-category-title">{{ group.kategori_barang|default:'Tanpa Kategori' }}</strong>
+                            </td>
+                        </tr>
+                        {% for item in group.items %}
+                        <tr data-lab-item-row data-lab-category="{{ item.kategori_barang|default:'Tanpa Kategori' }}" class="{% if not item.is_visible_by_survey %}is-hidden{% endif %}">
+                            <td data-label="Pilih" class="cell-select">
+                                <input type="checkbox" name="lab_item_ids" value="{{ item.id }}" data-base-disabled="{% if item.ketersediaan != 'Tersedia' %}true{% else %}false{% endif %}" {% if item.is_selected %}checked{% endif %} {% if item.ketersediaan != 'Tersedia' or not item.is_visible_by_survey %}disabled{% endif %}>
+                            </td>
+                            <td data-label="Nama Barang" class="cell-wrap">{{ item.nama_barang }}</td>
+                            <td data-label="Tipe / Merek" class="cell-wrap">{{ item.tipe_merek_barang|default:'-' }}</td>
+                            <td data-label="Kode Lab">{{ item.kode_laboratorium|default:'-' }}</td>
+                            <td data-label="Ketersediaan" class="cell-center"><span class="status-badge {{ item.status_badge_class }}">{{ item.ketersediaan }}</span></td>
+                            <td data-label="Kondisi">{{ item.kondisi_barang|default:'-' }}</td>
+                            <td data-label="Tgl Pemeliharaan">{{ item.tanggal_pemeliharaan|date:'d M Y'|default:'-' }}</td>
+                            <td data-label="Tgl Perbaikan">{{ item.tanggal_perbaikan|date:'d M Y'|default:'-' }}</td>
+                        </tr>
+                        {% endfor %}
+                        {% empty %}
+                        <tr><td colspan="8"><div class="empty-state">Belum ada data peralatan survei lapangan.</div></td></tr>
+                        {% endfor %}
+                        <tr data-lab-filter-empty class="is-hidden"><td colspan="8"><div class="empty-state">Belum ada peralatan survei lapangan yang sesuai dengan pilihan Kegiatan Survei.</div></td></tr>
+                    </tbody>
+                </table>
+                </div>
+            </div>
+            </div>
+        </fieldset>
+
+        <fieldset class="peminjaman-section-card inventory-toggle-section is-collapsed" data-inventory-toggle-section>
+            <legend>Data Barang Penunjang Lapangan yang akan Dipinjam</legend>
+            <div class="inventory-section-toolbar">
+                <button type="button" class="btn btn-secondary inventory-toggle-button" data-inventory-toggle data-show-text="Tampilkan" data-hide-text="Sembunyikan" aria-expanded="false" aria-controls="inventorySectionPenunjang">
+                    <i class="bi bi-eye" aria-hidden="true"></i>
+                    <span>Tampilkan</span>
+                </button>
+            </div>
+            <div id="inventorySectionPenunjang" class="inventory-toggle-content" data-inventory-toggle-content hidden>
+            <p class="table-scroll-hint">Isi jumlah Barang Penunjang Lapangan sesuai stok yang tersedia.</p>
+            <div class="table-wrapper table-responsive compact-table table-shell">
+                <div class="table-scroll-area table-scroll table-scroll--qty-inline-offset" tabindex="0" aria-label="Scroll tabel barang penunjang lapangan">
+                <table class="table-mobile-scroll table-mobile-scroll--support table-mobile-scroll--qty-first">
+                    <colgroup>
+                        <col class="col-qty">
+                        <col class="col-name">
+                        <col class="col-type">
+                        <col class="col-stock">
+                        <col class="col-status">
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th>Jumlah</th>
+                            <th>Nama Barang</th>
+                            <th>Tipe / Merek</th>
+                            <th>Stok</th>
+                            <th>Ketersediaan</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for group in penunjang_item_groups %}
+                        <tr class="lab-category-row">
+                            <td colspan="5">
+                                <strong class="lab-category-title">{{ group.kategori_barang|default:'Tanpa Kategori' }}</strong>
+                            </td>
+                        </tr>
+                        {% for item in group.items %}
+                        <tr>
+                            <td data-label="Jumlah" class="cell-qty">
+                                <div class="qty-stepper qty-stepper--compact" data-qty-stepper>
+                                    <button type="button" class="qty-stepper__button" data-qty-step="down" aria-label="Kurangi jumlah {{ item.nama_barang }}">&minus;</button>
+                                    <input class="input-qty input-qty--stepper" type="number" min="0" max="{{ item.sisa_volume }}" name="penunjang_qty_{{ item.id }}" value="{{ item.selected_qty }}" inputmode="numeric" aria-label="Jumlah {{ item.nama_barang }}" {% if item.ketersediaan != 'Tersedia' %}disabled{% endif %}>
+                                    <button type="button" class="qty-stepper__button" data-qty-step="up" aria-label="Tambah jumlah {{ item.nama_barang }}">+</button>
+                                </div>
+                            </td>
+                            <td data-label="Nama Barang" class="cell-wrap">{{ item.nama_barang }}</td>
+                            <td data-label="Tipe / Merek" class="cell-wrap">{{ item.tipe_merek_barang|default:'-' }}</td>
+                            <td data-label="Stok" class="cell-center">{{ item.sisa_volume }}</td>
+                            <td data-label="Ketersediaan" class="cell-center"><span class="status-badge {{ item.status_badge_class }}">{{ item.ketersediaan }}</span></td>
+                        </tr>
+                        {% endfor %}
+                        {% empty %}
+                        <tr><td colspan="5"><div class="empty-state">Belum ada data barang penunjang lapangan.</div></td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                </div>
+            </div>
+            </div>
+        </fieldset>
+
+        <fieldset class="peminjaman-section-card inventory-toggle-section is-collapsed" data-inventory-toggle-section>
+            <legend>Data Bahan Operasional yang akan Dipinjam</legend>
+            <div class="inventory-section-toolbar">
+                <button type="button" class="btn btn-secondary inventory-toggle-button" data-inventory-toggle data-show-text="Tampilkan" data-hide-text="Sembunyikan" aria-expanded="false" aria-controls="inventorySectionBahan">
+                    <i class="bi bi-eye" aria-hidden="true"></i>
+                    <span>Tampilkan</span>
+                </button>
+            </div>
+            <div id="inventorySectionBahan" class="inventory-toggle-content" data-inventory-toggle-content hidden>
+            <p class="table-scroll-hint">Isi jumlah Bahan Operasional sesuai stok yang tersedia.</p>
+            <div class="table-wrapper table-responsive compact-table table-shell">
+                <div class="table-scroll-area table-scroll table-scroll--qty-inline-offset" tabindex="0" aria-label="Scroll tabel bahan operasional">
+                <table class="table-mobile-scroll table-mobile-scroll--material table-mobile-scroll--qty-first">
+                    <colgroup>
+                        <col class="col-qty">
+                        <col class="col-name">
+                        <col class="col-stock">
+                        <col class="col-unit">
+                        <col class="col-status">
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th>Jumlah</th>
+                            <th>Nama Barang</th>
+                            <th>Stok</th>
+                            <th>Satuan</th>
+                            <th>Ketersediaan</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for group in bahan_item_groups %}
+                        <tr class="lab-category-row">
+                            <td colspan="5">
+                                <strong class="lab-category-title">{{ group.kategori_barang|default:'Tanpa Kategori' }}</strong>
+                            </td>
+                        </tr>
+                        {% for item in group.items %}
+                        <tr>
+                            <td data-label="Jumlah" class="cell-qty">
+                                <div class="qty-stepper qty-stepper--compact" data-qty-stepper>
+                                    <button type="button" class="qty-stepper__button" data-qty-step="down" aria-label="Kurangi jumlah {{ item.nama_barang }}">&minus;</button>
+                                    <input class="input-qty input-qty--stepper" type="number" min="0" max="{{ item.volume }}" name="bahan_qty_{{ item.id }}" value="{{ item.selected_qty }}" inputmode="numeric" aria-label="Jumlah {{ item.nama_barang }}" {% if item.volume == 0 %}disabled{% endif %}>
+                                    <button type="button" class="qty-stepper__button" data-qty-step="up" aria-label="Tambah jumlah {{ item.nama_barang }}">+</button>
+                                </div>
+                            </td>
+                            <td data-label="Nama Barang" class="cell-wrap">{{ item.nama_barang }}</td>
+                            <td data-label="Stok" class="cell-center">{{ item.volume }}</td>
+                            <td data-label="Satuan">{{ item.satuan|default:'-' }}</td>
+                            <td data-label="Ketersediaan" class="cell-center"><span class="status-badge {{ item.status_badge_class }}">{{ item.ketersediaan }}</span></td>
+                        </tr>
+                        {% endfor %}
+                        {% empty %}
+                        <tr><td colspan="5"><div class="empty-state">Belum ada data bahan operasional.</div></td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                </div>
+            </div>
+            </div>
+        </fieldset>
+
+        <fieldset class="peminjaman-section-card inventory-toggle-section is-collapsed" data-inventory-toggle-section>
+            <legend>Data Peralatan Laboratorium yang akan Dipinjam</legend>
+            <div class="inventory-section-toolbar">
+                <button type="button" class="btn btn-secondary inventory-toggle-button" data-inventory-toggle data-show-text="Tampilkan" data-hide-text="Sembunyikan" aria-expanded="false" aria-controls="inventorySectionPeralatanLab">
+                    <i class="bi bi-eye" aria-hidden="true"></i>
+                    <span>Tampilkan</span>
+                </button>
+            </div>
+            <div id="inventorySectionPeralatanLab" class="inventory-toggle-content" data-inventory-toggle-content hidden>
+            <p class="table-scroll-hint">Isi jumlah Peralatan Laboratorium sesuai stok yang tersedia.</p>
+            <div class="table-wrapper table-responsive compact-table table-shell">
+                <div class="table-scroll-area table-scroll table-scroll--qty-inline-offset" tabindex="0" aria-label="Scroll tabel peralatan laboratorium">
+                <table class="table-mobile-scroll table-mobile-scroll--support table-mobile-scroll--qty-first">
+                    <colgroup>
+                        <col class="col-qty">
+                        <col class="col-name">
+                        <col class="col-type">
+                        <col class="col-code">
+                        <col class="col-stock">
+                        <col class="col-status">
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th>Jumlah</th>
+                            <th>Nama Barang</th>
+                            <th>Tipe / Merek</th>
+                            <th>Kode Laboratorium</th>
+                            <th>Stok</th>
+                            <th>Ketersediaan</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in peralatan_lab_items %}
+                        <tr>
+                            <td data-label="Jumlah" class="cell-qty">
+                                <div class="qty-stepper qty-stepper--compact" data-qty-stepper>
+                                    <button type="button" class="qty-stepper__button" data-qty-step="down" aria-label="Kurangi jumlah {{ item.nama_barang }}">&minus;</button>
+                                    <input class="input-qty input-qty--stepper" type="number" min="0" max="{{ item.sisa_volume }}" name="peralatan_lab_qty_{{ item.id }}" value="{{ item.selected_qty }}" inputmode="numeric" aria-label="Jumlah {{ item.nama_barang }}" {% if item.ketersediaan != 'Tersedia' %}disabled{% endif %}>
+                                    <button type="button" class="qty-stepper__button" data-qty-step="up" aria-label="Tambah jumlah {{ item.nama_barang }}">+</button>
+                                </div>
+                            </td>
+                            <td data-label="Nama Barang" class="cell-wrap">{{ item.nama_barang }}</td>
+                            <td data-label="Tipe / Merek" class="cell-wrap">{{ item.tipe_merek_barang|default:'-' }}</td>
+                            <td data-label="Kode Laboratorium" class="cell-wrap">{{ item.kode_laboratorium|default:'-' }}</td>
+                            <td data-label="Stok" class="cell-center">{{ item.sisa_volume }}</td>
+                            <td data-label="Ketersediaan" class="cell-center"><span class="status-badge {{ item.status_badge_class }}">{{ item.ketersediaan }}</span></td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="6"><div class="empty-state">Belum ada data peralatan laboratorium.</div></td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                </div>
+            </div>
+            </div>
+        </fieldset>
+
+        <div class="form-actions">
+            {% if form.instance.pk %}
+                <a href="{% url 'verifikasi:detail' pk=form.instance.pk %}" class="btn btn-secondary">Kembali</a>
+            {% else %}
+                <a href="{% url 'peminjaman:list' %}" class="btn btn-secondary">Kembali</a>
+            {% endif %}
+            <button type="button" class="btn btn-primary" id="openPengajuanSummaryModal">Kirim Pengajuan</button>
+        </div>
+    </form>
+
+</div>
+
+<div class="delete-modal" id="pengajuanSummaryModal">
+    <div class="delete-modal-backdrop" id="pengajuanSummaryModalBackdrop"></div>
+    <div class="delete-modal-card loan-summary-modal" role="dialog" aria-modal="true" aria-labelledby="pengajuanSummaryModalTitle">
+        <div class="delete-modal-header">
+            <div>
+                <h3 id="pengajuanSummaryModalTitle">Ringkasan Pengajuan Peminjaman</h3>
+                <p>Periksa kembali data peminjam dan barang yang akan diajukan sebelum dikirim.</p>
+            </div>
+            <button type="button" class="delete-modal-close" id="pengajuanSummaryModalClose" aria-label="Tutup">&times;</button>
+        </div>
+
+        <div class="delete-modal-body loan-summary-body">
+            <div class="card detail-header-card loan-summary-head">
+                <div class="detail-header-top">
+                    <div>
+                        <h2 class="card-title">Ringkasan Pengajuan</h2>
+                        <p class="detail-meta">Pastikan seluruh data sudah sesuai sebelum konfirmasi pengajuan peminjaman.</p>
+                    </div>
+                    <div class="detail-header-actions">
+                        <span class="status-badge badge-warning">Menunggu Konfirmasi</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="detail-layout-grid detail-grid-summary">
+                <div class="card">
+                    <h3 class="card-title">Data Peminjam</h3>
+                    <div class="detail-grid" id="summaryBorrowerGrid"></div>
+                </div>
+
+                <div class="card">
+                    <h3 class="card-title">Data Kegiatan</h3>
+                    <div class="detail-grid detail-grid--kegiatan" id="summaryActivityGrid"></div>
+                </div>
+            </div>
+
+            <div id="summaryInventorySections"></div>
+        </div>
+
+        <div class="delete-modal-actions">
+            <button type="button" class="btn btn-secondary" id="pengajuanSummaryModalCancel">Kembali</button>
+            <button type="button" class="btn btn-primary" id="confirmPengajuanSubmit">Submit</button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

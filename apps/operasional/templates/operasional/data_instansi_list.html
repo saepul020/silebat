@@ -1,0 +1,107 @@
+{% extends 'base.html' %}
+
+{% block title %}Data Instansi (Klien){% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{{ page_title }}</h1>
+    <p>{{ page_subtitle }}</p>
+</div>
+
+<div class="table-wrapper table-panel">
+    <div class="table-toolbar">
+        <h3 class="table-title">Daftar Instansi / Klien</h3>
+        <div class="table-toolbar-actions">
+            {% if role_access.is_super_admin %}
+                <button type="button" class="btn btn-secondary js-import-data-btn" data-import-target="#instansiImportModal">
+                    <i class="bi bi-file-earmark-spreadsheet"></i>&nbsp;Import Data
+                </button>
+            {% endif %}
+            <a href="{% url 'operasional:tambah_instansi' %}" class="btn btn-primary"><i class="bi bi-plus-circle"></i>&nbsp;Tambah Instansi</a>
+        </div>
+    </div>
+
+    {% include 'components/master_entries_control.html' %}
+
+    <div class="table-scroll-area table-scroll--list" tabindex="0" aria-label="Scroll tabel data instansi">
+        <table class="table-data list-table--op-instansi">
+            <thead>
+                <tr>
+                    <th class="cell-wrap">Nama Instansi</th>
+                    <th>Organisasi</th>
+                    <th class="cell-wrap cell-wrap--wide">Alamat Instansi</th>
+                    <th class="cell-action">Aksi</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    <td class="cell-wrap">{{ item.nama_instansi }}</td>
+                    <td>{{ item.organisasi }}</td>
+                    <td class="cell-wrap cell-wrap--wide">{{ item.alamat_instansi }}</td>
+                    <td class="cell-action">
+                        <div class="table-action-group">
+                            <a href="{% url 'operasional:edit_instansi' item.pk %}" class="btn btn-warning btn-sm">
+                                <i class="bi bi-pencil-square"></i>
+                            </a>
+                            <button
+                                type="button"
+                                class="btn btn-danger btn-sm js-delete-btn" data-delete-modal="operasional"
+                                data-delete-url="{% url 'operasional:hapus_instansi' item.pk %}"
+                                data-item-name="{{ item.nama_instansi }}"
+                                data-item-meta="{{ item.organisasi|default:'-' }}"
+                            >
+                                <i class="bi bi-trash3-fill"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4"><div class="empty-state">Belum ada data instansi / klien.</div></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% include 'components/master_pagination.html' %}
+</div>
+
+{% if role_access.is_super_admin %}
+    {% url 'operasional:import_instansi' as import_action_url %}
+    {% url 'operasional:download_format_import_instansi' as import_download_url %}
+    {% include 'components/import_excel_modal.html' with import_context=import_context import_modal_id='instansiImportModal' import_file_id='instansiImportFile' import_title='Import Data Instansi (Klien)' import_action_url=import_action_url import_download_url=import_download_url import_help_text='Gunakan file .xlsx maksimal 7 MB. Nama instansi duplikat akan ditolak.' %}
+{% endif %}
+
+<div class="delete-modal" id="operasionalDeleteModal">
+    <div class="delete-modal-backdrop" id="operasionalDeleteModalBackdrop"></div>
+
+    <div class="delete-modal-card" role="dialog" aria-modal="true" aria-labelledby="operasionalDeleteModalTitle">
+        <div class="delete-modal-header">
+            <h3 id="operasionalDeleteModalTitle">Konfirmasi Hapus</h3>
+            <button type="button" class="delete-modal-close" id="operasionalDeleteModalClose" aria-label="Tutup">&times;</button>
+        </div>
+
+        <div class="delete-modal-body">
+            <p>Apakah Anda yakin ingin menghapus data operasional berikut?</p>
+
+            <div class="delete-user-info">
+                <p><strong>Nama Instansi:</strong> <span id="operasionalDeleteItemName">-</span></p>
+                <p><strong>Organisasi:</strong> <span id="operasionalDeleteItemMeta">-</span></p>
+            </div>
+
+            <p class="delete-warning-text">Tindakan ini tidak dapat dibatalkan.</p>
+        </div>
+
+        <div class="delete-modal-actions">
+            <button type="button" class="btn btn-secondary" id="operasionalDeleteModalCancel">Batal</button>
+
+            <form method="post" id="operasionalDeleteForm">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger">Ya, Hapus</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

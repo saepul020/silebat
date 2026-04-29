@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+
+{% block title %}Data Kop Dokumen{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{{ page_title }}</h1>
+    <p>{{ page_subtitle }}</p>
+</div>
+
+<div class="table-wrapper table-panel">
+    <div class="table-toolbar">
+        <h3 class="table-title">Daftar Kop Dokumen</h3>
+        {% if item %}
+            <button type="button" class="btn btn-primary btn-disabled" disabled title="Data Kop Dokumen hanya boleh satu data">
+                <i class="bi bi-plus-circle"></i>&nbsp;Tambah Kop Dokumen
+            </button>
+        {% else %}
+            <a href="{% url 'operasional:tambah_kop_dokumen' %}" class="btn btn-primary"><i class="bi bi-plus-circle"></i>&nbsp;Tambah Kop Dokumen</a>
+        {% endif %}
+    </div>
+
+    {% include 'components/master_entries_control.html' %}
+
+    <div class="table-scroll-area table-scroll--list" tabindex="0" aria-label="Scroll tabel data kop dokumen">
+        <table class="table-data list-table--op-instansi">
+            <thead>
+                <tr>
+                    <th>Preview</th>
+                    <th class="cell-wrap">Nama File</th>
+                    <th class="cell-action">Aksi</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    <td>
+                        <div class="operasional-kop-thumb">
+                            <img src="{{ item.kop_dokumen.url }}" alt="Preview Kop Dokumen">
+                        </div>
+                    </td>
+                    <td class="cell-wrap">{{ item.kop_dokumen.name|default:'-' }}</td>
+                    <td class="cell-action">
+                        <div class="table-action-group">
+                            <a href="{% url 'operasional:edit_kop_dokumen' item.pk %}" class="btn btn-warning btn-sm">
+                                <i class="bi bi-pencil-square"></i>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="3"><div class="empty-state">Belum ada data kop dokumen.</div></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% include 'components/master_pagination.html' %}
+</div>
+{% endblock %}

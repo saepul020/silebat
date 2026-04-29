@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{{ page_title }}</h1>
+    <p>{{ page_subtitle }}</p>
+</div>
+
+<div class="form-card user-form-card master-data-form-card">
+    <form method="post" enctype="multipart/form-data" class="pengguna-form operasional-form operasional-kop-form" data-operasional-form="true" novalidate>
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+        <div class="form-global-errors">
+            {% for error in form.non_field_errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
+        </div>
+        {% endif %}
+
+        <fieldset>
+            <legend>Data Kop Dokumen</legend>
+            <div
+                class="upload-card {% if form.kop_dokumen.errors %}has-error{% endif %}"
+                data-upload-control
+                data-upload-mode="replace-only"
+                data-existing-url="{% if form.instance and form.instance.kop_dokumen %}{{ form.instance.kop_dokumen.url }}{% endif %}"
+                data-file-label="Kop Dokumen"
+            >
+                <div class="upload-card__head">
+                    <label for="{{ form.kop_dokumen.id_for_label }}">{{ form.kop_dokumen.label }}</label>
+                </div>
+
+                <div class="upload-preview-stack">
+                    <div class="upload-preview-section {% if not form.instance or not form.instance.kop_dokumen %}is-hidden{% endif %}" data-stored-preview-section>
+                        <div class="upload-preview-section__label">Kop Dokumen Saat Ini:</div>
+                        <div class="upload-preview-card upload-preview-card--master {% if form.instance and form.instance.kop_dokumen %}{% else %}is-empty{% endif %}" data-stored-preview-card>
+                            <div class="upload-preview-card__empty">Belum ada file tersimpan</div>
+                            <div class="upload-preview-card__body">
+                                <div class="upload-preview-frame upload-preview-frame--master">
+                                    <img alt="Kop Dokumen Tersimpan" data-stored-preview-image {% if form.instance and form.instance.kop_dokumen %}src="{{ form.instance.kop_dokumen.url }}"{% endif %}>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="upload-input-wrap upload-input-wrap--inline upload-input-wrap--file-proxy" data-inline-file-proxy>
+                        <div class="upload-input-wrap__field">
+                            {{ form.kop_dokumen }}
+                            <label for="{{ form.kop_dokumen.id_for_label }}" class="file-input-proxy">
+                                <span class="file-input-proxy__button" aria-hidden="true"><i class="bi bi-image"></i></span>
+                                <span class="file-input-proxy__text is-placeholder" data-inline-file-text>Pilih file</span>
+                            </label>
+                        </div>
+                        <div class="upload-file-state upload-file-state--inline is-hidden" data-file-state data-inline-file-state>
+                            <button type="button" class="upload-file-state__action upload-file-state__action--icon" data-file-state-action data-inline-file-clear data-mode="clear-selected" title="Batalkan Upload" aria-label="Batalkan Upload">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <p class="input-error-text" data-inline-file-error-node hidden></p>
+                    {% for error in form.kop_dokumen.errors %}
+                        <p class="input-error-text" data-upload-field-error>*{{ error }}</p>
+                    {% endfor %}
+
+                    <div class="upload-preview-section" data-selected-preview-section>
+                        <div class="upload-preview-section__label">Kop Dokumen Baru:</div>
+                        <div class="upload-preview-card upload-preview-card--master is-empty" data-selected-preview-card>
+                            <div class="upload-preview-card__empty">Belum ada gambar baru dipilih</div>
+                            <div class="upload-preview-card__body">
+                                <div class="upload-preview-frame upload-preview-frame--master">
+                                    <img alt="Preview Upload Kop Dokumen Baru" data-selected-preview-image>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </fieldset>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">{{ submit_label }}</button>
+            <a href="{% url cancel_url %}" class="btn btn-secondary">Kembali</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

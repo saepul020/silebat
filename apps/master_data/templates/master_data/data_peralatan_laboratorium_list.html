@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+
+{% block title %}Data Peralatan Laboratorium{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{{ page_title }}</h1>
+    <p>{{ page_subtitle }}</p>
+</div>
+
+<div class="table-wrapper table-panel">
+    <div class="table-toolbar">
+        <h3 class="table-title">Daftar Peralatan Laboratorium</h3>
+        <div class="table-toolbar-actions">
+            {% if role_access.is_super_admin %}
+                <button type="button" class="btn btn-secondary js-import-data-btn" data-import-target="#peralatanLaboratoriumImportModal">
+                    <i class="bi bi-file-earmark-spreadsheet"></i>&nbsp;Import Data
+                </button>
+            {% endif %}
+            <a href="{% url 'master_data:tambah_peralatan_laboratorium' %}" class="btn btn-primary"><i class="bi bi-plus-circle"></i>&nbsp;Tambah Barang</a>
+        </div>
+    </div>
+
+    {% include 'components/master_entries_control.html' %}
+
+    <div class="table-scroll-area table-scroll--list" tabindex="0" aria-label="Scroll tabel data peralatan laboratorium">
+        <table class="table-data list-table--master-wide">
+            <thead>
+                <tr>
+                    <th class="cell-wrap">Nama Barang</th>
+                    <th>Status</th>
+                    <th>Kode Laboratorium</th>
+                    <th>Volume Baik</th>
+                    <th>Volume Rusak</th>
+                    <th>Total Volume</th>
+                    <th>Kondisi</th>
+                    <th class="cell-status">Ketersediaan</th>
+                    <th class="cell-wrap">Lokasi</th>
+                    <th class="cell-action">Aksi</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    <td class="cell-wrap">
+                        <strong>{{ item.nama_barang }}</strong><br>
+                        <small>{{ item.tipe_merek_barang }}</small>
+                    </td>
+                    <td>{{ item.status_barang }}</td>
+                    <td>{{ item.kode_laboratorium }}</td>
+                    <td>{{ item.volume_baik }}</td>
+                    <td>{{ item.volume_rusak }}</td>
+                    <td>{{ item.total_volume }}</td>
+                    <td>{% if item.status_barang == 'BMN' %}{{ item.kondisi_barang }}{% else %}-{% endif %}</td>
+                    <td class="cell-status"><span class="status-badge {{ item.status_badge_class }}">{{ item.ketersediaan }}</span></td>
+                    <td class="cell-wrap">{{ item.lokasi_barang }}</td>
+                    <td class="cell-action">
+                        <div class="table-action-group">
+                            <a href="{% url 'master_data:detail_peralatan_laboratorium' item.pk %}" class="btn btn-secondary btn-sm"><i class="bi bi-eye-fill"></i></a>
+                            <a href="{% url 'master_data:edit_peralatan_laboratorium' item.pk %}" class="btn btn-warning btn-sm"><i class="bi bi-pencil-square"></i></a>
+                            <button type="button" class="btn btn-danger btn-sm js-delete-btn" data-delete-modal="master" data-delete-url="{% url 'master_data:hapus_peralatan_laboratorium' item.pk %}" data-item-name="{{ item.nama_barang }}" data-item-meta="{{ item.kode_laboratorium|default:'-' }}">
+                                <i class="bi bi-trash3-fill"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="10"><div class="empty-state">Belum ada data peralatan laboratorium.</div></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% include 'components/master_pagination.html' %}
+</div>
+
+{% if role_access.is_super_admin %}
+    {% url 'master_data:import_peralatan_laboratorium' as import_action_url %}
+    {% url 'master_data:download_format_import_peralatan_laboratorium' as import_download_url %}
+    {% include 'components/import_excel_modal.html' with import_context=import_context import_modal_id='peralatanLaboratoriumImportModal' import_file_id='peralatanLaboratoriumImportFile' import_title='Import Data Peralatan Laboratorium' import_action_url=import_action_url import_download_url=import_download_url import_help_text='Gunakan file .xlsx maksimal 7 MB. Data duplikat pada Kode Aset BMN dan Kode Laboratorium akan ditolak.' %}
+{% endif %}
+
+<div class="delete-modal" id="masterDeleteModal">
+    <div class="delete-modal-backdrop" id="masterDeleteModalBackdrop"></div>
+
+    <div class="delete-modal-card" role="dialog" aria-modal="true" aria-labelledby="masterDeleteModalTitle">
+        <div class="delete-modal-header">
+            <h3 id="masterDeleteModalTitle">Konfirmasi Hapus</h3>
+            <button type="button" class="delete-modal-close" id="masterDeleteModalClose" aria-label="Tutup">&times;</button>
+        </div>
+
+        <div class="delete-modal-body">
+            <p>Apakah Anda yakin ingin menghapus data master berikut?</p>
+
+            <div class="delete-user-info">
+                <p><strong>Nama Barang:</strong> <span id="masterDeleteItemName">-</span></p>
+                <p><strong>Info:</strong> <span id="masterDeleteItemMeta">-</span></p>
+            </div>
+
+            <p class="delete-warning-text">Tindakan ini tidak dapat dibatalkan.</p>
+        </div>
+
+        <div class="delete-modal-actions">
+            <button type="button" class="btn btn-secondary" id="masterDeleteModalCancel">Batal</button>
+
+            <form method="post" id="masterDeleteForm">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger">Ya, Hapus</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

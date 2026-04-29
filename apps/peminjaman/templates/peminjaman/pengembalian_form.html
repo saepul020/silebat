@@ -1,0 +1,684 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Proses Pengembalian - SILEBAT{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Proses Pengembalian</h1>
+    <p>Kelola pengembalian per-alat untuk {{ obj.nomor_pengajuan }}.</p>
+</div>
+
+<div class="card detail-header-card">
+    <div class="detail-header-shell detail-shell">
+        <div class="detail-header-primary detail-main detail-main--loan">
+            <div class="detail-header-number">{{ obj.nomor_pengajuan }}</div>
+
+            <div class="detail-list">
+                <div class="detail-row">
+                    <span class="detail-label">Tanggal Peminjaman</span>
+                    <span class="detail-sep">:</span>
+                    <strong class="detail-value">
+                        {{ obj.submitted_at|date:'d M Y' }} | {{ obj.submitted_at|date:'H:i' }} WIB
+                    </strong>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Tanggal Pengembalian</span>
+                    <span class="detail-sep">:</span>
+                    <strong class="detail-value">
+                        {% if obj.return_started_at %}
+                            {{ obj.return_started_at|date:'d M Y' }} | {{ obj.return_started_at|date:'H:i' }} WIB
+                        {% else %}
+                            -
+                        {% endif %}
+                    </strong>
+                </div>
+            </div>
+        </div>
+
+        <div class="detail-header-panel">
+            <div class="detail-state-row">
+                <div class="detail-state">
+                    <span class="detail-header-tile-label">Proses Peminjaman</span>
+                    <span class="status-badge {{ obj.proses_peminjaman_badge_class }}">{{ obj.proses_peminjaman_label }}</span>
+                </div>
+                <div class="detail-state">
+                    <span class="detail-header-tile-label">Proses Pengembalian</span>
+                    <span class="status-badge {{ obj.proses_pengembalian_badge_class }}">{{ obj.proses_pengembalian_label }}</span>
+                </div>
+                <div class="detail-state detail-stat">
+                    <span class="detail-header-tile-label">Status Pengembalian Tercatat</span>
+                    <p class="detail-header-tile-value detail-value-compact">{{ obj.pengembalian_status_text }}</p>
+                </div>
+            </div>
+
+            <div class="detail-action-row">
+                {% if obj.can_download_pdf %}
+                <a href="{% url 'peminjaman:download_pdf' obj.pk %}" class="btn btn-primary detail-action-btn">Export PDF</a>
+                {% else %}
+                <button type="button" class="btn btn-secondary detail-action-btn" disabled>Export PDF</button>
+                {% endif %}
+
+                {% if can_delete_pengajuan %}
+                <form method="post" action="{% url 'peminjaman:hapus' obj.pk %}" data-confirm-submit="Yakin ingin menghapus pengajuan ini? Jika aset sudah dialokasikan, stok akan dikembalikan otomatis.">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger detail-action-btn">Hapus Peminjaman</button>
+                </form>
+                {% endif %}
+
+                <a href="{% url 'peminjaman:list' %}" class="btn btn-secondary detail-action-btn">Kembali</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="detail-layout-grid">
+    <div class="card">
+        <h3 class="card-title">Data Peminjam</h3>
+        <div class="detail-grid">
+            <div class="detail-item"><label>Nama</label><p>{{ obj.nama_peminjam }}</p></div>
+            <div class="detail-item"><label>Nomor Telepon</label><p>{{ obj.no_hp_peminjam|default:'-' }}</p></div>
+            <div class="detail-item"><label>Email</label><p>{{ obj.email_peminjam|default:'-' }}</p></div>
+            <div class="detail-item"><label>NIP / NIK</label><p>{{ obj.nip_peminjam|default:'-' }}</p></div>
+            <div class="detail-item detail-item-full"><label>Alamat</label><p>{{ obj.alamat_peminjam|default:'-' }}</p></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3 class="card-title">Data Kegiatan</h3>
+        <div class="detail-grid detail-grid--kegiatan">
+            <div class="detail-item detail-item--span-2"><label>Layanan Kegiatan</label><p>{{ obj.layanan_kegiatan.jenis_layanan|default:'-' }}</p></div>
+            <div class="detail-item detail-item--span-2"><label>Tim Kegiatan</label><p>{{ obj.tim_kegiatan.nama_tim|default:'-' }}</p></div>
+            <div class="detail-item detail-item--span-2"><label>Berkas Pendukung</label><p>{% if obj.berkas_pendukung %}<a href="{{ obj.berkas_pendukung.url }}" target="_blank" rel="noopener">Buka dokumen PDF</a>{% else %}-{% endif %}</p></div>
+            <div class="detail-item detail-item-full">
+                <label>Kegiatan Survei</label>
+                <p>
+                    {% for survei in survei_items %}
+                        {{ survei.jenis_survei }}{% if not forloop.last %}, {% endif %}
+                    {% empty %}
+                        -
+                    {% endfor %}
+                    {% if obj.survei_lainnya %}{% if survei_items %}, {% endif %}Lainnya: {{ obj.survei_lainnya }}{% endif %}
+                </p>
+            </div>
+            <div class="detail-item detail-item-full"><label>Instansi Tujuan</label><p>{{ obj.instansi_tujuan.nama_instansi|default:obj.instansi_tujuan_lainnya|default:'-' }}</p></div>
+            <div class="detail-item detail-item--span-2"><label>Mulai Tanggal</label><p>{{ obj.tanggal_mulai|date:'d M Y' }}</p></div>
+            <div class="detail-item detail-item--span-2">
+                <label>Selesai Tanggal</label>
+                <div class="detail-inline-edit-wrap">
+                    <p>{{ obj.tanggal_selesai|date:'d M Y' }}</p>
+                    {% if can_edit_tanggal_selesai %}
+                    <button type="button" class="btn btn-warning btn-sm detail-inline-edit-btn" data-return-date-modal-open="true" aria-label="Edit selesai tanggal">
+                        <i class="bi bi-pencil-square"></i>
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="detail-item detail-item--span-2"><label>Total Hari</label><p>{{ obj.total_hari }} hari</p></div>
+        </div>
+    </div>
+</div>
+
+<form method="post" id="pengembalian-form" class="peminjaman-form" data-pengembalian-form="true" autocomplete="off">
+    {% csrf_token %}
+
+    <div class="card return-global-error-card form-global-errors" id="pengembalianGlobalErrors" {% if not global_errors %}hidden{% endif %}>
+        <h3 class="card-title">Periksa kembali data pengembalian</h3>
+        <div id="pengembalianGlobalErrorsBody">
+            {% for error in global_errors %}
+            <p class="input-error-text">*{{ error }}</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    {% if lab_rows %}
+    <div class="card">
+        <h3 class="card-title">Data Peralatan Survei Lapangan</h3>
+        <div class="table-wrapper table-responsive compact-table table-shell">
+            <div class="table-scroll-area table-scroll" tabindex="0" aria-label="Scroll tabel pengembalian peralatan survei lapangan">
+                <table class="table-mobile-scroll table-mobile-scroll--detail-lab">
+                    <thead>
+                        <tr>
+                            <th>Nama Barang</th>
+                            <th>Tipe / Merek Barang</th>
+                            <th>Jenis Barang</th>
+                            <th>Status Barang</th>
+                            <th>Kode Aset BMN</th>
+                            <th>Kode Laboratorium</th>
+                            <th>Volume</th>
+                            <th>Satuan</th>
+                            <th>Kondisi Barang</th>
+                            <th>Tahun Perolehan</th>
+                            <th>Status Pengembalian</th>
+                            <th class="return-transfer-col">Tujuan Transfer</th>
+                            <th>Asal Peminjaman</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in lab_rows %}
+                        <tr class="js-lab-row" data-return-main-row="true" data-return-row-id="lab_{{ row.borrowed.barang_id }}">
+                            <td data-label="Nama Barang" class="cell-wrap">{{ row.borrowed.barang.nama_barang }}</td>
+                            <td data-label="Tipe / Merek Barang" class="cell-wrap">{{ row.borrowed.barang.tipe_merek_barang|default:'-' }}</td>
+                            <td data-label="Jenis Barang" class="cell-wrap">{{ row.borrowed.barang.jenis_barang|default:'-' }}</td>
+                            <td data-label="Status Barang">{{ row.borrowed.barang.status_barang|default:'-' }}</td>
+                            <td data-label="Kode Aset BMN">{{ row.borrowed.barang.kode_aset_bmn|default:'-' }}</td>
+                            <td data-label="Kode Laboratorium">{{ row.borrowed.barang.kode_laboratorium|default:'-' }}</td>
+                            <td data-label="Volume" class="cell-center">{{ row.borrowed.barang.volume|default:'-' }}</td>
+                            <td data-label="Satuan">{{ row.borrowed.barang.satuan|default:'-' }}</td>
+                            <td data-label="Kondisi Barang">{{ row.borrowed.barang.kondisi_barang|default:'-' }}</td>
+                            <td data-label="Tahun Perolehan">{{ row.borrowed.barang.tahun_perolehan|default:'-' }}</td>
+                            <td data-label="Status Pengembalian">
+                                <div class="return-field-group {% if row.field_errors.status %}has-error{% endif %}" data-return-field-group="true" data-error-key="status">
+                                    <select name="lab_status_{{ row.borrowed.barang_id }}" class="select-input js-lab-status return-status-select" data-placeholder-label="Status Pengembalian" data-preserve-placeholder="true" data-target-id="lab_transfer_box_{{ row.borrowed.barang_id }}" autocomplete="off" {% if not editable_item_form %}disabled{% endif %}>
+                                        <option value="" {% if not row.status %}selected{% endif %}>Pilih Status Pengembalian</option>
+                                        <option value="dikembalikan" {% if row.status == 'dikembalikan' %}selected{% endif %}>Dikembalikan (Baik)</option>
+                                        <option value="rusak" {% if row.status == 'rusak' %}selected{% endif %}>Rusak</option>
+                                        <option value="hilang" {% if row.status == 'hilang' %}selected{% endif %}>Hilang</option>
+                                        <option value="transfer" {% if row.status == 'transfer' %}selected{% endif %} {% if not has_transfer_targets and row.status != 'transfer' %}disabled{% endif %}>Transfer</option>
+                                    </select>
+                                </div>
+                            </td>
+                            <td data-label="Tujuan Transfer" class="return-transfer-col">
+                                <div class="return-field-group {% if row.field_errors.transfer_target %}has-error{% endif %}" data-return-field-group="true" data-error-key="transfer_target">
+                                    <div id="lab_transfer_box_{{ row.borrowed.barang_id }}" class="return-transfer-box--lab" {% if row.status != 'transfer' %}hidden{% endif %}>
+                                        <select name="lab_transfer_target_{{ row.borrowed.barang_id }}" class="select-input js-lab-transfer-target return-transfer-target-select" data-preserve-placeholder="true" autocomplete="off" {% if row.status != 'transfer' or not editable_item_form or not has_transfer_targets %}disabled{% endif %}>
+                                            <option value="" {% if not row.transfer_target_id %}selected{% endif %}>Pilih Peminjaman</option>
+                                            {% for target in transfer_targets %}
+                                            <option value="{{ target.id }}" {% if row.transfer_target_id == target.id %}selected{% endif %}>{{ target.nomor_pengajuan }} - {{ target.nama_peminjam }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+                                {% if not transfer_targets %}
+                                <span class="return-table-note">Tidak ada peminjaman aktif.</span>
+                                {% endif %}
+                            </td>
+                            <td data-label="Asal Peminjaman" class="cell-wrap">{{ row.asal_peminjaman_label|default:row.borrowed.asal_peminjaman_label|default:'Laboratorium' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="return-table-error-stack" data-return-error-stack="true">
+            {% for row in lab_rows %}
+            <div class="return-table-error-item" data-return-error-row="true" data-return-row-id="lab_{{ row.borrowed.barang_id }}" {% if not row.field_errors.status and not row.field_errors.transfer_target %}hidden{% endif %}>
+                <div class="return-table-error-messages">
+                    <div class="return-table-error-entry" data-return-error-key="status" {% if not row.field_errors.status %}hidden{% endif %}>
+                        {% for error in row.field_errors.status %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
+                    </div>
+                    <div class="return-table-error-entry" data-return-error-key="transfer_target" {% if not row.field_errors.transfer_target %}hidden{% endif %}>
+                        {% for error in row.field_errors.transfer_target %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    {% if penunjang_rows %}
+    <div class="card">
+        <h3 class="card-title">Data Barang Penunjang Lapangan</h3>
+        <div class="table-wrapper table-responsive compact-table table-shell">
+            <div class="table-scroll-area table-scroll" tabindex="0" aria-label="Scroll tabel pengembalian barang penunjang lapangan">
+                <table class="table-mobile-scroll table-mobile-scroll--detail-lab tbl-scroll--ret-penunjang">
+                    <thead>
+                        <tr>
+                            <th>Nama Barang</th>
+                            <th>Tipe / Merek Barang</th>
+                            <th>Kategori Barang</th>
+                            <th>Volume Dipinjam</th>
+                            <th>Satuan</th>
+                            <th>Dikembalikan</th>
+                            <th>Rusak</th>
+                            <th>Hilang</th>
+                            <th>Transfer Barang</th>
+                            <th class="return-transfer-col">Tujuan Transfer</th>
+                            <th>Asal Peminjaman</th>
+                            <th>Validasi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in penunjang_rows %}
+                        <tr class="js-penunjang-row" data-return-main-row="true" data-return-row-id="penunjang_{{ row.borrowed.barang_id }}" data-borrowed-total="{{ row.borrowed.volume }}" data-total-mode="equal">
+                            <td data-label="Nama Barang" class="cell-wrap">{{ row.borrowed.barang.nama_barang }}</td>
+                            <td data-label="Tipe / Merek Barang" class="cell-wrap">{{ row.borrowed.barang.tipe_merek_barang|default:'-' }}</td>
+                            <td data-label="Kategori Barang" class="cell-wrap">{{ row.borrowed.barang.kategori_barang|default:'-' }}</td>
+                            <td data-label="Volume Dipinjam" class="cell-center">{{ row.borrowed.volume }}</td>
+                            <td data-label="Satuan">{{ row.borrowed.barang.satuan|default:'-' }}</td>
+                            <td data-label="Dikembalikan" class="cell-qty">
+                                <div class="return-field-group {% if row.field_errors.dikembalikan %}has-error{% endif %}" data-return-field-group="true" data-error-key="dikembalikan">
+                                    <div class="qty-stepper qty-stepper--compact" data-qty-stepper>
+                                        <button type="button" class="qty-stepper__button" data-qty-step="down" aria-label="Kurangi jumlah dikembalikan {{ row.borrowed.barang.nama_barang }}" {% if not editable_item_form %}disabled{% endif %}>&minus;</button>
+                                        <input class="input-qty input-qty--stepper return-qty-input js-qty-input js-return-qty" autocomplete="off" type="number" min="0" max="{{ row.borrowed.volume }}" step="1" inputmode="numeric" name="penunjang_dikembalikan_{{ row.borrowed.barang_id }}" value="{% if row.qty_dikembalikan != '' %}{{ row.qty_dikembalikan }}{% endif %}" placeholder="0" data-allow-empty="true" data-role="dikembalikan" {% if not editable_item_form %}disabled{% endif %}>
+                                        <button type="button" class="qty-stepper__button" data-qty-step="up" aria-label="Tambah jumlah dikembalikan {{ row.borrowed.barang.nama_barang }}" {% if not editable_item_form %}disabled{% endif %}>+</button>
+                                    </div>
+                                </div>
+                            </td>
+                            <td data-label="Rusak" class="cell-qty">
+                                <div class="return-field-group {% if row.field_errors.rusak %}has-error{% endif %}" data-return-field-group="true" data-error-key="rusak">
+                                    <div class="qty-stepper qty-stepper--compact" data-qty-stepper>
+                                        <button type="button" class="qty-stepper__button" data-qty-step="down" aria-label="Kurangi jumlah rusak {{ row.borrowed.barang.nama_barang }}" {% if not editable_item_form %}disabled{% endif %}>&minus;</button>
+                                        <input class="input-qty input-qty--stepper return-qty-input js-qty-input js-return-qty" autocomplete="off" type="number" min="0" max="{{ row.borrowed.volume }}" step="1" inputmode="numeric" name="penunjang_rusak_{{ row.borrowed.barang_id }}" value="{% if row.qty_rusak != '' %}{{ row.qty_rusak }}{% endif %}" placeholder="0" data-allow-empty="true" data-role="rusak" {% if not editable_item_form %}disabled{% endif %}>
+                                        <button type="button" class="qty-stepper__button" data-qty-step="up" aria-label="Tambah jumlah rusak {{ row.borrowed.barang.nama_barang }}" {% if not editable_item_form %}disabled{% endif %}>+</button>
+                                    </div>
+                                </div>
+                            </td>
+                            <td data-label="Hilang" class="cell-qty">
+                                <div class="return-field-group {% if row.field_errors.hilang %}has-error{% endif %}" data-return-field-group="true" data-error-key="hilang">
+                                    <div class="qty-stepper qty-stepper--compact" data-qty-stepper>
+                                        <button type="button" class="qty-stepper__button" data-qty-step="down" aria-label="Kurangi jumlah hilang {{ row.borrowed.barang.nama_barang }}" {% if not editable_item_form %}disabled{% endif %}>&minus;</button>
+                                        <input class="input-qty input-qty--stepper return-qty-input js-qty-input js-return-qty" autocomplete="off" type="number" min="0" max="{{ row.borrowed.volume }}" step="1" inputmode="numeric" name="penunjang_hilang_{{ row.borrowed.barang_id }}" value="{% if row.qty_hilang != '' %}{{ row.qty_hilang }}{% endif %}" placeholder="0" data-allow-empty="true" data-role="hilang" {% if not editable_item_form %}disabled{% endif %}>
+                                        <button type="button" class="qty-stepper__button" data-qty-step="up" aria-label="Tambah jumlah hilang {{ row.borrowed.barang.nama_barang }}" {% if not editable_item_form %}disabled{% endif %}>+</button>
+                                    </div>
+                                </div>
+                            </td>
+                            <td data-label="Transfer Barang">
+                                <div class="return-field-group {% if row.field_errors.transfer_qty %}has-error{% endif %}" data-return-field-group="true" data-error-key="transfer_qty">
+                                    <div class="return-transfer-stack">
+                                        <div class="return-transfer-inline">
+                                            <label class="return-transfer-toggle" aria-label="Transfer barang {{ row.borrowed.barang.nama_barang }}">
+                                                <input type="checkbox" name="penunjang_transfer_enabled_{{ row.borrowed.barang_id }}" value="1" class="js-transfer-toggle" {% if row.transfer_enabled %}checked{% endif %} {% if not editable_item_form or not has_transfer_targets %}disabled{% endif %}>
+                                            </label>
+                                            <div class="return-transfer-box" data-transfer-panel="qty" {% if not row.transfer_enabled %}hidden{% endif %}>
+                                                <div class="qty-stepper qty-stepper--compact" data-qty-stepper>
+                                                    <button type="button" class="qty-stepper__button" data-qty-step="down" aria-label="Kurangi jumlah transfer {{ row.borrowed.barang.nama_barang }}" {% if not editable_item_form or not row.transfer_enabled or not has_transfer_targets %}disabled{% endif %}>&minus;</button>
+                                                    <input class="input-qty input-qty--stepper return-qty-input js-qty-input js-transfer-qty js-return-qty" autocomplete="off" type="number" min="0" max="{{ row.borrowed.volume }}" step="1" inputmode="numeric" name="penunjang_transfer_{{ row.borrowed.barang_id }}" value="{% if row.qty_transfer != '' %}{{ row.qty_transfer }}{% endif %}" placeholder="0" data-allow-empty="true" data-role="transfer" {% if not editable_item_form or not row.transfer_enabled or not has_transfer_targets %}disabled{% endif %}>
+                                                    <button type="button" class="qty-stepper__button" data-qty-step="up" aria-label="Tambah jumlah transfer {{ row.borrowed.barang.nama_barang }}" {% if not editable_item_form or not row.transfer_enabled or not has_transfer_targets %}disabled{% endif %}>+</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td data-label="Tujuan Transfer" class="return-transfer-col">
+                                <div class="return-field-group {% if row.field_errors.transfer_target %}has-error{% endif %}" data-return-field-group="true" data-error-key="transfer_target">
+                                    <div class="return-transfer-box" data-transfer-panel="target" {% if not row.transfer_enabled %}hidden{% endif %}>
+                                        <select name="penunjang_transfer_target_{{ row.borrowed.barang_id }}" class="select-input js-transfer-target return-transfer-target-select" data-preserve-placeholder="true" autocomplete="off" {% if not row.transfer_enabled or not editable_item_form or not has_transfer_targets %}disabled{% endif %}>
+                                            <option value="" {% if not row.transfer_target_id %}selected{% endif %}>Pilih Peminjaman</option>
+                                            {% for target in transfer_targets %}
+                                            <option value="{{ target.id }}" {% if row.transfer_target_id == target.id %}selected{% endif %}>{{ target.nomor_pengajuan }} - {{ target.nama_peminjam }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+                                {% if not transfer_targets %}
+                                <span class="return-table-note">Tidak ada peminjaman aktif.</span>
+                                {% endif %}
+                            </td>
+                            <td data-label="Asal Peminjaman" class="cell-wrap">{{ row.borrowed.asal_peminjaman_label|default:'Laboratorium' }}</td>
+                            <td data-label="Validasi">
+                                <div class="return-field-group {% if row.field_errors.validation %}has-error{% endif %}" data-return-field-group="true" data-error-key="validation">
+                                    <span class="return-validation-pill js-total-indicator">0/{{ row.borrowed.volume }}</span>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="return-table-error-stack" data-return-error-stack="true">
+            {% for row in penunjang_rows %}
+            <div class="return-table-error-item" data-return-error-row="true" data-return-row-id="penunjang_{{ row.borrowed.barang_id }}" {% if not row.field_errors.dikembalikan and not row.field_errors.rusak and not row.field_errors.hilang and not row.field_errors.transfer_qty and not row.field_errors.transfer_target and not row.field_errors.validation %}hidden{% endif %}>
+                <div class="return-table-error-messages">
+                    <div class="return-table-error-entry" data-return-error-key="dikembalikan" {% if not row.field_errors.dikembalikan %}hidden{% endif %}>{% for error in row.field_errors.dikembalikan %}<p class="input-error-text">*{{ error }}</p>{% endfor %}</div>
+                    <div class="return-table-error-entry" data-return-error-key="rusak" {% if not row.field_errors.rusak %}hidden{% endif %}>{% for error in row.field_errors.rusak %}<p class="input-error-text">*{{ error }}</p>{% endfor %}</div>
+                    <div class="return-table-error-entry" data-return-error-key="hilang" {% if not row.field_errors.hilang %}hidden{% endif %}>{% for error in row.field_errors.hilang %}<p class="input-error-text">*{{ error }}</p>{% endfor %}</div>
+                    <div class="return-table-error-entry" data-return-error-key="transfer_qty" {% if not row.field_errors.transfer_qty %}hidden{% endif %}>{% for error in row.field_errors.transfer_qty %}<p class="input-error-text">*{{ error }}</p>{% endfor %}</div>
+                    <div class="return-table-error-entry" data-return-error-key="transfer_target" {% if not row.field_errors.transfer_target %}hidden{% endif %}>{% for error in row.field_errors.transfer_target %}<p class="input-error-text">*{{ error }}</p>{% endfor %}</div>
+                    <div class="return-table-error-entry" data-return-error-key="validation" {% if not row.field_errors.validation %}hidden{% endif %}>{% for error in row.field_errors.validation %}<p class="input-error-text">*{{ error }}</p>{% endfor %}</div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+
+    {% if bahan_rows %}
+    <div class="card">
+        <h3 class="card-title">Data Bahan Operasional</h3>
+        <div class="table-wrapper table-responsive compact-table table-shell">
+            <div class="table-scroll-area table-scroll table-scroll-area--fit" tabindex="0" aria-label="Scroll tabel pengembalian bahan operasional">
+                <table class="table-mobile-scroll table-mobile-scroll--detail-lab tbl-scroll--ret-bahan">
+                    <thead>
+                        <tr>
+                            <th>Nama Barang</th>
+                            <th>Volume Dipinjam</th>
+                            <th>Satuan</th>
+                            <th>Dikembalikan</th>
+                            <th>Transfer Barang</th>
+                            <th class="return-transfer-col">Tujuan Transfer</th>
+                            <th>Asal Peminjaman</th>
+                            <th>Validasi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in bahan_rows %}
+                        <tr class="js-bahan-row" data-return-main-row="true" data-return-row-id="bahan_{{ row.borrowed.bahan_id }}" data-borrowed-total="{{ row.borrowed.volume }}" data-total-mode="lte">
+                            <td data-label="Nama Barang" class="cell-wrap">{{ row.borrowed.bahan.nama_barang }}</td>
+                            <td data-label="Volume Dipinjam" class="cell-center">{{ row.borrowed.volume }}</td>
+                            <td data-label="Satuan">{{ row.borrowed.bahan.satuan|default:'-' }}</td>
+                            <td data-label="Dikembalikan" class="cell-qty">
+                                <div class="return-field-group {% if row.field_errors.dikembalikan %}has-error{% endif %}" data-return-field-group="true" data-error-key="dikembalikan">
+                                    <div class="qty-stepper qty-stepper--compact" data-qty-stepper>
+                                        <button type="button" class="qty-stepper__button" data-qty-step="down" aria-label="Kurangi jumlah dikembalikan {{ row.borrowed.bahan.nama_barang }}" {% if not editable_item_form %}disabled{% endif %}>&minus;</button>
+                                        <input class="input-qty input-qty--stepper return-qty-input js-return-qty" autocomplete="off" type="number" min="0" max="{{ row.borrowed.volume }}" step="1" inputmode="numeric" name="bahan_dikembalikan_{{ row.borrowed.bahan_id }}" value="{% if row.qty_sisa != '' %}{{ row.qty_sisa }}{% endif %}" placeholder="0" data-allow-empty="true" data-role="dikembalikan" {% if not editable_item_form %}disabled{% endif %}>
+                                        <button type="button" class="qty-stepper__button" data-qty-step="up" aria-label="Tambah jumlah dikembalikan {{ row.borrowed.bahan.nama_barang }}" {% if not editable_item_form %}disabled{% endif %}>+</button>
+                                    </div>
+                                </div>
+                            </td>
+                            <td data-label="Transfer Barang">
+                                <div class="return-field-group {% if row.field_errors.transfer_qty %}has-error{% endif %}" data-return-field-group="true" data-error-key="transfer_qty">
+                                    <div class="return-transfer-stack">
+                                        <div class="return-transfer-inline">
+                                            <label class="return-transfer-toggle" aria-label="Transfer barang {{ row.borrowed.bahan.nama_barang }}">
+                                                <input type="checkbox" name="bahan_transfer_enabled_{{ row.borrowed.bahan_id }}" value="1" class="js-transfer-toggle" {% if row.transfer_enabled %}checked{% endif %} {% if not editable_item_form or not has_transfer_targets %}disabled{% endif %}>
+                                            </label>
+                                            <div class="return-transfer-box" data-transfer-panel="qty" {% if not row.transfer_enabled %}hidden{% endif %}>
+                                                <div class="qty-stepper qty-stepper--compact" data-qty-stepper>
+                                                    <button type="button" class="qty-stepper__button" data-qty-step="down" aria-label="Kurangi jumlah transfer {{ row.borrowed.bahan.nama_barang }}" {% if not editable_item_form or not row.transfer_enabled or not has_transfer_targets %}disabled{% endif %}>&minus;</button>
+                                                    <input class="input-qty input-qty--stepper return-qty-input js-transfer-qty js-return-qty" autocomplete="off" type="number" min="0" max="{{ row.borrowed.volume }}" step="1" inputmode="numeric" name="bahan_transfer_{{ row.borrowed.bahan_id }}" value="{% if row.qty_transfer != '' %}{{ row.qty_transfer }}{% endif %}" placeholder="0" data-allow-empty="true" data-role="transfer" {% if not editable_item_form or not row.transfer_enabled or not has_transfer_targets %}disabled{% endif %}>
+                                                    <button type="button" class="qty-stepper__button" data-qty-step="up" aria-label="Tambah jumlah transfer {{ row.borrowed.bahan.nama_barang }}" {% if not editable_item_form or not row.transfer_enabled or not has_transfer_targets %}disabled{% endif %}>+</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td data-label="Tujuan Transfer" class="return-transfer-col">
+                                <div class="return-field-group {% if row.field_errors.transfer_target %}has-error{% endif %}" data-return-field-group="true" data-error-key="transfer_target">
+                                    <div class="return-transfer-box" data-transfer-panel="target" {% if not row.transfer_enabled %}hidden{% endif %}>
+                                        <select name="bahan_transfer_target_{{ row.borrowed.bahan_id }}" class="select-input js-transfer-target return-transfer-target-select" data-preserve-placeholder="true" autocomplete="off" {% if not row.transfer_enabled or not editable_item_form or not has_transfer_targets %}disabled{% endif %}>
+                                            <option value="" {% if not row.transfer_target_id %}selected{% endif %}>Pilih Peminjaman</option>
+                                            {% for target in transfer_targets %}
+                                            <option value="{{ target.id }}" {% if row.transfer_target_id == target.id %}selected{% endif %}>{{ target.nomor_pengajuan }} - {{ target.nama_peminjam }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+                                {% if not transfer_targets %}
+                                <span class="return-table-note">Tidak ada peminjaman aktif.</span>
+                                {% endif %}
+                            </td>
+                            <td data-label="Asal Peminjaman" class="cell-wrap">{{ row.borrowed.asal_peminjaman_label|default:'Laboratorium' }}</td>
+                            <td data-label="Validasi">
+                                <div class="return-field-group {% if row.field_errors.validation %}has-error{% endif %}" data-return-field-group="true" data-error-key="validation">
+                                    <span class="return-validation-pill js-total-indicator">0/{{ row.borrowed.volume }}</span>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="return-table-error-stack" data-return-error-stack="true">
+            {% for row in bahan_rows %}
+            <div class="return-table-error-item" data-return-error-row="true" data-return-row-id="bahan_{{ row.borrowed.bahan_id }}" {% if not row.field_errors.dikembalikan and not row.field_errors.transfer_qty and not row.field_errors.transfer_target and not row.field_errors.validation %}hidden{% endif %}>
+                <div class="return-table-error-messages">
+                    <div class="return-table-error-entry" data-return-error-key="dikembalikan" {% if not row.field_errors.dikembalikan %}hidden{% endif %}>{% for error in row.field_errors.dikembalikan %}<p class="input-error-text">*{{ error }}</p>{% endfor %}</div>
+                    <div class="return-table-error-entry" data-return-error-key="transfer_qty" {% if not row.field_errors.transfer_qty %}hidden{% endif %}>{% for error in row.field_errors.transfer_qty %}<p class="input-error-text">*{{ error }}</p>{% endfor %}</div>
+                    <div class="return-table-error-entry" data-return-error-key="transfer_target" {% if not row.field_errors.transfer_target %}hidden{% endif %}>{% for error in row.field_errors.transfer_target %}<p class="input-error-text">*{{ error }}</p>{% endfor %}</div>
+                    <div class="return-table-error-entry" data-return-error-key="validation" {% if not row.field_errors.validation %}hidden{% endif %}>{% for error in row.field_errors.validation %}<p class="input-error-text">*{{ error }}</p>{% endfor %}</div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    {% if peralatan_lab_rows %}
+    <div class="card">
+        <h3 class="card-title">Data Peralatan Laboratorium</h3>
+        <div class="table-wrapper table-responsive compact-table table-shell">
+            <div class="table-scroll-area table-scroll table-scroll-area--fit" tabindex="0" aria-label="Scroll tabel pengembalian peralatan laboratorium">
+                <table class="table-mobile-scroll table-mobile-scroll--detail-lab tbl-scroll--ret-support">
+                    <thead>
+                        <tr>
+                            <th>Nama Barang</th>
+                            <th>Tipe / Merek</th>
+                            <th>Kode Laboratorium</th>
+                            <th>Volume Dipinjam</th>
+                            <th>Satuan</th>
+                            <th>Dikembalikan</th>
+                            <th>Rusak</th>
+                            <th>Hilang</th>
+                            <th>Transfer Barang</th>
+                            <th class="return-transfer-col">Tujuan Transfer</th>
+                            <th>Asal Peminjaman</th>
+                            <th>Validasi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in peralatan_lab_rows %}
+                        <tr class="js-peralatan-lab-row" data-return-main-row="true" data-return-row-id="peralatan_lab_{{ row.borrowed.barang_id }}" data-borrowed-total="{{ row.borrowed.volume }}" data-total-mode="exact">
+                            <td data-label="Nama Barang" class="cell-wrap">{{ row.borrowed.barang.nama_barang }}</td>
+                            <td data-label="Tipe / Merek" class="cell-wrap">{{ row.borrowed.barang.tipe_merek_barang|default:'-' }}</td>
+                            <td data-label="Kode Laboratorium" class="cell-wrap">{{ row.borrowed.barang.kode_laboratorium|default:'-' }}</td>
+                            <td data-label="Volume Dipinjam" class="cell-center">{{ row.borrowed.volume }}</td>
+                            <td data-label="Satuan">{{ row.borrowed.barang.satuan|default:'-' }}</td>
+                            <td data-label="Dikembalikan" class="cell-qty">
+                                <div class="return-field-group {% if row.field_errors.dikembalikan %}has-error{% endif %}" data-return-field-group="true" data-error-key="dikembalikan">
+                                    <div class="qty-stepper qty-stepper--compact" data-qty-stepper>
+                                        <button type="button" class="qty-stepper__button" data-qty-step="down" aria-label="Kurangi jumlah dikembalikan {{ row.borrowed.barang.nama_barang }}" {% if not editable_item_form %}disabled{% endif %}>&minus;</button>
+                                        <input class="input-qty input-qty--stepper return-qty-input js-return-qty" autocomplete="off" type="number" min="0" max="{{ row.borrowed.volume }}" step="1" inputmode="numeric" name="peralatan_lab_dikembalikan_{{ row.borrowed.barang_id }}" value="{% if row.qty_dikembalikan != '' %}{{ row.qty_dikembalikan }}{% endif %}" placeholder="0" data-allow-empty="true" data-role="dikembalikan" {% if not editable_item_form %}disabled{% endif %}>
+                                        <button type="button" class="qty-stepper__button" data-qty-step="up" aria-label="Tambah jumlah dikembalikan {{ row.borrowed.barang.nama_barang }}" {% if not editable_item_form %}disabled{% endif %}>+</button>
+                                    </div>
+                                </div>
+                            </td>
+                            <td data-label="Rusak" class="cell-qty">
+                                <div class="return-field-group {% if row.field_errors.rusak %}has-error{% endif %}" data-return-field-group="true" data-error-key="rusak">
+                                    <div class="qty-stepper qty-stepper--compact" data-qty-stepper>
+                                        <button type="button" class="qty-stepper__button" data-qty-step="down" aria-label="Kurangi jumlah rusak {{ row.borrowed.barang.nama_barang }}" {% if not editable_item_form %}disabled{% endif %}>&minus;</button>
+                                        <input class="input-qty input-qty--stepper return-qty-input js-return-qty" autocomplete="off" type="number" min="0" max="{{ row.borrowed.volume }}" step="1" inputmode="numeric" name="peralatan_lab_rusak_{{ row.borrowed.barang_id }}" value="{% if row.qty_rusak != '' %}{{ row.qty_rusak }}{% endif %}" placeholder="0" data-allow-empty="true" data-role="rusak" {% if not editable_item_form %}disabled{% endif %}>
+                                        <button type="button" class="qty-stepper__button" data-qty-step="up" aria-label="Tambah jumlah rusak {{ row.borrowed.barang.nama_barang }}" {% if not editable_item_form %}disabled{% endif %}>+</button>
+                                    </div>
+                                </div>
+                            </td>
+                            <td data-label="Hilang" class="cell-qty">
+                                <div class="return-field-group {% if row.field_errors.hilang %}has-error{% endif %}" data-return-field-group="true" data-error-key="hilang">
+                                    <div class="qty-stepper qty-stepper--compact" data-qty-stepper>
+                                        <button type="button" class="qty-stepper__button" data-qty-step="down" aria-label="Kurangi jumlah hilang {{ row.borrowed.barang.nama_barang }}" {% if not editable_item_form %}disabled{% endif %}>&minus;</button>
+                                        <input class="input-qty input-qty--stepper return-qty-input js-return-qty" autocomplete="off" type="number" min="0" max="{{ row.borrowed.volume }}" step="1" inputmode="numeric" name="peralatan_lab_hilang_{{ row.borrowed.barang_id }}" value="{% if row.qty_hilang != '' %}{{ row.qty_hilang }}{% endif %}" placeholder="0" data-allow-empty="true" data-role="hilang" {% if not editable_item_form %}disabled{% endif %}>
+                                        <button type="button" class="qty-stepper__button" data-qty-step="up" aria-label="Tambah jumlah hilang {{ row.borrowed.barang.nama_barang }}" {% if not editable_item_form %}disabled{% endif %}>+</button>
+                                    </div>
+                                </div>
+                            </td>
+                            <td data-label="Transfer Barang">
+                                <div class="return-field-group {% if row.field_errors.transfer_qty %}has-error{% endif %}" data-return-field-group="true" data-error-key="transfer_qty">
+                                    <div class="return-transfer-stack">
+                                        <div class="return-transfer-inline">
+                                            <label class="return-transfer-toggle" aria-label="Transfer barang {{ row.borrowed.barang.nama_barang }}">
+                                                <input type="checkbox" name="peralatan_lab_transfer_enabled_{{ row.borrowed.barang_id }}" value="1" class="js-transfer-toggle" {% if row.transfer_enabled %}checked{% endif %} {% if not editable_item_form or not has_transfer_targets %}disabled{% endif %}>
+                                            </label>
+                                            <div class="return-transfer-box" data-transfer-panel="qty" {% if not row.transfer_enabled %}hidden{% endif %}>
+                                                <div class="qty-stepper qty-stepper--compact" data-qty-stepper>
+                                                    <button type="button" class="qty-stepper__button" data-qty-step="down" aria-label="Kurangi jumlah transfer {{ row.borrowed.barang.nama_barang }}" {% if not editable_item_form or not row.transfer_enabled or not has_transfer_targets %}disabled{% endif %}>&minus;</button>
+                                                    <input class="input-qty input-qty--stepper return-qty-input js-transfer-qty js-return-qty" autocomplete="off" type="number" min="0" max="{{ row.borrowed.volume }}" step="1" inputmode="numeric" name="peralatan_lab_transfer_{{ row.borrowed.barang_id }}" value="{% if row.qty_transfer != '' %}{{ row.qty_transfer }}{% endif %}" placeholder="0" data-allow-empty="true" data-role="transfer" {% if not editable_item_form or not row.transfer_enabled or not has_transfer_targets %}disabled{% endif %}>
+                                                    <button type="button" class="qty-stepper__button" data-qty-step="up" aria-label="Tambah jumlah transfer {{ row.borrowed.barang.nama_barang }}" {% if not editable_item_form or not row.transfer_enabled or not has_transfer_targets %}disabled{% endif %}>+</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td data-label="Tujuan Transfer" class="return-transfer-col">
+                                <div class="return-field-group {% if row.field_errors.transfer_target %}has-error{% endif %}" data-return-field-group="true" data-error-key="transfer_target">
+                                    <div class="return-transfer-box" data-transfer-panel="target" {% if not row.transfer_enabled %}hidden{% endif %}>
+                                        <select name="peralatan_lab_transfer_target_{{ row.borrowed.barang_id }}" class="select-input js-transfer-target return-transfer-target-select" data-preserve-placeholder="true" autocomplete="off" {% if not row.transfer_enabled or not editable_item_form or not has_transfer_targets %}disabled{% endif %}>
+                                            <option value="" {% if not row.transfer_target_id %}selected{% endif %}>Pilih Peminjaman</option>
+                                            {% for target in transfer_targets %}
+                                            <option value="{{ target.id }}" {% if row.transfer_target_id == target.id %}selected{% endif %}>{{ target.nomor_pengajuan }} - {{ target.nama_peminjam }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+                                {% if not transfer_targets %}
+                                <span class="return-table-note">Tidak ada peminjaman aktif.</span>
+                                {% endif %}
+                            </td>
+                            <td data-label="Asal Peminjaman" class="cell-wrap">{{ row.borrowed.asal_peminjaman_label|default:'Laboratorium' }}</td>
+                            <td data-label="Validasi">
+                                <div class="return-field-group {% if row.field_errors.validation %}has-error{% endif %}" data-return-field-group="true" data-error-key="validation">
+                                    <span class="return-validation-pill js-total-indicator">0/{{ row.borrowed.volume }}</span>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="return-table-error-stack" data-return-error-stack="true">
+            {% for row in peralatan_lab_rows %}
+            <div class="return-table-error-item" data-return-error-row="true" data-return-row-id="peralatan_lab_{{ row.borrowed.barang_id }}" {% if not row.field_errors.dikembalikan and not row.field_errors.rusak and not row.field_errors.hilang and not row.field_errors.transfer_qty and not row.field_errors.transfer_target and not row.field_errors.validation %}hidden{% endif %}>
+                <div class="return-table-error-messages">
+                    <div class="return-table-error-entry" data-return-error-key="dikembalikan" {% if not row.field_errors.dikembalikan %}hidden{% endif %}>{% for error in row.field_errors.dikembalikan %}<p class="input-error-text">*{{ error }}</p>{% endfor %}</div>
+                    <div class="return-table-error-entry" data-return-error-key="rusak" {% if not row.field_errors.rusak %}hidden{% endif %}>{% for error in row.field_errors.rusak %}<p class="input-error-text">*{{ error }}</p>{% endfor %}</div>
+                    <div class="return-table-error-entry" data-return-error-key="hilang" {% if not row.field_errors.hilang %}hidden{% endif %}>{% for error in row.field_errors.hilang %}<p class="input-error-text">*{{ error }}</p>{% endfor %}</div>
+                    <div class="return-table-error-entry" data-return-error-key="transfer_qty" {% if not row.field_errors.transfer_qty %}hidden{% endif %}>{% for error in row.field_errors.transfer_qty %}<p class="input-error-text">*{{ error }}</p>{% endfor %}</div>
+                    <div class="return-table-error-entry" data-return-error-key="transfer_target" {% if not row.field_errors.transfer_target %}hidden{% endif %}>{% for error in row.field_errors.transfer_target %}<p class="input-error-text">*{{ error }}</p>{% endfor %}</div>
+                    <div class="return-table-error-entry" data-return-error-key="validation" {% if not row.field_errors.validation %}hidden{% endif %}>{% for error in row.field_errors.validation %}<p class="input-error-text">*{{ error }}</p>{% endfor %}</div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="card">
+        <h3 class="card-title">Data Pengukuran Lapangan (opsional)</h3>
+        <p class="table-scroll-hint">Masukan jumlah data pengukuran lapangan sesuai dengan jumlah pengukuran pada saat dilapangan.</p>
+        <div class="pengukuran-grid">
+            {% for item in pengukuran_data %}
+            <div class="field-group">
+                <label for="id_{{ item.key }}">{{ item.label }}</label>
+                <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    inputmode="numeric"
+                    id="id_{{ item.key }}"
+                    name="{{ item.key }}"
+                    class="input-control"
+                    value='{{ item.value|default_if_none:"" }}'
+                    placeholder="0"
+                    {% if not editable_item_form %}disabled{% endif %}
+                >
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    {% if not lab_rows and not penunjang_rows and not peralatan_lab_rows and not bahan_rows %}
+    <div class="card">
+        <div class="empty-state">Tidak ada data item yang perlu diproses pada pengembalian ini.</div>
+    </div>
+    {% endif %}
+
+        {% if show_return_form_action %}
+    <div class="card">
+        <div class="return-action-grid return-action-grid--bottom return-action-grid--full">
+            <input type="hidden" name="summary_confirmed" id="pengembalianSummaryConfirmed" value="0">
+            <input type="hidden" name="step_action" value="{{ return_form_action_value }}">
+            <button type="button" class="btn btn-primary return-action-btn return-action-btn--full" id="openPengembalianSummaryModal" data-step-action-value="{{ return_form_action_value }}">{{ return_form_action_label }}</button>
+        </div>
+    </div>
+    {% endif %}
+</form>
+
+{% if show_return_form_action %}
+<div class="delete-modal" id="pengembalianSummaryModal">
+    <div class="delete-modal-backdrop" id="pengembalianSummaryModalBackdrop"></div>
+    <div class="delete-modal-card loan-summary-modal" role="dialog" aria-modal="true" aria-labelledby="pengembalianSummaryModalTitle">
+        <div class="delete-modal-header">
+            <div>
+                <h3 id="pengembalianSummaryModalTitle">Ringkasan Pengajuan Pengembalian</h3>
+                <p>{% if return_form_action_value == 'simpan_pengembalian' %}Periksa kembali data pengembalian sebelum perubahan disimpan.{% else %}Periksa kembali data pengembalian sebelum dilanjutkan ke tahap verifikasi berikutnya.{% endif %}</p>
+            </div>
+            <button type="button" class="delete-modal-close" id="pengembalianSummaryModalClose" aria-label="Tutup">&times;</button>
+        </div>
+
+        <div class="delete-modal-body loan-summary-body">
+            <div class="card detail-header-card loan-summary-head">
+                <div class="detail-header-top">
+                    <div>
+                        <h2 class="card-title">Ringkasan Pengembalian</h2>
+                        <p class="detail-meta">Pastikan seluruh status pengembalian barang sudah benar sebelum {% if return_form_action_value == 'simpan_pengembalian' %}disimpan{% else %}submit{% endif %}.</p>
+                    </div>
+                    <div class="detail-header-actions">
+                        <span class="status-badge badge-warning">Menunggu Konfirmasi</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="detail-layout-grid detail-grid-summary">
+                <div class="card">
+                    <h3 class="card-title">Informasi Pengajuan</h3>
+                    <div class="detail-grid detail-grid--kegiatan" id="summaryPengembalianMetaGrid"></div>
+                </div>
+            </div>
+
+            <div id="summaryPengembalianSections"></div>
+        </div>
+
+        <div class="delete-modal-actions">
+            <button type="button" class="btn btn-secondary" id="pengembalianSummaryModalCancel">Kembali</button>
+            <button type="button" class="btn btn-primary" id="confirmPengembalianSubmit">{% if return_form_action_value == 'simpan_pengembalian' %}Simpan{% else %}Submit{% endif %}</button>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if can_edit_tanggal_selesai %}
+<div class="delete-modal" id="returnDateModal" data-return-date-modal="true" data-open-initial="{% if open_tanggal_selesai_modal %}1{% else %}0{% endif %}">
+    <div class="delete-modal-backdrop" id="returnDateModalBackdrop"></div>
+    <div class="delete-modal-card return-date-modal" role="dialog" aria-modal="true" aria-labelledby="returnDateModalTitle">
+        <div class="delete-modal-header">
+            <div>
+                <h3 id="returnDateModalTitle">Edit Selesai Tanggal</h3>
+                <p>Perbarui selesai tanggal peminjaman untuk menyesuaikan durasi peminjaman berjalan.</p>
+            </div>
+            <button type="button" class="delete-modal-close" id="returnDateModalClose" aria-label="Tutup">&times;</button>
+        </div>
+        <form method="post" action="{% url 'peminjaman:pengembalian' obj.pk %}" class="return-date-form">
+            {% csrf_token %}
+            <input type="hidden" name="form_action" value="update_tanggal_selesai">
+            <div class="delete-modal-body">
+                <div class="field-group {% if tanggal_selesai_form_errors %}has-error{% endif %}">
+                    <label for="id_return_tanggal_selesai">Selesai Tanggal</label>
+                    <input type="text" id="id_return_tanggal_selesai" name="tanggal_selesai" class="input-control" placeholder="Masukan tanggal sesuai format" autocomplete="off" value="{{ tanggal_selesai_form_value|default:'' }}">
+                    <small class="input-help-text">Gunakan format seperti 01 Januari 2026, 01/01/2026, 01-01-2026, atau 01 Jan 2026.</small>
+                    {% for error in tanggal_selesai_form_errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
+                </div>
+            </div>
+            <div class="delete-modal-actions">
+                <button type="button" class="btn btn-secondary" id="returnDateModalCancel">Kembali</button>
+                <button type="submit" class="btn btn-primary">Simpan</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+<div class="card">
+    <h3 class="card-title">Riwayat Proses</h3>
+    <div class="timeline-list">
+        {% for item in obj.timeline_entries.all %}
+        <div class="timeline-item">
+            <div class="timeline-point"></div>
+            <div class="timeline-content">
+                <strong>{{ item.action }}</strong>
+                <p>{{ item.stage }} • {{ item.created_at|date:'d M Y H:i' }}{% if item.actor %} • {{ item.actor.get_full_name|default:item.actor.username }}{% endif %}</p>
+                {% if item.note %}<div class="card-soft">{{ item.note }}</div>{% endif %}
+            </div>
+        </div>
+        {% empty %}
+        <div class="empty-state">Belum ada riwayat proses.</div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

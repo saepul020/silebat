@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+
+{% block title %}Verifikasi - SILEBAT{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{{ page_title }}</h1>
+    <p>{{ page_subtitle }}</p>
+</div>
+
+<div class="table-wrapper table-panel">
+    <div class="table-toolbar">
+        <h2 class="table-title">Daftar Pengajuan Menunggu Tindakan</h2>
+    </div>
+
+    {% include 'components/master_entries_control.html' %}
+
+    <div class="table-scroll-area table-scroll--list" tabindex="0" aria-label="Scroll tabel verifikasi pengajuan">
+        <table class="table-data list-table--verifikasi">
+            <thead>
+                <tr>
+                    <th>Nomor</th>
+                    <th class="cell-wrap">Peminjam</th>
+                    <th class="cell-wrap">Layanan</th>
+                    <th class="cell-wrap">Tim Kegiatan</th>
+                    <th class="cell-status">Status Saat Ini</th>
+                    <th class="cell-action">Aksi</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    <td>{{ item.nomor_pengajuan }}</td>
+                    <td class="cell-wrap">{{ item.nama_peminjam }}</td>
+                    <td class="cell-wrap">{{ item.layanan_kegiatan.jenis_layanan|default:'-' }}</td>
+                    <td class="cell-wrap">{{ item.tim_kegiatan.nama_tim|default:'-' }}</td>
+                    <td class="cell-status"><span class="status-badge {{ item.active_verification_badge_class }}">{{ item.active_verification_label }}</span></td>
+                    <td class="cell-action"><a href="{% url 'verifikasi:detail' item.pk %}" class="btn btn-primary btn-sm">{% if item.return_current_step != 'none' and item.return_current_step != 'completed' %}Proses Pengembalian{% else %}Proses Peminjaman{% endif %}</a></td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6"><div class="empty-state">Tidak ada pengajuan yang sedang menunggu tindakan dari role Anda.</div></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% include 'components/master_pagination.html' %}
+</div>
+{% endblock %}

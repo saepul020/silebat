@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ page_title }} | SILEBAT{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{{ page_title }}</h1>
+    <p>{{ page_subtitle }}</p>
+</div>
+
+<form method="post" class="card notif-form-card" data-notif-announcement-form="true" novalidate>
+    {% csrf_token %}
+
+    <div class="form-grid">
+        <div class="form-group form-group-full {% if form.title.errors %}has-error{% endif %}">
+            <label for="{{ form.title.id_for_label }}">{{ form.title.label }}</label>
+            {{ form.title }}
+            {% for error in form.title.errors %}<p class="input-error-text" data-server-error="true">*{{ error }}</p>{% endfor %}
+        </div>
+
+        <div class="form-group form-group-full {% if form.message.errors %}has-error{% endif %}">
+            <label for="{{ form.message.id_for_label }}">{{ form.message.label }}</label>
+            {{ form.message }}
+            {% for error in form.message.errors %}<p class="input-error-text" data-server-error="true">*{{ error }}</p>{% endfor %}
+        </div>
+
+        <div class="form-group {% if form.publish_start_at.errors %}has-error{% endif %}">
+            <label for="{{ form.publish_start_at.id_for_label }}">{{ form.publish_start_at.label }}</label>
+            {{ form.publish_start_at }}
+            <p class="input-help-text input-help-text--tight">Format Valid: 01 Januari 2026 08:30, 01/01/2026 08:30, 01-01-2026 08:30, atau 01 Jan 2026 08:30.</p>
+            {% for error in form.publish_start_at.errors %}<p class="input-error-text" data-server-error="true">*{{ error }}</p>{% endfor %}
+        </div>
+
+        <div class="form-group {% if form.publish_end_at.errors %}has-error{% endif %}">
+            <label for="{{ form.publish_end_at.id_for_label }}">{{ form.publish_end_at.label }}</label>
+            {{ form.publish_end_at }}
+            <p class="input-help-text input-help-text--tight">Format Valid: 01 Januari 2026 17:00, 01/01/2026 17:00, 01-01-2026 17:00, atau 01 Jan 2026 17:00.</p>
+            {% for error in form.publish_end_at.errors %}<p class="input-error-text" data-server-error="true">*{{ error }}</p>{% endfor %}
+        </div>
+    </div>
+
+    <div class="form-actions">
+        <a href="{% url 'notifikasi:riwayat_pengumuman' %}" class="btn btn-secondary">Kembali</a>
+        <button type="submit" class="btn btn-primary">
+            <i class="bi {{ submit_icon|default:'bi-send' }}"></i>
+            <span>{{ submit_label|default:'Kirim Pengumuman' }}</span>
+        </button>
+    </div>
+</form>
+{% endblock %}
