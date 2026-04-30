@@ -1,6 +1,6 @@
 /* ========================================
    SIDEBAR JS
-   File ini khusus script untuk area sidebar.
+   JS untuk area sidebar.
 ======================================== */
 document.addEventListener('DOMContentLoaded', function () {
     initSidebarToggle();
@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 /* ========================================
    SIDEBAR MOBILE
-   Menangani toggle sidebar pada layar kecil.
+   Toggle sidebar pada layar kecil.
 ======================================== */
 function initSidebarToggle() {
     const menuToggle = document.getElementById('menuToggle');

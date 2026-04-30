@@ -3637,7 +3637,7 @@ input[type="hidden"] {
 
 
 /* =========================
-   PEMINJAMAN MOBILE REFINEMENT V7
+   PEMINJAMAN MOBILE REFINEMENT
 ========================= */
 @media (max-width: 768px) {
     .peminjaman-form .choice-grid-list {
@@ -3724,7 +3724,7 @@ input[type="hidden"] {
 
 
 /* =========================
-   PEMINJAMAN MOBILE REFINEMENT V8
+   PEMINJAMAN MOBILE REFINEMENT
 ========================= */
 @media (max-width: 768px) {
     .peminjaman-form .choice-grid-option {
@@ -3804,7 +3804,7 @@ input[type="hidden"] {
 
 
 /* =========================
-   PEMINJAMAN DESKTOP QTY COLUMN ALIGNMENT V9
+   PEMINJAMAN DESKTOP QTY COLUMN ALIGNMENT
 ========================= */
 @media (min-width: 769px) {
     .peminjaman-form .table-mobile-scroll--support col.col-qty,
@@ -3847,7 +3847,7 @@ input[type="hidden"] {
 
 
 /* =========================
-   GLOBAL TABLE LEFT ALIGNMENT V10
+   GLOBAL TABLE LEFT ALIGNMENT
    Menyamakan seluruh isi tabel agar rata kiri di semua app.
 ========================= */
 table th,
@@ -3892,7 +3892,7 @@ table td,
 
 
 /* =========================
-   PEMINJAMAN TABLE LEFT ALIGNMENT REFINEMENT V11
+   PEMINJAMAN TABLE LEFT ALIGNMENT REFINEMENT
    Merapikan 3 tabel pada form peminjaman agar seluruh isi sel benar-benar rata kiri.
 ========================= */
 .peminjaman-form .table-mobile-scroll--lab th,
@@ -4770,8 +4770,6 @@ select.return-status-select option:disabled {
 }
 
 
-/* Dipindahkan dari static/css/peminjaman.css */
-/* Konfigurasi: apps/peminjaman/templates/peminjaman/pengajuan_form.html */
 .peminjaman-form {
     --qty-col-width: 114px;
     --qty-stepper-width: 94px;
@@ -5394,7 +5392,6 @@ select.return-status-select option:disabled {
 }
 
 
-/* Desktop popup summary should keep a balanced popup width and let tables fill the popup area */
 @media (min-width: 993px) {
     .loan-summary-modal {
         width: min(calc(100vw - 48px), 1280px);
@@ -5425,7 +5422,6 @@ select.return-status-select option:disabled {
     }
 }
 
-/* Supporting document input must remain single-line and fixed-height in responsive mode */
 @media (max-width: 992px) {
     .upload-input-wrap--file-proxy {
         align-items: center;
@@ -5452,8 +5448,6 @@ select.return-status-select option:disabled {
 }
 
 
-/* Dipindahkan dari static/css/verifikasi.css */
-/* Konfigurasi: apps/verifikasi/templates/verifikasi/verifikasi_detail.html */
 .verify-note-form {
     margin: 0;
 }
@@ -5548,9 +5542,6 @@ select.return-status-select option:disabled {
 }
 
 
-
-
-/* Safe wide-screen wrapping for long values in detail headers and form/help text */
 .detail-header-card,
 .detail-header-shell,
 .detail-header-primary,
@@ -5591,7 +5582,6 @@ select.return-status-select option:disabled {
     word-break: break-word;
 }
 
-/* Safe mobile text wrapping for detail headers, cards, and forms */
 @media (max-width: 992px) {
     .detail-header-card,
     .detail-header-shell,
@@ -5664,7 +5654,6 @@ select.return-status-select option:disabled {
     }
 }
 
-/* Keep supporting-document file field single-line and stable on mobile */
 @media (max-width: 992px) {
     .upload-input-wrap--file-proxy,
     .upload-input-wrap--file-proxy .upload-input-wrap__field {
@@ -5732,7 +5721,6 @@ select.return-status-select option:disabled {
     }
 }
 
-/* POPUP RINGKASAN TABLE DENSITY REFINEMENT */
 .loan-summary-table-scroll .tbl-scroll--sum-lab,
 .loan-summary-table-scroll .tbl-scroll--sum-support,
 .loan-summary-table-scroll .tbl-scroll--sum-material {
@@ -5814,7 +5802,6 @@ select.return-status-select option:disabled {
 }
 
 
-/* POPUP RINGKASAN WIDTH + COLUMN PROPORTION REFINEMENT */
 .loan-summary-table-scroll {
     width: 100%;
     max-width: 100%;
@@ -5965,7 +5952,6 @@ select.return-status-select option:disabled {
     }
 }
 
-/* POPUP RINGKASAN TABLE SCROLL FIX: WIDTH FOLLOWS SCREEN + COLUMN COUNT + CONTENT */
 .loan-summary-table-scroll {
     width: 100%;
     max-width: 100%;
@@ -6070,9 +6056,7 @@ select.return-status-select option:disabled {
 
 
 /* =========================
-   PEMINJAMAN FORM TABLE LEFT ALIGNMENT V12
-   Semua data kolom dan kolom input item barang pada form Tambah Pengajuan
-   dan Proses Pengembalian dirapikan menjadi rata kiri.
+   PEMINJAMAN FORM TABLE LEFT ALIGNMENT
 ========================= */
 .peminjaman-form .table-mobile-scroll--lab th,
 .peminjaman-form .table-mobile-scroll--lab td,
@@ -6184,7 +6168,6 @@ select.return-status-select option:disabled {
 }
 
 
-/* Keep qty stepper values centered while editing in form tables */
 .peminjaman-form .table-mobile-scroll--lab .input-qty.input-qty--stepper,
 .peminjaman-form .table-mobile-scroll--lab input.input-qty--stepper[type='number'],
 .peminjaman-form .table-mobile-scroll--support .input-qty.input-qty--stepper,
@@ -6441,8 +6424,7 @@ select.return-status-select option:disabled {
 
 
 /* =========================
-   MASTER DATA - IMPORT EXCEL UPLOAD RESPONSIVE FIX
-   Menjaga nama file tetap terlihat dan tombol Batalkan Upload sejajar.
+   MASTER DATA - IMPORT EXCEL UPLOAD
 ========================= */
 .import-file-group .import-file-upload-wrap.upload-input-wrap--file-proxy.upload-input-wrap--inline {
     display: grid;
@@ -6546,8 +6528,7 @@ select.return-status-select option:disabled {
 
 
 /* =========================
-   MASTER DATA - IMPORT EXCEL UPLOAD FINAL FIX
-   Menjaga placeholder/nama file tetap terlihat dan tombol batal sejajar.
+   MASTER DATA - IMPORT EXCEL UPLOAD
 ========================= */
 .import-file-group .import-file-upload-wrap.upload-input-wrap--file-proxy.upload-input-wrap--inline {
     display: flex !important;
@@ -6683,8 +6664,7 @@ select.return-status-select option:disabled {
 
 
 /* =========================
-   MASTER DATA - IMPORT EXCEL DOWNLOAD BUTTON FULL WIDTH
-   Tombol Download Format Import mengikuti lebar kontainer body import.
+   MASTER DATA - IMPORT EXCEL DOWNLOAD BUTTON
 ========================= */
 .import-modal-body .import-download-row {
     width: 100% !important;
@@ -6712,9 +6692,7 @@ select.return-status-select option:disabled {
 }
 
 /* =========================
-   PEMINJAMAN - ORDER/WIDTH REFINEMENT V13
-   Kolom pilih/jumlah pada Tambah Pengajuan mengikuti ukuran kontrolnya,
-   dan input Data Peralatan Laboratorium pada Proses Pengembalian dirata-tengah.
+   PEMINJAMAN - ORDER/WIDTH REFINEMENT
 ========================= */
 .peminjaman-form .table-mobile-scroll--lab col.col-select {
     width: 52px !important;
@@ -6805,9 +6783,7 @@ select.return-status-select option:disabled {
 }
 
 /* =========================
-   PEMINJAMAN - JUMLAH COLUMN FIXED WIDTH V14
-   Kolom Jumlah pada Tambah Pengajuan dibuat fixed mengikuti ukuran qty-stepper,
-   tidak ikut melebar oleh pembagian tabel / lebar halaman.
+   PEMINJAMAN - JUMLAH COLUMN
 ========================= */
 .peminjaman-form .table-scroll .table-mobile-scroll--qty-first.table-mobile-scroll--fill-width {
     table-layout: auto !important;
@@ -6888,9 +6864,7 @@ select.return-status-select option:disabled {
 }
 
 /* =========================
-   PEMINJAMAN - CELL-QTY HARD FIX 100PX V16
-   Kolom Jumlah pada Tambah Pengajuan dikunci tepat 100px,
-   tidak ikut melebar oleh lebar tabel/layar desktop maupun mobile.
+   PEMINJAMAN - CELL-QTY HARD FIX 100PX
 ========================= */
 .peminjaman-form .table-scroll .table-mobile-scroll--qty-first.table-mobile-scroll--fill-width,
 .peminjaman-form .table-mobile-scroll--qty-first.table-mobile-scroll--fill-width {
@@ -6955,10 +6929,7 @@ select.return-status-select option:disabled {
 }
 
 /* =========================
-   PEMINJAMAN - CELL-QTY FINAL FIX V17
-   Kolom Jumlah pada Tambah Pengajuan dikunci 100px dan tabel tidak lagi
-   dipaksa memenuhi lebar container, sehingga tidak ada area kosong di desktop.
-   Margin kecil menjaga stepper tidak terlalu mepet ke tepi scroll area di mobile.
+   PEMINJAMAN - CELL-QTY
 ========================= */
 .peminjaman-form .table-scroll table.table-mobile-scroll--qty-first {
     table-layout: auto !important;
@@ -7029,10 +7000,7 @@ select.return-status-select option:disabled {
 }
 
 /* =========================
-   PEMINJAMAN - TABEL PENGAJUAN ADAPTIVE WIDTH V18
-   Tabel list barang dibuat memenuhi lebar area scroll. Kolom Jumlah tetap 100px,
-   sementara kolom Nama Barang dan kolom setelahnya ikut menyesuaikan lebar layar.
-   Rule is-hidden diperkuat agar kategori survei tetap tersembunyi di mode mobile.
+   PEMINJAMAN - TABEL PENGAJUAN
 ========================= */
 .peminjaman-form .table-scroll table.table-mobile-scroll--lab,
 .peminjaman-form .table-scroll table.table-mobile-scroll--qty-first {
@@ -7172,10 +7140,7 @@ select.return-status-select option:disabled {
 }
 
 /* =========================
-   PEMINJAMAN - MOBILE TABLE NO-WRAP SCROLL FIX V19
-   Tabel list barang di form tambah pengajuan tidak lagi memecah teks per huruf.
-   Tabel mengisi lebar container saat cukup, dan berubah menjadi horizontal scroll
-   saat konten lebih lebar dari layar. Khusus kolom Jumlah tetap fixed 100px.
+   PEMINJAMAN - MOBILE TABLE NO-WRAP SCROLL
 ========================= */
 .peminjaman-form .table-scroll {
     overflow-x: auto !important;
@@ -7329,9 +7294,7 @@ select.return-status-select option:disabled {
 }
 
 /* =========================
-   PEMINJAMAN - MOBILE QTY TABLE LEFT OFFSET V20
-   Memberi jarak kiri khusus untuk tabel yang kolom pertamanya adalah input Jumlah,
-   supaya stepper Jumlah tidak menempel ke tepi inventory-toggle-content pada mobile.
+   PEMINJAMAN - MOBILE QTY TABLE
 ========================= */
 @media (max-width: 768px) {
     .peminjaman-form .inventory-toggle-content .table-scroll-area.table-scroll--qty-inline-offset {
@@ -7357,9 +7320,7 @@ select.return-status-select option:disabled {
 }
 
 /* =========================
-   PEMINJAMAN - QTY TABLE LEFT OFFSET ALL SCREENS V21
-   Jarak kiri tabel jumlah dibuat berlaku juga pada layar >= 769px,
-   supaya kolom input Jumlah tidak menempel ke tepi inventory-toggle-content.
+   PEMINJAMAN - QTY TABLE LEFT OFFSET ALL SCREENS
 ========================= */
 .peminjaman-form .inventory-toggle-content .table-scroll-area.table-scroll--qty-inline-offset {
     padding-left: 14px !important;
@@ -7606,7 +7567,6 @@ select.return-status-select option:disabled {
     }
 }
 
-/* Compact label untuk pagination mobile */
 .master-page-label-short {
     display: none;
 }
@@ -7623,7 +7583,6 @@ select.return-status-select option:disabled {
     }
 }
 
-/* Responsive refinement untuk rentang tablet kecil / mobile besar (481px - 664px) */
 @media (min-width: 481px) and (max-width: 664px) {
     .master-list-controls,
     .master-pagination-bar {

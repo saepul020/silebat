@@ -1,6 +1,6 @@
 /* ========================================
    DASHBOARD JS
-   File ini khusus script untuk halaman dashboard.
+   JS halaman dashboard.
 ======================================== */
 document.addEventListener('DOMContentLoaded', function () {
     initDashboardCharts();

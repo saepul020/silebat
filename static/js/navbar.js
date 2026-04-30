@@ -1,6 +1,6 @@
 /* ========================================
    NAVBAR JS
-   File ini khusus script untuk area navbar.
+   JS untuk area navbar.
 ======================================== */
 document.addEventListener('DOMContentLoaded', function () {
     initUserDropdown();

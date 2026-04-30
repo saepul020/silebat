@@ -1,6 +1,6 @@
 /* ========================================
    GLOBAL JS
-   File ini berisi script global dan script selain navbar / sidebar.
+   Script global exclude (dashboard; login; navbar; sidebar).
 ======================================== */
 document.addEventListener('DOMContentLoaded', function () {
     [
@@ -452,12 +452,6 @@ function initOperasionalDeleteModal() {
         secondaryDataAttr: 'data-item-meta'
     });
 }
-
-/* ========================================
-   HALAMAN PENGGUNA - PREVIEW UPLOAD
-   Menangani preview file, status file, dan hapus file sementara.
-======================================== */
-
 
 /* ========================================
    HALAMAN VERIFIKASI - MODAL TINDAK LANJUT
