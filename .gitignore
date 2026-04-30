@@ -20,7 +20,7 @@ db.sqlite3-journal
 .env
 .env.local
 .env.production
-
+986
 # Media Upload
 media/
 uploads/
