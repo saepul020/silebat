@@ -12,9 +12,11 @@ venv/
 
 # Django
 *.log
+*.sqlite3
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
+data_backup_sqlite.json
 
 # Environment
 .env

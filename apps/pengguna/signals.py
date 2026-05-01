@@ -7,15 +7,11 @@ from .models import User, UserProfile
 
 
 @receiver(post_save, sender=User)
-def create_user_profile(sender, instance, created, **kwargs):
-    if created:
-        UserProfile.objects.get_or_create(user=instance)
+def create_or_save_user_profile(sender, instance, created, raw=False, **kwargs):
+    if raw:
+        return
 
-
-@receiver(post_save, sender=User)
-def save_user_profile(sender, instance, **kwargs):
-    profile, _ = UserProfile.objects.get_or_create(user=instance)
-    profile.save()
+    UserProfile.objects.get_or_create(user=instance)
 
 
 @receiver(post_delete, sender=UserProfile)
