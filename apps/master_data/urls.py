@@ -8,6 +8,12 @@ app_name = 'master_data'
 master_data_guard = app_access_required('master_data')
 
 urlpatterns = [
+    path('public/peralatan-survei/<uuid:token>/', views.public_barang_laboratorium, name='public_barang_laboratorium'),
+    path('public/barang-penunjang/<uuid:token>/', views.public_barang_penunjang, name='public_barang_penunjang'),
+    path('public/bahan-operasional/<uuid:token>/', views.public_bahan_operasional, name='public_bahan_operasional'),
+    path('public/fasilitas-ruangan/<uuid:token>/', views.public_fasilitas_ruangan, name='public_fasilitas_ruangan'),
+    path('public/peralatan-laboratorium/<uuid:token>/', views.public_peralatan_laboratorium, name='public_peralatan_laboratorium'),
+
     path('', master_data_guard(views.index), name='index'),
     path('barang-laboratorium/', master_data_guard(views.data_barang_laboratorium), name='data_barang_laboratorium'),
     path('barang-laboratorium/tambah/', master_data_guard(views.tambah_barang_laboratorium), name='tambah_barang_laboratorium'),

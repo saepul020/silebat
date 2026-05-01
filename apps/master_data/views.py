@@ -34,6 +34,7 @@ from .models import (
     SatuanBahanChoices,
     StatusBarangChoices,
 )
+from .qr_utils import ensure_master_qr_code, ensure_master_qr_codes
 
 
 IMPORT_BARANG_LAB_SESSION_KEY = "barang_laboratorium_import_validated_rows"
@@ -353,6 +354,11 @@ def _handle_delete(request, *, model, pk, success_message, redirect_to):
     return redirect(redirect_to)
 
 
+def _ensure_qr_codes_for_context_items(context):
+    items = context.get("items") or []
+    ensure_master_qr_codes(items)
+
+
 def _build_detail_context(
     *,
     obj,
@@ -367,6 +373,7 @@ def _build_detail_context(
     top_icon="bi-box-seam",
     photo_attr="foto_barang",
 ):
+    ensure_master_qr_code(obj)
     return {
         "obj": obj,
         "page_title": page_title,
@@ -381,7 +388,41 @@ def _build_detail_context(
         if photo_attr
         else None,
         "top_icon": top_icon,
+        "qr_code_url": _safe_file_url(getattr(obj, "qr_code", None)),
+        "public_detail_url": obj.get_public_detail_url()
+        if hasattr(obj, "get_public_detail_url")
+        else None,
     }
+
+
+def _render_public_master_detail(
+    request,
+    *,
+    obj,
+    page_title,
+    page_subtitle,
+    top_meta,
+    chips,
+    detail_items,
+    top_icon="bi-box-seam",
+    photo_attr="foto_barang",
+):
+    return render(
+        request,
+        "master_data/public_detail_barang.html",
+        {
+            "obj": obj,
+            "page_title": page_title,
+            "page_subtitle": page_subtitle,
+            "top_meta": _display_value(top_meta),
+            "chips": [chip for chip in chips if chip],
+            "detail_items": detail_items,
+            "photo_url": _safe_file_url(getattr(obj, photo_attr, None))
+            if photo_attr
+            else None,
+            "top_icon": top_icon,
+        },
+    )
 
 
 @login_required
@@ -392,6 +433,7 @@ def index(request):
 def _render_barang_laboratorium_list(request, import_context=None):
     queryset = BarangLaboratorium.objects.order_by("nama_barang")
     context = paginate_list(request, queryset)
+    _ensure_qr_codes_for_context_items(context)
     context.update(
         {
             "page_title": "Data Peralatan Survei Lapangan",
@@ -1498,6 +1540,175 @@ def _get_status_peminjaman_barang_laboratorium(obj):
     return "; ".join(labels) if labels else "Tidak sedang dipinjam"
 
 
+def _get_barang_laboratorium_detail_items(obj):
+    return [
+        {"label": "Nama Barang", "value": _display_value(obj.nama_barang)},
+        {
+            "label": "Tipe / Merek Barang",
+            "value": _display_value(obj.tipe_merek_barang),
+        },
+        {"label": "Jenis Barang", "value": _display_value(obj.jenis_barang)},
+        {"label": "Status Barang", "value": _display_value(obj.status_barang)},
+        {"label": "Kode Aset BMN", "value": _display_value(obj.kode_aset_bmn)},
+        {
+            "label": "Kode Laboratorium",
+            "value": _display_value(obj.kode_laboratorium),
+        },
+        {"label": "Volume", "value": _display_value(obj.volume)},
+        {"label": "Satuan", "value": _display_value(obj.satuan)},
+        {"label": "Ketersediaan", "value": _display_value(obj.ketersediaan)},
+        {"label": "Tahun Perolehan", "value": _display_value(obj.tahun_perolehan)},
+        {"label": "Kondisi Barang", "value": _display_value(obj.kondisi_barang)},
+        {"label": "Lokasi Barang", "value": _display_value(obj.lokasi_barang)},
+        {"label": "Kategori Barang", "value": _display_value(obj.kategori_barang)},
+        {
+            "label": "Tanggal Pemeliharaan",
+            "value": _display_date(obj.tanggal_pemeliharaan),
+        },
+        {
+            "label": "Tanggal Perbaikan",
+            "value": _display_date(obj.tanggal_perbaikan),
+        },
+        {
+            "label": "IK Alat",
+            "value": "Lihat Dokumen PDF" if obj.ik_alat else "-",
+            "url": obj.ik_alat.url if obj.ik_alat else None,
+        },
+        {"label": "Catatan", "value": _display_value(obj.catatan), "full": True},
+        {
+            "label": "Status Peminjaman",
+            "value": _get_status_peminjaman_barang_laboratorium(obj),
+            "full": True,
+        },
+    ]
+
+
+def public_barang_laboratorium(request, token):
+    obj = get_object_or_404(BarangLaboratorium, qr_token=token)
+    return _render_public_master_detail(
+        request,
+        obj=obj,
+        page_title="Detail Peralatan Survei Lapangan",
+        page_subtitle="Informasi public peralatan survei lapangan Laboratorium.",
+        top_meta=obj.kode_laboratorium,
+        chips=[obj.status_barang, obj.ketersediaan],
+        detail_items=_get_barang_laboratorium_detail_items(obj),
+        top_icon="bi-tools",
+    )
+
+
+def public_barang_penunjang(request, token):
+    obj = get_object_or_404(BarangPenunjangOperasional, qr_token=token)
+    return _render_public_master_detail(
+        request,
+        obj=obj,
+        page_title="Detail Barang Penunjang Lapangan",
+        page_subtitle="Informasi public barang penunjang lapangan.",
+        top_meta=obj.kategori_barang,
+        chips=[obj.ketersediaan],
+        detail_items=[
+            {"label": "Nama Barang", "value": _display_value(obj.nama_barang)},
+            {"label": "Tipe / Merek Barang", "value": _display_value(obj.tipe_merek_barang)},
+            {"label": "Volume Baik", "value": _display_value(obj.volume_baik)},
+            {"label": "Volume Rusak", "value": _display_value(obj.volume_rusak)},
+            {"label": "Total Volume", "value": _display_value(obj.total_volume)},
+            {"label": "Satuan", "value": _display_value(obj.satuan)},
+            {"label": "Kategori Barang", "value": _display_value(obj.kategori_barang)},
+            {"label": "Ketersediaan", "value": _display_value(obj.ketersediaan)},
+            {"label": "Stok Tersedia", "value": _display_value(obj.sisa_volume)},
+        ],
+        top_icon="bi-box-seam",
+        photo_attr=None,
+    )
+
+
+def public_bahan_operasional(request, token):
+    obj = get_object_or_404(BahanOperasional, qr_token=token)
+    return _render_public_master_detail(
+        request,
+        obj=obj,
+        page_title="Detail Bahan Operasional",
+        page_subtitle="Informasi public bahan operasional.",
+        top_meta=obj.kategori_barang,
+        chips=[obj.ketersediaan],
+        detail_items=[
+            {"label": "Nama Barang", "value": _display_value(obj.nama_barang)},
+            {"label": "Kategori Barang", "value": _display_value(obj.kategori_barang)},
+            {"label": "Volume", "value": _display_value(obj.volume)},
+            {"label": "Satuan", "value": _display_value(obj.satuan)},
+            {"label": "Stok Minimum", "value": _display_value(obj.stok_minimum)},
+            {"label": "Ketersediaan", "value": _display_value(obj.ketersediaan)},
+        ],
+        top_icon="bi-droplet",
+        photo_attr=None,
+    )
+
+
+def public_fasilitas_ruangan(request, token):
+    obj = get_object_or_404(FasilitasRuangan, qr_token=token)
+    return _render_public_master_detail(
+        request,
+        obj=obj,
+        page_title="Detail Sarana Prasarana Ruangan",
+        page_subtitle="Informasi public sarana prasarana ruangan Laboratorium.",
+        top_meta=obj.kode_laboratorium,
+        chips=[obj.status_barang, obj.ketersediaan],
+        detail_items=[
+            {"label": "Nama Barang", "value": _display_value(obj.nama_barang)},
+            {"label": "Tipe / Merek Barang", "value": _display_value(obj.tipe_merek_barang)},
+            {"label": "Jenis Barang", "value": _display_value(obj.jenis_barang)},
+            {"label": "Status Barang", "value": _display_value(obj.status_barang)},
+            {"label": "Kode Aset BMN", "value": _display_value(obj.kode_aset_bmn)},
+            {"label": "Kode Laboratorium", "value": _display_value(obj.kode_laboratorium)},
+            {"label": "Kategori Barang", "value": _display_value(obj.kategori_barang)},
+            {"label": "Volume Baik", "value": _display_value(obj.volume_baik)},
+            {"label": "Volume Rusak", "value": _display_value(obj.volume_rusak)},
+            {"label": "Total Volume", "value": _display_value(obj.total_volume)},
+            {"label": "Satuan", "value": _display_value(obj.satuan)},
+            {"label": "Ketersediaan", "value": _display_value(obj.ketersediaan)},
+            {"label": "Tahun Perolehan", "value": _display_value(obj.tahun_perolehan)},
+            {"label": "Kondisi Barang", "value": _display_value(obj.kondisi_barang if obj.status_barang == StatusBarangChoices.BMN else None)},
+            {"label": "Lokasi Barang", "value": _display_value(obj.lokasi_barang)},
+            {"label": "Tanggal Pemeliharaan", "value": _display_date(obj.tanggal_pemeliharaan)},
+            {"label": "Tanggal Perbaikan", "value": _display_date(obj.tanggal_perbaikan)},
+            {"label": "Catatan", "value": _display_value(obj.catatan), "full": True},
+        ],
+        top_icon="bi-building",
+    )
+
+
+def public_peralatan_laboratorium(request, token):
+    obj = get_object_or_404(PeralatanLaboratorium, qr_token=token)
+    return _render_public_master_detail(
+        request,
+        obj=obj,
+        page_title="Detail Peralatan Laboratorium",
+        page_subtitle="Informasi public peralatan laboratorium.",
+        top_meta=obj.kode_laboratorium,
+        chips=[obj.status_barang, obj.ketersediaan],
+        detail_items=[
+            {"label": "Nama Barang", "value": _display_value(obj.nama_barang)},
+            {"label": "Tipe / Merek Barang", "value": _display_value(obj.tipe_merek_barang)},
+            {"label": "Jenis Barang", "value": _display_value(obj.jenis_barang)},
+            {"label": "Status Barang", "value": _display_value(obj.status_barang)},
+            {"label": "Kode Aset BMN", "value": _display_value(obj.kode_aset_bmn)},
+            {"label": "Kode Laboratorium", "value": _display_value(obj.kode_laboratorium)},
+            {"label": "Volume Baik", "value": _display_value(obj.volume_baik)},
+            {"label": "Volume Rusak", "value": _display_value(obj.volume_rusak)},
+            {"label": "Total Volume", "value": _display_value(obj.total_volume)},
+            {"label": "Satuan", "value": _display_value(obj.satuan)},
+            {"label": "Ketersediaan", "value": _display_value(obj.ketersediaan)},
+            {"label": "Tahun Perolehan", "value": _display_value(obj.tahun_perolehan)},
+            {"label": "Kondisi Barang", "value": _display_value(obj.kondisi_barang if obj.status_barang == StatusBarangChoices.BMN else None)},
+            {"label": "Lokasi Barang", "value": _display_value(obj.lokasi_barang)},
+            {"label": "Tanggal Pemeliharaan", "value": _display_date(obj.tanggal_pemeliharaan)},
+            {"label": "Tanggal Perbaikan", "value": _display_date(obj.tanggal_perbaikan)},
+            {"label": "Catatan", "value": _display_value(obj.catatan), "full": True},
+        ],
+        top_icon="bi-pc-display",
+    )
+
+
 @login_required
 def detail_barang_laboratorium(request, pk):
     obj = get_object_or_404(BarangLaboratorium, pk=pk)
@@ -1510,46 +1721,7 @@ def detail_barang_laboratorium(request, pk):
         back_url_name="master_data:data_barang_laboratorium",
         top_meta=obj.kode_laboratorium,
         chips=[obj.status_barang, obj.ketersediaan],
-        detail_items=[
-            {"label": "Nama Barang", "value": _display_value(obj.nama_barang)},
-            {
-                "label": "Tipe / Merek Barang",
-                "value": _display_value(obj.tipe_merek_barang),
-            },
-            {"label": "Jenis Barang", "value": _display_value(obj.jenis_barang)},
-            {"label": "Status Barang", "value": _display_value(obj.status_barang)},
-            {"label": "Kode Aset BMN", "value": _display_value(obj.kode_aset_bmn)},
-            {
-                "label": "Kode Laboratorium",
-                "value": _display_value(obj.kode_laboratorium),
-            },
-            {"label": "Volume", "value": _display_value(obj.volume)},
-            {"label": "Satuan", "value": _display_value(obj.satuan)},
-            {"label": "Ketersediaan", "value": _display_value(obj.ketersediaan)},
-            {"label": "Tahun Perolehan", "value": _display_value(obj.tahun_perolehan)},
-            {"label": "Kondisi Barang", "value": _display_value(obj.kondisi_barang)},
-            {"label": "Lokasi Barang", "value": _display_value(obj.lokasi_barang)},
-            {"label": "Kategori Barang", "value": _display_value(obj.kategori_barang)},
-            {
-                "label": "Tanggal Pemeliharaan",
-                "value": _display_date(obj.tanggal_pemeliharaan),
-            },
-            {
-                "label": "Tanggal Perbaikan",
-                "value": _display_date(obj.tanggal_perbaikan),
-            },
-            {
-                "label": "IK Alat",
-                "value": "Lihat Dokumen PDF" if obj.ik_alat else "-",
-                "url": obj.ik_alat.url if obj.ik_alat else None,
-            },
-            {"label": "Catatan", "value": _display_value(obj.catatan), "full": True},
-            {
-                "label": "Status Peminjaman",
-                "value": _get_status_peminjaman_barang_laboratorium(obj),
-                "full": True,
-            },
-        ],
+        detail_items=_get_barang_laboratorium_detail_items(obj),
         top_icon="bi-tools",
     )
     return render(request, "master_data/detail_barang.html", context)
@@ -1602,6 +1774,7 @@ def hapus_barang_laboratorium(request, pk):
 def _render_barang_penunjang_list(request, import_context=None):
     queryset = BarangPenunjangOperasional.objects.order_by("nama_barang")
     context = paginate_list(request, queryset)
+    _ensure_qr_codes_for_context_items(context)
     context.update(
         {
             "page_title": "Data Barang Penunjang Lapangan",
@@ -1663,6 +1836,7 @@ def hapus_barang_penunjang(request, pk):
 def _render_bahan_operasional_list(request, import_context=None):
     queryset = BahanOperasional.objects.order_by("nama_barang")
     context = paginate_list(request, queryset)
+    _ensure_qr_codes_for_context_items(context)
     context.update(
         {
             "page_title": "Data Bahan Operasional",
@@ -1724,6 +1898,7 @@ def hapus_bahan_operasional(request, pk):
 def _render_fasilitas_ruangan_list(request, import_context=None):
     queryset = FasilitasRuangan.objects.order_by("nama_barang")
     context = paginate_list(request, queryset)
+    _ensure_qr_codes_for_context_items(context)
     context.update(
         {
             "page_title": "Data Sarana Prasarana Ruangan",
@@ -1834,6 +2009,7 @@ def hapus_fasilitas_ruangan(request, pk):
 def _render_peralatan_laboratorium_list(request, import_context=None):
     queryset = PeralatanLaboratorium.objects.order_by("nama_barang")
     context = paginate_list(request, queryset)
+    _ensure_qr_codes_for_context_items(context)
     context.update(
         {
             "page_title": "Data Peralatan Laboratorium",

@@ -1,7 +1,39 @@
+import uuid
+
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import FileExtensionValidator, MinValueValidator
 from django.db import models
 from django.db.models.functions import Lower
+from django.urls import reverse
+
+
+class QRCodeMixin(models.Model):
+    qr_token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    qr_code = models.ImageField(
+        upload_to="master_data/qr_code/",
+        blank=True,
+        null=True,
+        editable=False,
+    )
+
+    qr_url_name = None
+    qr_filename_prefix = "barang"
+
+    class Meta:
+        abstract = True
+
+    def get_public_detail_url_path(self):
+        if not self.qr_url_name:
+            return "#"
+        return reverse(self.qr_url_name, kwargs={"token": self.qr_token})
+
+    def get_public_detail_url(self):
+        base_url = getattr(settings, "PUBLIC_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
+        return f"{base_url}{self.get_public_detail_url_path()}"
+
+    def get_qr_filename_prefix(self):
+        return self.qr_filename_prefix or self.__class__.__name__.lower()
 
 
 class StatusBarangChoices(models.TextChoices):
@@ -83,7 +115,7 @@ class StatusStokBahanChoices(models.TextChoices):
     HABIS = "Habis", "Habis"
 
 
-class AssetBaseModel(models.Model):
+class AssetBaseModel(QRCodeMixin):
     lock_volume_to_one = True
 
     nama_barang = models.CharField(max_length=200)
@@ -185,6 +217,9 @@ class AssetBaseModel(models.Model):
 
 
 class BarangLaboratorium(AssetBaseModel):
+    qr_url_name = "master_data:public_barang_laboratorium"
+    qr_filename_prefix = "peralatan-survei"
+
     kategori_barang = models.CharField(
         max_length=40,
         choices=KategoriBarangLaboratoriumChoices.choices,
@@ -215,7 +250,10 @@ class BarangLaboratorium(AssetBaseModel):
         return self.nama_barang
 
 
-class BarangPenunjangOperasional(models.Model):
+class BarangPenunjangOperasional(QRCodeMixin):
+    qr_url_name = "master_data:public_barang_penunjang"
+    qr_filename_prefix = "barang-penunjang"
+
     nama_barang = models.CharField(max_length=200)
     tipe_merek_barang = models.CharField(max_length=200)
     volume = models.PositiveIntegerField(default=1, validators=[MinValueValidator(0)])
@@ -292,7 +330,10 @@ class BarangPenunjangOperasional(models.Model):
         super().save(*args, **kwargs)
 
 
-class BahanOperasional(models.Model):
+class BahanOperasional(QRCodeMixin):
+    qr_url_name = "master_data:public_bahan_operasional"
+    qr_filename_prefix = "bahan-operasional"
+
     nama_barang = models.CharField(max_length=200)
     kategori_barang = models.CharField(
         max_length=30,
@@ -468,6 +509,9 @@ class VolumeBaikAssetMixin(models.Model):
 
 
 class FasilitasRuangan(VolumeBaikAssetMixin, AssetBaseModel):
+    qr_url_name = "master_data:public_fasilitas_ruangan"
+    qr_filename_prefix = "fasilitas-ruangan"
+
     kategori_barang = models.CharField(
         max_length=30,
         choices=KategoriSaranaPrasaranaChoices.choices,
@@ -483,6 +527,9 @@ class FasilitasRuangan(VolumeBaikAssetMixin, AssetBaseModel):
 
 
 class PeralatanLaboratorium(VolumeBaikAssetMixin, AssetBaseModel):
+    qr_url_name = "master_data:public_peralatan_laboratorium"
+    qr_filename_prefix = "peralatan-laboratorium"
+
     volume_dipinjam = models.PositiveIntegerField(default=0, validators=[MinValueValidator(0)])
 
     class Meta(AssetBaseModel.Meta):

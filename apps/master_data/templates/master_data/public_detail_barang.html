@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="public-detail-shell">
+    <div class="page-header detail-header public-detail-header">
+        <div>
+            <span class="public-detail-badge"><i class="bi bi-qr-code"></i>&nbsp;SILEBAT Public Detail</span>
+            <h1>{{ page_title }}</h1>
+            <p>{{ page_subtitle }}</p>
+        </div>
+    </div>
+
+    <div class="card detail-user-card detail-asset-card public-detail-card">
+        <div class="detail-profile-top detail-asset-top">
+            <div class="detail-avatar detail-asset-avatar">
+                {% if photo_url %}
+                    <img src="{{ photo_url }}" alt="Foto {{ obj.nama_barang }}">
+                {% else %}
+                    <div class="detail-avatar__fallback detail-avatar__fallback--asset">
+                        <i class="bi {{ top_icon }}"></i>
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="detail-profile-meta">
+                <h2>{{ obj.nama_barang|default:"-" }}</h2>
+                <p>{{ top_meta }}</p>
+
+                {% if chips %}
+                <div class="detail-chip-group">
+                    {% for chip in chips %}
+                        <span class="detail-role-chip">{{ chip }}</span>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="detail-grid detail-grid--info">
+            {% for item in detail_items %}
+                <div class="detail-item {% if item.full %}detail-item--full{% endif %}">
+                    <label>{{ item.label }}</label>
+                    <p>
+                        {% if item.url %}
+                            <a href="{{ item.url }}" target="_blank" rel="noopener noreferrer">{{ item.value }}</a>
+                        {% else %}
+                            {{ item.value }}
+                        {% endif %}
+                    </p>
+                </div>
+            {% endfor %}
+        </div>
+
+        <div class="public-detail-footer">
+            <i class="bi bi-info-circle"></i>
+            <span>Informasi ini ditampilkan melalui QR-Code SILEBAT.</span>
+        </div>
+    </div>
+</div>
+{% endblock %}

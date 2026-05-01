@@ -8234,3 +8234,113 @@ select.return-status-select option:disabled {
         max-width: 8.6ch;
     }
 }
+
+/* =========================
+   MASTER DATA - QR CODE & PUBLIC DETAIL
+========================= */
+.detail-qr-panel {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    margin: 22px 0;
+    padding: 18px;
+    border: 1px solid var(--border-color, #dbe4ea);
+    border-radius: 20px;
+    background: #f8fbfc;
+}
+
+.detail-qr-image {
+    width: 150px;
+    height: 150px;
+    flex-shrink: 0;
+    border-radius: 18px;
+    background: #ffffff;
+    border: 1px solid #e2e8ef;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px;
+}
+
+.detail-qr-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.detail-qr-info h3 {
+    margin: 0 0 6px;
+    color: var(--color-primary-navy, #103e6f);
+}
+
+.detail-qr-info p {
+    margin: 0 0 14px;
+    color: var(--muted, #64748b);
+}
+
+.detail-qr-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.public-detail-shell {
+    width: min(960px, 100%);
+    margin: 0 auto;
+}
+
+.public-detail-header {
+    margin-bottom: 22px;
+}
+
+.public-detail-header h1 {
+    margin-top: 10px;
+}
+
+.public-detail-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: #eaf7fb;
+    color: #103e6f;
+    font-weight: 700;
+    font-size: 0.85rem;
+}
+
+.public-detail-card {
+    margin-bottom: 32px;
+}
+
+.public-detail-footer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 18px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: #f0f4f6;
+    color: #103e6f;
+    font-weight: 600;
+}
+
+@media (max-width: 640px) {
+    .detail-qr-panel {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .detail-qr-image {
+        width: 100%;
+        height: 220px;
+    }
+
+    .detail-qr-actions {
+        flex-direction: column;
+    }
+
+    .detail-qr-actions .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
