@@ -13,11 +13,18 @@
         <div>
             <h2 class="table-title">{% if is_report %}Riwayat Pengajuan{% else %}Daftar Pengajuan{% endif %}</h2>
         </div>
-        {% if can_add %}
-        <a href="{% url 'peminjaman:tambah' %}" class="btn btn-primary">
-            <i class="bi bi-plus-circle"></i>&nbsp;Tambah Pengajuan
-        </a>
-        {% endif %}
+        <div class="table-toolbar-actions">
+            {% if is_report and role_access.is_super_admin %}
+            <button type="button" class="btn btn-secondary js-import-data-btn" data-import-target="#riwayatPeminjamanImportModal">
+                <i class="bi bi-filetype-xlsx"></i>&nbsp;Import Riwayat
+            </button>
+            {% endif %}
+            {% if can_add %}
+            <a href="{% url 'peminjaman:tambah' %}" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i>&nbsp;Tambah Pengajuan
+            </a>
+            {% endif %}
+        </div>
     </div>
 
     {% include 'components/master_entries_control.html' %}
@@ -140,5 +147,11 @@
         </div>
     </div>
 </div>
+{% endif %}
+
+{% if is_report and role_access.is_super_admin %}
+    {% url 'peminjaman:import_riwayat_peminjaman' as import_action_url %}
+    {% url 'peminjaman:download_format_import_riwayat_peminjaman' as import_download_url %}
+    {% include 'components/import_excel_modal.html' with import_context=import_context import_modal_id='riwayatPeminjamanImportModal' import_file_id='riwayatPeminjamanImportFile' import_title='Import Riwayat Peminjaman' import_subtitle='Import data historis yang langsung masuk ke Laporan Peminjaman tanpa mengubah stok master data aktif.' import_action_url=import_action_url import_download_url=import_download_url import_help_text='Gunakan file .xlsx maksimal 7 MB. Nomor pengajuan duplikat akan ditolak. Data hasil import langsung berstatus Pengembalian Selesai.' %}
 {% endif %}
 {% endblock %}
