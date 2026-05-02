@@ -20,9 +20,6 @@ from .models import Announcement, Notification, NotificationCategory
 
 User = get_user_model()
 
-VERIFICATION_NOTIFICATION_EXPIRE_HOURS = 12
-
-
 def _active_users():
     return User.objects.filter(is_active=True).select_related("profile", "profile__role")
 
@@ -244,6 +241,38 @@ def _verification_dedupe_key(pengajuan, source_action=None):
         return f"pengembalian:{pengajuan.pk}:step:{pengajuan.return_current_step}:flow:{flow_key}"
     return f"peminjaman:{pengajuan.pk}:step:{pengajuan.current_step}:flow:{flow_key}"
 
+
+def _verification_step_key_prefix(pengajuan):
+    if _is_active_pengembalian(pengajuan):
+        return f"pengembalian:{pengajuan.pk}:step:{pengajuan.return_current_step}:flow:"
+    return f"peminjaman:{pengajuan.pk}:step:{pengajuan.current_step}:flow:"
+
+
+def _has_visible_current_step_notification(recipient, pengajuan):
+    """Cegah notifikasi verifikasi generik muncul ganda pada tahap yang sama."""
+    if recipient is None or not getattr(recipient, "pk", None):
+        return False
+
+    step_key_prefix = _verification_step_key_prefix(pengajuan)
+    queryset = visible_notifications(
+        Notification.objects.filter(
+            recipient=recipient,
+            source_pengajuan=pengajuan,
+            category=NotificationCategory.VERIFICATION,
+            dedupe_key__startswith=step_key_prefix,
+        )
+    )
+
+    if not queryset.exists():
+        return False
+
+    pending_key = f"{step_key_prefix}pending"
+    has_followup_notification = queryset.exclude(dedupe_key=pending_key).exists()
+    if has_followup_notification:
+        queryset.filter(dedupe_key=pending_key).delete()
+    return True
+
+
 def _create_or_update_notification(
     recipient,
     *,
@@ -287,13 +316,14 @@ def _create_or_update_notification(
 
 def close_open_verification_notifications(pengajuan):
     now = timezone.now()
+    expired_at = now - timedelta(seconds=1)
     Notification.objects.filter(
         source_pengajuan=pengajuan,
         category=NotificationCategory.VERIFICATION,
     ).update(
         is_read=True,
         read_at=now,
-        visible_until=now + timedelta(hours=VERIFICATION_NOTIFICATION_EXPIRE_HOURS),
+        visible_until=expired_at,
         updated_at=now,
     )
 
@@ -421,9 +451,10 @@ def ensure_user_pending_notifications(user):
         recipients = _verification_recipients(pengajuan)
         if not any(getattr(recipient, "pk", None) == user.pk for recipient in recipients):
             continue
-        dedupe_key = _verification_dedupe_key(pengajuan)
-        if Notification.objects.filter(recipient=user, dedupe_key=dedupe_key).exists():
+        if _has_visible_current_step_notification(user, pengajuan):
             continue
+
+        dedupe_key = _verification_dedupe_key(pengajuan)
         _create_or_update_notification(
             user,
             title=_verification_title(pengajuan),

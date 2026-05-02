@@ -10,11 +10,17 @@ from apps.core.permissions import ROLE_SUPER_ADMIN, deny_access, get_role_name
 
 from .forms import AnnouncementForm
 from .models import Announcement, Notification, NotificationCategory
-from .services import mark_all_as_read, publish_announcement_to_users, visible_notifications
+from .services import (
+    ensure_user_pending_notifications,
+    mark_all_as_read,
+    publish_announcement_to_users,
+    visible_notifications,
+)
 
 
 @login_required
 def index(request):
+    ensure_user_pending_notifications(request.user)
     queryset = visible_notifications(Notification.objects.filter(recipient=request.user)).order_by("-visible_from", "-created_at", "-id")
     filter_status = (request.GET.get("status") or "").strip()
     if filter_status == "belum-dibaca":
