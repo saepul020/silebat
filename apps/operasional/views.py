@@ -8,6 +8,7 @@ from django.urls import reverse
 from django.shortcuts import get_object_or_404, redirect, render
 
 from apps.core.list_pagination import paginate_list
+from apps.core.excel_utils import build_excel_response
 from apps.core.permissions import ROLE_SUPER_ADMIN, get_role_name
 
 from .forms import (
@@ -325,6 +326,28 @@ def _download_import_template(*, headers, sample, references, validations, works
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     return response
 
+
+
+
+@login_required
+def export_instansi(request):
+    if not _is_super_admin_user(request.user):
+        return _deny_import_access(request)
+
+    queryset = InstansiKlien.objects.order_by("nama_instansi")
+    return build_excel_response(
+        "export_data_instansi_klien.xlsx",
+        [
+            {
+                "title": "Data Instansi",
+                "headers": ["Nama Instansi", "Alamat Instansi", "Organisasi"],
+                "rows": [
+                    [item.nama_instansi, item.alamat_instansi, item.organisasi]
+                    for item in queryset
+                ],
+            }
+        ],
+    )
 
 @login_required
 def import_instansi(request):

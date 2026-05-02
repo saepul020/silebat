@@ -19,6 +19,7 @@ from apps.operasional.models import (
 )
 
 from apps.core.list_pagination import paginate_list
+from apps.core.excel_utils import build_excel_response
 from apps.core.permissions import (
     ROLE_ADMIN_LAB,
     ROLE_KEPALA_LAB,
@@ -649,6 +650,269 @@ def laporan_peminjaman(request):
     context.update(pagination_context)
     return render(request, "peminjaman/pengajuan_list.html", context)
 
+
+
+
+def _export_transfer_target_number(item):
+    target = getattr(item, "transfer_target", None)
+    return getattr(target, "nomor_pengajuan", "") or "-"
+
+
+def _export_survei_labels(obj):
+    labels = [item.jenis_survei for item in obj.kegiatan_survei.all()]
+    return "; ".join(labels) if labels else "-"
+
+
+def _export_instansi_name(obj):
+    if obj.instansi_tujuan_lainnya:
+        return obj.instansi_tujuan_lainnya
+    return str(obj.instansi_tujuan) if obj.instansi_tujuan else "-"
+
+
+def _export_layanan_name(obj):
+    return str(obj.layanan_kegiatan) if obj.layanan_kegiatan else "-"
+
+
+def _export_tim_name(obj):
+    return normalize_tim_kegiatan_name(obj.tim_kegiatan) if obj.tim_kegiatan else "-"
+
+
+def _export_report_queryset(user):
+    return (
+        _get_pengajuan_list_queryset(user, is_report=True)
+        .prefetch_related("kegiatan_survei")
+        .order_by("-return_completed_at", "-submitted_at", "-id")
+    )
+
+
+@login_required
+def export_laporan_peminjaman(request):
+    if get_role_name(request.user) != ROLE_SUPER_ADMIN:
+        return deny_access(request, "Fitur export laporan peminjaman hanya dapat diakses oleh Super Admin.")
+
+    queryset = list(_export_report_queryset(request.user))
+
+    peminjaman_rows = []
+    lab_rows = []
+    penunjang_rows = []
+    bahan_rows = []
+    peralatan_lab_rows = []
+
+    for obj in queryset:
+        peminjaman_rows.append([
+            obj.nomor_pengajuan,
+            obj.peminjam.username if obj.peminjam else "-",
+            obj.nama_peminjam,
+            obj.no_hp_peminjam,
+            obj.email_peminjam,
+            obj.nip_peminjam,
+            obj.alamat_peminjam,
+            _export_layanan_name(obj),
+            _export_tim_name(obj),
+            _export_instansi_name(obj),
+            getattr(obj.instansi_tujuan, "organisasi", "") or "-",
+            obj.tanggal_mulai,
+            obj.tanggal_selesai,
+            obj.return_completed_at,
+            obj.total_hari,
+            _export_survei_labels(obj),
+            obj.survei_lainnya or "-",
+            format_optional_numeric_display(obj.titik_geolistrik_1d),
+            format_optional_numeric_display(obj.lintasan_geolistrik_2d),
+            format_optional_numeric_display(obj.titik_kualitas_air),
+            format_optional_numeric_display(obj.titik_mat),
+            format_optional_numeric_display(obj.titik_pumping_test),
+            format_optional_numeric_display(obj.titik_infiltrasi),
+            format_optional_numeric_display(obj.titik_borehole),
+            format_optional_numeric_display(obj.titik_logging),
+            obj.get_current_step_display(),
+            obj.get_return_current_step_display(),
+        ])
+
+        for item in obj.pengembalian_lab_items.all():
+            lab_rows.append([
+                obj.nomor_pengajuan,
+                item.snapshot_nama_barang,
+                item.snapshot_tipe_merek_barang,
+                item.snapshot_jenis_barang,
+                item.snapshot_status_barang,
+                item.snapshot_kode_aset_bmn,
+                item.snapshot_kode_laboratorium,
+                item.snapshot_volume,
+                item.snapshot_satuan,
+                item.snapshot_kondisi_barang,
+                item.snapshot_tahun_perolehan,
+                item.get_status_display(),
+                _export_transfer_target_number(item),
+                item.note,
+            ])
+
+        for item in obj.pengembalian_penunjang_items.all():
+            penunjang_rows.append([
+                obj.nomor_pengajuan,
+                item.snapshot_nama_barang,
+                item.snapshot_tipe_merek_barang,
+                item.snapshot_kategori_barang,
+                item.snapshot_satuan,
+                item.qty_dikembalikan,
+                item.qty_rusak,
+                item.qty_hilang,
+                item.qty_transfer,
+                item.total_processed,
+                _export_transfer_target_number(item),
+                item.note,
+            ])
+
+        for item in obj.pengembalian_bahan_items.all():
+            bahan_rows.append([
+                obj.nomor_pengajuan,
+                item.snapshot_nama_barang,
+                item.snapshot_kategori_barang,
+                item.snapshot_satuan,
+                item.qty_sisa,
+                item.qty_transfer,
+                item.total_processed,
+                _export_transfer_target_number(item),
+                item.note,
+            ])
+
+        for item in obj.pengembalian_peralatan_laboratorium_items.all():
+            peralatan_lab_rows.append([
+                obj.nomor_pengajuan,
+                item.snapshot_nama_barang,
+                item.snapshot_tipe_merek_barang,
+                item.snapshot_jenis_barang,
+                item.snapshot_status_barang,
+                item.snapshot_kode_aset_bmn,
+                item.snapshot_kode_laboratorium,
+                item.snapshot_volume,
+                item.snapshot_satuan,
+                item.snapshot_kondisi_barang,
+                item.snapshot_tahun_perolehan,
+                item.qty_dikembalikan,
+                item.qty_rusak,
+                item.qty_hilang,
+                item.qty_transfer,
+                item.total_processed,
+                _export_transfer_target_number(item),
+                item.note,
+            ])
+
+    return build_excel_response(
+        "export_laporan_peminjaman.xlsx",
+        [
+            {
+                "title": "Peminjaman",
+                "headers": [
+                    "Nomor Pengajuan",
+                    "Username Peminjam",
+                    "Nama Peminjam",
+                    "Nomor Telepon",
+                    "Email",
+                    "NIP / NIK",
+                    "Alamat",
+                    "Layanan Kegiatan",
+                    "Tim Kegiatan",
+                    "Instansi Tujuan",
+                    "Organisasi Instansi",
+                    "Tanggal Mulai",
+                    "Tanggal Selesai",
+                    "Tanggal Pengembalian",
+                    "Total Hari",
+                    "Kegiatan Survei",
+                    "Survei Lainnya",
+                    "Titik Geolistrik 1D",
+                    "Lintasan Geolistrik 2D",
+                    "Titik Kualitas Air",
+                    "Titik MAT",
+                    "Titik Pumping Test",
+                    "Titik Infiltrasi",
+                    "Titik Borehole Camera",
+                    "Titik Logging",
+                    "Proses Peminjaman",
+                    "Proses Pengembalian",
+                ],
+                "rows": peminjaman_rows,
+            },
+            {
+                "title": "Peralatan Survei",
+                "headers": [
+                    "Nomor Pengajuan",
+                    "Nama Barang",
+                    "Tipe / Merek Barang",
+                    "Jenis Barang",
+                    "Status Barang",
+                    "Kode Aset BMN",
+                    "Kode Laboratorium",
+                    "Volume",
+                    "Satuan",
+                    "Kondisi Barang",
+                    "Tahun Perolehan",
+                    "Status Pengembalian",
+                    "Tujuan Transfer",
+                    "Catatan Pengembalian",
+                ],
+                "rows": lab_rows,
+            },
+            {
+                "title": "Barang Penunjang",
+                "headers": [
+                    "Nomor Pengajuan",
+                    "Nama Barang",
+                    "Tipe / Merek Barang",
+                    "Kategori Barang",
+                    "Satuan",
+                    "Dikembalikan",
+                    "Rusak",
+                    "Hilang",
+                    "Transfer",
+                    "Total Diproses",
+                    "Tujuan Transfer",
+                    "Catatan Pengembalian",
+                ],
+                "rows": penunjang_rows,
+            },
+            {
+                "title": "Bahan Operasional",
+                "headers": [
+                    "Nomor Pengajuan",
+                    "Nama Barang",
+                    "Kategori Barang",
+                    "Satuan",
+                    "Sisa",
+                    "Transfer",
+                    "Total Diproses",
+                    "Tujuan Transfer",
+                    "Catatan Pengembalian",
+                ],
+                "rows": bahan_rows,
+            },
+            {
+                "title": "Peralatan Lab",
+                "headers": [
+                    "Nomor Pengajuan",
+                    "Nama Barang",
+                    "Tipe / Merek Barang",
+                    "Jenis Barang",
+                    "Status Barang",
+                    "Kode Aset BMN",
+                    "Kode Laboratorium",
+                    "Volume",
+                    "Satuan",
+                    "Kondisi Barang",
+                    "Tahun Perolehan",
+                    "Dikembalikan",
+                    "Rusak",
+                    "Hilang",
+                    "Transfer",
+                    "Total Diproses",
+                    "Tujuan Transfer",
+                    "Catatan Pengembalian",
+                ],
+                "rows": peralatan_lab_rows,
+            },
+        ],
+    )
 
 @login_required
 def tambah_pengajuan(request):

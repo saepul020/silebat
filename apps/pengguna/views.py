@@ -11,6 +11,7 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 
 from apps.core.list_pagination import paginate_list
+from apps.core.excel_utils import build_excel_response
 from apps.core.permissions import (
     can_access_pengguna_app,
     can_edit_user,
@@ -385,6 +386,56 @@ def _download_import_template(*, headers, sample, references, validations, works
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     return response
 
+
+
+
+@login_required
+def export_pengguna(request):
+    if not can_access_pengguna_app(request.user):
+        return _deny_import_access(request)
+
+    queryset = User.objects.select_related('profile', 'profile__role', 'profile__nama_tim').order_by('username')
+    rows = []
+    for user in queryset:
+        profile = user.safe_profile
+        rows.append([
+            user.username,
+            user.get_full_name() or '-',
+            user.email or '-',
+            user.nip or '-',
+            user.no_hp or '-',
+            profile.role.nama if profile.role else '-',
+            profile.jabatan or '-',
+            str(profile.nama_tim) if profile.nama_tim else '-',
+            profile.alamat or '-',
+            'Aktif' if user.is_active else 'Nonaktif',
+            user.date_joined,
+            user.last_login,
+        ])
+
+    return build_excel_response(
+        'export_daftar_pengguna.xlsx',
+        [
+            {
+                'title': 'Daftar Pengguna',
+                'headers': [
+                    'Username',
+                    'Nama Lengkap dan Gelar',
+                    'Email',
+                    'NIP / NIK',
+                    'Nomor HP',
+                    'Peran',
+                    'Jabatan',
+                    'Nama Tim',
+                    'Alamat',
+                    'Status Akun',
+                    'Tanggal Bergabung',
+                    'Login Terakhir',
+                ],
+                'rows': rows,
+            }
+        ],
+    )
 
 @login_required
 def import_pengguna(request):

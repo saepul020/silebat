@@ -13,6 +13,9 @@
         <h3 class="table-title">Daftar Peralatan Laboratorium</h3>
         <div class="table-toolbar-actions">
             {% if role_access.is_super_admin %}
+                <a href="{% url 'master_data:export_peralatan_laboratorium' %}" class="btn btn-secondary">
+                    <i class="bi bi-download"></i>&nbsp;Export Data
+                </a>
                 <button type="button" class="btn btn-secondary js-import-data-btn" data-import-target="#peralatanLaboratoriumImportModal">
                     <i class="bi bi-file-earmark-spreadsheet"></i>&nbsp;Import Data
                 </button>

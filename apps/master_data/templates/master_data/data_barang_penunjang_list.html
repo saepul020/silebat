@@ -13,6 +13,9 @@
         <h3 class="table-title">Daftar Barang Penunjang Lapangan</h3>
         <div class="table-toolbar-actions">
             {% if role_access.is_super_admin %}
+                <a href="{% url 'master_data:export_barang_penunjang' %}" class="btn btn-secondary">
+                    <i class="bi bi-download"></i>&nbsp;Export Data
+                </a>
                 <button type="button" class="btn btn-secondary js-import-data-btn" data-import-target="#barangPenunjangImportModal">
                     <i class="bi bi-file-earmark-spreadsheet"></i>&nbsp;Import Data
                 </button>

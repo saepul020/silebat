@@ -13,6 +13,9 @@
         <h3 class="table-title">Data Pengguna</h3>
         {% if can_manage_user_app %}
             <div class="table-toolbar-actions">
+                <a href="{% url 'pengguna:export_pengguna' %}" class="btn btn-secondary">
+                    <i class="bi bi-download"></i>&nbsp;Export Data
+                </a>
                 <button type="button" class="btn btn-secondary js-import-data-btn" data-import-target="#penggunaImportModal">
                     <i class="bi bi-file-earmark-spreadsheet"></i>&nbsp;Import Data
                 </button>

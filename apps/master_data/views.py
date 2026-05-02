@@ -5,6 +5,7 @@ from django.contrib.auth.decorators import login_required
 
 from apps.core.permissions import ROLE_SUPER_ADMIN, get_role_name
 from apps.core.list_pagination import paginate_list
+from apps.core.excel_utils import build_excel_response
 from django.db import transaction
 from django.db.models.deletion import ProtectedError
 from django.http import HttpResponse, JsonResponse
@@ -192,6 +193,30 @@ def _safe_file_url(file_field):
         return file_field.url
     except (ValueError, AttributeError):
         return None
+
+
+def _boolean_display(value):
+    return "Ya" if value else "Tidak"
+
+
+def _public_detail_export_url(request, obj):
+    path = obj.get_public_detail_url_path() if hasattr(obj, "get_public_detail_url_path") else ""
+    if not path or path == "#":
+        return "-"
+    return request.build_absolute_uri(path)
+
+
+def _export_master_queryset(request, *, filename, sheet_title, headers, queryset, row_builder):
+    return build_excel_response(
+        filename,
+        [
+            {
+                "title": sheet_title,
+                "headers": headers,
+                "rows": [row_builder(obj) for obj in queryset],
+            }
+        ],
+    )
 
 
 def _render_form_page(
@@ -447,6 +472,61 @@ def _render_barang_laboratorium_list(request, import_context=None):
 @login_required
 def data_barang_laboratorium(request):
     return _render_barang_laboratorium_list(request)
+
+
+@login_required
+def export_barang_laboratorium(request):
+    if not _is_super_admin_user(request.user):
+        return _deny_import_access(request)
+
+    headers = [
+        "Nama Barang",
+        "Status Barang",
+        "Tipe / Merek Barang",
+        "Jenis Barang",
+        "Kode Aset BMN",
+        "Kode Laboratorium",
+        "Volume",
+        "Satuan",
+        "Tahun Perolehan",
+        "Kondisi Barang",
+        "Kategori Barang",
+        "Ketersediaan",
+        "Sedang Dipinjam",
+        "Lokasi Barang",
+        "Tanggal Pemeliharaan",
+        "Tanggal Perbaikan",
+        "Catatan",
+        "URL QR Detail",
+    ]
+    queryset = BarangLaboratorium.objects.order_by("nama_barang")
+    return _export_master_queryset(
+        request,
+        filename="export_data_peralatan_survei_lapangan.xlsx",
+        sheet_title="Peralatan Survei",
+        headers=headers,
+        queryset=queryset,
+        row_builder=lambda obj: [
+            obj.nama_barang,
+            obj.status_barang,
+            obj.tipe_merek_barang,
+            obj.jenis_barang,
+            obj.kode_aset_bmn,
+            obj.kode_laboratorium,
+            obj.volume,
+            obj.satuan,
+            obj.tahun_perolehan,
+            obj.kondisi_barang,
+            obj.kategori_barang,
+            obj.ketersediaan,
+            _boolean_display(obj.sedang_dipinjam),
+            obj.lokasi_barang,
+            obj.tanggal_pemeliharaan,
+            obj.tanggal_perbaikan,
+            obj.catatan,
+            _public_detail_export_url(request, obj),
+        ],
+    )
 
 
 def _is_super_admin_user(user):
@@ -1513,6 +1593,200 @@ def download_format_import_fasilitas_ruangan(request):
         filename='format_import_data_sarana_prasarana_ruangan.xlsx',
     )
 
+
+
+@login_required
+def export_barang_penunjang(request):
+    if not _is_super_admin_user(request.user):
+        return _deny_import_access_to(request, 'master_data:data_barang_penunjang', 'data barang penunjang lapangan')
+
+    headers = [
+        "Nama Barang",
+        "Tipe / Merek Barang",
+        "Kategori Barang",
+        "Volume Baik",
+        "Volume Rusak",
+        "Total Volume",
+        "Volume Dipinjam",
+        "Sisa Stok",
+        "Satuan",
+        "Ketersediaan",
+        "URL QR Detail",
+    ]
+    queryset = BarangPenunjangOperasional.objects.order_by("nama_barang")
+    return _export_master_queryset(
+        request,
+        filename="export_data_barang_penunjang_lapangan.xlsx",
+        sheet_title="Barang Penunjang",
+        headers=headers,
+        queryset=queryset,
+        row_builder=lambda obj: [
+            obj.nama_barang,
+            obj.tipe_merek_barang,
+            obj.kategori_barang,
+            obj.volume_baik,
+            obj.volume_rusak,
+            obj.total_volume,
+            obj.volume_pinjam_aktif,
+            obj.sisa_volume,
+            obj.satuan,
+            obj.ketersediaan,
+            _public_detail_export_url(request, obj),
+        ],
+    )
+
+
+@login_required
+def export_bahan_operasional(request):
+    if not _is_super_admin_user(request.user):
+        return _deny_import_access_to(request, 'master_data:data_bahan_operasional', 'data bahan operasional')
+
+    headers = [
+        "Nama Barang",
+        "Kategori Barang",
+        "Volume",
+        "Satuan",
+        "Stok Minimum",
+        "Ketersediaan",
+        "URL QR Detail",
+    ]
+    queryset = BahanOperasional.objects.order_by("nama_barang")
+    return _export_master_queryset(
+        request,
+        filename="export_data_bahan_operasional.xlsx",
+        sheet_title="Bahan Operasional",
+        headers=headers,
+        queryset=queryset,
+        row_builder=lambda obj: [
+            obj.nama_barang,
+            obj.kategori_barang,
+            obj.volume,
+            obj.satuan,
+            obj.stok_minimum,
+            obj.ketersediaan,
+            _public_detail_export_url(request, obj),
+        ],
+    )
+
+
+@login_required
+def export_fasilitas_ruangan(request):
+    if not _is_super_admin_user(request.user):
+        return _deny_import_access_to(request, 'master_data:data_fasilitas_ruangan', 'data sarana prasarana ruangan')
+
+    headers = [
+        "Nama Barang",
+        "Status Barang",
+        "Tipe / Merek Barang",
+        "Jenis Barang",
+        "Kode Aset BMN",
+        "Kode Laboratorium",
+        "Kategori Barang",
+        "Volume Baik",
+        "Volume Rusak",
+        "Total Volume",
+        "Satuan",
+        "Tahun Perolehan",
+        "Kondisi Barang",
+        "Ketersediaan",
+        "Sedang Dipinjam",
+        "Lokasi Barang",
+        "Tanggal Pemeliharaan",
+        "Tanggal Perbaikan",
+        "Catatan",
+        "URL QR Detail",
+    ]
+    queryset = FasilitasRuangan.objects.order_by("nama_barang")
+    return _export_master_queryset(
+        request,
+        filename="export_data_sarana_prasarana_ruangan.xlsx",
+        sheet_title="Sarana Prasarana",
+        headers=headers,
+        queryset=queryset,
+        row_builder=lambda obj: [
+            obj.nama_barang,
+            obj.status_barang,
+            obj.tipe_merek_barang,
+            obj.jenis_barang,
+            obj.kode_aset_bmn,
+            obj.kode_laboratorium,
+            obj.kategori_barang,
+            obj.volume_baik,
+            obj.volume_rusak,
+            obj.total_volume,
+            obj.satuan,
+            obj.tahun_perolehan,
+            obj.kondisi_barang,
+            obj.ketersediaan,
+            _boolean_display(obj.sedang_dipinjam),
+            obj.lokasi_barang,
+            obj.tanggal_pemeliharaan,
+            obj.tanggal_perbaikan,
+            obj.catatan,
+            _public_detail_export_url(request, obj),
+        ],
+    )
+
+
+@login_required
+def export_peralatan_laboratorium(request):
+    if not _is_super_admin_user(request.user):
+        return _deny_import_access_to(request, 'master_data:data_peralatan_laboratorium', 'data peralatan laboratorium')
+
+    headers = [
+        "Nama Barang",
+        "Status Barang",
+        "Tipe / Merek Barang",
+        "Jenis Barang",
+        "Kode Aset BMN",
+        "Kode Laboratorium",
+        "Volume Baik",
+        "Volume Rusak",
+        "Total Volume",
+        "Volume Dipinjam",
+        "Sisa Stok",
+        "Satuan",
+        "Tahun Perolehan",
+        "Kondisi Barang",
+        "Ketersediaan",
+        "Sedang Dipinjam",
+        "Lokasi Barang",
+        "Tanggal Pemeliharaan",
+        "Tanggal Perbaikan",
+        "Catatan",
+        "URL QR Detail",
+    ]
+    queryset = PeralatanLaboratorium.objects.order_by("nama_barang")
+    return _export_master_queryset(
+        request,
+        filename="export_data_peralatan_laboratorium.xlsx",
+        sheet_title="Peralatan Lab",
+        headers=headers,
+        queryset=queryset,
+        row_builder=lambda obj: [
+            obj.nama_barang,
+            obj.status_barang,
+            obj.tipe_merek_barang,
+            obj.jenis_barang,
+            obj.kode_aset_bmn,
+            obj.kode_laboratorium,
+            obj.volume_baik,
+            obj.volume_rusak,
+            obj.total_volume,
+            obj.volume_pinjam_aktif,
+            obj.sisa_volume,
+            obj.satuan,
+            obj.tahun_perolehan,
+            obj.kondisi_barang,
+            obj.ketersediaan,
+            _boolean_display(obj.sedang_dipinjam),
+            obj.lokasi_barang,
+            obj.tanggal_pemeliharaan,
+            obj.tanggal_perbaikan,
+            obj.catatan,
+            _public_detail_export_url(request, obj),
+        ],
+    )
 
 
 def _get_status_peminjaman_barang_laboratorium(obj):

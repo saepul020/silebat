@@ -24,6 +24,7 @@ urlpatterns = [
     path('instansi/', operasional_guard(views.data_instansi), name='data_instansi'),
     path('instansi/tambah/', operasional_guard(views.tambah_instansi), name='tambah_instansi'),
     path('instansi/import/', operasional_guard(views.import_instansi), name='import_instansi'),
+    path('instansi/export/', operasional_guard(views.export_instansi), name='export_instansi'),
     path('instansi/import/download-format/', operasional_guard(views.download_format_import_instansi), name='download_format_import_instansi'),
     path('instansi/<int:pk>/edit/', operasional_guard(views.edit_instansi), name='edit_instansi'),
     path('instansi/<int:pk>/hapus/', operasional_guard(views.hapus_instansi), name='hapus_instansi'),

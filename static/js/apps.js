@@ -151,7 +151,7 @@ function initPenggunaCreateFormValidation() {
         return String(text || '').replace(/^\*/, '').trim();
     }
 
-    function clearMessages(group, clearableMessages) {
+    function clearMessages(group, clearableMessages, clearAllMessages) {
         if (!group) {
             return;
         }
@@ -162,7 +162,11 @@ function initPenggunaCreateFormValidation() {
 
         group.querySelectorAll('.input-error-text').forEach(function (node) {
             const message = normalizeMessage(node.textContent);
-            if (node.dataset.clientError === 'true' || normalizedMessages.includes(message)) {
+            if (
+                clearAllMessages
+                || node.dataset.clientError === 'true'
+                || normalizedMessages.includes(message)
+            ) {
                 node.remove();
             }
         });
@@ -205,6 +209,8 @@ function initPenggunaCreateFormValidation() {
         const value = String(input.value || '').trim();
         const matchTarget = config.matchTargetId ? document.getElementById(config.matchTargetId) : null;
         const clearableMessages = [config.message, 'Masukkan alamat email yang valid.', config.matchMessage || 'Data tidak sama.', config.invalidMessage || ''];
+
+        clearMessages(group, clearableMessages, true);
 
         if (!value) {
             showMessage(group, config.message, clearableMessages);

@@ -207,6 +207,23 @@ class UserForm(UserCreationForm):
             raise forms.ValidationError("Nama lengkap wajib diisi.")
         return " ".join(nama_lengkap.split())
 
+
+    def validate_password_for_user(self, user, password_field_name="password2"):
+        """
+        Validasi password bawaan Django tetap dipakai, tetapi pesan error
+        kekuatan password ditampilkan pada field Kata Sandi dan Konfirmasi
+        Kata Sandi supaya perilakunya konsisten di UI.
+        """
+        password = self.cleaned_data.get(password_field_name)
+        if not password:
+            return
+
+        try:
+            password_validation.validate_password(password, user)
+        except forms.ValidationError as error:
+            self.add_error("password1", error)
+            self.add_error("password2", error)
+
     def save(self, commit=True):
         user = super().save(commit=False)
         user.first_name = self.cleaned_data["nama_lengkap"]
@@ -431,6 +448,7 @@ class UserUpdateForm(forms.ModelForm):
                     password_validation.validate_password(password_baru1, self.instance)
                 except forms.ValidationError as error:
                     self.add_error("password_baru1", error)
+                    self.add_error("password_baru2", error)
 
         return cleaned_data
 
