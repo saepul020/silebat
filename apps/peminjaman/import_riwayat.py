@@ -80,6 +80,8 @@ PEMINJAMAN_HEADERS = [
     "Titik MAT",
     "Titik Pumping Test",
     "Titik Infiltrasi",
+    "Titik Debit Air",
+    "Lokasi Topografi",
     "Titik Borehole Camera",
     "Titik Logging",
 ]
@@ -170,6 +172,8 @@ PENGUKURAN_CONFIG = [
     ("titik_mat", "Titik MAT"),
     ("titik_pumping_test", "Titik Pumping Test"),
     ("titik_infiltrasi", "Titik Infiltrasi"),
+    ("titik_debit_air", "Titik Debit Air"),
+    ("lokasi_topografi", "Lokasi Topografi"),
     ("titik_borehole", "Titik Borehole Camera"),
     ("titik_logging", "Titik Logging"),
 ]
@@ -181,6 +185,8 @@ PENGUKURAN_HEADER_TO_FIELD = {
     "Titik MAT": "titik_mat",
     "Titik Pumping Test": "titik_pumping_test",
     "Titik Infiltrasi": "titik_infiltrasi",
+    "Titik Debit Air": "titik_debit_air",
+    "Lokasi Topografi": "lokasi_topografi",
     "Titik Borehole Camera": "titik_borehole",
     "Titik Logging": "titik_logging",
 }
@@ -1265,6 +1271,8 @@ def _save_import_payload(payload, actor):
                 titik_mat=row.get("titik_mat"),
                 titik_pumping_test=row.get("titik_pumping_test"),
                 titik_infiltrasi=row.get("titik_infiltrasi"),
+                titik_debit_air=row.get("titik_debit_air"),
+                lokasi_topografi=row.get("lokasi_topografi"),
                 titik_borehole=row.get("titik_borehole"),
                 titik_logging=row.get("titik_logging"),
             )
@@ -1450,6 +1458,8 @@ def download_format_import_riwayat_peminjaman(request):
             0,
             1,
             1,
+            0,
+            0,
             0,
             0,
             0,

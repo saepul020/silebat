@@ -275,6 +275,8 @@ def _parse_pengukuran_data(post_data):
         "titik_mat",
         "titik_pumping_test",
         "titik_infiltrasi",
+        "titik_debit_air",
+        "lokasi_topografi",
         "titik_borehole",
         "titik_logging",
     )

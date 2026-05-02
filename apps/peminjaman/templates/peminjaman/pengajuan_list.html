@@ -15,7 +15,7 @@
         </div>
         <div class="table-toolbar-actions">
             {% if is_report and role_access.is_super_admin %}
-            <a href="{% url 'peminjaman:export_laporan_peminjaman' %}" class="btn btn-secondary">
+            <a href="{% url 'peminjaman:export_laporan_peminjaman' %}?tahun={{ selected_report_year|default:'all' }}" class="btn btn-secondary">
                 <i class="bi bi-download"></i>&nbsp;Export Laporan
             </a>
             <button type="button" class="btn btn-secondary js-import-data-btn" data-import-target="#riwayatPeminjamanImportModal">

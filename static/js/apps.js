@@ -5773,27 +5773,29 @@ function initMasterShowEntriesControl() {
     const forms = document.querySelectorAll('[data-master-entries-form="true"]');
 
     forms.forEach(function (form) {
-        const select = form.querySelector('.js-show-entries-select');
+        const selects = form.querySelectorAll('.js-show-entries-select, .js-master-filter-select');
         const pageInput = form.querySelector('input[name="page"]');
 
-        if (!select) {
+        if (!selects.length) {
             return;
         }
 
-        select.addEventListener('change', function () {
-            if (!select.value) {
-                return;
-            }
+        selects.forEach(function (select) {
+            select.addEventListener('change', function () {
+                if (!select.value) {
+                    return;
+                }
 
-            if (pageInput) {
-                pageInput.value = '1';
-            }
+                if (pageInput) {
+                    pageInput.value = '1';
+                }
 
-            if (typeof form.requestSubmit === 'function') {
-                form.requestSubmit();
-            } else {
-                form.submit();
-            }
+                if (typeof form.requestSubmit === 'function') {
+                    form.requestSubmit();
+                } else {
+                    form.submit();
+                }
+            });
         });
     });
 }

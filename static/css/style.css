@@ -6184,7 +6184,7 @@ select.return-status-select option:disabled {
 
 .pengukuran-grid {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(178px, 1fr));
     gap: 1rem;
     align-items: start;
 }
@@ -6201,7 +6201,7 @@ select.return-status-select option:disabled {
 }
 
 .detail-grid--pengukuran {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(178px, 1fr));
 }
 
 .detail-inline-edit-wrap {
@@ -6254,14 +6254,14 @@ select.return-status-select option:disabled {
     line-height: 1.45;
 }
 
-@media (max-width: 1200px) {
+@media (max-width: 768px) {
     .pengukuran-grid,
     .detail-grid--pengukuran {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
 
-@media (max-width: 576px) {
+@media (max-width: 520px) {
     .pengukuran-grid,
     .detail-grid--pengukuran {
         grid-template-columns: minmax(0, 1fr);
@@ -7414,6 +7414,11 @@ select.return-status-select option:disabled {
     cursor: pointer;
 }
 
+.master-year-select {
+    width: 132px;
+    min-width: 132px;
+}
+
 .master-entries-select:focus {
     border-color: var(--primary);
     box-shadow: 0 0 0 3px rgba(16, 62, 111, 0.12);
@@ -7509,6 +7514,10 @@ select.return-status-select option:disabled {
         font-size: clamp(0.74rem, 2.3vw, 0.86rem);
     }
 
+    .master-year-select {
+        width: clamp(108px, 30vw, 132px);
+    }
+
     .master-page-link {
         min-width: clamp(28px, 6.6vw, 34px);
         min-height: clamp(28px, 6.6vw, 34px);
@@ -7527,7 +7536,7 @@ select.return-status-select option:disabled {
 
     .master-entries-form {
         display: inline-flex;
-        gap: 0;
+        gap: 6px;
     }
 
     .master-entries-select {
@@ -7535,6 +7544,10 @@ select.return-status-select option:disabled {
         height: 32px;
         padding-right: 24px;
         padding-left: 8px;
+    }
+
+    .master-year-select {
+        width: clamp(96px, 34vw, 118px);
     }
 
     .master-pagination-summary {

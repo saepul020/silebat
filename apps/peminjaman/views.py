@@ -4,6 +4,7 @@ from pathlib import Path
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
+from django.db.models.functions import ExtractYear
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -625,9 +626,53 @@ def daftar_pengajuan(request):
     return render(request, "peminjaman/pengajuan_list.html", context)
 
 
+def _get_report_year_options(queryset):
+    current_year = timezone.localdate().year
+    years = {current_year}
+    db_years = (
+        queryset.exclude(return_completed_at__isnull=True)
+        .annotate(report_year=ExtractYear("return_completed_at"))
+        .values_list("report_year", flat=True)
+        .distinct()
+    )
+    years.update(year for year in db_years if year)
+    return sorted(years, reverse=True)
+
+
+def _normalize_report_year_filter(raw_value, year_options):
+    value = str(raw_value or "").strip().lower()
+    if value == "all":
+        return "all"
+
+    current_year = timezone.localdate().year
+    if not value:
+        return str(current_year)
+
+    try:
+        selected_year = int(value)
+    except (TypeError, ValueError):
+        return str(current_year)
+
+    if selected_year in year_options:
+        return str(selected_year)
+    return str(current_year)
+
+
+def _filter_report_queryset_by_year(queryset, selected_year):
+    if str(selected_year).lower() == "all":
+        return queryset
+    try:
+        return queryset.filter(return_completed_at__year=int(selected_year))
+    except (TypeError, ValueError):
+        return queryset.filter(return_completed_at__year=timezone.localdate().year)
+
+
 @login_required
 def laporan_peminjaman(request):
-    queryset = _get_pengajuan_list_queryset(request.user, is_report=True)
+    base_queryset = _get_pengajuan_list_queryset(request.user, is_report=True)
+    report_year_options = _get_report_year_options(base_queryset)
+    selected_report_year = _normalize_report_year_filter(request.GET.get("tahun"), report_year_options)
+    queryset = _filter_report_queryset_by_year(base_queryset, selected_report_year)
     pagination_context = paginate_list(request, queryset)
 
     context = {
@@ -646,6 +691,9 @@ def laporan_peminjaman(request):
             ROLE_USER,
         },
         "is_report": True,
+        "show_report_year_filter": True,
+        "report_year_options": report_year_options,
+        "selected_report_year": selected_report_year,
     }
     context.update(pagination_context)
     return render(request, "peminjaman/pengajuan_list.html", context)
@@ -690,7 +738,10 @@ def export_laporan_peminjaman(request):
     if get_role_name(request.user) != ROLE_SUPER_ADMIN:
         return deny_access(request, "Fitur export laporan peminjaman hanya dapat diakses oleh Super Admin.")
 
-    queryset = list(_export_report_queryset(request.user))
+    export_queryset = _export_report_queryset(request.user)
+    report_year_options = _get_report_year_options(export_queryset)
+    selected_report_year = _normalize_report_year_filter(request.GET.get("tahun"), report_year_options)
+    queryset = list(_filter_report_queryset_by_year(export_queryset, selected_report_year))
 
     peminjaman_rows = []
     lab_rows = []
@@ -723,6 +774,8 @@ def export_laporan_peminjaman(request):
             format_optional_numeric_display(obj.titik_mat),
             format_optional_numeric_display(obj.titik_pumping_test),
             format_optional_numeric_display(obj.titik_infiltrasi),
+            format_optional_numeric_display(obj.titik_debit_air),
+            format_optional_numeric_display(obj.lokasi_topografi),
             format_optional_numeric_display(obj.titik_borehole),
             format_optional_numeric_display(obj.titik_logging),
             obj.get_current_step_display(),
@@ -827,6 +880,8 @@ def export_laporan_peminjaman(request):
                     "Titik MAT",
                     "Titik Pumping Test",
                     "Titik Infiltrasi",
+                    "Titik Debit Air",
+                    "Lokasi Topografi",
                     "Titik Borehole Camera",
                     "Titik Logging",
                     "Proses Peminjaman",
@@ -1186,7 +1241,18 @@ def detail_pengajuan(request, pk):
 def _get_report_snapshot(obj):
     snapshot = obj.report_snapshot if isinstance(obj.report_snapshot, dict) else {}
     if snapshot and snapshot.get("items"):
-        return _normalize_report_tim_kegiatan(snapshot)
+        normalized_snapshot = _normalize_report_tim_kegiatan(snapshot)
+        existing_pengukuran = normalized_snapshot.get("pengukuran") or []
+        existing_keys = {item.get("key") for item in existing_pengukuran if isinstance(item, dict)}
+        missing_pengukuran = [
+            item for item in obj.get_pengukuran_data() if item.get("key") not in existing_keys
+        ]
+        if missing_pengukuran:
+            normalized_snapshot = {
+                **normalized_snapshot,
+                "pengukuran": [*existing_pengukuran, *missing_pengukuran],
+            }
+        return normalized_snapshot
     return _normalize_report_tim_kegiatan(obj.build_report_snapshot())
 
 
@@ -1229,7 +1295,6 @@ def detail_laporan(request, pk):
     report = _get_report_snapshot(obj)
     report_kegiatan = report.get("kegiatan", {})
     report_items = report.get("items", {})
-    report_pengukuran = report.get("pengukuran", []) or []
 
     return render(
         request,

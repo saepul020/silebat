@@ -223,6 +223,8 @@ class PeminjamanRequest(models.Model):
     titik_mat = models.PositiveIntegerField(null=True, blank=True)
     titik_pumping_test = models.PositiveIntegerField(null=True, blank=True)
     titik_infiltrasi = models.PositiveIntegerField(null=True, blank=True)
+    titik_debit_air = models.PositiveIntegerField(null=True, blank=True)
+    lokasi_topografi = models.PositiveIntegerField(null=True, blank=True)
     titik_borehole = models.PositiveIntegerField(null=True, blank=True)
     titik_logging = models.PositiveIntegerField(null=True, blank=True)
 
@@ -378,6 +380,8 @@ class PeminjamanRequest(models.Model):
             ("titik_mat", "Titik MAT"),
             ("titik_pumping_test", "Titik Pumping Test"),
             ("titik_infiltrasi", "Titik Infiltrasi"),
+            ("titik_debit_air", "Titik Debit Air"),
+            ("lokasi_topografi", "Lokasi Topografi"),
             ("titik_borehole", "Titik Borehole Camera"),
             ("titik_logging", "Titik Logging"),
         ]
