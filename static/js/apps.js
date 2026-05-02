@@ -3352,6 +3352,28 @@ function initPeminjamanFormBehavior() {
         return;
     }
 
+    const peminjamSelect = document.getElementById('id_peminjam_user');
+    const peminjamOptionsScript = document.getElementById('peminjam-options-data');
+    const peminjamDetailNodes = {
+        nama: document.getElementById('peminjamDetailNama'),
+        no_hp: document.getElementById('peminjamDetailNoHp'),
+        email: document.getElementById('peminjamDetailEmail'),
+        alamat: document.getElementById('peminjamDetailAlamat'),
+    };
+    const peminjamOptions = {};
+
+    if (peminjamOptionsScript) {
+        try {
+            JSON.parse(peminjamOptionsScript.textContent || '[]').forEach(function (item) {
+                if (item && item.id) {
+                    peminjamOptions[String(item.id)] = item;
+                }
+            });
+        } catch (error) {
+            console.error('Data peminjam tidak dapat dibaca.', error);
+        }
+    }
+
     const surveiToggle = document.getElementById('id_gunakan_survei_lainnya');
     const surveiPanel = form.querySelector('[data-conditional-panel="survei-lainnya"]');
     const surveiInput = document.getElementById('id_survei_lainnya');
@@ -3435,6 +3457,48 @@ function initPeminjamanFormBehavior() {
         errorElement.className = 'input-error-text';
         errorElement.textContent = normalizedMessage.startsWith('*') ? normalizedMessage : `*${normalizedMessage}`;
         group.appendChild(errorElement);
+    }
+
+    function getSelectedPeminjamData() {
+        if (!peminjamSelect) {
+            return null;
+        }
+
+        return peminjamOptions[String(peminjamSelect.value || '')] || null;
+    }
+
+    function setPeminjamDetailValue(key, value) {
+        const node = peminjamDetailNodes[key];
+        if (node) {
+            node.textContent = String(value || '-').trim() || '-';
+        }
+    }
+
+    function syncPeminjamDetail() {
+        if (!peminjamSelect) {
+            return;
+        }
+
+        const data = getSelectedPeminjamData();
+        setPeminjamDetailValue('nama', data ? data.nama : '-');
+        setPeminjamDetailValue('no_hp', data ? data.no_hp : '-');
+        setPeminjamDetailValue('email', data ? data.email : '-');
+        setPeminjamDetailValue('alamat', data ? data.alamat : '-');
+    }
+
+    function validatePeminjamField() {
+        if (!peminjamSelect) {
+            return true;
+        }
+
+        const hasSelectedPeminjam = Boolean(String(peminjamSelect.value || '').trim());
+        if (!hasSelectedPeminjam) {
+            addGroupError(getFormGroup(peminjamSelect), 'Data peminjam wajib dipilih.');
+            return false;
+        }
+
+        clearGroupErrors(getFormGroup(peminjamSelect));
+        return true;
     }
 
     function createDateAtMidday(year, monthIndex, day) {
@@ -3787,6 +3851,10 @@ function initPeminjamanFormBehavior() {
     function validateActivityFields() {
         let isValid = true;
 
+        if (!validatePeminjamField()) {
+            isValid = false;
+        }
+
         if (layananInput) {
             const layananValue = String(layananInput.value || '').trim();
             if (!layananValue) {
@@ -3853,6 +3921,10 @@ function initPeminjamanFormBehavior() {
     }
 
     function updateRealtimeErrorState() {
+        if (peminjamSelect && peminjamSelect.value) {
+            clearGroupErrors(getFormGroup(peminjamSelect));
+        }
+
         if (layananInput && layananInput.value) {
             clearGroupErrors(getFormGroup(layananInput));
         }
@@ -4119,6 +4191,7 @@ function initPeminjamanFormBehavior() {
 
     let lastTanggalMulaiComparableValue = getComparableDateInputValue(tanggalMulaiInput ? tanggalMulaiInput.value : '');
 
+    syncPeminjamDetail();
     syncConditionalPanel(surveiToggle, surveiPanel, surveiInput);
     syncInstansiState();
     validateTanggalRange();
@@ -4127,6 +4200,13 @@ function initPeminjamanFormBehavior() {
     [tanggalMulaiInput, tanggalSelesaiInput].forEach(function (dateInput) {
         setupDatePicker(dateInput);
     });
+
+    if (peminjamSelect) {
+        peminjamSelect.addEventListener('change', function () {
+            syncPeminjamDetail();
+            updateRealtimeErrorState();
+        });
+    }
 
     if (surveiToggle && surveiPanel && surveiInput) {
         surveiToggle.addEventListener('change', function () {
@@ -4439,7 +4519,7 @@ function initPeminjamanFormBehavior() {
 
     function populateSummaryModal() {
         if (summaryBorrowerGrid) {
-            const borrowerItems = Array.from(form.querySelectorAll('.form-row-4 .detail-item')).map(function (item) {
+            const borrowerItems = Array.from(form.querySelectorAll('[data-peminjam-detail-grid] .detail-item')).map(function (item) {
                 const label = item.querySelector('label')?.innerText.trim() || '-';
                 const value = item.querySelector('p')?.innerText.trim() || '-';
                 return `<div class="detail-item"><label>${escapeHtml(label)}</label><p>${escapeHtml(value)}</p></div>`;

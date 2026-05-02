@@ -1,6 +1,6 @@
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Sum
-from django.db.models.functions import ExtractYear, TruncMonth, Trim
+from django.db.models.functions import Coalesce, ExtractYear, TruncMonth, Trim
 from django.shortcuts import render
 from django.utils import timezone
 
@@ -76,10 +76,23 @@ PENGUKURAN_FIELD_CONFIG = [
     {"key": "titik_logging", "label": "Titik Logging"},
 ]
 
+def get_approved_peminjaman_queryset():
+    return (
+        PeminjamanRequest.objects.select_related(
+            "tim_kegiatan",
+            "layanan_kegiatan",
+            "instansi_tujuan",
+        )
+        .filter(current_step=StepChoices.APPROVED)
+        .annotate(dashboard_approved_at=Coalesce("pimpinan_at", "updated_at"))
+    )
+
+def get_pengukuran_lapangan_queryset(queryset):
+    return queryset.filter(return_started_at__isnull=False)
 
 def build_sum_rows_by_month(queryset, date_field, value_field, row_key):
     aggregated_rows = list(
-        queryset.exclude(**{f"{value_field}__isnull": True})
+        queryset.filter(**{f"{value_field}__isnull": False, f"{value_field}__gt": 0})
         .annotate(month=TruncMonth(date_field))
         .values("month")
         .annotate(total=Sum(value_field))
@@ -95,7 +108,6 @@ def build_sum_rows_by_month(queryset, date_field, value_field, row_key):
         for row in aggregated_rows
         if row.get("month")
     ]
-
 
 def build_count_rows_by_month(queryset, date_field):
     aggregated_rows = list(
@@ -114,7 +126,6 @@ def build_count_rows_by_month(queryset, date_field):
         if row.get("month")
     ]
 
-
 def get_dashboard_greeting_period(current_time):
     hour = current_time.hour
     if 4 <= hour < 11:
@@ -128,22 +139,23 @@ def get_dashboard_greeting_period(current_time):
 
 @login_required
 def index(request):
-    peminjaman_qs = PeminjamanRequest.objects.select_related("tim_kegiatan", "layanan_kegiatan", "instansi_tujuan")
+    approved_peminjaman_qs = get_approved_peminjaman_queryset()
+    pengukuran_lapangan_qs = get_pengukuran_lapangan_queryset(approved_peminjaman_qs)
     now = timezone.localtime()
     current_year = now.year
     current_month = now.month
 
-    completed_count = peminjaman_qs.filter(
+    completed_count = approved_peminjaman_qs.filter(
         return_current_step=ReturnStepChoices.COMPLETED,
     ).count()
-    ongoing_count = peminjaman_qs.exclude(
+    ongoing_count = approved_peminjaman_qs.exclude(
         return_current_step=ReturnStepChoices.COMPLETED,
     ).count()
 
     tim_list = list(TimKegiatan.objects.order_by("nama_tim").values("id", "nama_tim"))
     tim_month_rows = list(
-        peminjaman_qs.filter(tim_kegiatan__isnull=False)
-        .annotate(month=TruncMonth("submitted_at"))
+        approved_peminjaman_qs.filter(tim_kegiatan__isnull=False)
+        .annotate(month=TruncMonth("dashboard_approved_at"))
         .values("month", "tim_kegiatan_id")
         .annotate(total=Count("id"))
         .order_by("month", "tim_kegiatan__nama_tim")
@@ -187,8 +199,8 @@ def index(request):
         LayananKegiatan.objects.order_by("jenis_layanan").values("id", "jenis_layanan")
     )
     layanan_year_rows = list(
-        peminjaman_qs.filter(layanan_kegiatan__isnull=False)
-        .annotate(year=ExtractYear("submitted_at"))
+        approved_peminjaman_qs.filter(layanan_kegiatan__isnull=False)
+        .annotate(year=ExtractYear("dashboard_approved_at"))
         .values("year", "layanan_kegiatan_id")
         .annotate(total=Count("id"))
         .order_by("year", "layanan_kegiatan__jenis_layanan")
@@ -229,15 +241,22 @@ def index(request):
     )
     survei_through_model = PeminjamanRequest._meta.get_field("kegiatan_survei").remote_field.through
     survei_rows = list(
-        survei_through_model.objects.annotate(year=ExtractYear("peminjamanrequest__submitted_at"))
+        survei_through_model.objects.filter(
+            peminjamanrequest__current_step=StepChoices.APPROVED,
+        )
+        .annotate(
+            year=ExtractYear(
+                Coalesce("peminjamanrequest__pimpinan_at", "peminjamanrequest__updated_at")
+            )
+        )
         .values("year", "surveikegiatan_id")
         .annotate(total=Count("id"))
         .order_by("year", "surveikegiatan__jenis_survei")
     )
     survei_lainnya_rows = list(
-        peminjaman_qs.filter(survei_lainnya__isnull=False)
+        approved_peminjaman_qs.filter(survei_lainnya__isnull=False)
         .annotate(
-            year=ExtractYear("submitted_at"),
+            year=ExtractYear("dashboard_approved_at"),
             survei_lainnya_value=Trim("survei_lainnya"),
         )
         .exclude(survei_lainnya_value="")
@@ -304,16 +323,16 @@ def index(request):
         InstansiKlien.objects.order_by("nama_instansi").values("id", "nama_instansi")
     )
     instansi_rows = list(
-        peminjaman_qs.filter(instansi_tujuan__isnull=False)
-        .annotate(year=ExtractYear("submitted_at"))
+        approved_peminjaman_qs.filter(instansi_tujuan__isnull=False)
+        .annotate(year=ExtractYear("dashboard_approved_at"))
         .values("year", "instansi_tujuan_id")
         .annotate(total=Count("id"))
         .order_by("year", "instansi_tujuan__nama_instansi")
     )
     instansi_lainnya_rows = list(
-        peminjaman_qs.filter(instansi_tujuan_lainnya__isnull=False)
+        approved_peminjaman_qs.filter(instansi_tujuan_lainnya__isnull=False)
         .annotate(
-            year=ExtractYear("submitted_at"),
+            year=ExtractYear("dashboard_approved_at"),
             instansi_lainnya_value=Trim("instansi_tujuan_lainnya"),
         )
         .exclude(instansi_lainnya_value="")
@@ -382,7 +401,7 @@ def index(request):
     for index, field_config in enumerate(PENGUKURAN_FIELD_CONFIG):
         row_key = field_config["key"]
         monthly_rows = build_sum_rows_by_month(
-            peminjaman_qs.filter(return_started_at__isnull=False),
+            pengukuran_lapangan_qs,
             "return_started_at",
             row_key,
             "pengukuranKey",
@@ -407,8 +426,8 @@ def index(request):
     }
 
     approved_peminjaman_rows = build_count_rows_by_month(
-        peminjaman_qs.filter(current_step=StepChoices.APPROVED),
-        "submitted_at",
+        approved_peminjaman_qs,
+        "dashboard_approved_at",
     )
     approved_peminjaman_available_years = sorted(
         {row["year"] for row in approved_peminjaman_rows if row.get("year")} | {current_year}

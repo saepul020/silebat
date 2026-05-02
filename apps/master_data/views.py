@@ -81,7 +81,7 @@ ASSET_FIELD_GROUPS = [
             ["lokasi_barang"],
         ],
     ),
-    ("Lampiran", [["foto_barang"]]),
+    ("Lampiran", [["foto_barang", "ik_alat"]]),
     (
         "Riwayat Terakhir",
         [["tanggal_pemeliharaan_info", "tanggal_perbaikan_info"]],
@@ -144,7 +144,7 @@ SARANA_FIELD_GROUPS = [
             ["kondisi_barang", "lokasi_barang"],
         ],
     ),
-    ("Lampiran", [["foto_barang"]]),
+    ("Lampiran", [["foto_barang", "ik_alat"]]),
     (
         "Riwayat Terakhir",
         [["tanggal_pemeliharaan_info", "tanggal_perbaikan_info"]],
@@ -165,7 +165,7 @@ PERALATAN_LAB_FIELD_GROUPS = [
             ["lokasi_barang"],
         ],
     ),
-    ("Lampiran", [["foto_barang"]]),
+    ("Lampiran", [["foto_barang", "ik_alat"]]),
     (
         "Riwayat Terakhir",
         [["tanggal_pemeliharaan_info", "tanggal_perbaikan_info"]],
@@ -193,6 +193,20 @@ def _safe_file_url(file_field):
         return file_field.url
     except (ValueError, AttributeError):
         return None
+
+
+def _file_export_url(request, file_field):
+    file_url = _safe_file_url(file_field)
+    return request.build_absolute_uri(file_url) if file_url else "-"
+
+
+def _ik_alat_detail_item(obj):
+    file_url = _safe_file_url(getattr(obj, "ik_alat", None))
+    return {
+        "label": "IK Alat",
+        "value": "Lihat Dokumen PDF" if file_url else "-",
+        "url": file_url,
+    }
 
 
 def _boolean_display(value):
@@ -497,6 +511,7 @@ def export_barang_laboratorium(request):
         "Tanggal Pemeliharaan",
         "Tanggal Perbaikan",
         "Catatan",
+        "IK Alat (PDF)",
         "URL QR Detail",
     ]
     queryset = BarangLaboratorium.objects.order_by("nama_barang")
@@ -524,6 +539,7 @@ def export_barang_laboratorium(request):
             obj.tanggal_pemeliharaan,
             obj.tanggal_perbaikan,
             obj.catatan,
+            _file_export_url(request, obj.ik_alat),
             _public_detail_export_url(request, obj),
         ],
     )
@@ -1694,6 +1710,7 @@ def export_fasilitas_ruangan(request):
         "Tanggal Pemeliharaan",
         "Tanggal Perbaikan",
         "Catatan",
+        "IK Alat (PDF)",
         "URL QR Detail",
     ]
     queryset = FasilitasRuangan.objects.order_by("nama_barang")
@@ -1723,6 +1740,7 @@ def export_fasilitas_ruangan(request):
             obj.tanggal_pemeliharaan,
             obj.tanggal_perbaikan,
             obj.catatan,
+            _file_export_url(request, obj.ik_alat),
             _public_detail_export_url(request, obj),
         ],
     )
@@ -1754,6 +1772,7 @@ def export_peralatan_laboratorium(request):
         "Tanggal Pemeliharaan",
         "Tanggal Perbaikan",
         "Catatan",
+        "IK Alat (PDF)",
         "URL QR Detail",
     ]
     queryset = PeralatanLaboratorium.objects.order_by("nama_barang")
@@ -1784,6 +1803,7 @@ def export_peralatan_laboratorium(request):
             obj.tanggal_pemeliharaan,
             obj.tanggal_perbaikan,
             obj.catatan,
+            _file_export_url(request, obj.ik_alat),
             _public_detail_export_url(request, obj),
         ],
     )
@@ -1843,11 +1863,7 @@ def _get_barang_laboratorium_detail_items(obj):
             "label": "Tanggal Perbaikan",
             "value": _display_date(obj.tanggal_perbaikan),
         },
-        {
-            "label": "IK Alat",
-            "value": "Lihat Dokumen PDF" if obj.ik_alat else "-",
-            "url": obj.ik_alat.url if obj.ik_alat else None,
-        },
+        _ik_alat_detail_item(obj),
         {"label": "Catatan", "value": _display_value(obj.catatan), "full": True},
         {
             "label": "Status Peminjaman",
@@ -1945,6 +1961,7 @@ def public_fasilitas_ruangan(request, token):
             {"label": "Lokasi Barang", "value": _display_value(obj.lokasi_barang)},
             {"label": "Tanggal Pemeliharaan", "value": _display_date(obj.tanggal_pemeliharaan)},
             {"label": "Tanggal Perbaikan", "value": _display_date(obj.tanggal_perbaikan)},
+            _ik_alat_detail_item(obj),
             {"label": "Catatan", "value": _display_value(obj.catatan), "full": True},
         ],
         top_icon="bi-building",
@@ -1977,6 +1994,7 @@ def public_peralatan_laboratorium(request, token):
             {"label": "Lokasi Barang", "value": _display_value(obj.lokasi_barang)},
             {"label": "Tanggal Pemeliharaan", "value": _display_date(obj.tanggal_pemeliharaan)},
             {"label": "Tanggal Perbaikan", "value": _display_date(obj.tanggal_perbaikan)},
+            _ik_alat_detail_item(obj),
             {"label": "Catatan", "value": _display_value(obj.catatan), "full": True},
         ],
         top_icon="bi-pc-display",
@@ -2230,6 +2248,7 @@ def detail_fasilitas_ruangan(request, pk):
                 "label": "Tanggal Perbaikan",
                 "value": _display_date(obj.tanggal_perbaikan),
             },
+            _ik_alat_detail_item(obj),
             {"label": "Catatan", "value": _display_value(obj.catatan), "full": True},
         ],
         top_icon="bi-building",
@@ -2340,6 +2359,7 @@ def detail_peralatan_laboratorium(request, pk):
                 "label": "Tanggal Perbaikan",
                 "value": _display_date(obj.tanggal_perbaikan),
             },
+            _ik_alat_detail_item(obj),
             {"label": "Catatan", "value": _display_value(obj.catatan), "full": True},
         ],
         top_icon="bi-pc-display",

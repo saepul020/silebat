@@ -4,7 +4,7 @@
 {% block title %}Dashboard{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/style_dashboard.css' %}?v=20260428-green-success-v1">
+<link rel="stylesheet" href="{% static 'css/style_dashboard.css' %}?v=20260502-annual-filter-v3">
 {% endblock %}
 
 {% block content %}
@@ -61,9 +61,10 @@
                         {% endfor %}
                     </select>
                 </div>
-                <div class="dashboard-filter">
-                    <select id="approvedPeminjamanChartMonthFilter" aria-label="Filter bulan rekap peminjaman" title="Filter bulan">
-                        <option value="all">All</option>
+                <div class="dashboard-filter dashboard-filter--mode">
+                    <select id="approvedPeminjamanChartMonthFilter" aria-label="Filter mode/bulan rekap peminjaman" title="Filter mode data">
+                        <option value="all_months">All Bulan</option>
+                        <option value="accumulated">Akumulasi</option>
                         {% for month in month_choices %}
                             <option value="{{ month.value }}" {% if month.value == approved_peminjaman_chart.defaultMonth %}selected{% endif %}>{{ month.label }}</option>
                         {% endfor %}
@@ -135,9 +136,10 @@
                         {% endfor %}
                     </select>
                 </div>
-                <div class="dashboard-filter">
-                    <select id="pengukuranChartMonthFilter" aria-label="Filter bulan data pengukuran lapangan" title="Filter bulan">
-                        <option value="all">All</option>
+                <div class="dashboard-filter dashboard-filter--mode">
+                    <select id="pengukuranChartMonthFilter" aria-label="Filter mode/bulan data pengukuran lapangan" title="Filter mode data">
+                        <option value="all_months">All Bulan</option>
+                        <option value="accumulated">Akumulasi</option>
                         {% for month in month_choices %}
                             <option value="{{ month.value }}" {% if month.value == pengukuran_chart.defaultMonth %}selected{% endif %}>{{ month.label }}</option>
                         {% endfor %}
@@ -175,9 +177,10 @@
                         {% endfor %}
                     </select>
                 </div>
-                <div class="dashboard-filter">
-                    <select id="timChartMonthFilter" aria-label="Filter bulan tim kegiatan" title="Filter bulan">
-                        <option value="all">All</option>
+                <div class="dashboard-filter dashboard-filter--mode">
+                    <select id="timChartMonthFilter" aria-label="Filter mode/bulan tim kegiatan" title="Filter mode data">
+                        <option value="all_months">All Bulan</option>
+                        <option value="accumulated">Akumulasi</option>
                         {% for month in month_choices %}
                             <option value="{{ month.value }}" {% if month.value == tim_chart.defaultMonth %}selected{% endif %}>{{ month.label }}</option>
                         {% endfor %}
@@ -276,5 +279,5 @@
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
-<script src="{% static 'js/dashboard.js' %}?v=20260428-green-success-v1" defer></script>
+<script src="{% static 'js/dashboard.js' %}?v=20260502-annual-filter-v1" defer></script>
 {% endblock %}

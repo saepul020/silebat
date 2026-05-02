@@ -2,8 +2,16 @@ from datetime import date, datetime
 import re
 
 from django import forms
+from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 
+from apps.core.permissions import (
+    ROLE_ADMIN_LAB,
+    ROLE_SUPER_ADMIN,
+    ROLE_TEKNISI_LAB,
+    ROLE_USER,
+    get_role_name,
+)
 from apps.core.upload_validation import (
     MAX_UPLOAD_SIZE_BYTES,
     apply_upload_widget_validation_attrs,
@@ -18,6 +26,20 @@ from apps.operasional.models import (
 )
 
 from .models import PeminjamanRequest
+
+
+PENGAJUAN_CREATOR_ROLES = {ROLE_USER, ROLE_SUPER_ADMIN, ROLE_ADMIN_LAB, ROLE_TEKNISI_LAB}
+PEMINJAM_SELECT_ROLES = {ROLE_SUPER_ADMIN, ROLE_ADMIN_LAB, ROLE_TEKNISI_LAB}
+PEMINJAM_ALLOWED_ROLES = {ROLE_USER, ROLE_ADMIN_LAB, ROLE_TEKNISI_LAB}
+
+
+def get_peminjam_dropdown_queryset():
+    UserModel = get_user_model()
+    return (
+        UserModel.objects.select_related("profile__role")
+        .filter(is_active=True, profile__role__nama__in=PEMINJAM_ALLOWED_ROLES)
+        .order_by("first_name", "last_name", "username")
+    )
 
 
 DATE_INPUT_FORMATS = ["%d/%m/%Y", "%d-%m-%Y", "%Y-%m-%d", "%d %b %Y", "%d %B %Y"]
@@ -147,6 +169,13 @@ class FlexibleDateField(forms.DateField):
 
 
 class PeminjamanRequestForm(forms.ModelForm):
+    peminjam_user = forms.ModelChoiceField(
+        queryset=get_peminjam_dropdown_queryset(),
+        required=True,
+        label="Pilih Peminjam",
+        empty_label="Pilih peminjam",
+        error_messages={"required": "Pilih peminjam wajib diisi."},
+    )
     tanggal_mulai = FlexibleDateField(
         input_formats=DATE_INPUT_FORMATS,
         widget=DateInput(),
@@ -215,7 +244,16 @@ class PeminjamanRequestForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
+        self.actor = kwargs.pop("actor", None)
+        self.actor_role_name = get_role_name(self.actor)
+        self.enable_peminjam_selection = self.actor_role_name in PEMINJAM_SELECT_ROLES and not kwargs.get("instance")
         super().__init__(*args, **kwargs)
+
+        if self.enable_peminjam_selection:
+            self.fields["peminjam_user"].queryset = get_peminjam_dropdown_queryset()
+            self.fields["peminjam_user"].widget.attrs.update({"class": "select-input", "data-peminjam-select": "true"})
+        else:
+            self.fields.pop("peminjam_user", None)
         self.fields["layanan_kegiatan"].queryset = LayananKegiatan.objects.order_by(
             "jenis_layanan"
         )
@@ -319,6 +357,9 @@ class PeminjamanRequestForm(forms.ModelForm):
         tanggal_selesai = cleaned_data.get("tanggal_selesai")
         layanan_kegiatan = cleaned_data.get("layanan_kegiatan")
         tim_kegiatan = cleaned_data.get("tim_kegiatan")
+
+        if "peminjam_user" in self.fields and not cleaned_data.get("peminjam_user"):
+            self.add_error("peminjam_user", "Pilih peminjam wajib diisi.")
 
         if not layanan_kegiatan:
             self.add_error("layanan_kegiatan", "Layanan kegiatan wajib dipilih.")

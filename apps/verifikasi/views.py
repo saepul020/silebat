@@ -72,6 +72,7 @@ RETURN_ACTION_CHOICES = {
 
 RETURN_PIMPINAN_TEAM_NAME = TIM_LAYANAN_TEKNIS_NAME
 RETURN_PIMPINAN_LABEL = "Ketua Tim Layanan Teknis"
+BORROWER_CONFIRMATION_ROLES = {ROLE_USER, ROLE_ADMIN_LAB, ROLE_TEKNISI_LAB}
 
 
 ACTION_META = {
@@ -132,24 +133,20 @@ ACTION_META = {
     },
 }
 
-
 def _is_return_verification(obj):
     return obj.return_current_step not in {
         ReturnStepChoices.NONE,
         ReturnStepChoices.COMPLETED,
     }
 
-
 def _is_return_user_verification(obj):
     return obj.return_current_step == ReturnStepChoices.USER_VERIFICATION
-
 
 def _is_related_pimpinan(user, obj):
     if get_role_name(user) != ROLE_PIMPINAN:
         return False
     tim_kegiatan = getattr(obj, "tim_kegiatan", None)
     return bool(tim_kegiatan and tim_kegiatan.ketua_tim_id == user.id)
-
 
 def _get_return_pimpinan_user():
     target_team = (
@@ -171,7 +168,6 @@ def _get_return_pimpinan_user():
         return fallback_team.ketua_tim
     return None
 
-
 def _is_return_pimpinan_actor(user):
     if get_role_name(user) != ROLE_PIMPINAN:
         return False
@@ -189,7 +185,6 @@ def _is_return_pimpinan_actor(user):
         "layanan teknis" in normalized
     )
 
-
 def _can_edit_pengajuan(user, obj):
     return (
         get_role_name(user) in {ROLE_SUPER_ADMIN, ROLE_TEKNISI_LAB}
@@ -197,13 +192,11 @@ def _can_edit_pengajuan(user, obj):
         and not _is_return_verification(obj)
     )
 
-
 def _can_edit_pengembalian(user, obj):
     return (
         get_role_name(user) in {ROLE_SUPER_ADMIN, ROLE_TEKNISI_LAB}
         and obj.return_current_step == ReturnStepChoices.TEKNISI_VERIFICATION
     )
-
 
 def _get_pending_queryset(user):
     role_name = get_role_name(user)
@@ -230,14 +223,18 @@ def _get_pending_queryset(user):
             )
         ).distinct()
     if role_name == ROLE_ADMIN_LAB:
-        return qs.filter(current_step=StepChoices.ADMIN_LAB)
+        return qs.filter(
+            Q(current_step=StepChoices.ADMIN_LAB)
+            | Q(current_step=StepChoices.USER, peminjam=user)
+            | Q(return_current_step=ReturnStepChoices.USER_VERIFICATION, peminjam=user)
+        ).distinct()
     if role_name == ROLE_TEKNISI_LAB:
         return qs.filter(
             Q(current_step=StepChoices.TEKNISI_LAB)
+            | Q(current_step=StepChoices.USER, peminjam=user)
             | Q(
                 return_current_step__in=[
                     ReturnStepChoices.TEKNISI_VERIFICATION,
-                    ReturnStepChoices.USER_VERIFICATION,
                     ReturnStepChoices.TEKNISI_BA,
                     ReturnStepChoices.TEKNISI_TRANSFER,
                 ]
@@ -273,17 +270,15 @@ def _get_pending_queryset(user):
         return qs.filter(pengajuan_filter | pengembalian_filter).distinct()
     return qs.none()
 
-
 def _user_can_act(user, obj):
     role_name = get_role_name(user)
     if role_name == ROLE_SUPER_ADMIN:
         return obj.current_step in ACTION_CHOICES or _is_return_verification(obj)
     if _is_return_verification(obj):
         if obj.return_current_step == ReturnStepChoices.USER_VERIFICATION:
-            return role_name == ROLE_USER and obj.peminjam_id == user.id
+            return role_name in BORROWER_CONFIRMATION_ROLES and obj.peminjam_id == user.id
         if obj.return_current_step in {
             ReturnStepChoices.TEKNISI_VERIFICATION,
-            ReturnStepChoices.USER_VERIFICATION,
             ReturnStepChoices.TEKNISI_BA,
             ReturnStepChoices.TEKNISI_TRANSFER,
         }:
@@ -304,17 +299,15 @@ def _user_can_act(user, obj):
     if obj.current_step == StepChoices.TEKNISI_LAB:
         return role_name == ROLE_TEKNISI_LAB
     if obj.current_step == StepChoices.USER:
-        return role_name == ROLE_USER and obj.peminjam_id == user.id
+        return role_name in BORROWER_CONFIRMATION_ROLES and obj.peminjam_id == user.id
     if obj.current_step == StepChoices.KEPALA_LAB:
         return role_name == ROLE_KEPALA_LAB
     if obj.current_step == StepChoices.PIMPINAN:
         return _is_related_pimpinan(user, obj)
     return False
 
-
 def _action_requires_note(aksi):
     return ACTION_META.get(aksi, {}).get("requires_note", False)
-
 
 def _get_action_config(aksi, action_choices):
     label_map = dict(action_choices or [])
@@ -337,10 +330,8 @@ def _get_action_config(aksi, action_choices):
         "note_help_text": base_meta.get("note_help_text", ""),
     }
 
-
 def _build_action_buttons(action_choices):
     return [_get_action_config(aksi, action_choices) for aksi, _label in action_choices]
-
 
 def _reorder_pengembalian_action_buttons(action_buttons):
     order_map = {
@@ -351,7 +342,6 @@ def _reorder_pengembalian_action_buttons(action_buttons):
         action_buttons,
         key=lambda button: order_map.get((button or {}).get("value"), 50),
     )
-
 
 def _get_detail_context(obj, verification_mode):
     common = {
@@ -674,6 +664,13 @@ def detail(request, pk):
         },
     )
 
+def _reject_peminjaman(request, obj, status_field, stage, timeline_action, user, catatan):
+    setattr(obj, status_field, DecisionChoices.REJECTED)
+    obj.current_step = StepChoices.REJECTED
+    obj.save()
+    obj.release_inventory_allocation()
+    obj.add_timeline(stage, timeline_action, user, catatan)
+    messages.success(request, "Pengajuan berhasil ditolak.")
 
 def _process_action(request, obj, aksi, catatan, verification_mode="pengajuan"):
     now = timezone.now()
@@ -867,13 +864,18 @@ def _process_action(request, obj, aksi, catatan, verification_mode="pengajuan"):
             obj.add_timeline(
                 "Admin Lab", "Pengajuan disetujui Admin Lab", user, catatan
             )
+            obj.save()
             messages.success(request, "Pengajuan berhasil diteruskan ke Teknisi Lab.")
         else:
-            obj.admin_lab_status = DecisionChoices.REJECTED
-            obj.current_step = StepChoices.REJECTED
-            obj.add_timeline("Admin Lab", "Pengajuan ditolak Admin Lab", user, catatan)
-            messages.success(request, "Pengajuan berhasil ditolak.")
-        obj.save()
+            _reject_peminjaman(
+                request,
+                obj,
+                "admin_lab_status",
+                "Admin Lab",
+                "Pengajuan ditolak Admin Lab",
+                user,
+                catatan,
+            )
         return
 
     if obj.current_step == StepChoices.TEKNISI_LAB:
@@ -934,20 +936,21 @@ def _process_action(request, obj, aksi, catatan, verification_mode="pengajuan"):
                 user,
                 catatan,
             )
+            obj.save()
             messages.success(
                 request,
                 "Pengajuan diteruskan ke tahap verifikasi ketua tim.",
             )
         elif aksi == "tolak":
-            obj.kepala_lab_status = DecisionChoices.REJECTED
-            obj.current_step = StepChoices.REJECTED
-            obj.add_timeline(
+            _reject_peminjaman(
+                request,
+                obj,
+                "kepala_lab_status",
                 "Kepala Laboratorium",
                 "Pengajuan ditolak Kepala Laboratorium",
                 user,
                 catatan,
             )
-            messages.success(request, "Pengajuan berhasil ditolak.")
         else:
             obj.kepala_lab_status = DecisionChoices.REVISION
             obj.teknisi_lab_status = DecisionChoices.PENDING
@@ -958,11 +961,11 @@ def _process_action(request, obj, aksi, catatan, verification_mode="pengajuan"):
                 user,
                 catatan,
             )
+            obj.save()
             messages.success(
                 request,
                 "Pengajuan berhasil dikembalikan ke Teknisi Lab untuk perbaikan.",
             )
-        obj.save()
         return
 
     if obj.current_step == StepChoices.PIMPINAN:
@@ -973,6 +976,7 @@ def _process_action(request, obj, aksi, catatan, verification_mode="pengajuan"):
             obj.pimpinan_status = DecisionChoices.APPROVED
             obj.current_step = StepChoices.APPROVED
             obj.save()
+            # Pengajuan baru sudah membooking stok saat dibuat; baris ini menjadi pengaman untuk data lama.
             obj.apply_inventory_allocation()
             obj.add_timeline(
                 "Pimpinan",
@@ -985,11 +989,15 @@ def _process_action(request, obj, aksi, catatan, verification_mode="pengajuan"):
                 "Pengajuan selesai disetujui. Form peminjaman kini sah dan PDF dapat diunduh.",
             )
         elif aksi == "tolak":
-            obj.pimpinan_status = DecisionChoices.REJECTED
-            obj.current_step = StepChoices.REJECTED
-            obj.save()
-            obj.add_timeline("Pimpinan", "Pengajuan ditolak pimpinan", user, catatan)
-            messages.success(request, "Pengajuan berhasil ditolak.")
+            _reject_peminjaman(
+                request,
+                obj,
+                "pimpinan_status",
+                "Pimpinan",
+                "Pengajuan ditolak pimpinan",
+                user,
+                catatan,
+            )
         else:
             obj.pimpinan_status = DecisionChoices.REVISION
             obj.teknisi_lab_status = DecisionChoices.PENDING

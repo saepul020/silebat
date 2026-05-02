@@ -2462,6 +2462,19 @@ input[type="hidden"] {
     display: none;
 }
 
+.form-row-1 {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.peminjam-selector-row {
+    margin-bottom: 16px;
+}
+
+.peminjam-selector-row .form-group {
+    width: 100%;
+    max-width: none;
+}
+
 .form-row-4 {
     grid-template-columns: repeat(4, minmax(0, 1fr));
 }
@@ -2556,6 +2569,7 @@ input[type="hidden"] {
 
 .form-row-instansi > *,
 .form-row-instansi-full > *,
+.form-row-1 > *,
 .form-row-2 > *,
 .form-row-2-inner > *,
 .form-row-3 > *,
@@ -2806,6 +2820,7 @@ input[type="hidden"] {
 }
 
 @media (max-width: 992px) {
+    .form-row-1,
     .form-row-2,
     .form-row-2-inner,
     .form-row-3,

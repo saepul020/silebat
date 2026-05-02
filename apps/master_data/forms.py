@@ -100,6 +100,7 @@ class AssetBaseForm(BaseMasterDataForm):
         label="Tanggal Perbaikan", required=False, disabled=True
     )
     hapus_foto_barang = forms.BooleanField(required=False, widget=forms.HiddenInput())
+    hapus_ik_alat = forms.BooleanField(required=False, widget=forms.HiddenInput())
 
     class Meta:
         fields = [
@@ -115,6 +116,7 @@ class AssetBaseForm(BaseMasterDataForm):
             "kondisi_barang",
             "lokasi_barang",
             "foto_barang",
+            "ik_alat",
             "catatan",
         ]
 
@@ -129,6 +131,16 @@ class AssetBaseForm(BaseMasterDataForm):
                 "data-inline-file-placeholder": "Pilih file",
                 "data-inline-file-extensions": "jpg,jpeg,png",
                 "data-inline-file-error": "Foto Barang hanya boleh berupa file JPG, JPEG, atau PNG.",
+            }
+        )
+        self.fields["ik_alat"].widget = forms.FileInput(
+            attrs={
+                "accept": ".pdf,application/pdf",
+                "class": "input-file--proxy",
+                "data-inline-file-input": "true",
+                "data-inline-file-placeholder": "Pilih file",
+                "data-inline-file-extensions": "pdf",
+                "data-inline-file-error": "IK Alat hanya boleh berupa file PDF.",
             }
         )
         self._set_common_widget_style()
@@ -185,6 +197,15 @@ class AssetBaseForm(BaseMasterDataForm):
                     "data-inline-file-error": "Foto Barang hanya boleh berupa file JPG, JPEG, atau PNG.",
                     "data-status-dependent": "true",
                 },
+                "ik_alat": {
+                    "accept": ".pdf,application/pdf",
+                    "class": "input-file--proxy",
+                    "data-inline-file-input": "true",
+                    "data-inline-file-placeholder": "Pilih file",
+                    "data-inline-file-extensions": "pdf",
+                    "data-inline-file-error": "IK Alat hanya boleh berupa file PDF.",
+                    "data-status-dependent": "true",
+                },
                 "catatan": {
                     "placeholder": "Tambahkan catatan bila diperlukan",
                     "rows": 4,
@@ -199,6 +220,13 @@ class AssetBaseForm(BaseMasterDataForm):
             invalid_extension_message="Foto Barang hanya boleh berupa file JPG, JPEG, atau PNG.",
             max_size_bytes=MAX_UPLOAD_SIZE_BYTES,
             max_size_message=build_max_upload_size_message("Foto Barang"),
+        )
+        apply_upload_widget_validation_attrs(
+            self.fields["ik_alat"],
+            allowed_extensions="pdf",
+            invalid_extension_message="IK Alat hanya boleh berupa file PDF.",
+            max_size_bytes=MAX_UPLOAD_SIZE_BYTES,
+            max_size_message=build_max_upload_size_message("IK Alat"),
         )
         self.fields["volume"].disabled = True
         self.fields["volume"].required = False
@@ -325,6 +353,15 @@ class AssetBaseForm(BaseMasterDataForm):
             max_size_message=build_max_upload_size_message("Foto Barang"),
         )
 
+    def clean_ik_alat(self):
+        return validate_uploaded_file(
+            self.cleaned_data.get("ik_alat"),
+            allowed_extensions={".pdf"},
+            invalid_extension_message="IK Alat hanya boleh berupa file PDF.",
+            max_size_bytes=MAX_UPLOAD_SIZE_BYTES,
+            max_size_message=build_max_upload_size_message("IK Alat"),
+        )
+
     def clean_status_barang(self):
         return (self.cleaned_data.get("status_barang") or "").strip()
 
@@ -387,7 +424,9 @@ class AssetBaseForm(BaseMasterDataForm):
     def save(self, commit=True):
         persisted_instance = self._get_persisted_instance()
         old_foto_barang = getattr(persisted_instance, "foto_barang", None)
+        old_ik_alat = getattr(persisted_instance, "ik_alat", None)
         new_foto_barang = self._get_uploaded_file_from_request("foto_barang")
+        new_ik_alat = self._get_uploaded_file_from_request("ik_alat")
 
         instance = super().save(commit=False)
         self._files_to_delete_after_save = []
@@ -400,6 +439,15 @@ class AssetBaseForm(BaseMasterDataForm):
             self._queue_file_for_delete(old_foto_barang)
         elif persisted_instance is not None:
             instance.foto_barang = old_foto_barang
+
+        if self.cleaned_data.get("hapus_ik_alat"):
+            instance.ik_alat = None
+            self._queue_file_for_delete(old_ik_alat)
+        elif new_ik_alat:
+            instance.ik_alat = new_ik_alat
+            self._queue_file_for_delete(old_ik_alat)
+        elif persisted_instance is not None:
+            instance.ik_alat = old_ik_alat
 
         if instance.status_barang != StatusBarangChoices.BMN:
             instance.kode_aset_bmn = None
@@ -419,11 +467,9 @@ class AssetBaseForm(BaseMasterDataForm):
 
 
 class BarangLaboratoriumForm(AssetBaseForm):
-    hapus_ik_alat = forms.BooleanField(required=False, widget=forms.HiddenInput())
-
     class Meta(AssetBaseForm.Meta):
         model = BarangLaboratorium
-        fields = AssetBaseForm.Meta.fields + ["kategori_barang", "ik_alat"]
+        fields = AssetBaseForm.Meta.fields + ["kategori_barang"]
         labels = {
             "status_barang": "Status Barang",
             "nama_barang": "Nama Barang",
@@ -454,56 +500,6 @@ class BarangLaboratoriumForm(AssetBaseForm):
             ("", "Pilih kategori barang"),
             *KategoriBarangLaboratoriumChoices.choices,
         ]
-        self.fields["ik_alat"].widget = forms.FileInput(
-            attrs={
-                "accept": ".pdf,application/pdf",
-                "class": "input-file--proxy",
-                "data-inline-file-input": "true",
-                "data-inline-file-placeholder": "Pilih file",
-                "data-inline-file-extensions": "pdf",
-                "data-inline-file-error": "IK Alat hanya boleh berupa file PDF.",
-            }
-        )
-        self.fields["ik_alat"].widget.attrs["data-status-dependent"] = "true"
-        apply_upload_widget_validation_attrs(
-            self.fields["ik_alat"],
-            allowed_extensions="pdf",
-            invalid_extension_message="IK Alat hanya boleh berupa file PDF.",
-            max_size_bytes=MAX_UPLOAD_SIZE_BYTES,
-            max_size_message=build_max_upload_size_message("IK Alat"),
-        )
-
-    def clean_ik_alat(self):
-        return validate_uploaded_file(
-            self.cleaned_data.get("ik_alat"),
-            allowed_extensions={".pdf"},
-            invalid_extension_message="IK Alat hanya boleh berupa file PDF.",
-            max_size_bytes=MAX_UPLOAD_SIZE_BYTES,
-            max_size_message=build_max_upload_size_message("IK Alat"),
-        )
-
-    def save(self, commit=True):
-        persisted_instance = self._get_persisted_instance()
-        old_ik_alat = getattr(persisted_instance, "ik_alat", None)
-        new_ik_alat = self._get_uploaded_file_from_request("ik_alat")
-
-        instance = super().save(commit=False)
-
-        if self.cleaned_data.get("hapus_ik_alat"):
-            instance.ik_alat = None
-            self._queue_file_for_delete(old_ik_alat)
-        elif new_ik_alat:
-            instance.ik_alat = new_ik_alat
-            self._queue_file_for_delete(old_ik_alat)
-        elif persisted_instance is not None:
-            instance.ik_alat = old_ik_alat
-
-        if commit:
-            instance.save()
-            self.save_m2m()
-            self._delete_queued_files()
-
-        return instance
 
 
 class VolumeBaikAssetFormMixin:
@@ -764,6 +760,7 @@ class FasilitasRuanganForm(VolumeBaikAssetFormMixin, AssetBaseForm):
             "lokasi_barang": "Lokasi Barang",
             "kategori_barang": "Kategori Barang",
             "foto_barang": "Foto Barang",
+            "ik_alat": "IK Alat (PDF)",
             "catatan": "Catatan",
         }
 
@@ -796,6 +793,7 @@ class PeralatanLaboratoriumForm(VolumeBaikAssetFormMixin, AssetBaseForm):
             "kondisi_barang": "Kondisi Barang",
             "lokasi_barang": "Lokasi Barang",
             "foto_barang": "Foto Barang",
+            "ik_alat": "IK Alat (PDF)",
             "catatan": "Catatan",
         }
 

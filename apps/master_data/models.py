@@ -144,6 +144,12 @@ class AssetBaseModel(QRCodeMixin):
     foto_barang = models.ImageField(
         upload_to="master_data/foto_barang/", blank=True, null=True
     )
+    ik_alat = models.FileField(
+        upload_to="master_data/ik_alat/",
+        blank=True,
+        null=True,
+        validators=[FileExtensionValidator(["pdf"])],
+    )
     tanggal_pemeliharaan = models.DateField(null=True, blank=True)
     tanggal_perbaikan = models.DateField(null=True, blank=True)
     catatan = models.TextField(blank=True)
@@ -224,12 +230,6 @@ class BarangLaboratorium(AssetBaseModel):
         max_length=40,
         choices=KategoriBarangLaboratoriumChoices.choices,
         null=True,
-    )
-    ik_alat = models.FileField(
-        upload_to="master_data/ik_alat/",
-        blank=True,
-        null=True,
-        validators=[FileExtensionValidator(["pdf"])],
     )
 
     class Meta(AssetBaseModel.Meta):

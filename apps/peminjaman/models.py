@@ -701,34 +701,81 @@ class PeminjamanRequest(models.Model):
 
     @transaction.atomic
     def apply_inventory_allocation(self):
+        """Booking stok sejak pengajuan dibuat agar tidak bisa dipilih pengajuan lain."""
         if self.aset_sudah_dialokasikan:
             return
 
-        for item in self.barang_laboratorium_items.select_related("barang"):
-            barang = item.barang
+        lab_items = list(self.barang_laboratorium_items.select_related("barang"))
+        penunjang_items = list(self.barang_penunjang_items.select_related("barang"))
+        peralatan_lab_items = list(self.peralatan_laboratorium_items.select_related("barang"))
+        bahan_items = list(self.bahan_operasional_items.select_related("bahan"))
+
+        locked_lab = {
+            item.id: item
+            for item in BarangLaboratorium.objects.select_for_update().filter(
+                id__in=[item.barang_id for item in lab_items if item.barang_id]
+            )
+        }
+        locked_penunjang = {
+            item.id: item
+            for item in BarangPenunjangOperasional.objects.select_for_update().filter(
+                id__in=[item.barang_id for item in penunjang_items if item.barang_id]
+            )
+        }
+        locked_peralatan_lab = {
+            item.id: item
+            for item in PeralatanLaboratorium.objects.select_for_update().filter(
+                id__in=[item.barang_id for item in peralatan_lab_items if item.barang_id]
+            )
+        }
+        locked_bahan = {
+            item.id: item
+            for item in BahanOperasional.objects.select_for_update().filter(
+                id__in=[item.bahan_id for item in bahan_items if item.bahan_id]
+            )
+        }
+
+        for item in lab_items:
+            barang = locked_lab.get(item.barang_id)
             if barang is None:
                 continue
+            if barang.kondisi_barang != KondisiBarangChoices.BAIK or barang.sedang_dipinjam:
+                raise ValidationError(
+                    f'Barang laboratorium "{barang.nama_barang}" sudah tidak tersedia untuk dibooking.'
+                )
             barang.sedang_dipinjam = True
             barang.save(update_fields=["sedang_dipinjam", "ketersediaan", "updated_at"])
 
-        for item in self.barang_penunjang_items.select_related("barang"):
-            barang = item.barang
+        for item in penunjang_items:
+            barang = locked_penunjang.get(item.barang_id)
             if barang is None:
                 continue
+            if item.volume > barang.sisa_volume:
+                raise ValidationError(
+                    f'Volume barang penunjang "{barang.nama_barang}" melebihi stok tersedia ({barang.sisa_volume}).'
+                )
             barang.volume_dipinjam = (barang.volume_dipinjam or 0) + item.volume
             barang.save()
 
-        for item in self.peralatan_laboratorium_items.select_related("barang"):
-            barang = item.barang
+        for item in peralatan_lab_items:
+            barang = locked_peralatan_lab.get(item.barang_id)
             if barang is None:
                 continue
+            if item.volume > barang.sisa_volume:
+                raise ValidationError(
+                    f'Volume peralatan laboratorium "{barang.nama_barang}" melebihi stok tersedia ({barang.sisa_volume}).'
+                )
             barang.volume_dipinjam = (barang.volume_dipinjam or 0) + item.volume
             barang.save()
 
-        for item in self.bahan_operasional_items.select_related("bahan"):
-            bahan = item.bahan
+        for item in bahan_items:
+            bahan = locked_bahan.get(item.bahan_id)
             if bahan is None:
                 continue
+            if item.volume > (bahan.volume or 0):
+                raise ValidationError(
+                    f'Volume bahan operasional "{bahan.nama_barang}" melebihi stok tersedia ({bahan.volume or 0}).'
+                )
             bahan.volume = max((bahan.volume or 0) - item.volume, 0)
             bahan.save()
 
@@ -740,29 +787,63 @@ class PeminjamanRequest(models.Model):
         if not self.aset_sudah_dialokasikan:
             return
 
-        for item in self.barang_laboratorium_items.select_related("barang"):
-            barang = item.barang
+        lab_items = list(self.barang_laboratorium_items.select_related("barang"))
+        penunjang_items = list(self.barang_penunjang_items.select_related("barang"))
+        peralatan_lab_items = list(self.peralatan_laboratorium_items.select_related("barang"))
+        bahan_items = list(self.bahan_operasional_items.select_related("bahan"))
+
+        locked_lab = {
+            item.id: item
+            for item in BarangLaboratorium.objects.select_for_update().filter(
+                id__in=[item.barang_id for item in lab_items if item.barang_id]
+            )
+        }
+        locked_penunjang = {
+            item.id: item
+            for item in BarangPenunjangOperasional.objects.select_for_update().filter(
+                id__in=[item.barang_id for item in penunjang_items if item.barang_id]
+            )
+        }
+        locked_peralatan_lab = {
+            item.id: item
+            for item in PeralatanLaboratorium.objects.select_for_update().filter(
+                id__in=[item.barang_id for item in peralatan_lab_items if item.barang_id]
+            )
+        }
+        locked_bahan = {
+            item.id: item
+            for item in BahanOperasional.objects.select_for_update().filter(
+                id__in=[item.bahan_id for item in bahan_items if item.bahan_id]
+            )
+        }
+
+        for item in lab_items:
+            barang = locked_lab.get(item.barang_id)
             if barang is None:
                 continue
-            barang.sedang_dipinjam = False
+            still_booked_elsewhere = PeminjamanBarangLaboratorium.objects.filter(
+                barang_id=barang.id,
+                pengajuan__aset_sudah_dialokasikan=True,
+            ).exclude(pengajuan_id=self.pk).exists()
+            barang.sedang_dipinjam = still_booked_elsewhere
             barang.save(update_fields=["sedang_dipinjam", "ketersediaan", "updated_at"])
 
-        for item in self.barang_penunjang_items.select_related("barang"):
-            barang = item.barang
+        for item in penunjang_items:
+            barang = locked_penunjang.get(item.barang_id)
             if barang is None:
                 continue
             barang.volume_dipinjam = max((barang.volume_dipinjam or 0) - item.volume, 0)
             barang.save()
 
-        for item in self.peralatan_laboratorium_items.select_related("barang"):
-            barang = item.barang
+        for item in peralatan_lab_items:
+            barang = locked_peralatan_lab.get(item.barang_id)
             if barang is None:
                 continue
             barang.volume_dipinjam = max((barang.volume_dipinjam or 0) - item.volume, 0)
             barang.save()
 
-        for item in self.bahan_operasional_items.select_related("bahan"):
-            bahan = item.bahan
+        for item in bahan_items:
+            bahan = locked_bahan.get(item.bahan_id)
             if bahan is None:
                 continue
             bahan.volume = (bahan.volume or 0) + item.volume

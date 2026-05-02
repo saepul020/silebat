@@ -53,9 +53,9 @@ def cleanup_bahan_operasional_files(sender, instance, **kwargs):
 
 @receiver(post_delete, sender=FasilitasRuangan)
 def cleanup_fasilitas_ruangan_files(sender, instance, **kwargs):
-    delete_instance_files(instance, ("foto_barang", "qr_code"))
+    delete_instance_files(instance, ("foto_barang", "ik_alat", "qr_code"))
 
 
 @receiver(post_delete, sender=PeralatanLaboratorium)
 def cleanup_peralatan_laboratorium_files(sender, instance, **kwargs):
-    delete_instance_files(instance, ("foto_barang", "qr_code"))
+    delete_instance_files(instance, ("foto_barang", "ik_alat", "qr_code"))

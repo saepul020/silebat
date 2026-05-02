@@ -21,22 +21,31 @@
 
         <fieldset class="peminjaman-section-card">
             <legend>Data Peminjam</legend>
-            <div class="form-row form-row-4">
+            {% if can_select_peminjam %}
+            <div class="form-row form-row-1 peminjam-selector-row">
+                <div class="form-group {% if form.peminjam_user.errors %}has-error{% endif %}">
+                    <label for="{{ form.peminjam_user.id_for_label }}">{{ form.peminjam_user.label }}</label>
+                    {{ form.peminjam_user }}
+                    {% for error in form.peminjam_user.errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
+                </div>
+            </div>
+            {% endif %}
+            <div class="form-row form-row-4" data-peminjam-detail-grid>
                 <div class="detail-item">
                     <label>Nama</label>
-                    <p>{% if form.instance.pk %}{{ form.instance.nama_peminjam|default:'-' }}{% else %}{{ request.user.get_full_name|default:request.user.username }}{% endif %}</p>
+                    <p id="peminjamDetailNama">{{ selected_peminjam_data.nama|default:'-' }}</p>
                 </div>
                 <div class="detail-item">
                     <label>Nomor Telepon</label>
-                    <p>{% if form.instance.pk %}{{ form.instance.no_hp_peminjam|default:'-' }}{% else %}{{ request.user.no_hp|default:'-' }}{% endif %}</p>
+                    <p id="peminjamDetailNoHp">{{ selected_peminjam_data.no_hp|default:'-' }}</p>
                 </div>
                 <div class="detail-item">
                     <label>Email</label>
-                    <p>{% if form.instance.pk %}{{ form.instance.email_peminjam|default:'-' }}{% else %}{{ request.user.email|default:'-' }}{% endif %}</p>
+                    <p id="peminjamDetailEmail">{{ selected_peminjam_data.email|default:'-' }}</p>
                 </div>
                 <div class="detail-item">
                     <label>Alamat</label>
-                    <p>{% if form.instance.pk %}{{ form.instance.alamat_peminjam|default:'-' }}{% else %}{{ request.user.safe_profile.alamat|default:'-' }}{% endif %}</p>
+                    <p id="peminjamDetailAlamat">{{ selected_peminjam_data.alamat|default:'-' }}</p>
                 </div>
             </div>
         </fieldset>
@@ -207,12 +216,12 @@
                         {% for item in group.items %}
                         <tr data-lab-item-row data-lab-category="{{ item.kategori_barang|default:'Tanpa Kategori' }}" class="{% if not item.is_visible_by_survey %}is-hidden{% endif %}">
                             <td data-label="Pilih" class="cell-select">
-                                <input type="checkbox" name="lab_item_ids" value="{{ item.id }}" data-base-disabled="{% if item.ketersediaan != 'Tersedia' %}true{% else %}false{% endif %}" {% if item.is_selected %}checked{% endif %} {% if item.ketersediaan != 'Tersedia' or not item.is_visible_by_survey %}disabled{% endif %}>
+                                <input type="checkbox" name="lab_item_ids" value="{{ item.id }}" data-base-disabled="{% if not item.is_available_for_selection %}true{% else %}false{% endif %}" {% if item.is_selected %}checked{% endif %} {% if not item.is_available_for_selection or not item.is_visible_by_survey %}disabled{% endif %}>
                             </td>
                             <td data-label="Nama Barang" class="cell-wrap">{{ item.nama_barang }}</td>
                             <td data-label="Tipe / Merek" class="cell-wrap">{{ item.tipe_merek_barang|default:'-' }}</td>
                             <td data-label="Kode Lab">{{ item.kode_laboratorium|default:'-' }}</td>
-                            <td data-label="Ketersediaan" class="cell-center"><span class="status-badge {{ item.status_badge_class }}">{{ item.ketersediaan }}</span></td>
+                            <td data-label="Ketersediaan" class="cell-center"><span class="status-badge {{ item.selection_status_badge_class }}">{{ item.selection_ketersediaan }}</span></td>
                             <td data-label="Kondisi">{{ item.kondisi_barang|default:'-' }}</td>
                             <td data-label="Tgl Pemeliharaan">{{ item.tanggal_pemeliharaan|date:'d M Y'|default:'-' }}</td>
                             <td data-label="Tgl Perbaikan">{{ item.tanggal_perbaikan|date:'d M Y'|default:'-' }}</td>
@@ -254,7 +263,7 @@
                             <th>Jumlah</th>
                             <th>Nama Barang</th>
                             <th>Tipe / Merek</th>
-                            <th>Stok</th>
+                            <th>Stok Tersedia</th>
                             <th>Ketersediaan</th>
                         </tr>
                     </thead>
@@ -270,14 +279,14 @@
                             <td data-label="Jumlah" class="cell-qty">
                                 <div class="qty-stepper qty-stepper--compact" data-qty-stepper>
                                     <button type="button" class="qty-stepper__button" data-qty-step="down" aria-label="Kurangi jumlah {{ item.nama_barang }}">&minus;</button>
-                                    <input class="input-qty input-qty--stepper" type="number" min="0" max="{{ item.sisa_volume }}" name="penunjang_qty_{{ item.id }}" value="{{ item.selected_qty }}" inputmode="numeric" aria-label="Jumlah {{ item.nama_barang }}" {% if item.ketersediaan != 'Tersedia' %}disabled{% endif %}>
+                                    <input class="input-qty input-qty--stepper" type="number" min="0" max="{{ item.available_stock }}" name="penunjang_qty_{{ item.id }}" value="{{ item.selected_qty }}" inputmode="numeric" aria-label="Jumlah {{ item.nama_barang }}" {% if not item.is_available_for_selection %}disabled{% endif %}>
                                     <button type="button" class="qty-stepper__button" data-qty-step="up" aria-label="Tambah jumlah {{ item.nama_barang }}">+</button>
                                 </div>
                             </td>
                             <td data-label="Nama Barang" class="cell-wrap">{{ item.nama_barang }}</td>
                             <td data-label="Tipe / Merek" class="cell-wrap">{{ item.tipe_merek_barang|default:'-' }}</td>
-                            <td data-label="Stok" class="cell-center">{{ item.sisa_volume }}</td>
-                            <td data-label="Ketersediaan" class="cell-center"><span class="status-badge {{ item.status_badge_class }}">{{ item.ketersediaan }}</span></td>
+                            <td data-label="Stok Tersedia" class="cell-center">{{ item.available_stock }}</td>
+                            <td data-label="Ketersediaan" class="cell-center"><span class="status-badge {{ item.selection_status_badge_class }}">{{ item.selection_ketersediaan }}</span></td>
                         </tr>
                         {% endfor %}
                         {% empty %}
@@ -314,7 +323,7 @@
                         <tr>
                             <th>Jumlah</th>
                             <th>Nama Barang</th>
-                            <th>Stok</th>
+                            <th>Stok Tersedia</th>
                             <th>Satuan</th>
                             <th>Ketersediaan</th>
                         </tr>
@@ -331,14 +340,14 @@
                             <td data-label="Jumlah" class="cell-qty">
                                 <div class="qty-stepper qty-stepper--compact" data-qty-stepper>
                                     <button type="button" class="qty-stepper__button" data-qty-step="down" aria-label="Kurangi jumlah {{ item.nama_barang }}">&minus;</button>
-                                    <input class="input-qty input-qty--stepper" type="number" min="0" max="{{ item.volume }}" name="bahan_qty_{{ item.id }}" value="{{ item.selected_qty }}" inputmode="numeric" aria-label="Jumlah {{ item.nama_barang }}" {% if item.volume == 0 %}disabled{% endif %}>
+                                    <input class="input-qty input-qty--stepper" type="number" min="0" max="{{ item.available_stock }}" name="bahan_qty_{{ item.id }}" value="{{ item.selected_qty }}" inputmode="numeric" aria-label="Jumlah {{ item.nama_barang }}" {% if not item.is_available_for_selection %}disabled{% endif %}>
                                     <button type="button" class="qty-stepper__button" data-qty-step="up" aria-label="Tambah jumlah {{ item.nama_barang }}">+</button>
                                 </div>
                             </td>
                             <td data-label="Nama Barang" class="cell-wrap">{{ item.nama_barang }}</td>
-                            <td data-label="Stok" class="cell-center">{{ item.volume }}</td>
+                            <td data-label="Stok Tersedia" class="cell-center">{{ item.available_stock }}</td>
                             <td data-label="Satuan">{{ item.satuan|default:'-' }}</td>
-                            <td data-label="Ketersediaan" class="cell-center"><span class="status-badge {{ item.status_badge_class }}">{{ item.ketersediaan }}</span></td>
+                            <td data-label="Ketersediaan" class="cell-center"><span class="status-badge {{ item.selection_status_badge_class }}">{{ item.selection_ketersediaan }}</span></td>
                         </tr>
                         {% endfor %}
                         {% empty %}
@@ -378,7 +387,7 @@
                             <th>Nama Barang</th>
                             <th>Tipe / Merek</th>
                             <th>Kode Laboratorium</th>
-                            <th>Stok</th>
+                            <th>Stok Tersedia</th>
                             <th>Ketersediaan</th>
                         </tr>
                     </thead>
@@ -388,15 +397,15 @@
                             <td data-label="Jumlah" class="cell-qty">
                                 <div class="qty-stepper qty-stepper--compact" data-qty-stepper>
                                     <button type="button" class="qty-stepper__button" data-qty-step="down" aria-label="Kurangi jumlah {{ item.nama_barang }}">&minus;</button>
-                                    <input class="input-qty input-qty--stepper" type="number" min="0" max="{{ item.sisa_volume }}" name="peralatan_lab_qty_{{ item.id }}" value="{{ item.selected_qty }}" inputmode="numeric" aria-label="Jumlah {{ item.nama_barang }}" {% if item.ketersediaan != 'Tersedia' %}disabled{% endif %}>
+                                    <input class="input-qty input-qty--stepper" type="number" min="0" max="{{ item.available_stock }}" name="peralatan_lab_qty_{{ item.id }}" value="{{ item.selected_qty }}" inputmode="numeric" aria-label="Jumlah {{ item.nama_barang }}" {% if not item.is_available_for_selection %}disabled{% endif %}>
                                     <button type="button" class="qty-stepper__button" data-qty-step="up" aria-label="Tambah jumlah {{ item.nama_barang }}">+</button>
                                 </div>
                             </td>
                             <td data-label="Nama Barang" class="cell-wrap">{{ item.nama_barang }}</td>
                             <td data-label="Tipe / Merek" class="cell-wrap">{{ item.tipe_merek_barang|default:'-' }}</td>
                             <td data-label="Kode Laboratorium" class="cell-wrap">{{ item.kode_laboratorium|default:'-' }}</td>
-                            <td data-label="Stok" class="cell-center">{{ item.sisa_volume }}</td>
-                            <td data-label="Ketersediaan" class="cell-center"><span class="status-badge {{ item.status_badge_class }}">{{ item.ketersediaan }}</span></td>
+                            <td data-label="Stok Tersedia" class="cell-center">{{ item.available_stock }}</td>
+                            <td data-label="Ketersediaan" class="cell-center"><span class="status-badge {{ item.selection_status_badge_class }}">{{ item.selection_ketersediaan }}</span></td>
                         </tr>
                         {% empty %}
                         <tr><td colspan="6"><div class="empty-state">Belum ada data peralatan laboratorium.</div></td></tr>
@@ -419,6 +428,10 @@
     </form>
 
 </div>
+
+{% if can_select_peminjam %}
+{{ peminjam_options_data|json_script:"peminjam-options-data" }}
+{% endif %}
 
 <div class="delete-modal" id="pengajuanSummaryModal">
     <div class="delete-modal-backdrop" id="pengajuanSummaryModalBackdrop"></div>

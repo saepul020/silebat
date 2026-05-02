@@ -2,6 +2,7 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 from django.contrib import messages
+from django.core.exceptions import ValidationError
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.db.models.functions import ExtractYear
@@ -44,7 +45,10 @@ from apps.master_data.models import (
     StatusStokBahanChoices,
 )
 
-from .forms import PeminjamanRequestForm
+from .forms import (
+    PENGAJUAN_CREATOR_ROLES,
+    PeminjamanRequestForm,
+)
 from .models import (
     PeminjamanBahanOperasional,
     PeminjamanBarangLaboratorium,
@@ -228,7 +232,7 @@ def _can_view_pengajuan(user, obj):
 
 
 def _can_create_pengajuan(user):
-    return get_role_name(user) in {ROLE_USER, ROLE_SUPER_ADMIN}
+    return get_role_name(user) in PENGAJUAN_CREATOR_ROLES
 
 
 def _can_delete_pengajuan(user):
@@ -243,12 +247,67 @@ def _can_edit_pengajuan(user, obj):
     )
 
 
-def _build_inventory_context(selection=None, survei_labels=None):
+def _get_current_booking_state(obj):
+    if not obj or not getattr(obj, "aset_sudah_dialokasikan", False):
+        return {
+            "lab_ids": set(),
+            "penunjang_qty": {},
+            "peralatan_lab_qty": {},
+            "bahan_qty": {},
+        }
+
+    return {
+        "lab_ids": {
+            item.barang_id
+            for item in obj.barang_laboratorium_items.all()
+            if item.barang_id
+        },
+        "penunjang_qty": {
+            item.barang_id: item.volume
+            for item in obj.barang_penunjang_items.all()
+            if item.barang_id
+        },
+        "peralatan_lab_qty": {
+            item.barang_id: item.volume
+            for item in obj.peralatan_laboratorium_items.all()
+            if item.barang_id
+        },
+        "bahan_qty": {
+            item.bahan_id: item.volume
+            for item in obj.bahan_operasional_items.all()
+            if item.bahan_id
+        },
+    }
+
+
+def _get_validation_messages(error):
+    messages_list = getattr(error, "messages", None)
+    if messages_list:
+        return list(messages_list)
+    return [str(error)]
+
+
+def _mark_quantity_item_selection(item, selected_qty, current_reserved_qty, base_available_qty):
+    item.selected_qty = selected_qty
+    item.available_stock = max((base_available_qty or 0) + (current_reserved_qty or 0), 0)
+    item.is_available_for_selection = item.available_stock > 0
+    item.selection_ketersediaan = (
+        KetersediaanChoices.TERSEDIA
+        if item.is_available_for_selection
+        else KetersediaanChoices.TIDAK_TERSEDIA
+    )
+    item.selection_status_badge_class = (
+        "badge-success" if item.is_available_for_selection else "badge-danger"
+    )
+
+
+def _build_inventory_context(selection=None, survei_labels=None, current_obj=None):
     selection = selection or {}
     selected_lab_ids = set(selection.get("lab_ids") or [])
     selected_penunjang_qty = selection.get("penunjang_qty") or {}
     selected_bahan_qty = selection.get("bahan_qty") or {}
     selected_peralatan_lab_qty = selection.get("peralatan_lab_qty") or {}
+    current_booking = _get_current_booking_state(current_obj)
     visible_lab_categories = _get_lab_categories_for_survei_labels(survei_labels)
 
     lab_items = list(
@@ -263,7 +322,19 @@ def _build_inventory_context(selection=None, survei_labels=None):
     )
 
     for item in lab_items:
+        is_booked_by_current = item.id in current_booking["lab_ids"]
         item.is_selected = item.id in selected_lab_ids
+        item.is_available_for_selection = (
+            item.ketersediaan == KetersediaanChoices.TERSEDIA or is_booked_by_current
+        )
+        item.selection_ketersediaan = (
+            KetersediaanChoices.TERSEDIA
+            if item.is_available_for_selection
+            else KetersediaanChoices.TIDAK_TERSEDIA
+        )
+        item.selection_status_badge_class = (
+            "badge-success" if item.is_available_for_selection else "badge-danger"
+        )
         item.is_visible_by_survey = (
             item.kategori_barang in visible_lab_categories or item.is_selected
         )
@@ -296,13 +367,36 @@ def _build_inventory_context(selection=None, survei_labels=None):
             lab_item_groups[-1]["is_visible"] = True
 
     for item in penunjang_items:
-        item.selected_qty = selected_penunjang_qty.get(item.id, 0)
+        _mark_quantity_item_selection(
+            item,
+            selected_penunjang_qty.get(item.id, 0),
+            current_booking["penunjang_qty"].get(item.id, 0),
+            item.sisa_volume,
+        )
 
     for item in peralatan_lab_items:
-        item.selected_qty = selected_peralatan_lab_qty.get(item.id, 0)
+        _mark_quantity_item_selection(
+            item,
+            selected_peralatan_lab_qty.get(item.id, 0),
+            current_booking["peralatan_lab_qty"].get(item.id, 0),
+            item.sisa_volume,
+        )
 
     for item in bahan_items:
         item.selected_qty = selected_bahan_qty.get(item.id, 0)
+        current_reserved_qty = current_booking["bahan_qty"].get(item.id, 0)
+        item.available_stock = max((item.volume or 0) + current_reserved_qty, 0)
+        item.is_available_for_selection = item.available_stock > 0
+        if item.is_available_for_selection and item.ketersediaan == StatusStokBahanChoices.HABIS:
+            item.selection_ketersediaan = "Tersedia"
+            item.selection_status_badge_class = "badge-success"
+        else:
+            item.selection_ketersediaan = (
+                item.ketersediaan if item.is_available_for_selection else StatusStokBahanChoices.HABIS
+            )
+            item.selection_status_badge_class = (
+                item.status_badge_class if item.is_available_for_selection else "badge-danger"
+            )
 
     penunjang_item_groups = _group_items_by_category(
         penunjang_items, PENUNJANG_CATEGORY_ORDER_INDEX
@@ -482,9 +576,10 @@ def _get_pengajuan_list_queryset(user, *, is_report=False):
     return items.exclude(return_current_step=ReturnStepChoices.COMPLETED)
 
 
-def _parse_selected_items(post_data, survei_labels=None):
+def _parse_selected_items(post_data, survei_labels=None, current_obj=None):
     errors = []
     allowed_lab_categories = _get_lab_categories_for_survei_labels(survei_labels)
+    current_booking = _get_current_booking_state(current_obj)
     selected_lab = []
     selected_penunjang = []
     selected_bahan = []
@@ -504,9 +599,10 @@ def _parse_selected_items(post_data, survei_labels=None):
                 f'Barang laboratorium "{item.nama_barang}" tidak sesuai dengan pilihan Kegiatan Survei.'
             )
             continue
-        if item.ketersediaan != KetersediaanChoices.TERSEDIA:
+        is_booked_by_current = item.id in current_booking["lab_ids"]
+        if item.ketersediaan != KetersediaanChoices.TERSEDIA and not is_booked_by_current:
             errors.append(
-                f'Barang laboratorium "{item.nama_barang}" tidak tersedia untuk dipinjam.'
+                f'Barang laboratorium "{item.nama_barang}" sudah dibooking/dipinjam dan tidak tersedia untuk dipinjam.'
             )
             continue
         selected_lab.append(item)
@@ -524,14 +620,15 @@ def _parse_selected_items(post_data, survei_labels=None):
             continue
         if qty <= 0:
             continue
-        if item.ketersediaan != KetersediaanChoices.TERSEDIA:
+        available_stock = item.sisa_volume + current_booking["penunjang_qty"].get(item.id, 0)
+        if available_stock <= 0:
             errors.append(
-                f'Barang penunjang "{item.nama_barang}" tidak tersedia untuk dipinjam.'
+                f'Barang penunjang "{item.nama_barang}" sudah habis/dibooking dan tidak tersedia untuk dipinjam.'
             )
             continue
-        if qty > item.sisa_volume:
+        if qty > available_stock:
             errors.append(
-                f'Volume barang penunjang "{item.nama_barang}" tidak boleh lebih besar dari stok tersedia ({item.sisa_volume}).'
+                f'Volume barang penunjang "{item.nama_barang}" tidak boleh lebih besar dari stok tersedia ({available_stock}).'
             )
             continue
         selected_penunjang.append((item, qty))
@@ -549,14 +646,15 @@ def _parse_selected_items(post_data, survei_labels=None):
             continue
         if qty <= 0:
             continue
-        if item.ketersediaan != KetersediaanChoices.TERSEDIA:
+        available_stock = item.sisa_volume + current_booking["peralatan_lab_qty"].get(item.id, 0)
+        if available_stock <= 0:
             errors.append(
-                f'Peralatan laboratorium "{item.nama_barang}" tidak tersedia untuk dipinjam.'
+                f'Peralatan laboratorium "{item.nama_barang}" sudah habis/dibooking dan tidak tersedia untuk dipinjam.'
             )
             continue
-        if qty > item.sisa_volume:
+        if qty > available_stock:
             errors.append(
-                f'Volume peralatan laboratorium "{item.nama_barang}" tidak boleh lebih besar dari stok tersedia ({item.sisa_volume}).'
+                f'Volume peralatan laboratorium "{item.nama_barang}" tidak boleh lebih besar dari stok tersedia ({available_stock}).'
             )
             continue
         selected_peralatan_lab.append((item, qty))
@@ -574,14 +672,15 @@ def _parse_selected_items(post_data, survei_labels=None):
             continue
         if qty <= 0:
             continue
-        if item.volume <= 0 or item.ketersediaan == StatusStokBahanChoices.HABIS:
+        available_stock = (item.volume or 0) + current_booking["bahan_qty"].get(item.id, 0)
+        if available_stock <= 0:
             errors.append(
-                f'Bahan operasional "{item.nama_barang}" sedang habis dan tidak bisa dipinjam.'
+                f'Bahan operasional "{item.nama_barang}" sedang habis/dibooking dan tidak bisa dipinjam.'
             )
             continue
-        if qty > item.volume:
+        if qty > available_stock:
             errors.append(
-                f'Volume bahan operasional "{item.nama_barang}" tidak boleh lebih besar dari stok tersedia ({item.volume}).'
+                f'Volume bahan operasional "{item.nama_barang}" tidak boleh lebih besar dari stok tersedia ({available_stock}).'
             )
             continue
         selected_bahan.append((item, qty))
@@ -970,11 +1069,76 @@ def export_laporan_peminjaman(request):
         ],
     )
 
+def _get_peminjam_display_data(user):
+    if not user:
+        return {
+            "id": "",
+            "nama": "-",
+            "no_hp": "-",
+            "email": "-",
+            "alamat": "-",
+        }
+
+    profile = user.safe_profile
+    return {
+        "id": str(user.pk),
+        "nama": user.get_full_name() or user.username or "-",
+        "no_hp": user.no_hp or "-",
+        "email": user.email or "-",
+        "alamat": profile.alamat or "-",
+    }
+
+
+def _get_selected_form_peminjam(form, fallback_user):
+    if not form or "peminjam_user" not in form.fields:
+        return fallback_user
+
+    selected_user = None
+    if getattr(form, "is_bound", False):
+        raw_user_id = form.data.get(form.add_prefix("peminjam_user"))
+        if raw_user_id:
+            selected_user = form.fields["peminjam_user"].queryset.filter(pk=raw_user_id).first()
+    else:
+        initial_user = form.initial.get("peminjam_user") or form.fields["peminjam_user"].initial
+        if initial_user:
+            selected_user = form.fields["peminjam_user"].queryset.filter(pk=getattr(initial_user, "pk", initial_user)).first()
+
+    return selected_user
+
+
+def _build_peminjam_select_context(form, fallback_user):
+    can_select = bool(form and "peminjam_user" in form.fields)
+    selected_user = _get_selected_form_peminjam(form, fallback_user)
+    selectable_users = []
+
+    if can_select:
+        selectable_users = [
+            _get_peminjam_display_data(user)
+            for user in form.fields["peminjam_user"].queryset
+        ]
+
+    return {
+        "can_select_peminjam": can_select,
+        "selected_peminjam_data": _get_peminjam_display_data(selected_user),
+        "peminjam_options_data": selectable_users,
+    }
+
+
+def _apply_peminjam_snapshot(pengajuan, peminjam):
+    profile = peminjam.safe_profile
+    pengajuan.peminjam = peminjam
+    pengajuan.nama_peminjam = peminjam.get_full_name() or peminjam.username
+    pengajuan.no_hp_peminjam = peminjam.no_hp or ""
+    pengajuan.email_peminjam = peminjam.email or ""
+    pengajuan.alamat_peminjam = profile.alamat or ""
+    pengajuan.nip_peminjam = peminjam.nip or ""
+
+
 @login_required
 def tambah_pengajuan(request):
     if not _can_create_pengajuan(request.user):
         return deny_access(
-            request, 'Hanya role "User" yang dapat membuat pengajuan peminjaman baru.'
+            request, 'Hanya role User, Admin Lab, Teknisi Lab, dan Super Admin yang dapat membuat pengajuan peminjaman baru.'
         )
 
     selection_state = (
@@ -990,7 +1154,7 @@ def tambah_pengajuan(request):
     inventory_form_errors = []
 
     if request.method == "POST":
-        form = PeminjamanRequestForm(request.POST, request.FILES)
+        form = PeminjamanRequestForm(request.POST, request.FILES, actor=request.user)
         (
             selected_lab,
             selected_penunjang,
@@ -1001,39 +1165,36 @@ def tambah_pengajuan(request):
         inventory_form_errors = item_errors
 
         if form.is_valid() and not item_errors:
-            with transaction.atomic():
-                profile = request.user.safe_profile
-                pengajuan = form.save(commit=False)
-                pengajuan.peminjam = request.user
-                pengajuan.nama_peminjam = (
-                    request.user.get_full_name() or request.user.username
-                )
-                pengajuan.no_hp_peminjam = request.user.no_hp or ""
-                pengajuan.email_peminjam = request.user.email or ""
-                pengajuan.alamat_peminjam = profile.alamat or ""
-                pengajuan.nip_peminjam = request.user.nip or ""
-                pengajuan.current_step = StepChoices.ADMIN_LAB
-                pengajuan.save()
-                form.save_m2m()
+            try:
+                with transaction.atomic():
+                    peminjam = form.cleaned_data.get("peminjam_user") or request.user
+                    pengajuan = form.save(commit=False)
+                    _apply_peminjam_snapshot(pengajuan, peminjam)
+                    pengajuan.current_step = StepChoices.ADMIN_LAB
+                    pengajuan.save()
+                    form.save_m2m()
 
-                _replace_pengajuan_items(
-                    pengajuan,
-                    selected_lab,
-                    selected_penunjang,
-                    selected_peralatan_lab,
-                    selected_bahan,
+                    _replace_pengajuan_items(
+                        pengajuan,
+                        selected_lab,
+                        selected_penunjang,
+                        selected_peralatan_lab,
+                        selected_bahan,
+                    )
+                    pengajuan.apply_inventory_allocation()
+                    pengajuan.add_timeline("Pengajuan", "Pengajuan dibuat dan stok dibooking", request.user)
+                    sync_transaction_notifications(pengajuan, actor=request.user)
+            except ValidationError as exc:
+                inventory_form_errors = _get_validation_messages(exc)
+            else:
+                messages.success(
+                    request,
+                    "Pengajuan peminjaman berhasil dibuat, stok sudah dibooking, dan dikirim ke Admin Lab.",
                 )
-                pengajuan.add_timeline("Pengajuan", "Pengajuan dibuat", request.user)
-                sync_transaction_notifications(pengajuan, actor=request.user)
-
-            messages.success(
-                request,
-                "Pengajuan peminjaman berhasil dibuat dan dikirim ke Admin Lab.",
-            )
-            return redirect("peminjaman:detail", pk=pengajuan.pk)
+                return redirect("peminjaman:detail", pk=pengajuan.pk)
 
     else:
-        form = PeminjamanRequestForm()
+        form = PeminjamanRequestForm(actor=request.user)
 
     return render(
         request,
@@ -1043,6 +1204,7 @@ def tambah_pengajuan(request):
             "page_title": "Tambah Pengajuan Peminjaman",
             "page_subtitle": "Lengkapi data kegiatan dan pilih aset yang akan diajukan untuk dipinjam.",
             "inventory_form_errors": inventory_form_errors,
+            **_build_peminjam_select_context(form, request.user),
             **inventory_context,
         },
     )
@@ -1083,51 +1245,50 @@ def edit_pengajuan(request, pk):
         else _get_survei_labels_from_obj(obj)
     )
     inventory_context = _build_inventory_context(
-        selection_state, selected_survei_labels
+        selection_state, selected_survei_labels, current_obj=obj
     )
     inventory_form_errors = []
 
     if request.method == "POST":
-        form = PeminjamanRequestForm(request.POST, request.FILES, instance=obj)
+        form = PeminjamanRequestForm(request.POST, request.FILES, instance=obj, actor=request.user)
         (
             selected_lab,
             selected_penunjang,
             selected_peralatan_lab,
             selected_bahan,
             item_errors,
-        ) = _parse_selected_items(request.POST, selected_survei_labels)
+        ) = _parse_selected_items(request.POST, selected_survei_labels, current_obj=obj)
         inventory_form_errors = item_errors
 
         if form.is_valid() and not item_errors:
-            with transaction.atomic():
-                pengajuan = form.save(commit=False)
-                profile = pengajuan.peminjam.safe_profile
-                pengajuan.nama_peminjam = (
-                    pengajuan.peminjam.get_full_name() or pengajuan.peminjam.username
-                )
-                pengajuan.no_hp_peminjam = pengajuan.peminjam.no_hp or ""
-                pengajuan.email_peminjam = pengajuan.peminjam.email or ""
-                pengajuan.alamat_peminjam = profile.alamat or ""
-                pengajuan.nip_peminjam = pengajuan.peminjam.nip or ""
-                pengajuan.save()
-                form.save_m2m()
-                _replace_pengajuan_items(
-                    pengajuan,
-                    selected_lab,
-                    selected_penunjang,
-                    selected_peralatan_lab,
-                    selected_bahan,
-                )
-                pengajuan.add_timeline(
-                    "Peminjaman",
-                    "Data pengajuan dan daftar barang diperbarui",
-                    request.user,
-                )
+            try:
+                with transaction.atomic():
+                    pengajuan = form.save(commit=False)
+                    _apply_peminjam_snapshot(pengajuan, pengajuan.peminjam)
+                    pengajuan.save()
+                    form.save_m2m()
 
-            messages.success(request, "Data pengajuan peminjaman berhasil diperbarui.")
-            return redirect("verifikasi:detail", pk=obj.pk)
+                    pengajuan.release_inventory_allocation()
+                    _replace_pengajuan_items(
+                        pengajuan,
+                        selected_lab,
+                        selected_penunjang,
+                        selected_peralatan_lab,
+                        selected_bahan,
+                    )
+                    pengajuan.apply_inventory_allocation()
+                    pengajuan.add_timeline(
+                        "Peminjaman",
+                        "Data pengajuan dan daftar barang diperbarui; booking stok disesuaikan",
+                        request.user,
+                    )
+            except ValidationError as exc:
+                inventory_form_errors = _get_validation_messages(exc)
+            else:
+                messages.success(request, "Data pengajuan peminjaman dan booking stok berhasil diperbarui.")
+                return redirect("verifikasi:detail", pk=obj.pk)
     else:
-        form = PeminjamanRequestForm(instance=obj)
+        form = PeminjamanRequestForm(instance=obj, actor=request.user)
 
     return render(
         request,
@@ -1137,6 +1298,7 @@ def edit_pengajuan(request, pk):
             "page_title": "Edit Pengajuan Peminjaman",
             "page_subtitle": "Perbarui data kegiatan dan daftar barang yang diajukan sesuai kebutuhan peminjaman yang sedang diproses.",
             "inventory_form_errors": inventory_form_errors,
+            **_build_peminjam_select_context(form, obj.peminjam),
             **inventory_context,
         },
     )

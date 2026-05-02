@@ -165,6 +165,12 @@
     flex: 0 0 92px;
 }
 
+.dashboard-filter--mode {
+    width: 142px;
+    min-width: 142px;
+    flex: 0 1 142px;
+}
+
 .dashboard-filter select {
     width: 100%;
     min-height: 40px;
@@ -332,6 +338,12 @@
         flex: 0 0 88px;
     }
 
+    .dashboard-filter--mode {
+        width: 136px;
+        min-width: 136px;
+        flex: 0 1 136px;
+    }
+
 
     .dashboard-filter select {
         min-height: 36px;
@@ -405,6 +417,12 @@
         width: 82px;
         min-width: 82px;
         flex: 0 0 82px;
+    }
+
+    .dashboard-filter--mode {
+        width: 132px;
+        min-width: 132px;
+        flex: 0 1 132px;
     }
 
 

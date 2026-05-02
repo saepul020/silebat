@@ -22,6 +22,9 @@ const DASHBOARD_MONTH_LABELS = {
     12: 'Des',
 };
 
+const DASHBOARD_MONTH_FILTER_ALL_MONTHS = 'all_months';
+const DASHBOARD_MONTH_FILTER_ACCUMULATED = 'accumulated';
+
 const zeroValueDashPlugin = {
     id: 'zeroValueDashPlugin',
     afterDatasetsDraw(chart) {
@@ -230,25 +233,63 @@ function createBaseBarOptions(maxValue) {
     };
 }
 
-function getTimMonthKeys(source, rows, selectedYear, selectedMonth) {
+
+function normalizeDashboardYearFilter(value) {
+    return value === 'all' ? 'all' : Number(value);
+}
+
+function normalizeDashboardMonthFilter(value) {
+    if (value === 'all' || value === DASHBOARD_MONTH_FILTER_ALL_MONTHS) {
+        return DASHBOARD_MONTH_FILTER_ALL_MONTHS;
+    }
+
+    if (value === DASHBOARD_MONTH_FILTER_ACCUMULATED) {
+        return DASHBOARD_MONTH_FILTER_ACCUMULATED;
+    }
+
+    return Number(value);
+}
+
+function isAnnualAccumulationFilter(selectedMonth) {
+    return selectedMonth === DASHBOARD_MONTH_FILTER_ACCUMULATED;
+}
+
+function getDashboardYearKeys(source, rows, selectedYear) {
+    const defaultYear = Number(source?.defaultYear || new Date().getFullYear());
+
+    if (selectedYear !== 'all') {
+        return [Number(selectedYear || defaultYear)];
+    }
+
+    const sourceYears = Array.isArray(source?.availableYears) && source.availableYears.length
+        ? source.availableYears.map(Number)
+        : [];
+    const rowYears = rows.map(function (row) {
+        return Number(row.year);
+    }).filter(Boolean);
+    const yearKeys = Array.from(new Set(sourceYears.concat(rowYears))).sort(function (left, right) {
+        return left - right;
+    });
+
+    return yearKeys.length ? yearKeys : [defaultYear];
+}
+
+function getDashboardMonthKeys(source, rows, selectedYear, selectedMonth) {
     const defaultYear = Number(source?.defaultYear || new Date().getFullYear());
     const defaultMonth = Number(source?.defaultMonth || (new Date().getMonth() + 1));
 
-    if (selectedYear !== 'all' && selectedMonth !== 'all') {
+    if (selectedYear !== 'all' && selectedMonth !== DASHBOARD_MONTH_FILTER_ALL_MONTHS) {
         return [buildMonthKey(selectedYear, selectedMonth)];
     }
 
-    if (selectedYear !== 'all' && selectedMonth === 'all') {
+    if (selectedYear !== 'all' && selectedMonth === DASHBOARD_MONTH_FILTER_ALL_MONTHS) {
         return Array.from({ length: 12 }, function (_, index) {
             return buildMonthKey(selectedYear, index + 1);
         });
     }
 
-    if (selectedYear === 'all' && selectedMonth !== 'all') {
-        const years = Array.isArray(source?.availableYears) && source.availableYears.length
-            ? source.availableYears
-            : [defaultYear];
-        return years.map(function (year) {
+    if (selectedYear === 'all' && selectedMonth !== DASHBOARD_MONTH_FILTER_ALL_MONTHS) {
+        return getDashboardYearKeys(source, rows, 'all').map(function (year) {
             return buildMonthKey(year, selectedMonth);
         });
     }
@@ -262,6 +303,10 @@ function getTimMonthKeys(source, rows, selectedYear, selectedMonth) {
     }
 
     return sortMonthKeys(Array.from(new Set(allMonthKeys)));
+}
+
+function formatYearAccumulationLabel(year, singleYear) {
+    return singleYear ? 'Akumulasi ' + year : String(year);
 }
 
 
@@ -289,29 +334,53 @@ function getSingleBarSizing(isScrollableChart) {
     };
 }
 
+
 function buildMonthlyGroupedChartData(source, selectedYear, selectedMonth, categoryKey, categoryConfigKey, datasetLabelPrefix) {
     const rows = Array.isArray(source?.rows) ? source.rows : [];
     const categories = Array.isArray(source?.[categoryConfigKey]) ? source[categoryConfigKey] : [];
     const rowLookup = new Map();
+    let labels = [];
+    let dataKeys = [];
 
-    rows.forEach(function (row) {
-        const monthKey = buildMonthKey(row.year, row.month);
-        rowLookup.set(monthKey + '::' + row[categoryKey], Number(row.total || 0));
-    });
+    if (isAnnualAccumulationFilter(selectedMonth)) {
+        const yearKeys = getDashboardYearKeys(source, rows, selectedYear);
+        const singleYear = yearKeys.length === 1;
 
-    const monthKeys = getTimMonthKeys(source, rows, selectedYear, selectedMonth);
-    const showYearOnLabel = selectedYear === 'all' || monthKeys.length === 1;
-    const labels = monthKeys.map(function (monthKey) {
-        const parts = monthKey.split('-');
-        return formatMonthLabel(parts[0], parts[1], showYearOnLabel);
-    });
+        rows.forEach(function (row) {
+            const year = Number(row.year);
+            if (selectedYear !== 'all' && year !== Number(selectedYear)) {
+                return;
+            }
+
+            const lookupKey = year + '::' + row[categoryKey];
+            const currentTotal = Number(rowLookup.get(lookupKey) || 0);
+            rowLookup.set(lookupKey, currentTotal + Number(row.total || 0));
+        });
+
+        dataKeys = yearKeys.map(String);
+        labels = yearKeys.map(function (year) {
+            return formatYearAccumulationLabel(year, singleYear);
+        });
+    } else {
+        rows.forEach(function (row) {
+            const monthKey = buildMonthKey(row.year, row.month);
+            rowLookup.set(monthKey + '::' + row[categoryKey], Number(row.total || 0));
+        });
+
+        dataKeys = getDashboardMonthKeys(source, rows, selectedYear, selectedMonth);
+        const showYearOnLabel = selectedYear === 'all' || dataKeys.length === 1;
+        labels = dataKeys.map(function (monthKey) {
+            const parts = monthKey.split('-');
+            return formatMonthLabel(parts[0], parts[1], showYearOnLabel);
+        });
+    }
 
     const barSizing = getGroupedBarSizing();
     const datasets = categories.map(function (category) {
         return {
             label: datasetLabelPrefix ? datasetLabelPrefix + ' - ' + category.label : category.label,
-            data: monthKeys.map(function (monthKey) {
-                return Number(rowLookup.get(monthKey + '::' + category.id) || 0);
+            data: dataKeys.map(function (dataKey) {
+                return Number(rowLookup.get(dataKey + '::' + category.id) || 0);
             }),
             backgroundColor: category.backgroundColor,
             borderColor: category.borderColor || category.backgroundColor,
@@ -337,26 +406,49 @@ function buildMonthlyGroupedChartData(source, selectedYear, selectedMonth, categ
 }
 
 
+
 function buildMonthlySingleSeriesChartData(source, selectedYear, selectedMonth) {
     const rows = Array.isArray(source?.rows) ? source.rows : [];
     const datasetConfig = source?.dataset || {};
-    const monthKeys = getTimMonthKeys(source, rows, selectedYear, selectedMonth);
-    const totalsByMonth = new Map();
+    const totalsByPeriod = new Map();
+    let dataKeys = [];
+    let labels = [];
 
-    rows.forEach(function (row) {
-        const monthKey = buildMonthKey(row.year, row.month);
-        totalsByMonth.set(monthKey, Number(row.total || 0));
-    });
+    if (isAnnualAccumulationFilter(selectedMonth)) {
+        const yearKeys = getDashboardYearKeys(source, rows, selectedYear);
+        const singleYear = yearKeys.length === 1;
 
-    const showYearOnLabel = selectedYear === 'all' || monthKeys.length === 1;
-    const labels = monthKeys.map(function (monthKey) {
-        const parts = monthKey.split('-');
-        return formatMonthLabel(parts[0], parts[1], showYearOnLabel);
-    });
+        rows.forEach(function (row) {
+            const year = Number(row.year);
+            if (selectedYear !== 'all' && year !== Number(selectedYear)) {
+                return;
+            }
+
+            const currentTotal = Number(totalsByPeriod.get(String(year)) || 0);
+            totalsByPeriod.set(String(year), currentTotal + Number(row.total || 0));
+        });
+
+        dataKeys = yearKeys.map(String);
+        labels = yearKeys.map(function (year) {
+            return formatYearAccumulationLabel(year, singleYear);
+        });
+    } else {
+        rows.forEach(function (row) {
+            const monthKey = buildMonthKey(row.year, row.month);
+            totalsByPeriod.set(monthKey, Number(row.total || 0));
+        });
+
+        dataKeys = getDashboardMonthKeys(source, rows, selectedYear, selectedMonth);
+        const showYearOnLabel = selectedYear === 'all' || dataKeys.length === 1;
+        labels = dataKeys.map(function (monthKey) {
+            const parts = monthKey.split('-');
+            return formatMonthLabel(parts[0], parts[1], showYearOnLabel);
+        });
+    }
 
     const barSizing = getSingleBarSizing(false);
-    const data = monthKeys.map(function (monthKey) {
-        return Number(totalsByMonth.get(monthKey) || 0);
+    const data = dataKeys.map(function (dataKey) {
+        return Number(totalsByPeriod.get(dataKey) || 0);
     });
     const maxValue = Math.max.apply(null, data.concat([0]));
 
@@ -381,53 +473,6 @@ function buildMonthlySingleSeriesChartData(source, selectedYear, selectedMonth) 
 }
 
 
-function buildTimChartData(source, selectedYear, selectedMonth) {
-    const rows = Array.isArray(source?.rows) ? source.rows : [];
-    const teams = Array.isArray(source?.teams) ? source.teams : [];
-    const rowLookup = new Map();
-
-    rows.forEach(function (row) {
-        const monthKey = buildMonthKey(row.year, row.month);
-        rowLookup.set(monthKey + '::' + row.timId, Number(row.total || 0));
-    });
-
-    const monthKeys = getTimMonthKeys(source, rows, selectedYear, selectedMonth);
-
-    const showYearOnLabel = selectedYear === 'all' || monthKeys.length === 1;
-    const labels = monthKeys.map(function (monthKey) {
-        const parts = monthKey.split('-');
-        return formatMonthLabel(parts[0], parts[1], showYearOnLabel);
-    });
-
-    const barSizing = getGroupedBarSizing();
-    const datasets = teams.map(function (team) {
-        return {
-            label: team.label,
-            data: monthKeys.map(function (monthKey) {
-                return Number(rowLookup.get(monthKey + '::' + team.id) || 0);
-            }),
-            backgroundColor: team.backgroundColor,
-            borderColor: team.borderColor,
-            borderWidth: 1,
-            borderRadius: 8,
-            borderSkipped: false,
-            categoryPercentage: barSizing.categoryPercentage,
-            barPercentage: barSizing.barPercentage,
-            maxBarThickness: barSizing.maxBarThickness,
-        };
-    });
-
-    const maxValue = datasets.reduce(function (highestValue, dataset) {
-        const datasetMax = Math.max.apply(null, dataset.data.concat([0]));
-        return Math.max(highestValue, datasetMax);
-    }, 0);
-
-    return {
-        labels: labels,
-        datasets: datasets,
-        maxValue: maxValue,
-    };
-}
 
 function buildSingleSeriesChartData(source, selectedYear, idKey, datasetLabel, chartType) {
     const rows = Array.isArray(source?.rows) ? source.rows : [];
@@ -537,10 +582,13 @@ function initTimKegiatanChart() {
     let chartInstance = null;
 
     function renderChart() {
-        const chartData = buildTimChartData(
+        const chartData = buildMonthlyGroupedChartData(
             source,
-            yearFilter.value === 'all' ? 'all' : Number(yearFilter.value),
-            monthFilter.value === 'all' ? 'all' : Number(monthFilter.value),
+            normalizeDashboardYearFilter(yearFilter.value),
+            normalizeDashboardMonthFilter(monthFilter.value),
+            'timId',
+            'teams',
+            '',
         );
 
         const options = createBaseBarOptions(chartData.maxValue);
@@ -574,7 +622,7 @@ function initLayananKegiatanChart() {
     function renderChart() {
         const chartData = buildSingleSeriesChartData(
             source,
-            yearFilter.value === 'all' ? 'all' : Number(yearFilter.value),
+            normalizeDashboardYearFilter(yearFilter.value),
             'layananId',
             'Total Peminjaman',
             'standard',
@@ -674,8 +722,8 @@ function initPengukuranLapanganChart() {
     function renderChart() {
         const chartData = buildMonthlyGroupedChartData(
             source,
-            yearFilter.value === 'all' ? 'all' : Number(yearFilter.value),
-            monthFilter.value === 'all' ? 'all' : Number(monthFilter.value),
+            normalizeDashboardYearFilter(yearFilter.value),
+            normalizeDashboardMonthFilter(monthFilter.value),
             'pengukuranKey',
             'categories',
             '',
@@ -714,8 +762,8 @@ function initApprovedPeminjamanChart() {
     function renderChart() {
         const chartData = buildMonthlySingleSeriesChartData(
             source,
-            yearFilter.value === 'all' ? 'all' : Number(yearFilter.value),
-            monthFilter.value === 'all' ? 'all' : Number(monthFilter.value),
+            normalizeDashboardYearFilter(yearFilter.value),
+            normalizeDashboardMonthFilter(monthFilter.value),
         );
         const options = createBaseBarOptions(chartData.maxValue);
         options.plugins.legend.display = false;
@@ -751,7 +799,7 @@ function initSurveiKegiatanChart() {
     function renderChart() {
         const chartData = buildSingleSeriesChartData(
             source,
-            yearFilter.value === 'all' ? 'all' : Number(yearFilter.value),
+            normalizeDashboardYearFilter(yearFilter.value),
             'surveiId',
             'Total Peminjaman',
             'scrollable',
@@ -781,7 +829,7 @@ function initInstansiTujuanChart() {
     function renderChart() {
         const chartData = buildSingleSeriesChartData(
             source,
-            yearFilter.value === 'all' ? 'all' : Number(yearFilter.value),
+            normalizeDashboardYearFilter(yearFilter.value),
             'instansiId',
             'Total Peminjaman',
             'scrollable',
