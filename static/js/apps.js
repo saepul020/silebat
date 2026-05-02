@@ -3370,6 +3370,7 @@ function initPeminjamanFormBehavior() {
         'geolistrik 1d': ['Geolistrik'],
         'geolistrik 2d': ['Geolistrik'],
         'kualitas air': ['Instrumen Keairan'],
+        'debit air': ['Instrumen Keairan'],
         'mat (muka air tanah)': ['Instrumen Keairan'],
         'pumping test': ['Instrumen Keairan'],
         topografi: ['Topografi (TS)'],

@@ -65,6 +65,7 @@ SURVEI_TO_LAB_CATEGORY_MAP = {
     "geolistrik 1d": {KategoriBarangLaboratoriumChoices.GEOLISTRIK},
     "geolistrik 2d": {KategoriBarangLaboratoriumChoices.GEOLISTRIK},
     "kualitas air": {KategoriBarangLaboratoriumChoices.INSTRUMEN_KEAIRAN},
+    "debit air": {KategoriBarangLaboratoriumChoices.INSTRUMEN_KEAIRAN},
     "mat (muka air tanah)": {KategoriBarangLaboratoriumChoices.INSTRUMEN_KEAIRAN},
     "pumping test": {KategoriBarangLaboratoriumChoices.INSTRUMEN_KEAIRAN},
     "topografi": {KategoriBarangLaboratoriumChoices.TOPOGRAFI_TS},
