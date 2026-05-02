@@ -20,16 +20,69 @@ from .models import Announcement, Notification, NotificationCategory
 
 User = get_user_model()
 
+# Aturan masa tampil notifikasi status transaksi final.
+# Berlaku untuk:
+# - Peminjaman Disetujui
+# - Peminjaman Ditolak
+# - Pengembalian Selesai
+#
+# Durasi tampil:
+# - Dropdown navbar: 1 x 24 jam.
+# - Halaman Notifikasi: 7 x 24 jam.
+TRANSACTION_STATUS_DROPDOWN_DURATION = timedelta(days=1)
+TRANSACTION_STATUS_PAGE_DURATION = timedelta(days=7)
+
+
 def _active_users():
     return User.objects.filter(is_active=True).select_related("profile", "profile__role")
 
 
-def visible_notifications(queryset=None):
+def _transaction_status_notification_q():
+    return (
+        Q(category=NotificationCategory.STATUS)
+        & (
+            (
+                Q(dedupe_key__startswith="peminjaman:")
+                & (
+                    Q(dedupe_key__endswith=f":status:{StepChoices.APPROVED.value}")
+                    | Q(dedupe_key__endswith=f":status:{StepChoices.REJECTED.value}")
+                )
+            )
+            | (
+                Q(dedupe_key__startswith="pengembalian:")
+                & Q(dedupe_key__endswith=":status:completed")
+            )
+        )
+    )
+
+
+def _status_surface_duration(surface):
+    return (
+        TRANSACTION_STATUS_DROPDOWN_DURATION
+        if surface == "dropdown"
+        else TRANSACTION_STATUS_PAGE_DURATION
+    )
+
+
+def visible_notifications(queryset=None, *, surface="page"):
     now = timezone.now()
     base_queryset = queryset if queryset is not None else Notification.objects.all()
-    return base_queryset.filter(
+    queryset = base_queryset.filter(
         Q(visible_from__isnull=True) | Q(visible_from__lte=now),
         Q(visible_until__isnull=True) | Q(visible_until__gte=now),
+    )
+
+    # Khusus notifikasi status transaksi final:
+    # - Peminjaman Disetujui, Peminjaman Ditolak, dan Pengembalian Selesai
+    #   tampil di dropdown navbar selama 1 x 24 jam;
+    # - tetap bisa dilihat di halaman Notifikasi selama 7 x 24 jam.
+    # Pengumuman tidak dibatasi aturan ini dan tetap mengikuti publish_start_at/publish_end_at.
+    duration = _status_surface_duration(surface)
+    cutoff = now - duration
+    return queryset.filter(
+        ~_transaction_status_notification_q()
+        | Q(visible_from__gte=cutoff)
+        | Q(visible_from__isnull=True, created_at__gte=cutoff)
     )
 
 
@@ -375,6 +428,7 @@ def sync_transaction_notifications(
             nomor = pengajuan.nomor_pengajuan or f"#{pengajuan.pk}"
             title = f"Peminjaman {status_label}"
             message = f"Proses peminjaman {nomor} telah {status_label.lower()}."
+            status_visible_from = timezone.now()
             _create_or_update_notification(
                 pengajuan.peminjam,
                 title=title,
@@ -383,10 +437,13 @@ def sync_transaction_notifications(
                 link_url=reverse("peminjaman:detail", args=[pengajuan.pk]),
                 source_pengajuan=pengajuan,
                 dedupe_key=f"peminjaman:{pengajuan.pk}:status:{pengajuan.current_step}",
+                visible_from=status_visible_from,
+                visible_until=status_visible_from + TRANSACTION_STATUS_PAGE_DURATION,
             )
 
         if pengajuan.return_current_step == ReturnStepChoices.COMPLETED:
             nomor = pengajuan.nomor_pengajuan or f"#{pengajuan.pk}"
+            status_visible_from = timezone.now()
             _create_or_update_notification(
                 pengajuan.peminjam,
                 title="Pengembalian Selesai",
@@ -395,6 +452,8 @@ def sync_transaction_notifications(
                 link_url=reverse("peminjaman:pengembalian", args=[pengajuan.pk]),
                 source_pengajuan=pengajuan,
                 dedupe_key=f"pengembalian:{pengajuan.pk}:status:completed",
+                visible_from=status_visible_from,
+                visible_until=status_visible_from + TRANSACTION_STATUS_PAGE_DURATION,
             )
 
 
@@ -472,7 +531,7 @@ def get_navbar_notifications(user, limit=5):
             "notification_recent_items": [],
         }
     ensure_user_pending_notifications(user)
-    qs = visible_notifications(Notification.objects.filter(recipient=user))
+    qs = visible_notifications(Notification.objects.filter(recipient=user), surface="dropdown")
     return {
         "notification_unread_count": qs.filter(is_read=False).count(),
         "notification_recent_items": list(qs.order_by("-visible_from", "-created_at", "-id")[:limit]),
