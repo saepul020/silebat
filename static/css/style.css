@@ -4273,6 +4273,54 @@ select.return-status-select:not([disabled]) {
     cursor: pointer;
 }
 
+.other-select-field {
+    width: 100%;
+}
+
+.other-select-field .other-select-manual-wrap {
+    display: none;
+    align-items: stretch;
+    width: 100%;
+}
+
+.other-select-field.is-manual-mode > select {
+    display: none;
+}
+
+.other-select-field.is-manual-mode .other-select-manual-wrap {
+    display: flex;
+}
+
+.other-select-manual-wrap .layanan-other-input {
+    flex: 1 1 auto;
+    min-width: 0;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.other-select-reset-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    min-width: 44px;
+    border: 1px solid var(--border-strong, #dbe4ea);
+    border-left: 0;
+    border-radius: 0 12px 12px 0;
+    background: var(--color-white);
+    color: var(--color-primary-navy);
+    cursor: pointer;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
+}
+
+.other-select-reset-btn:hover,
+.other-select-reset-btn:focus {
+    border-color: var(--color-soft-blue);
+    box-shadow: 0 0 0 3px rgba(100, 205, 209, 0.12);
+    color: var(--color-ocean-blue);
+    outline: none;
+}
+
 .password-field-wrap {
     position: relative;
 }

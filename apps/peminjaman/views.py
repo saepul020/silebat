@@ -818,7 +818,7 @@ def _export_instansi_name(obj):
 
 
 def _export_layanan_name(obj):
-    return str(obj.layanan_kegiatan) if obj.layanan_kegiatan else "-"
+    return obj.layanan_kegiatan_label
 
 
 def _export_tim_name(obj):
@@ -1756,7 +1756,7 @@ def download_berita_acara_pdf(request, pk):
     if obj.survei_lainnya:
         survei_values.append(f"Lainnya: {obj.survei_lainnya}")
     kegiatan_lines = [
-        f"Layanan Kegiatan: {getattr(obj.layanan_kegiatan, 'jenis_layanan', '-')}",
+        f"Layanan Kegiatan: {obj.layanan_kegiatan_label}",
         f"Kegiatan Survei: {', '.join(survei_values) if survei_values else '-'}",
         f"Tim Kegiatan: {getattr(obj.tim_kegiatan, 'nama_tim', '-')}",
         f"Instansi Tujuan: {getattr(obj.instansi_tujuan, 'nama_instansi', obj.instansi_tujuan_lainnya or '-')}",
@@ -2241,7 +2241,7 @@ def download_pdf(request, pk):
     multiline(
         "B. Data Kegiatan",
         [
-            f"Layanan Kegiatan: {getattr(obj.layanan_kegiatan, 'jenis_layanan', '-')}",
+            f"Layanan Kegiatan: {obj.layanan_kegiatan_label}",
             f"Kegiatan Survei: {', '.join(survei_values) if survei_values else '-'}",
             f"Tim Kegiatan Pelaksana: {getattr(obj.tim_kegiatan, 'nama_tim', '-')}",
             f"Instansi Tujuan Kegiatan: {getattr(obj.instansi_tujuan, 'nama_instansi', obj.instansi_tujuan_lainnya or '-')}",

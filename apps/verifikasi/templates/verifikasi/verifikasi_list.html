@@ -32,7 +32,7 @@
                 <tr>
                     <td>{{ item.nomor_pengajuan }}</td>
                     <td class="cell-wrap">{{ item.nama_peminjam }}</td>
-                    <td class="cell-wrap">{{ item.layanan_kegiatan.jenis_layanan|default:'-' }}</td>
+                    <td class="cell-wrap">{{ item.layanan_kegiatan_label|default:'-' }}</td>
                     <td class="cell-wrap">{{ item.tim_kegiatan.nama_tim|default:'-' }}</td>
                     <td class="cell-status"><span class="status-badge {{ item.active_verification_badge_class }}">{{ item.active_verification_label }}</span></td>
                     <td class="cell-action"><a href="{% url 'verifikasi:detail' item.pk %}" class="btn btn-primary btn-sm">{% if item.return_current_step != 'none' and item.return_current_step != 'completed' %}Proses Pengembalian{% else %}Proses Peminjaman{% endif %}</a></td>

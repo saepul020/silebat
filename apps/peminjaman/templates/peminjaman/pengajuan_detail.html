@@ -90,7 +90,7 @@
     <div class="card">
         <h3 class="card-title">Data Kegiatan</h3>
         <div class="detail-grid detail-grid--kegiatan">
-            <div class="detail-item detail-item--span-2"><label>Layanan Kegiatan</label><p>{{ obj.layanan_kegiatan.jenis_layanan|default:'-' }}</p></div>
+            <div class="detail-item detail-item--span-2"><label>Layanan Kegiatan</label><p>{{ obj.layanan_kegiatan_label|default:'-' }}</p></div>
             <div class="detail-item detail-item--span-2"><label>Tim Kegiatan</label><p>{{ obj.tim_kegiatan.nama_tim|default:'-' }}</p></div>
             <div class="detail-item detail-item--span-2"><label>Berkas Pendukung</label><p>{% if obj.berkas_pendukung %}<a href="{{ obj.berkas_pendukung.url }}" target="_blank" rel="noopener">Buka dokumen PDF</a>{% else %}-{% endif %}</p></div>
             <div class="detail-item detail-item-full">

@@ -72,13 +72,17 @@ class PeminjamanRequestAdmin(admin.ModelAdmin):
     list_display = (
         'nomor_pengajuan',
         'nama_peminjam',
-        'layanan_kegiatan',
+        'layanan_kegiatan_display',
         'current_step',
         'return_current_step',
         'submitted_at',
     )
     list_filter = ('current_step', 'return_current_step', 'layanan_kegiatan')
-    search_fields = ('nomor_pengajuan', 'nama_peminjam', 'email_peminjam')
+    search_fields = ('nomor_pengajuan', 'nama_peminjam', 'email_peminjam', 'layanan_kegiatan__jenis_layanan', 'layanan_kegiatan_lainnya')
+    @admin.display(description='Layanan kegiatan')
+    def layanan_kegiatan_display(self, obj):
+        return obj.layanan_kegiatan_label
+
     inlines = [
         PeminjamanBarangLaboratoriumInline,
         PeminjamanBarangPenunjangInline,

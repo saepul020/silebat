@@ -31,6 +31,7 @@ from .models import PeminjamanRequest
 PENGAJUAN_CREATOR_ROLES = {ROLE_USER, ROLE_SUPER_ADMIN, ROLE_ADMIN_LAB, ROLE_TEKNISI_LAB}
 PEMINJAM_SELECT_ROLES = {ROLE_SUPER_ADMIN, ROLE_ADMIN_LAB, ROLE_TEKNISI_LAB}
 PEMINJAM_ALLOWED_ROLES = {ROLE_USER, ROLE_ADMIN_LAB, ROLE_TEKNISI_LAB}
+LAYANAN_LAINNYA_VALUE = "__lainnya__"
 
 
 def get_peminjam_dropdown_queryset():
@@ -168,7 +169,21 @@ class FlexibleDateField(forms.DateField):
             raise ValidationError(self.error_messages["invalid"], code="invalid")
 
 
+class LayananKegiatanChoiceField(forms.ModelChoiceField):
+    def to_python(self, value):
+        if value == LAYANAN_LAINNYA_VALUE:
+            return None
+        return super().to_python(value)
+
+
 class PeminjamanRequestForm(forms.ModelForm):
+    layanan_kegiatan = LayananKegiatanChoiceField(
+        queryset=LayananKegiatan.objects.none(),
+        required=False,
+        label="Layanan Kegiatan",
+        empty_label="Pilih layanan kegiatan",
+        error_messages={"required": "Layanan kegiatan wajib dipilih."},
+    )
     peminjam_user = forms.ModelChoiceField(
         queryset=get_peminjam_dropdown_queryset(),
         required=True,
@@ -213,6 +228,7 @@ class PeminjamanRequestForm(forms.ModelForm):
         model = PeminjamanRequest
         fields = [
             "layanan_kegiatan",
+            "layanan_kegiatan_lainnya",
             "kegiatan_survei",
             "survei_lainnya",
             "tim_kegiatan",
@@ -224,6 +240,7 @@ class PeminjamanRequestForm(forms.ModelForm):
         ]
         labels = {
             "layanan_kegiatan": "Layanan Kegiatan",
+            "layanan_kegiatan_lainnya": "Layanan Kegiatan Lainnya",
             "survei_lainnya": "Kegiatan Survei Lainnya",
             "tim_kegiatan": "Tim Kegiatan Pelaksana",
             "berkas_pendukung": "Berkas Pendukung (opsional)",
@@ -231,6 +248,11 @@ class PeminjamanRequestForm(forms.ModelForm):
             "instansi_tujuan_lainnya": "Instansi Tujuan Lainnya",
         }
         widgets = {
+            "layanan_kegiatan_lainnya": forms.TextInput(
+                attrs={
+                    "placeholder": "Isi layanan kegiatan lainnya.",
+                }
+            ),
             "survei_lainnya": forms.TextInput(
                 attrs={
                     "placeholder": "Isi manual jika kegiatan survei tidak ada pada daftar."
@@ -254,15 +276,16 @@ class PeminjamanRequestForm(forms.ModelForm):
             self.fields["peminjam_user"].widget.attrs.update({"class": "select-input", "data-peminjam-select": "true"})
         else:
             self.fields.pop("peminjam_user", None)
-        self.fields["layanan_kegiatan"].queryset = LayananKegiatan.objects.order_by(
-            "jenis_layanan"
-        )
+        layanan_field = self.fields["layanan_kegiatan"]
+        layanan_field.queryset = LayananKegiatan.objects.order_by("jenis_layanan")
+        layanan_field.empty_label = "Pilih layanan kegiatan"
+        layanan_field.choices = list(layanan_field.choices) + [(LAYANAN_LAINNYA_VALUE, "Lainnya")]
+
         self.fields["tim_kegiatan"].queryset = TimKegiatan.objects.order_by("nama_tim")
         self.fields["instansi_tujuan"].queryset = InstansiKlien.objects.order_by(
             "nama_instansi"
         )
 
-        self.fields["layanan_kegiatan"].empty_label = "Pilih layanan kegiatan"
         self.fields["tim_kegiatan"].empty_label = "Pilih tim kegiatan"
         self.fields["instansi_tujuan"].empty_label = "Pilih instansi tujuan"
 
@@ -273,7 +296,11 @@ class PeminjamanRequestForm(forms.ModelForm):
             {"class": "toggle-input"}
         )
 
-        self.fields["layanan_kegiatan"].widget.attrs.update({"class": "select-input"})
+        self.fields["layanan_kegiatan"].widget.attrs.update({
+            "class": "select-input",
+            "data-layanan-select": "true",
+            "data-other-value": LAYANAN_LAINNYA_VALUE,
+        })
         self.fields["tim_kegiatan"].widget.attrs.update({"class": "select-input"})
         self.fields["instansi_tujuan"].widget.attrs.update({"class": "select-input"})
         self.fields["berkas_pendukung"].widget = forms.FileInput(
@@ -302,6 +329,14 @@ class PeminjamanRequestForm(forms.ModelForm):
             }
         )
 
+        self.fields["layanan_kegiatan_lainnya"].widget.attrs.update(
+            {
+                "autocomplete": "off",
+                "class": "text-input layanan-other-input",
+                "data-layanan-other-input": "true",
+                "maxlength": "255",
+            }
+        )
         self.fields["survei_lainnya"].widget.attrs.update(
             {"autocomplete": "off", "class": "text-input"}
         )
@@ -322,7 +357,8 @@ class PeminjamanRequestForm(forms.ModelForm):
             max_size_message=build_max_upload_size_message("Berkas Pendukung"),
         )
 
-        self.fields["layanan_kegiatan"].required = True
+        self.fields["layanan_kegiatan"].required = False
+        self.fields["layanan_kegiatan_lainnya"].required = False
         self.fields["layanan_kegiatan"].error_messages.update(
             {"required": "Layanan kegiatan wajib dipilih."}
         )
@@ -334,6 +370,10 @@ class PeminjamanRequestForm(forms.ModelForm):
         self.fields["tanggal_selesai"].required = True
 
         if self.instance and self.instance.pk and not self.is_bound:
+            if (self.instance.layanan_kegiatan_lainnya or "").strip() and not self.instance.layanan_kegiatan_id:
+                self.initial["layanan_kegiatan"] = LAYANAN_LAINNYA_VALUE
+                self.fields["layanan_kegiatan"].initial = LAYANAN_LAINNYA_VALUE
+
             self.fields["gunakan_survei_lainnya"].initial = bool(
                 (self.instance.survei_lainnya or "").strip()
             )
@@ -356,13 +396,36 @@ class PeminjamanRequestForm(forms.ModelForm):
         tanggal_mulai = cleaned_data.get("tanggal_mulai")
         tanggal_selesai = cleaned_data.get("tanggal_selesai")
         layanan_kegiatan = cleaned_data.get("layanan_kegiatan")
+        layanan_kegiatan_lainnya = (
+            cleaned_data.get("layanan_kegiatan_lainnya") or ""
+        ).strip()
+        layanan_choice_value = self.data.get(
+            self.add_prefix("layanan_kegiatan"),
+            self.initial.get("layanan_kegiatan", ""),
+        )
+        is_layanan_lainnya = (
+            layanan_choice_value == LAYANAN_LAINNYA_VALUE
+            or (bool(layanan_kegiatan_lainnya) and not layanan_kegiatan)
+        )
         tim_kegiatan = cleaned_data.get("tim_kegiatan")
+
+        cleaned_data["layanan_kegiatan_lainnya"] = layanan_kegiatan_lainnya
+        if is_layanan_lainnya:
+            cleaned_data["layanan_kegiatan"] = None
+            if not layanan_kegiatan_lainnya:
+                self.add_error(
+                    "layanan_kegiatan_lainnya",
+                    "Silakan isi layanan kegiatan lainnya.",
+                )
+        elif not layanan_kegiatan:
+            self.add_error("layanan_kegiatan", "Layanan kegiatan wajib dipilih.")
+            cleaned_data["layanan_kegiatan_lainnya"] = ""
+        else:
+            cleaned_data["layanan_kegiatan_lainnya"] = ""
 
         if "peminjam_user" in self.fields and not cleaned_data.get("peminjam_user"):
             self.add_error("peminjam_user", "Pilih peminjam wajib diisi.")
 
-        if not layanan_kegiatan:
-            self.add_error("layanan_kegiatan", "Layanan kegiatan wajib dipilih.")
         if not tim_kegiatan:
             self.add_error("tim_kegiatan", "Tim kegiatan pelaksana wajib dipilih.")
         if not tanggal_mulai:

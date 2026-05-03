@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load master_data_tags %}
 
 {% block title %}Data Sarana Prasarana Ruangan{% endblock %}
 
@@ -47,18 +48,18 @@
                 {% for item in items %}
                 <tr>
                     <td class="cell-wrap">
-                        <strong>{{ item.nama_barang }}</strong><br>
-                        <small>{{ item.tipe_merek_barang }}</small>
+                        <strong>{{ item.nama_barang|display_dash }}</strong><br>
+                        <small>{{ item.tipe_merek_barang|display_dash }}</small>
                     </td>
-                    <td>{{ item.status_barang }}</td>
-                    <td>{{ item.kode_laboratorium }}</td>
-                    <td class="cell-wrap">{{ item.kategori_barang }}</td>
-                    <td>{{ item.volume_baik }}</td>
-                    <td>{{ item.volume_rusak }}</td>
-                    <td>{{ item.total_volume }}</td>
-                    <td>{% if item.status_barang == 'BMN' %}{{ item.kondisi_barang }}{% else %}-{% endif %}</td>
+                    <td>{{ item.status_barang|display_dash }}</td>
+                    <td>{{ item.kode_laboratorium|display_dash }}</td>
+                    <td class="cell-wrap">{{ item.kategori_barang|display_dash }}</td>
+                    <td>{{ item.volume_baik|display_dash }}</td>
+                    <td>{{ item.volume_rusak|display_dash }}</td>
+                    <td>{{ item.total_volume|display_dash }}</td>
+                    <td>{% if item.status_barang == 'BMN' %}{{ item.kondisi_barang|display_dash }}{% else %}-{% endif %}</td>
                     <td class="cell-status"><span class="status-badge {{ item.status_badge_class }}">{{ item.ketersediaan }}</span></td>
-                    <td class="cell-wrap">{{ item.lokasi_barang }}</td>
+                    <td class="cell-wrap">{{ item.lokasi_barang|display_dash }}</td>
                     <td class="cell-action">
                         <div class="table-action-group">
                             {% if item.qr_code %}
@@ -71,7 +72,7 @@
                             </a>
                             <a href="{% url 'master_data:detail_fasilitas_ruangan' item.pk %}" class="btn btn-secondary btn-sm"><i class="bi bi-eye-fill"></i></a>
                             <a href="{% url 'master_data:edit_fasilitas_ruangan' item.pk %}" class="btn btn-warning btn-sm"><i class="bi bi-pencil-square"></i></a>
-                            <button type="button" class="btn btn-danger btn-sm js-delete-btn" data-delete-modal="master" data-delete-url="{% url 'master_data:hapus_fasilitas_ruangan' item.pk %}" data-item-name="{{ item.nama_barang }}" data-item-meta="{{ item.kode_laboratorium|default:'-' }}">
+                            <button type="button" class="btn btn-danger btn-sm js-delete-btn" data-delete-modal="master" data-delete-url="{% url 'master_data:hapus_fasilitas_ruangan' item.pk %}" data-item-name="{{ item.nama_barang|display_dash }}" data-item-meta="{{ item.kode_laboratorium|default:'-' }}">
                                 <i class="bi bi-trash3-fill"></i>
                             </button>
                         </div>

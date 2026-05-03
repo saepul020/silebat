@@ -205,24 +205,53 @@ def index(request):
         .annotate(total=Count("id"))
         .order_by("year", "layanan_kegiatan__jenis_layanan")
     )
+    layanan_lainnya_rows = list(
+        approved_peminjaman_qs.filter(layanan_kegiatan_lainnya__isnull=False)
+        .annotate(
+            year=ExtractYear("dashboard_approved_at"),
+            layanan_lainnya_value=Trim("layanan_kegiatan_lainnya"),
+        )
+        .exclude(layanan_lainnya_value="")
+        .values("year", "layanan_lainnya_value")
+        .annotate(total=Count("id"))
+        .order_by("year", "layanan_lainnya_value")
+    )
+    layanan_lainnya_labels = sorted(
+        {
+            row["layanan_lainnya_value"]
+            for row in layanan_lainnya_rows
+            if row.get("layanan_lainnya_value")
+        }
+    )
     layanan_available_years = sorted(
         {
             int(row["year"])
-            for row in layanan_year_rows
+            for row in [*layanan_year_rows, *layanan_lainnya_rows]
             if row.get("year")
         }
         | {current_year}
     )
 
+    layanan_categories = [
+        {
+            "id": layanan["id"],
+            "label": layanan["jenis_layanan"],
+            "backgroundColor": LAYANAN_COLOR_PALETTE[index % len(LAYANAN_COLOR_PALETTE)],
+        }
+        for index, layanan in enumerate(layanan_list)
+    ]
+    layanan_master_count = len(layanan_categories)
+    layanan_categories.extend(
+        {
+            "id": f"lainnya:{label}",
+            "label": label,
+            "backgroundColor": LAYANAN_COLOR_PALETTE[(layanan_master_count + index) % len(LAYANAN_COLOR_PALETTE)],
+        }
+        for index, label in enumerate(layanan_lainnya_labels)
+    )
+
     layanan_chart = {
-        "categories": [
-            {
-                "id": layanan["id"],
-                "label": layanan["jenis_layanan"],
-                "backgroundColor": LAYANAN_COLOR_PALETTE[index % len(LAYANAN_COLOR_PALETTE)],
-            }
-            for index, layanan in enumerate(layanan_list)
-        ],
+        "categories": layanan_categories,
         "rows": [
             {
                 "year": int(row["year"]),
@@ -231,6 +260,15 @@ def index(request):
             }
             for row in layanan_year_rows
             if row.get("year") and row.get("layanan_kegiatan_id")
+        ]
+        + [
+            {
+                "year": int(row["year"]),
+                "layananId": f"lainnya:{row['layanan_lainnya_value']}",
+                "total": row["total"],
+            }
+            for row in layanan_lainnya_rows
+            if row.get("year") and row.get("layanan_lainnya_value")
         ],
         "availableYears": layanan_available_years,
         "defaultYear": current_year,

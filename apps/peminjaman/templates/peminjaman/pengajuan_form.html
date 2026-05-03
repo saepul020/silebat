@@ -55,10 +55,19 @@
 
             <div class="activity-subsection">
                 <div class="form-row form-row-3">
-                    <div class="form-group {% if form.layanan_kegiatan.errors %}has-error{% endif %}">
+                    <div class="form-group {% if form.layanan_kegiatan.errors or form.layanan_kegiatan_lainnya.errors %}has-error{% endif %}">
                         <label for="{{ form.layanan_kegiatan.id_for_label }}">{{ form.layanan_kegiatan.label }}</label>
-                        {{ form.layanan_kegiatan }}
+                        <div class="other-select-field{% if form.layanan_kegiatan_lainnya.value %} is-manual-mode{% endif %}" data-layanan-other-field>
+                            {{ form.layanan_kegiatan }}
+                            <div class="other-select-manual-wrap">
+                                {{ form.layanan_kegiatan_lainnya }}
+                                <button type="button" class="other-select-reset-btn" data-layanan-other-reset aria-label="Kembali ke daftar layanan kegiatan" title="Kembali ke dropdown-list">
+                                    <i class="bi bi-chevron-down"></i>
+                                </button>
+                            </div>
+                        </div>
                         {% for error in form.layanan_kegiatan.errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
+                        {% for error in form.layanan_kegiatan_lainnya.errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
                     </div>
                     <div class="form-group {% if form.tim_kegiatan.errors %}has-error{% endif %}">
                         <label for="{{ form.tim_kegiatan.id_for_label }}">{{ form.tim_kegiatan.label }}</label>

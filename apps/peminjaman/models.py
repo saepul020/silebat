@@ -98,6 +98,7 @@ class PeminjamanRequest(models.Model):
         blank=True,
         related_name="pengajuan_peminjaman",
     )
+    layanan_kegiatan_lainnya = models.CharField(max_length=255, blank=True)
     kegiatan_survei = models.ManyToManyField(SurveiKegiatan, blank=True)
     survei_lainnya = models.CharField(max_length=255, blank=True)
     tim_kegiatan = models.ForeignKey(
@@ -238,6 +239,13 @@ class PeminjamanRequest(models.Model):
 
     def __str__(self):
         return self.nomor_pengajuan or f"Peminjaman #{self.pk}"
+
+    @property
+    def layanan_kegiatan_label(self):
+        manual_value = (self.layanan_kegiatan_lainnya or "").strip()
+        if manual_value:
+            return manual_value
+        return getattr(self.layanan_kegiatan, "jenis_layanan", "") or "-"
 
     def clean(self):
         super().clean()
@@ -537,7 +545,7 @@ class PeminjamanRequest(models.Model):
                 "alamat": self.alamat_peminjam or "-",
             },
             "kegiatan": {
-                "layanan_kegiatan": getattr(self.layanan_kegiatan, "jenis_layanan", "-") or "-",
+                "layanan_kegiatan": self.layanan_kegiatan_label,
                 "kegiatan_survei": survei_items,
                 "tim_kegiatan": getattr(self.tim_kegiatan, "nama_tim", "-") or "-",
                 "instansi_tujuan": getattr(self.instansi_tujuan, "nama_instansi", self.instansi_tujuan_lainnya or "-") or "-",

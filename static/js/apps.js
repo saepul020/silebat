@@ -3406,6 +3406,10 @@ function initPeminjamanFormBehavior() {
     const instansiInput = document.getElementById('id_instansi_tujuan_lainnya');
 
     const layananInput = document.getElementById('id_layanan_kegiatan');
+    const layananOtherInput = document.getElementById('id_layanan_kegiatan_lainnya');
+    const layananOtherField = form.querySelector('[data-layanan-other-field]');
+    const layananOtherResetButton = form.querySelector('[data-layanan-other-reset]');
+    const layananOtherValue = layananInput ? (layananInput.dataset.otherValue || '__lainnya__') : '__lainnya__';
     const timInput = document.getElementById('id_tim_kegiatan');
     const tanggalMulaiInput = document.getElementById('id_tanggal_mulai');
     const tanggalSelesaiInput = document.getElementById('id_tanggal_selesai');
@@ -3660,6 +3664,77 @@ function initPeminjamanFormBehavior() {
         }
     }
 
+    function isLayananOtherMode() {
+        if (!layananInput) {
+            return false;
+        }
+        return String(layananInput.value || '') === layananOtherValue;
+    }
+
+    function syncSelectPlaceholderClass(select) {
+        if (!select) {
+            return;
+        }
+        select.classList.toggle('is-placeholder-state', !select.value);
+    }
+
+    function syncLayananOtherState(options) {
+        if (!layananInput || !layananOtherInput || !layananOtherField) {
+            return;
+        }
+
+        const config = options || {};
+        const hasManualValue = Boolean(String(layananOtherInput.value || '').trim());
+        const manualMode = isLayananOtherMode() || hasManualValue;
+
+        if (manualMode && layananInput.value !== layananOtherValue) {
+            layananInput.value = layananOtherValue;
+        }
+
+        layananOtherField.classList.toggle('is-manual-mode', manualMode);
+        layananOtherInput.disabled = !manualMode;
+
+        if (!manualMode) {
+            layananOtherInput.value = '';
+        } else if (config.focusInput) {
+            layananOtherInput.focus();
+        }
+
+        syncSelectPlaceholderClass(layananInput);
+    }
+
+    function resetLayananToDropdown() {
+        if (!layananInput || !layananOtherInput) {
+            return;
+        }
+        layananInput.value = '';
+        layananOtherInput.value = '';
+        syncLayananOtherState();
+        layananInput.dispatchEvent(new Event('change', { bubbles: true }));
+        layananInput.focus();
+    }
+
+    function getLayananDisplayText() {
+        const manualValue = String(layananOtherInput ? layananOtherInput.value : '').trim();
+        if (manualValue) {
+            return manualValue;
+        }
+        if (!layananInput || !layananInput.selectedOptions || !layananInput.selectedOptions[0]) {
+            return '-';
+        }
+        const selectedText = String(layananInput.selectedOptions[0].text || '').trim();
+        if (!selectedText || String(layananInput.value || '') === layananOtherValue) {
+            return '-';
+        }
+        return selectedText;
+    }
+
+    function hasLayananValue() {
+        const manualValue = String(layananOtherInput ? layananOtherInput.value : '').trim();
+        const selectedValue = String(layananInput ? layananInput.value : '').trim();
+        return Boolean(manualValue || (selectedValue && selectedValue !== layananOtherValue));
+    }
+
     function hasSelectedKegiatanSurvei() {
         return Array.from(kegiatanSurveiInputs || []).some(function (checkbox) {
             return checkbox.checked;
@@ -3856,8 +3931,13 @@ function initPeminjamanFormBehavior() {
         }
 
         if (layananInput) {
-            const layananValue = String(layananInput.value || '').trim();
-            if (!layananValue) {
+            if (isLayananOtherMode()) {
+                const layananOtherValueText = String(layananOtherInput ? layananOtherInput.value : '').trim();
+                if (!layananOtherValueText) {
+                    addGroupError(getFormGroup(layananInput), 'Silakan isi layanan kegiatan lainnya.');
+                    isValid = false;
+                }
+            } else if (!hasLayananValue()) {
                 addGroupError(getFormGroup(layananInput), 'Layanan kegiatan wajib dipilih.');
                 isValid = false;
             }
@@ -3925,7 +4005,7 @@ function initPeminjamanFormBehavior() {
             clearGroupErrors(getFormGroup(peminjamSelect));
         }
 
-        if (layananInput && layananInput.value) {
+        if (layananInput && hasLayananValue()) {
             clearGroupErrors(getFormGroup(layananInput));
         }
 
@@ -4194,6 +4274,7 @@ function initPeminjamanFormBehavior() {
     syncPeminjamDetail();
     syncConditionalPanel(surveiToggle, surveiPanel, surveiInput);
     syncInstansiState();
+    syncLayananOtherState();
     validateTanggalRange();
     updateRealtimeErrorState();
 
@@ -4253,7 +4334,24 @@ function initPeminjamanFormBehavior() {
     }
 
     if (layananInput) {
-        layananInput.addEventListener('change', updateRealtimeErrorState);
+        layananInput.addEventListener('change', function () {
+            syncLayananOtherState({ focusInput: isLayananOtherMode() });
+            updateRealtimeErrorState();
+        });
+    }
+
+    if (layananOtherInput) {
+        layananOtherInput.addEventListener('input', function () {
+            syncLayananOtherState();
+            updateRealtimeErrorState();
+        });
+    }
+
+    if (layananOtherResetButton) {
+        layananOtherResetButton.addEventListener('click', function () {
+            resetLayananToDropdown();
+            updateRealtimeErrorState();
+        });
     }
 
     if (timInput) {
@@ -4498,7 +4596,7 @@ function initPeminjamanFormBehavior() {
             surveiValues.push(`Lainnya: ${surveiLainnyaValue}`);
         }
 
-        const layananText = layananInput && layananInput.selectedOptions && layananInput.selectedOptions[0] ? layananInput.selectedOptions[0].text.trim() : '-';
+        const layananText = getLayananDisplayText();
         const timText = timInput && timInput.selectedOptions && timInput.selectedOptions[0] ? timInput.selectedOptions[0].text.trim() : '-';
         const currentBerkasName = form.querySelector('.document-file-link-wrap__title')?.innerText.trim() || '';
         const uploadedBerkasName = berkasInput && berkasInput.files && berkasInput.files[0] ? berkasInput.files[0].name : '';
