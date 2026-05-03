@@ -212,16 +212,9 @@ def index(request):
             layanan_lainnya_value=Trim("layanan_kegiatan_lainnya"),
         )
         .exclude(layanan_lainnya_value="")
-        .values("year", "layanan_lainnya_value")
+        .values("year")
         .annotate(total=Count("id"))
-        .order_by("year", "layanan_lainnya_value")
-    )
-    layanan_lainnya_labels = sorted(
-        {
-            row["layanan_lainnya_value"]
-            for row in layanan_lainnya_rows
-            if row.get("layanan_lainnya_value")
-        }
+        .order_by("year")
     )
     layanan_available_years = sorted(
         {
@@ -240,15 +233,15 @@ def index(request):
         }
         for index, layanan in enumerate(layanan_list)
     ]
-    layanan_master_count = len(layanan_categories)
-    layanan_categories.extend(
-        {
-            "id": f"lainnya:{label}",
-            "label": label,
-            "backgroundColor": LAYANAN_COLOR_PALETTE[(layanan_master_count + index) % len(LAYANAN_COLOR_PALETTE)],
-        }
-        for index, label in enumerate(layanan_lainnya_labels)
-    )
+    layanan_lainnya_total = sum(int(row.get("total") or 0) for row in layanan_lainnya_rows)
+    if layanan_lainnya_total:
+        layanan_categories.append(
+            {
+                "id": "lainnya",
+                "label": "Lainnya",
+                "backgroundColor": LAYANAN_COLOR_PALETTE[len(layanan_categories) % len(LAYANAN_COLOR_PALETTE)],
+            }
+        )
 
     layanan_chart = {
         "categories": layanan_categories,
@@ -264,11 +257,11 @@ def index(request):
         + [
             {
                 "year": int(row["year"]),
-                "layananId": f"lainnya:{row['layanan_lainnya_value']}",
+                "layananId": "lainnya",
                 "total": row["total"],
             }
             for row in layanan_lainnya_rows
-            if row.get("year") and row.get("layanan_lainnya_value")
+            if row.get("year")
         ],
         "availableYears": layanan_available_years,
         "defaultYear": current_year,
