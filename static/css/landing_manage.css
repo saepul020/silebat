@@ -1,0 +1,90 @@
+/* Landing page management helpers */
+.list-table--landing-equipment {
+    min-width: 1180px;
+}
+
+.landing-equipment-panel .table-title {
+    line-height: 1.35;
+}
+
+.landing-equipment-panel .table-action-group {
+    justify-content: flex-start;
+}
+
+.landing-equipment-panel .cell-action {
+    min-width: 118px;
+}
+
+.landing-equipment-panel .cell-status {
+    min-width: 132px;
+}
+
+.landing-list-photo {
+    width: 58px;
+    height: 42px;
+    border-radius: 10px;
+    object-fit: cover;
+    border: 1px solid rgba(16, 62, 111, 0.14);
+    background: #f0f4f6;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #64748b;
+    font-size: 1.15rem;
+}
+
+.landing-list-photo--empty {
+    border-style: dashed;
+}
+
+.landing-upload-stack {
+    margin-top: 2px;
+}
+
+.landing-display-row {
+    align-items: flex-start;
+}
+
+.landing-checkbox-group {
+    justify-content: flex-start;
+}
+
+.landing-visible-label {
+    display: block;
+    margin-bottom: 8px;
+}
+
+.landing-visible-inline {
+    min-height: 44px;
+    padding-top: 1px;
+}
+
+.landing-visible-toggle {
+    cursor: pointer;
+}
+
+.landing-visible-toggle input[type='checkbox'] {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    accent-color: var(--primary, #103e6f);
+}
+
+.landing-visible-toggle:has(input[type='checkbox']:checked) {
+    border-color: rgba(16, 62, 111, 0.55);
+    background: rgba(184, 225, 242, 0.45);
+    box-shadow: 0 4px 14px rgba(16, 62, 111, 0.08);
+}
+
+.landing-visible-text {
+    color: var(--text-main, #1f2a37);
+    font-size: 0.88rem;
+    font-weight: 600;
+    line-height: 1.45;
+}
+
+@media (max-width: 768px) {
+    .landing-visible-inline {
+        min-height: 38px;
+    }
+}

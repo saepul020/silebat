@@ -136,6 +136,24 @@
         </div>
         {% endif %}
 
+
+        {% if role_access.is_super_admin %}
+        <div class="nav-group">
+            <button type="button" class="nav-link nav-toggle" aria-expanded="false">
+                <span class="nav-left">
+                    <span class="nav-icon">
+                        <i class="bi bi-window-stack"></i>
+                    </span>
+                    <span class="nav-text">Landing Page</span>
+                </span>
+                <span class="nav-arrow"><i class="bi bi-chevron-down"></i></span>
+            </button>
+            <div class="sub-menu">
+                <a href="{% url 'landing:equipment_list' %}" class="sub-link">Konten Peralatan</a>
+            </div>
+        </div>
+        {% endif %}
+
         {% if role_access.is_super_admin %}
         <div class="nav-group">
             <button type="button" class="nav-link nav-toggle" aria-expanded="false">

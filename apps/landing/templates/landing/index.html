@@ -1,0 +1,416 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SILEBAT</title>
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=DM+Serif+Display&display=swap" rel="stylesheet" />
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+
+  <link rel="stylesheet" href="{% static 'css/landing_page.css' %}?v=20260503-public-landing-v11" />
+  <link rel="stylesheet" href="{% static 'css/chatbot.css' %}?v=20260503-public-chatbot-v1" />
+</head>
+<body>
+
+<!-- === NAVBAR === -->
+<nav class="navbar" id="navbar">
+  <div class="container">
+    <div class="nav-inner">
+      <a href="#beranda" class="nav-brand" aria-label="SILEBAT - Beranda">
+        <div class="nav-logo">
+          <img src="{% static 'assets/img/silebat-logo.png' %}" alt="SILEBAT Logo">
+        </div>
+        <div class="nav-brand-text">
+          <div class="top">SILEBAT</div>
+          <div class="bot">Sistem Elektronik Laboratorium Balai Air Tanah</div>
+        </div>
+      </a>
+      <ul class="nav-menu" id="navMenu">
+        <li><a href="#beranda" class="active">Beranda</a></li>
+        <li><a href="#profil">Profil</a></li>
+        <li><a href="#layanan">Layanan</a></li>
+        <li><a href="#statistik">Statistik</a></li>
+        <li><a href="#peralatan">Peralatan</a></li>
+        <li><a href="#kontak">Kontak</a></li>
+      </ul>
+      <div class="nav-actions">
+        <a href="{% url 'login' %}" class="btn btn-primary"><i class="bi bi-box-arrow-in-right"></i> Login</a>
+        <button class="hamburger" id="hamburger" type="button" aria-label="Buka menu" aria-controls="mobileMenu" aria-expanded="false">
+          <span></span><span></span><span></span>
+        </button>
+      </div>
+    </div>
+  </div>
+  <!-- Mobile Menu -->
+  <div class="mobile-menu" id="mobileMenu" aria-hidden="true">
+    <a href="#beranda">Beranda</a>
+    <a href="#profil">Profil</a>
+    <a href="#layanan">Layanan</a>
+    <a href="#peralatan">Peralatan</a>
+    <a href="#statistik">Statistik</a>
+    <a href="#kontak">Kontak</a>
+    <a href="{% url 'login' %}" class="btn btn-primary"><i class="bi bi-box-arrow-in-right"></i> Login SILEBAT</a>
+  </div>
+</nav>
+
+<!-- === HERO === -->
+<section class="hero" id="beranda">
+  <div class="container">
+    <div class="hero-inner">
+      <div class="hero-content">
+        <a href="https://maps.app.goo.gl/wbYmj1vsu2yeEjDj8">
+          <div class="hero-tag"><i class="bi bi-geo-alt-fill"></i>Balai Air Tanah</div>
+        </a>
+        
+        <h1>Laboratorium <span>Balai Air Tanah</span></h1>
+        <p class="hero-desc">
+          Merupakan laboratorium lapangan yang mendukung kegiatan pemetaan potensi air tanah serta inspeksi kondisi sumur bor. Laboratorium Balai Air Tanah berperan dalam menyediakan data teknis lapangan untuk membantu perencanaan, evaluasi, dan pengelolaan sumber daya air tanah secara lebih akurat.
+        </p>
+        <div class="hero-actions">
+          <a href="#profil" class="btn btn-primary"><i class="bi bi-briefcase-fill"></i> Lihat Profil</a>
+        </div>
+      </div>
+      <div class="hero-image-wrap">
+        <div class="hero-img-card">
+          <img src="{% static 'assets/img/foto_kegiatan_gl.jpeg' %}" alt="Foto kegiatan survei geolistrik Laboratorium Balai Air Tanah">
+        </div>
+        <div class="hero-badge">
+          <div class="icon"><i class="bi bi-patch-check-fill"></i></div>
+          <div class="text">
+            <div class="t1">Standar Mutu</div>
+            <div class="t2">ISO 17025 : 2017</div>
+          </div>
+        </div>
+        <div class="hero-badge2">
+          <div class="t1">Kegiatan Survei</div>
+          <div class="t2">{{ landing_stats.total_kegiatan_survei|default:0 }}+</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="hero-wave" aria-hidden="true">
+    <div class="hero-wave__layer hero-wave__layer--back">
+      <svg class="hero-wave__track" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2880 118" preserveAspectRatio="none" focusable="false">
+        <path class="hero-wave__shape" d="M0,54 C120,26 240,86 360,54 C480,22 600,82 720,54 C840,26 960,86 1080,54 C1200,22 1320,82 1440,54 L1440,118 L0,118 Z M1440,54 C1560,26 1680,86 1800,54 C1920,22 2040,82 2160,54 C2280,26 2400,86 2520,54 C2640,22 2760,82 2880,54 L2880,118 L1440,118 Z"></path>
+      </svg>
+    </div>
+    <div class="hero-wave__layer hero-wave__layer--mid">
+      <svg class="hero-wave__track" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2880 118" preserveAspectRatio="none" focusable="false">
+        <path class="hero-wave__shape" d="M0,66 C96,46 192,30 288,54 C408,84 528,94 648,66 C792,34 936,38 1080,66 C1200,90 1320,82 1440,66 L1440,118 L0,118 Z M1440,66 C1536,46 1632,30 1728,54 C1848,84 1968,94 2088,66 C2232,34 2376,38 2520,66 C2640,90 2760,82 2880,66 L2880,118 L1440,118 Z"></path>
+      </svg>
+    </div>
+    <div class="hero-wave__layer hero-wave__layer--front">
+      <svg class="hero-wave__track" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2880 118" preserveAspectRatio="none" focusable="false">
+        <path class="hero-wave__shape" d="M0,76 C108,88 216,102 324,82 C456,58 588,34 720,56 C864,80 1008,112 1152,86 C1260,66 1350,58 1440,76 L1440,118 L0,118 Z M1440,76 C1548,88 1656,102 1764,82 C1896,58 2028,34 2160,56 C2304,80 2448,112 2592,86 C2700,66 2790,58 2880,76 L2880,118 L1440,118 Z"></path>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<!-- === Tentang Kami === -->
+<section class="profil" id="profil">
+  <div class="container">
+    <div class="text-center">
+      <span class="section-label">Tentang Kami</span>
+      <h2 class="section-title title-center">Profil Laboratorium Balai Air Tanah</h2>
+    </div>
+    <div class="profil-grid">
+      <div class="profil-img">
+        <img src="{% static 'assets/img/foto_lab.jpeg' %}" alt="Foto Laboratorium Balai Air Tanah">
+      </div>
+      <div>
+        <span class="section-label">Fungsi & Layanan</span>
+        <h2 class="section-title">Laboratorium Lapangan untuk Layanan Teknis Air Tanah</h2>
+        <p class="profil-copy">
+          Laboratorium Balai Air Tanah merupakan laboratorium lapangan yang berfungsi sebagai sarana pendukung kegiatan survei, investigasi, pengujian, dan evaluasi teknis air tanah. Laboratorium ini mengakomodir pelaksanaan kegiatan pemetaan potensi air tanah serta inspeksi kondisi sumur bor secara langsung di lapangan, sehingga data yang diperoleh dapat digunakan sebagai dasar dalam perencanaan, pemanfaatan, pengelolaan, dan pemantauan sumber daya air tanah.
+        </p>
+        <div class="profil-features" id="layanan">
+          <div class="profil-feat">
+            <div class="icon"><i class="bi bi-geo-alt-fill"></i></div>
+            <div class="text">
+              <div class="t1">Survei & Pemetaan Air Tanah</div>
+              <div class="t2">Investigasi potensi dan kondisi air tanah menggunakan metode geofisika dan hidrogeologi.</div>
+            </div>
+          </div>
+          <div class="profil-feat">
+            <div class="icon"><i class="bi bi-activity"></i></div>
+            <div class="text">
+              <div class="t1">Pengukuran & Monitoring Lapangan</div>
+              <div class="t2">Pemantauan muka air tanah, debit, dan parameter hidrolika secara berkala.</div>
+            </div>
+          </div>
+          <div class="profil-feat">
+            <div class="icon"><i class="bi bi-droplet-fill"></i></div>
+            <div class="text">
+              <div class="t1">Inspeksi Sumur Bor</div>
+              <div class="t2">Inspeksi visual kondisi bagian dalam sumur bor, seperti kerusakan pipa, sumbatan, retakan, atau kondisi konstruksi sumur.</div>
+            </div>
+          </div>
+          <div class="profil-feat">
+            <div class="icon"><i class="bi bi-tools"></i></div>
+            <div class="text">
+              <div class="t1">Peminjaman Alat Survei</div>
+              <div class="t2">Layanan peminjaman peralatan survei dan pengukuran lapangan yang terdata dan terkelola.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- === Data Operasional === -->
+<section class="traffic" id="statistik">
+  <div class="container">
+    <span class="section-label">Data Operasional</span>
+    <h2 class="section-title">Statistik Kegiatan</h2>
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon blue"><i class="bi bi-clock-history"></i></div>
+        <div>
+          <div class="stat-num" id="ctr1">0</div>
+          <div class="stat-label">Kegiatan Berjalan</div>
+        </div>
+        <div class="stat-change"><i class="bi bi-calendar-check"></i> Tahun berjalan</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon teal"><i class="bi bi-check2-circle"></i></div>
+        <div>
+          <div class="stat-num" id="ctr2">0</div>
+          <div class="stat-label">Kegiatan Selesai</div>
+        </div>
+        <div class="stat-change"><i class="bi bi-calendar-check"></i> Tahun berjalan</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon sky"><i class="bi bi-journal-richtext"></i></div>
+        <div>
+          <div class="stat-num" id="ctr3">0</div>
+          <div class="stat-label">Total Kegiatan Survei</div>
+        </div>
+        <div class="stat-change"><i class="bi bi-database-check"></i> Akumulasi data</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon green"><i class="bi bi-box-seam"></i></div>
+        <div>
+          <div class="stat-num" id="ctr4">0</div>
+          <div class="stat-label">Jumlah Peralatan Survei</div>
+        </div>
+        <div class="stat-change"><i class="bi bi-box-seam"></i> Peralatan survei</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- === Visualisasi Data === -->
+<section class="charts" id="visualisasi">
+  <div class="container">
+    <span class="section-label">Visualisasi Data</span>
+    <h2 class="section-title">Rekap Data & Kegiatan</h2>
+
+    <div class="charts-grid">
+      <div class="chart-card full">
+        <div class="chart-header">
+          <div class="chart-title"><i class="bi bi-bar-chart-fill icon-teal"></i> Kegiatan Survei</div>
+        </div>
+        <div class="chart-wrap chart-wrap--fixed">
+          <canvas id="chartSurvei"></canvas>
+          <div class="landing-empty-state is-hidden" data-chart-empty="chartSurvei">Belum ada data kegiatan survei.</div>
+        </div>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-header">
+          <div class="chart-title"><i class="bi bi-pie-chart-fill icon-navy"></i> Layanan Kegiatan</div>
+        </div>
+        <div class="chart-wrap chart-wrap--fixed">
+          <canvas id="chartLayanan"></canvas>
+          <div class="landing-empty-state is-hidden" data-chart-empty="chartLayanan">Belum ada data layanan kegiatan.</div>
+        </div>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-header">
+          <div class="chart-title"><i class="bi bi-graph-up icon-teal"></i> Data Pengukuran Lapangan</div>
+        </div>
+        <div class="chart-wrap chart-wrap--fixed">
+          <canvas id="chartLapangan"></canvas>
+          <div class="landing-empty-state is-hidden" data-chart-empty="chartLapangan">Belum ada data pengukuran lapangan.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- === Inventaris Alat === -->
+<section class="alat-utama">
+  <div class="container">
+    <div class="inventory-heading">
+      <span class="section-label">Inventarisasi Alat</span>
+      <h2 class="section-title title-center">Alat Utama Survei Laboratorium</h2>
+      <p class="section-desc inventory-desc">Peralatan survei lapangan yang tersedia di Laboratorium Balai Air Tanah</p>
+    </div>
+    <div class="alat-grid">
+      {% for card in inventory_cards %}
+      <div class="alat-card">
+        <div class="alat-icon"><i class="{{ card.icon }}"></i></div>
+        <div class="alat-num">{{ card.total }}</div>
+        <div class="alat-unit">Unit</div>
+        <div class="alat-name">{{ card.label }}</div>
+      </div>
+      {% empty %}
+      <div class="landing-empty-state">Belum ada data kategori peralatan survei lapangan.</div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- === DETAIL PERALATAN SURVEI === -->
+<section class="peralatan" id="peralatan">
+  <div class="container">
+    <div class="peralatan-header">
+      <div>
+        <span class="section-label">DETAIL PERALATAN SURVEI</span>
+        <h2 class="section-title">Peralatan Survei Lapangan</h2>
+        <p class="section-desc">Daftar peralatan utama yang digunakan dalam kegiatan survei dan pengukuran lapangan</p>
+      </div>
+    </div>
+    <div class="peralatan-grid">
+      {% for item in equipment_cards %}
+      <div class="peralatan-card">
+        <div class="peralatan-img {% if item.foto_barang %}peralatan-img--photo{% endif %}">
+          {% if item.foto_barang %}
+            <img src="{{ item.foto_barang.url }}" alt="Foto {{ item.nama_barang }}" class="peralatan-photo">
+          {% else %}
+            <i class="bi bi-box-seam-fill"></i>
+          {% endif %}
+          <span class="alat-type">{{ item.get_kategori_barang_display|default:"Peralatan" }}</span>
+        </div>
+        <div class="peralatan-body">
+          <div class="peralatan-brand">{{ item.jenis_barang|default:"-" }}</div>
+          <div class="peralatan-name">{{ item.nama_barang|default:"-" }}</div>
+          <div class="peralatan-desc">{{ item.ringkasan_alat|default:"-" }}</div>
+          <div class="peralatan-specs">
+            <div class="spec-row"><span class="spec-label">Fungsi</span><span class="spec-val">{{ item.fungsi_alat|default:"-" }}</span></div>
+            <div class="spec-row"><span class="spec-label">Merek/Tipe</span><span class="spec-val">{{ item.merek_tipe_alat|default:"-" }}</span></div>
+            <div class="spec-row"><span class="spec-label">Spesifikasi</span><span class="spec-val">{{ item.spesifikasi_alat|default:"-" }}</span></div>
+          </div>
+        </div>
+      </div>
+      {% empty %}
+      <div class="landing-empty-state">Belum ada konten peralatan laboratorium yang dikonfigurasi.</div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- === FOOTER === -->
+<footer class="footer" id="kontak">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <div class="footer-logo">
+          <div class="footer-logo-icon"><img src="{% static 'assets/img/silebat-logo.png' %}" alt="SILEBAT Logo"></div>
+          <div class="footer-logo-text">
+            <div class="t1">BALAI AIR TANAH</div>
+            <div class="t2">Laboratorium</div>
+          </div>
+        </div>
+        <p class="footer-about">
+          Laboratorium lapangan untuk pemetaan potensi, inspeksi sumur bor, dan evaluasi air tanah.
+        </p>
+        <div class="footer-socials">
+          <a href="#" class="social-btn"><i class="bi bi-facebook"></i></a>
+          <a href="#" class="social-btn"><i class="bi bi-twitter-x"></i></a>
+          <a href="#" class="social-btn"><i class="bi bi-instagram"></i></a>
+          <a href="#" class="social-btn"><i class="bi bi-youtube"></i></a>
+        </div>
+      </div>
+
+      <div class="footer-col">
+        <h4>Navigasi</h4>
+        <ul>
+          <li><a href="#beranda">Beranda</a></li>
+          <li><a href="#profil">Profil Laboratorium</a></li>
+          <li><a href="#statistik">Statistik</a></li>
+          <li><a href="#peralatan">Peralatan</a></li>
+          <li><a href="{% url 'login' %}">Login SILEBAT</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h4>Layanan</h4>
+        <ul>
+          <li><a href="#">Survei & Pemetaan Air Tanah</a></li>
+          <li><a href="#">Pengukuran Geolistrik</a></li>
+          <li><a href="#">Pengukuran & Monitoring Lapangan</a></li>
+          <li><a href="#">Inspeksi Sumur Bor</a></li>
+          <li><a href="#">Peminjaman Alat Survei</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h4>Kontak</h4>
+        <div class="footer-contact-item">
+          <i class="bi bi-geo-alt-fill"></i>
+          <span>Jl. Ir. H. Juanda No. 193, Bandung, Jawa Barat 40135</span>
+        </div>
+        <div class="footer-contact-item">
+          <i class="bi bi-telephone-fill"></i>
+          <span>0819 1300 9001</span>
+        </div>
+        <div class="footer-contact-item">
+          <i class="bi bi-envelope-fill"></i>
+          <span>balaiairtanah@pu.go.id</span>
+        </div>
+        <div class="footer-contact-item">
+          <i class="bi bi-clock-fill"></i>
+          <span>Senin – Jumat, 08.00 – 16.00 WIB</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <p>© {{ landing_stats.current_year }} Laboratorium Balai Air Tanah. Hak cipta dilindungi undang-undang.</p>
+      <p>SILEBAT – Sistem Elektronik Laboratorium Balai Air Tanah</p>
+    </div>
+  </div>
+</footer>
+
+<!-- === CHATBOT === -->
+<div class="chat-fab">
+  <div class="chat-window" id="chatWindow">
+    <div class="chat-head">
+      <div class="chat-avatar"><i class="bi bi-robot"></i></div>
+      <div class="chat-head-text">
+        <div class="t1">Asisten Virtual Lab</div>
+        <div class="t2">Laboratorium Balai Air Tanah</div>
+      </div>
+      <div class="chat-online"></div>
+    </div>
+    <div class="chat-body" id="chatBody"></div>
+    <div class="chat-foot">
+      <input type="text" class="chat-input" id="chatInput" placeholder="Ketik pesan..." />
+      <button class="chat-send" id="chatSend"><i class="bi bi-send-fill"></i></button>
+    </div>
+  </div>
+  <button class="chat-toggle" id="chatToggle" aria-label="Chat">
+    <i class="bi bi-chat-dots-fill chat-icon"></i>
+    <i class="bi bi-x-lg close-icon"></i>
+  </button>
+</div>
+
+<!-- Back to top -->
+<button id="backTop" aria-label="Kembali ke atas"><i class="bi bi-arrow-up"></i></button>
+
+{{ landing_stats|json_script:"landing-stats-data" }}
+{{ landing_charts|json_script:"landing-chart-data" }}
+<script src="{% static 'js/landing_page.js' %}?v=20260503-public-landing-v9" defer></script>
+<script src="{% static 'js/chatbot.js' %}?v=20260503-public-chatbot-v1" defer></script>
+</body>
+</html>

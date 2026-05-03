@@ -1,0 +1,181 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/landing_manage.css' %}?v=20260503-public-landing-manage-v4">
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{{ page_title }}</h1>
+    <p>{{ page_subtitle }}</p>
+</div>
+
+<div class="form-card user-form-card master-data-form-card landing-equipment-form-card">
+    <form method="post" enctype="multipart/form-data" class="pengguna-form master-data-form" data-master-data-form="true" data-landing-equipment-form="true" data-order-check-url="{% url 'landing:equipment_order_check' %}" data-current-id="{{ form.instance.pk|default:'' }}" novalidate>
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+        <div class="form-global-errors">
+            {% for error in form.non_field_errors %}
+                <p class="input-error-text">*{{ error }}</p>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <fieldset>
+            <legend>Jenis Kategori Barang</legend>
+            <div class="master-fieldset-stack">
+                <div class="form-row master-form-row master-form-row--1">
+                    <div class="form-group {% if form.kategori_barang.errors %}has-error{% endif %}">
+                        <label for="{{ form.kategori_barang.id_for_label }}">{{ form.kategori_barang.label }}</label>
+                        {{ form.kategori_barang }}
+                        {% for error in form.kategori_barang.errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
+                    </div>
+                </div>
+            </div>
+        </fieldset>
+
+        <fieldset>
+            <legend>Informasi Card Peralatan</legend>
+            <div class="master-fieldset-stack">
+                <div class="form-row master-form-row master-form-row--3">
+                    <div class="form-group {% if form.nama_barang.errors %}has-error{% endif %}">
+                        <label for="{{ form.nama_barang.id_for_label }}">{{ form.nama_barang.label }}</label>
+                        {{ form.nama_barang }}
+                        {% for error in form.nama_barang.errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
+                    </div>
+                    <div class="form-group {% if form.jenis_barang.errors %}has-error{% endif %}">
+                        <label for="{{ form.jenis_barang.id_for_label }}">{{ form.jenis_barang.label }}</label>
+                        {{ form.jenis_barang }}
+                        {% for error in form.jenis_barang.errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
+                    </div>
+                    <div class="form-group {% if form.merek_tipe_alat.errors %}has-error{% endif %}">
+                        <label for="{{ form.merek_tipe_alat.id_for_label }}">{{ form.merek_tipe_alat.label }}</label>
+                        {{ form.merek_tipe_alat }}
+                        {% for error in form.merek_tipe_alat.errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
+                    </div>
+                </div>
+
+                <div class="form-row master-form-row master-form-row--2">
+                    <div class="form-group {% if form.fungsi_alat.errors %}has-error{% endif %}">
+                        <label for="{{ form.fungsi_alat.id_for_label }}">{{ form.fungsi_alat.label }}</label>
+                        {{ form.fungsi_alat }}
+                        {% for error in form.fungsi_alat.errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
+                    </div>
+                    <div class="form-group form-group-full {% if form.spesifikasi_alat.errors %}has-error{% endif %}">
+                        <label for="{{ form.spesifikasi_alat.id_for_label }}">{{ form.spesifikasi_alat.label }}</label>
+                        {{ form.spesifikasi_alat }}
+                        {% for error in form.spesifikasi_alat.errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
+                    </div>
+                </div>
+
+                <div class="form-row master-form-row master-form-row--1">
+                    <div class="form-group form-group-full {% if form.ringkasan_alat.errors %}has-error{% endif %}">
+                        <label for="{{ form.ringkasan_alat.id_for_label }}">{{ form.ringkasan_alat.label }}</label>
+                        {{ form.ringkasan_alat }}
+                        {% for error in form.ringkasan_alat.errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
+                    </div>
+                </div>
+
+                <div class="master-upload-stack landing-upload-stack">
+                    <div
+                        class="upload-card {% if form.foto_barang.errors %}has-error{% endif %}"
+                        data-upload-control
+                        data-upload-mode="replace-only"
+                        data-hidden-input-id="{{ form.hapus_foto_barang.id_for_label }}"
+                        data-hidden-input-name="{{ form.hapus_foto_barang.html_name }}"
+                        data-existing-url="{% if form.instance and form.instance.foto_barang %}{{ form.instance.foto_barang.url }}{% endif %}"
+                        data-file-label="Foto barang"
+                    >
+                        {{ form.hapus_foto_barang }}
+
+                        <div class="upload-card__head">
+                            <label for="{{ form.foto_barang.id_for_label }}">{{ form.foto_barang.label }}</label>
+                        </div>
+
+                        <div class="upload-preview-stack">
+                            <div class="upload-preview-section {% if not form.instance or not form.instance.foto_barang %}is-hidden{% endif %}" data-stored-preview-section>
+                                <div class="upload-preview-section__label">Foto Barang Saat Ini:</div>
+                                <div class="upload-preview-card upload-preview-card--master {% if form.instance and form.instance.foto_barang %}{% else %}is-empty{% endif %}" data-stored-preview-card>
+                                    <div class="upload-preview-card__empty">Belum ada file tersimpan</div>
+                                    <div class="upload-preview-card__body">
+                                        <div class="upload-preview-frame upload-preview-frame--master">
+                                            <img alt="Foto Barang Tersimpan" data-stored-preview-image {% if form.instance and form.instance.foto_barang %}src="{{ form.instance.foto_barang.url }}"{% endif %}>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="upload-input-wrap upload-input-wrap--inline upload-input-wrap--file-proxy" data-inline-file-proxy>
+                                <div class="upload-input-wrap__field">
+                                    {{ form.foto_barang }}
+                                    <label for="{{ form.foto_barang.id_for_label }}" class="file-input-proxy">
+                                        <span class="file-input-proxy__button" aria-hidden="true"><i class="bi bi-image"></i></span>
+                                        <span class="file-input-proxy__text is-placeholder" data-inline-file-text>Pilih file</span>
+                                    </label>
+                                </div>
+                                <div class="upload-file-state upload-file-state--inline is-hidden" data-file-state data-inline-file-state>
+                                    <button type="button" class="upload-file-state__action upload-file-state__action--icon" data-file-state-action data-inline-file-clear data-mode="clear-selected" title="Batalkan Upload" aria-label="Batalkan Upload">
+                                        <i class="bi bi-x-lg"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <p class="input-error-text" data-inline-file-error-node hidden></p>
+                            {% for error in form.foto_barang.errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
+
+                            <div class="upload-preview-section" data-selected-preview-section>
+                                <div class="upload-preview-section__label">Foto Barang Baru:</div>
+                                <div class="upload-preview-card upload-preview-card--master is-empty" data-selected-preview-card>
+                                    <div class="upload-preview-card__empty">Belum ada gambar baru dipilih</div>
+                                    <div class="upload-preview-card__body">
+                                        <div class="upload-preview-frame upload-preview-frame--master">
+                                            <img alt="Preview Upload Foto Barang Baru" data-selected-preview-image>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </fieldset>
+
+        <fieldset>
+            <legend>Pengaturan Tampil</legend>
+            <div class="master-fieldset-stack">
+                <div class="form-row master-form-row master-form-row--2 landing-display-row">
+                    <div class="form-group {% if form.urutan.errors %}has-error{% endif %}" data-landing-order-group>
+                        <label for="{{ form.urutan.id_for_label }}">{{ form.urutan.label }}</label>
+                        {{ form.urutan }}
+                        <p class="input-error-text" data-landing-order-error hidden></p>
+                        {% for error in form.urutan.errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
+                    </div>
+                    <div class="form-group landing-checkbox-group {% if form.is_active.errors %}has-error{% endif %}">
+                        <label class="landing-visible-label" for="{{ form.is_active.id_for_label }}">{{ form.is_active.label }}</label>
+                        <div class="return-transfer-inline landing-visible-inline">
+                            <label class="return-transfer-toggle landing-visible-toggle" aria-label="Tampilkan konten di landing page">
+                                {{ form.is_active }}
+                            </label>
+                            <span class="landing-visible-text">Tampilkan di halaman landing page</span>
+                        </div>
+                        {% for error in form.is_active.errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
+                    </div>
+                </div>
+            </div>
+        </fieldset>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">{{ submit_label }}</button>
+            <a href="{% url 'landing:equipment_list' %}" class="btn btn-secondary">Kembali</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+
+{% block extra_js %}
+<script src="{% static 'js/landing_manage.js' %}?v=20260503-public-landing-manage-v1" defer></script>
+{% endblock %}

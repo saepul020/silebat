@@ -49,6 +49,8 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "apps.core",
     "apps.dashboard",
+    "apps.landing.apps.LandingConfig",
+    "apps.chatbot.apps.ChatbotConfig",
     "apps.operasional.apps.OperasionalConfig",
     "apps.master_data.apps.MasterDataConfig",
     "apps.peminjaman.apps.PeminjamanConfig",
@@ -148,5 +150,5 @@ MEDIA_ROOT = BASE_DIR / "media"
 AUTH_USER_MODEL = "pengguna.User"
 
 LOGIN_URL = "/login/"
-LOGIN_REDIRECT_URL = "/"
-LOGOUT_REDIRECT_URL = "/login/"
+LOGIN_REDIRECT_URL = "/dashboard/"
+LOGOUT_REDIRECT_URL = "/"

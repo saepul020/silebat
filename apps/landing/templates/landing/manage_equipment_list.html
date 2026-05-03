@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+{% load static master_data_tags %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/landing_manage.css' %}?v=20260503-public-landing-manage-v3">
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{{ page_title }}</h1>
+    <p>{{ page_subtitle }}</p>
+</div>
+
+<div class="table-wrapper table-panel landing-equipment-panel">
+    <div class="table-toolbar">
+        <h3 class="table-title">Daftar Konten Peralatan Landing Page</h3>
+        <div class="table-toolbar-actions">
+            <a href="{% url 'landing:home' %}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">
+                <i class="bi bi-box-arrow-up-right"></i>&nbsp;Lihat Landing Page
+            </a>
+            <a href="{% url 'landing:equipment_create' %}" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i>&nbsp;Tambah Konten
+            </a>
+        </div>
+    </div>
+
+    {% include 'components/master_entries_control.html' %}
+
+    <div class="table-scroll-area table-scroll--list" tabindex="0" aria-label="Scroll tabel konten peralatan landing page">
+        <table class="table-data list-table--landing-equipment">
+            <thead>
+                <tr>
+                    <th>No</th>
+                    <th class="cell-wrap">Foto</th>
+                    <th class="cell-wrap">Kategori Barang</th>
+                    <th class="cell-wrap">Nama Barang</th>
+                    <th class="cell-wrap">Jenis Barang</th>
+                    <th class="cell-wrap">Merek / Tipe Alat</th>
+                    <th>Urutan</th>
+                    <th class="cell-status">Status</th>
+                    <th class="cell-action">Aksi</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    <td>{{ start_index|add:forloop.counter0 }}</td>
+                    <td class="cell-wrap">
+                        {% if item.foto_barang %}
+                            <img src="{{ item.foto_barang.url }}" alt="Foto {{ item.nama_barang }}" class="landing-list-photo">
+                        {% else %}
+                            <span class="landing-list-photo landing-list-photo--empty"><i class="bi bi-image"></i></span>
+                        {% endif %}
+                    </td>
+                    <td class="cell-wrap">{{ item.get_kategori_barang_display|display_dash }}</td>
+                    <td class="cell-wrap">
+                        <strong>{{ item.nama_barang|display_dash }}</strong>
+                        {% if item.ringkasan_alat %}<small>{{ item.ringkasan_alat|truncatechars:90 }}</small>{% endif %}
+                    </td>
+                    <td class="cell-wrap">{{ item.jenis_barang|display_dash }}</td>
+                    <td class="cell-wrap">{{ item.merek_tipe_alat|display_dash }}</td>
+                    <td>{{ item.urutan }}</td>
+                    <td class="cell-status">
+                        {% if item.is_active %}
+                            <span class="status-badge badge-success">Tampil</span>
+                        {% else %}
+                            <span class="status-badge badge-secondary">Disembunyikan</span>
+                        {% endif %}
+                    </td>
+                    <td class="cell-action">
+                        <div class="table-action-group">
+                            <a href="{% url 'landing:equipment_update' item.pk %}" class="btn btn-warning btn-sm" title="Edit">
+                                <i class="bi bi-pencil-square"></i>
+                            </a>
+                            <button type="button" class="btn btn-danger btn-sm js-delete-btn" data-delete-modal="master" data-delete-url="{% url 'landing:equipment_delete' item.pk %}" data-item-name="{{ item.nama_barang|display_dash }}" data-item-meta="{{ item.get_kategori_barang_display|display_dash }}">
+                                <i class="bi bi-trash3-fill"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="9"><div class="empty-state">Belum ada konten peralatan landing page.</div></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% include 'components/master_pagination.html' %}
+</div>
+
+<div class="delete-modal" id="masterDeleteModal">
+    <div class="delete-modal-backdrop" id="masterDeleteModalBackdrop"></div>
+
+    <div class="delete-modal-card" role="dialog" aria-modal="true" aria-labelledby="masterDeleteModalTitle">
+        <div class="delete-modal-header">
+            <h3 id="masterDeleteModalTitle">Konfirmasi Hapus</h3>
+            <button type="button" class="delete-modal-close" id="masterDeleteModalClose" aria-label="Tutup">&times;</button>
+        </div>
+
+        <div class="delete-modal-body">
+            <p>Apakah Anda yakin ingin menghapus konten landing page berikut?</p>
+
+            <div class="delete-user-info">
+                <p><strong>Nama Barang:</strong> <span id="masterDeleteItemName">-</span></p>
+                <p><strong>Kategori Barang:</strong> <span id="masterDeleteItemMeta">-</span></p>
+            </div>
+
+            <p class="delete-warning-text">Tindakan ini tidak dapat dibatalkan.</p>
+        </div>
+
+        <div class="delete-modal-actions">
+            <button type="button" class="btn btn-secondary" id="masterDeleteModalCancel">Batal</button>
+
+            <form method="post" id="masterDeleteForm">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger">Ya, Hapus</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
