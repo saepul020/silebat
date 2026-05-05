@@ -9,6 +9,13 @@ from django.shortcuts import get_object_or_404, redirect, render
 
 from apps.core.list_pagination import paginate_list
 from apps.core.excel_utils import build_excel_response
+from apps.core.import_utils import (
+    choice_values as _choice_values,
+    import_cell as _import_cell,
+    json_response_or_none as _import_json_response,
+    load_import_worksheet as _load_shared_import_worksheet,
+    string_cell as _string_cell,
+)
 from apps.core.permissions import ROLE_SUPER_ADMIN, get_role_name
 
 from .forms import (
@@ -41,74 +48,13 @@ def _deny_import_access(request):
     return redirect('operasional:data_instansi')
 
 
-def _normalize_import_header(value):
-    return str(value or '').strip().lower().replace(' ', '_').replace('/', '_').replace('-', '_')
-
-
-def _string_cell(value):
-    if value is None:
-        return ''
-    if isinstance(value, float) and value.is_integer():
-        value = int(value)
-    return str(value).strip()
-
-
-def _choice_values(choices):
-    return {value for value, _label in choices}
-
-
-def _wants_import_json(request):
-    return (
-        request.headers.get('x-requested-with') == 'XMLHttpRequest'
-        or 'application/json' in request.headers.get('accept', '')
-    )
-
-
-def _import_json_response(request, payload, status=200):
-    if not _wants_import_json(request):
-        return None
-    return JsonResponse(payload, status=status)
-
-
 def _load_import_worksheet(file_obj, headers, required_headers):
-    try:
-        from openpyxl import load_workbook
-    except ImportError as exc:
-        raise RuntimeError('Library openpyxl belum tersedia. Jalankan: pip install openpyxl') from exc
-
-    if not file_obj:
-        return None, None, None, ['File Excel wajib diupload.']
-
-    filename = getattr(file_obj, 'name', '')
-    if not filename.lower().endswith('.xlsx'):
-        return None, None, None, ['Format file harus berupa Excel .xlsx.']
-
-    if getattr(file_obj, 'size', 0) > IMPORT_INSTANSI_MAX_SIZE:
-        return None, None, None, ['Ukuran file import maksimal 7 MB.']
-
-    try:
-        workbook = load_workbook(filename=BytesIO(file_obj.read()), data_only=True)
-    except Exception:
-        return None, None, None, ['File Excel tidak dapat dibaca. Pastikan file sesuai format .xlsx dan tidak rusak.']
-
-    worksheet = workbook.active
-    header_row = next(worksheet.iter_rows(min_row=1, max_row=1, values_only=True), None)
-    if not header_row:
-        return None, None, None, ['Baris header pada file Excel tidak ditemukan.']
-
-    normalized_headers = {_normalize_import_header(value): index for index, value in enumerate(header_row) if _string_cell(value)}
-    header_aliases = {header: _normalize_import_header(header) for header in headers}
-    missing_headers = [header for header in required_headers if header_aliases[header] not in normalized_headers]
-    if missing_headers:
-        return None, None, None, [f'Kolom wajib belum tersedia: {", ".join(missing_headers)}.']
-
-    return worksheet, normalized_headers, header_aliases, []
-
-
-def _import_cell(row, header, normalized_headers, header_aliases):
-    key = header_aliases[header]
-    index = normalized_headers.get(key)
-    return _string_cell(row[index]) if index is not None and index < len(row) else ''
+    return _load_shared_import_worksheet(
+        file_obj,
+        headers,
+        required_headers,
+        max_size_bytes=IMPORT_INSTANSI_MAX_SIZE,
+    )
 
 
 def _validate_instansi_import(file_obj):

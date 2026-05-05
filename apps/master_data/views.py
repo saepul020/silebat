@@ -6,6 +6,14 @@ from django.contrib.auth.decorators import login_required
 from apps.core.permissions import ROLE_SUPER_ADMIN, get_role_name
 from apps.core.list_pagination import paginate_list
 from apps.core.excel_utils import build_excel_response
+from apps.core.import_utils import (
+    choice_values as _choice_values,
+    import_cell as _import_cell,
+    json_response_or_none as _import_json_response,
+    load_import_worksheet as _load_shared_import_worksheet,
+    normalize_import_header as _normalize_import_header,
+    string_cell as _string_cell,
+)
 from django.db import transaction
 from django.db.models.deletion import ProtectedError
 from django.http import HttpResponse, JsonResponse
@@ -554,18 +562,6 @@ def _deny_import_access(request):
     return redirect('master_data:data_barang_laboratorium')
 
 
-def _normalize_import_header(value):
-    return str(value or '').strip().lower().replace(' ', '_').replace('/', '_').replace('-', '_')
-
-
-def _string_cell(value):
-    if value is None:
-        return ''
-    if isinstance(value, float) and value.is_integer():
-        value = int(value)
-    return str(value).strip()
-
-
 def _year_cell(value):
     if value in (None, ''):
         return None
@@ -580,10 +576,6 @@ def _year_cell(value):
     if year < 1900 or year > 2100:
         raise ValueError('Tahun Perolehan harus berada pada rentang 1900 sampai 2100.')
     return year
-
-
-def _choice_values(choices):
-    return {value for value, _label in choices}
 
 
 IMPORT_BARANG_PENUNJANG_SESSION_KEY = "barang_penunjang_import_validated_rows"
@@ -669,58 +661,13 @@ def _deny_import_access_to(request, redirect_to, label):
     return redirect(redirect_to)
 
 
-def _wants_import_json(request):
-    return (
-        request.headers.get('x-requested-with') == 'XMLHttpRequest'
-        or 'application/json' in request.headers.get('accept', '')
-    )
-
-
-def _import_json_response(request, payload, status=200):
-    if not _wants_import_json(request):
-        return None
-    return JsonResponse(payload, status=status)
-
-
 def _load_import_worksheet(file_obj, headers, required_headers):
-    try:
-        from openpyxl import load_workbook
-    except ImportError as exc:
-        raise RuntimeError('Library openpyxl belum tersedia. Jalankan: pip install openpyxl') from exc
-
-    if not file_obj:
-        return None, None, None, ['File Excel wajib diupload.']
-
-    filename = getattr(file_obj, 'name', '')
-    if not filename.lower().endswith('.xlsx'):
-        return None, None, None, ['Format file harus berupa Excel .xlsx.']
-
-    if getattr(file_obj, 'size', 0) > IMPORT_EXCEL_MAX_SIZE:
-        return None, None, None, ['Ukuran file import maksimal 7 MB.']
-
-    try:
-        workbook = load_workbook(filename=BytesIO(file_obj.read()), data_only=True)
-    except Exception:
-        return None, None, None, ['File Excel tidak dapat dibaca. Pastikan file sesuai format .xlsx dan tidak rusak.']
-
-    worksheet = workbook.active
-    header_row = next(worksheet.iter_rows(min_row=1, max_row=1, values_only=True), None)
-    if not header_row:
-        return None, None, None, ['Baris header pada file Excel tidak ditemukan.']
-
-    normalized_headers = {_normalize_import_header(value): index for index, value in enumerate(header_row) if _string_cell(value)}
-    header_aliases = {header: _normalize_import_header(header) for header in headers}
-    missing_headers = [header for header in required_headers if header_aliases[header] not in normalized_headers]
-    if missing_headers:
-        return None, None, None, [f'Kolom wajib belum tersedia: {", ".join(missing_headers)}.']
-
-    return worksheet, normalized_headers, header_aliases, []
-
-
-def _import_cell(row, header, normalized_headers, header_aliases):
-    key = header_aliases[header]
-    index = normalized_headers.get(key)
-    return _string_cell(row[index]) if index is not None and index < len(row) else ''
+    return _load_shared_import_worksheet(
+        file_obj,
+        headers,
+        required_headers,
+        max_size_bytes=IMPORT_EXCEL_MAX_SIZE,
+    )
 
 
 def _positive_int_import_cell(value, label, min_value=0):
@@ -1856,11 +1803,11 @@ def _get_barang_laboratorium_detail_items(obj):
         {"label": "Lokasi Barang", "value": _display_value(obj.lokasi_barang)},
         {"label": "Kategori Barang", "value": _display_value(obj.kategori_barang)},
         {
-            "label": "Tanggal Pemeliharaan",
+            "label": "Pemeliharaan Terakhir",
             "value": _display_date(obj.tanggal_pemeliharaan),
         },
         {
-            "label": "Tanggal Perbaikan",
+            "label": "Perbaikan Terakhir",
             "value": _display_date(obj.tanggal_perbaikan),
         },
         _ik_alat_detail_item(obj),
@@ -1959,8 +1906,8 @@ def public_fasilitas_ruangan(request, token):
             {"label": "Tahun Perolehan", "value": _display_value(obj.tahun_perolehan)},
             {"label": "Kondisi Barang", "value": _display_value(obj.kondisi_barang if obj.status_barang == StatusBarangChoices.BMN else None)},
             {"label": "Lokasi Barang", "value": _display_value(obj.lokasi_barang)},
-            {"label": "Tanggal Pemeliharaan", "value": _display_date(obj.tanggal_pemeliharaan)},
-            {"label": "Tanggal Perbaikan", "value": _display_date(obj.tanggal_perbaikan)},
+            {"label": "Pemeliharaan Terakhir", "value": _display_date(obj.tanggal_pemeliharaan)},
+            {"label": "Perbaikan Terakhir", "value": _display_date(obj.tanggal_perbaikan)},
             _ik_alat_detail_item(obj),
             {"label": "Catatan", "value": _display_value(obj.catatan), "full": True},
         ],
@@ -1992,8 +1939,8 @@ def public_peralatan_laboratorium(request, token):
             {"label": "Tahun Perolehan", "value": _display_value(obj.tahun_perolehan)},
             {"label": "Kondisi Barang", "value": _display_value(obj.kondisi_barang if obj.status_barang == StatusBarangChoices.BMN else None)},
             {"label": "Lokasi Barang", "value": _display_value(obj.lokasi_barang)},
-            {"label": "Tanggal Pemeliharaan", "value": _display_date(obj.tanggal_pemeliharaan)},
-            {"label": "Tanggal Perbaikan", "value": _display_date(obj.tanggal_perbaikan)},
+            {"label": "Pemeliharaan Terakhir", "value": _display_date(obj.tanggal_pemeliharaan)},
+            {"label": "Perbaikan Terakhir", "value": _display_date(obj.tanggal_perbaikan)},
             _ik_alat_detail_item(obj),
             {"label": "Catatan", "value": _display_value(obj.catatan), "full": True},
         ],
@@ -2241,11 +2188,11 @@ def detail_fasilitas_ruangan(request, pk):
             {"label": "Kondisi Barang", "value": _display_value(obj.kondisi_barang if obj.status_barang == StatusBarangChoices.BMN else None)},
             {"label": "Lokasi Barang", "value": _display_value(obj.lokasi_barang)},
             {
-                "label": "Tanggal Pemeliharaan",
+                "label": "Pemeliharaan Terakhir",
                 "value": _display_date(obj.tanggal_pemeliharaan),
             },
             {
-                "label": "Tanggal Perbaikan",
+                "label": "Perbaikan Terakhir",
                 "value": _display_date(obj.tanggal_perbaikan),
             },
             _ik_alat_detail_item(obj),
@@ -2352,11 +2299,11 @@ def detail_peralatan_laboratorium(request, pk):
             {"label": "Kondisi Barang", "value": _display_value(obj.kondisi_barang if obj.status_barang == StatusBarangChoices.BMN else None)},
             {"label": "Lokasi Barang", "value": _display_value(obj.lokasi_barang)},
             {
-                "label": "Tanggal Pemeliharaan",
+                "label": "Pemeliharaan Terakhir",
                 "value": _display_date(obj.tanggal_pemeliharaan),
             },
             {
-                "label": "Tanggal Perbaikan",
+                "label": "Perbaikan Terakhir",
                 "value": _display_date(obj.tanggal_perbaikan),
             },
             _ik_alat_detail_item(obj),

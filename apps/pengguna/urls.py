@@ -5,6 +5,12 @@ app_name = 'pengguna'
 
 urlpatterns = [
     path('', views.daftar_pengguna, name='daftar'),
+    path('sdm/', views.dashboard_sdm, name='dashboard_sdm'),
+    path('pelatihan/', views.daftar_pelatihan, name='pelatihan_daftar'),
+    path('pelatihan/tambah/', views.tambah_pelatihan, name='pelatihan_tambah'),
+    path('pelatihan/<int:pk>/', views.detail_pelatihan, name='pelatihan_detail'),
+    path('pelatihan/<int:pk>/edit/', views.edit_pelatihan, name='pelatihan_edit'),
+    path('pelatihan/<int:pk>/hapus/', views.hapus_pelatihan, name='pelatihan_hapus'),
     path('tambah/', views.tambah_pengguna, name='tambah'),
     path('import/', views.import_pengguna, name='import_pengguna'),
     path('export/', views.export_pengguna, name='export_pengguna'),

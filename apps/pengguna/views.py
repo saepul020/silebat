@@ -2,6 +2,8 @@ from io import BytesIO
 
 from django.contrib import messages
 from django.db import transaction
+from django.db.models import Count
+from django.db.models.functions import ExtractYear
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.http import HttpResponse, JsonResponse
@@ -9,9 +11,17 @@ from django.urls import reverse
 from django.contrib.auth import password_validation, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 
+from apps.core.file_cleanup import delete_file_if_unused, delete_instance_files
 from apps.core.list_pagination import paginate_list
 from apps.core.excel_utils import build_excel_response
+from apps.core.import_utils import (
+    import_cell as _import_cell,
+    json_response_or_none as _import_json_response,
+    load_import_worksheet as _load_shared_import_worksheet,
+    string_cell as _string_cell,
+)
 from apps.core.permissions import (
     can_access_pengguna_app,
     can_edit_user,
@@ -20,8 +30,8 @@ from apps.core.permissions import (
     is_super_admin,
 )
 
-from .forms import UserForm, UserProfileForm, UserUpdateForm
-from .models import Role, User, UserProfile, get_default_role_queryset
+from .forms import PelatihanForm, UserForm, UserProfileForm, UserUpdateForm
+from .models import Pelatihan, Role, User, UserProfile, get_default_role_queryset
 
 IMPORT_PENGGUNA_SESSION_KEY = "pengguna_import_validated_rows"
 IMPORT_PENGGUNA_HEADERS = [
@@ -42,70 +52,13 @@ def _deny_import_access(request):
     return redirect('pengguna:daftar')
 
 
-def _normalize_import_header(value):
-    return str(value or '').strip().lower().replace(' ', '_').replace('/', '_').replace('-', '_')
-
-
-def _string_cell(value):
-    if value is None:
-        return ''
-    if isinstance(value, float) and value.is_integer():
-        value = int(value)
-    return str(value).strip()
-
-
-def _wants_import_json(request):
-    return (
-        request.headers.get('x-requested-with') == 'XMLHttpRequest'
-        or 'application/json' in request.headers.get('accept', '')
-    )
-
-
-def _import_json_response(request, payload, status=200):
-    if not _wants_import_json(request):
-        return None
-    return JsonResponse(payload, status=status)
-
-
 def _load_import_worksheet(file_obj, headers, required_headers):
-    try:
-        from openpyxl import load_workbook
-    except ImportError as exc:
-        raise RuntimeError('Library openpyxl belum tersedia. Jalankan: pip install openpyxl') from exc
-
-    if not file_obj:
-        return None, None, None, ['File Excel wajib diupload.']
-
-    filename = getattr(file_obj, 'name', '')
-    if not filename.lower().endswith('.xlsx'):
-        return None, None, None, ['Format file harus berupa Excel .xlsx.']
-
-    if getattr(file_obj, 'size', 0) > IMPORT_PENGGUNA_MAX_SIZE:
-        return None, None, None, ['Ukuran file import maksimal 7 MB.']
-
-    try:
-        workbook = load_workbook(filename=BytesIO(file_obj.read()), data_only=True)
-    except Exception:
-        return None, None, None, ['File Excel tidak dapat dibaca. Pastikan file sesuai format .xlsx dan tidak rusak.']
-
-    worksheet = workbook.active
-    header_row = next(worksheet.iter_rows(min_row=1, max_row=1, values_only=True), None)
-    if not header_row:
-        return None, None, None, ['Baris header pada file Excel tidak ditemukan.']
-
-    normalized_headers = {_normalize_import_header(value): index for index, value in enumerate(header_row) if _string_cell(value)}
-    header_aliases = {header: _normalize_import_header(header) for header in headers}
-    missing_headers = [header for header in required_headers if header_aliases[header] not in normalized_headers]
-    if missing_headers:
-        return None, None, None, [f'Kolom wajib belum tersedia: {", ".join(missing_headers)}.']
-
-    return worksheet, normalized_headers, header_aliases, []
-
-
-def _import_cell(row, header, normalized_headers, header_aliases):
-    key = header_aliases[header]
-    index = normalized_headers.get(key)
-    return _string_cell(row[index]) if index is not None and index < len(row) else ''
+    return _load_shared_import_worksheet(
+        file_obj,
+        headers,
+        required_headers,
+        max_size_bytes=IMPORT_PENGGUNA_MAX_SIZE,
+    )
 
 
 def _validate_duplicate_value(*, row_errors, seen, value, excel_row_number, label):
@@ -638,3 +591,194 @@ def detail_pengguna(request, pk):
             'can_edit_obj': can_edit_user(request.user, user),
         },
     )
+
+
+@login_required
+def dashboard_sdm(request):
+    pelatihan_qs = Pelatihan.objects.select_related('user')
+    if not is_super_admin(request.user):
+        pelatihan_qs = pelatihan_qs.filter(user=request.user)
+
+    total_pelatihan = pelatihan_qs.count()
+    pelatihan_terbaru = pelatihan_qs.order_by('-tanggal_mulai', '-created_at')[:5]
+    current_year = timezone.localtime().year
+
+    tipe_rows = list(
+        pelatihan_qs.annotate(year=ExtractYear('tanggal_mulai'))
+        .values('year', 'tipe_pelatihan')
+        .annotate(total=Count('id'))
+        .order_by('year', 'tipe_pelatihan')
+    )
+    jenis_rows = list(
+        pelatihan_qs.annotate(year=ExtractYear('tanggal_mulai'))
+        .values('year', 'jenis_pelatihan')
+        .annotate(total=Count('id'))
+        .order_by('year', 'jenis_pelatihan')
+    )
+    available_years = sorted(
+        {
+            int(row['year'])
+            for row in tipe_rows + jenis_rows
+            if row.get('year')
+        }
+        | {current_year}
+    )
+    sdm_tipe_chart = {
+        'rows': [
+            {
+                'year': int(row['year']),
+                'key': row['tipe_pelatihan'],
+                'total': int(row['total'] or 0),
+            }
+            for row in tipe_rows
+            if row.get('year') and row.get('tipe_pelatihan')
+        ],
+        'availableYears': available_years,
+        'defaultYear': current_year,
+        'categories': [
+            {'id': Pelatihan.TIPE_INTERNAL, 'label': Pelatihan.TIPE_INTERNAL},
+            {'id': Pelatihan.TIPE_EKSTERNAL, 'label': Pelatihan.TIPE_EKSTERNAL},
+        ],
+    }
+    sdm_jenis_chart = {
+        'rows': [
+            {
+                'year': int(row['year']),
+                'key': row['jenis_pelatihan'],
+                'total': int(row['total'] or 0),
+            }
+            for row in jenis_rows
+            if row.get('year') and row.get('jenis_pelatihan')
+        ],
+        'availableYears': available_years,
+        'defaultYear': current_year,
+        'categories': [
+            {'id': Pelatihan.JENIS_LABORATORIUM, 'label': Pelatihan.JENIS_LABORATORIUM},
+            {'id': Pelatihan.JENIS_NON_LABORATORIUM, 'label': Pelatihan.JENIS_NON_LABORATORIUM},
+        ],
+    }
+
+    return render(
+        request,
+        'pengguna/dashboard_sdm.html',
+        {
+            'total_pelatihan': total_pelatihan,
+            'pelatihan_terbaru': pelatihan_terbaru,
+            'sdm_tipe_chart': sdm_tipe_chart,
+            'sdm_jenis_chart': sdm_jenis_chart,
+            'is_config_placeholder': True,
+        },
+    )
+
+
+def _get_pelatihan_queryset_for_user(user):
+    queryset = Pelatihan.objects.select_related('user', 'user__profile', 'user__profile__role')
+    if is_super_admin(user):
+        return queryset.order_by('-tanggal_mulai', '-created_at')
+    return queryset.filter(user=user).order_by('-tanggal_mulai', '-created_at')
+
+
+def _get_pelatihan_for_user_or_404(request, pk):
+    return get_object_or_404(_get_pelatihan_queryset_for_user(request.user), pk=pk)
+
+
+@login_required
+def daftar_pelatihan(request):
+    queryset = _get_pelatihan_queryset_for_user(request.user)
+    pagination_context = paginate_list(request, queryset)
+    context = {
+        'items': pagination_context['items'],
+        'can_view_all_pelatihan': is_super_admin(request.user),
+    }
+    context.update(pagination_context)
+    return render(request, 'pengguna/daftar_pelatihan.html', context)
+
+
+@login_required
+def tambah_pelatihan(request):
+    if request.method == 'POST':
+        form = PelatihanForm(request.POST, request.FILES)
+        if form.is_valid():
+            pelatihan = form.save(commit=False)
+            pelatihan.user = request.user
+            pelatihan.save()
+            messages.success(request, 'Data pelatihan berhasil ditambahkan.')
+            return redirect('pengguna:pelatihan_daftar')
+    else:
+        form = PelatihanForm()
+
+    return render(
+        request,
+        'pengguna/pelatihan_form.html',
+        {
+            'form': form,
+            'page_title': 'Tambah Pelatihan',
+            'page_subtitle': 'Masukkan data pelatihan pengguna.',
+            'submit_label': 'Simpan',
+            'is_edit': False,
+            'obj': None,
+        },
+    )
+
+
+@login_required
+def edit_pelatihan(request, pk):
+    pelatihan = _get_pelatihan_for_user_or_404(request, pk)
+    old_file_sertifikat = pelatihan.file_sertifikat
+    old_file_materi = pelatihan.file_materi
+
+    if request.method == 'POST':
+        form = PelatihanForm(request.POST, request.FILES, instance=pelatihan)
+        if form.is_valid():
+            updated = form.save(commit=False)
+            updated.user = pelatihan.user
+            updated.save()
+
+            if old_file_sertifikat and getattr(old_file_sertifikat, 'name', '') != getattr(updated.file_sertifikat, 'name', ''):
+                delete_file_if_unused(Pelatihan, 'file_sertifikat', old_file_sertifikat, exclude_pk=updated.pk)
+            if old_file_materi and getattr(old_file_materi, 'name', '') != getattr(updated.file_materi, 'name', ''):
+                delete_file_if_unused(Pelatihan, 'file_materi', old_file_materi, exclude_pk=updated.pk)
+
+            messages.success(request, 'Data pelatihan berhasil diperbarui.')
+            return redirect('pengguna:pelatihan_detail', pk=updated.pk)
+    else:
+        form = PelatihanForm(instance=pelatihan)
+
+    return render(
+        request,
+        'pengguna/pelatihan_form.html',
+        {
+            'form': form,
+            'page_title': 'Edit Pelatihan',
+            'page_subtitle': 'Perbarui data pelatihan pengguna.',
+            'submit_label': 'Update',
+            'is_edit': True,
+            'obj': pelatihan,
+        },
+    )
+
+
+@login_required
+def detail_pelatihan(request, pk):
+    pelatihan = _get_pelatihan_for_user_or_404(request, pk)
+    return render(
+        request,
+        'pengguna/detail_pelatihan.html',
+        {
+            'obj': pelatihan,
+            'can_view_all_pelatihan': is_super_admin(request.user),
+        },
+    )
+
+
+@login_required
+def hapus_pelatihan(request, pk):
+    pelatihan = _get_pelatihan_for_user_or_404(request, pk)
+    if request.method == 'POST':
+        nama_pelatihan = pelatihan.nama_pelatihan
+        delete_instance_files(pelatihan, ['file_sertifikat', 'file_materi'])
+        pelatihan.delete()
+        messages.success(request, f'Data pelatihan "{nama_pelatihan}" berhasil dihapus.')
+        return redirect('pengguna:pelatihan_daftar')
+
+    return redirect('pengguna:pelatihan_daftar')

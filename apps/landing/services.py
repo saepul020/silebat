@@ -1,13 +1,16 @@
-from django.db.models import Count, Sum
-from django.db.models.functions import Coalesce
+from django.core.cache import cache
+from django.db.models import Count, Q, Sum
 from django.utils import timezone
 
-from apps.dashboard.views import PENGUKURAN_FIELD_CONFIG
 from apps.master_data.models import BarangLaboratorium, KategoriBarangLaboratoriumChoices
+from apps.peminjaman.constants import PENGUKURAN_FIELD_CONFIG
 from apps.peminjaman.models import PeminjamanRequest, ReturnStepChoices, StepChoices
 
 from .models import LandingPeralatanCard
 
+
+LANDING_CONTEXT_CACHE_KEY = "public_landing_context_v3"
+LANDING_CONTEXT_CACHE_TIMEOUT = 60
 
 LANDING_PALETTE = [
     "#103e6f",
@@ -34,10 +37,12 @@ CATEGORY_ICON_MAP = {
 }
 
 
+def invalidate_public_landing_cache():
+    cache.delete(LANDING_CONTEXT_CACHE_KEY)
+
+
 def get_approved_peminjaman_queryset():
-    return PeminjamanRequest.objects.filter(current_step=StepChoices.APPROVED).annotate(
-        landing_approved_at=Coalesce("pimpinan_at", "updated_at")
-    )
+    return PeminjamanRequest.objects.filter(current_step=StepChoices.APPROVED)
 
 
 def build_chart_payload(labels, data):
@@ -48,7 +53,26 @@ def build_chart_payload(labels, data):
     }
 
 
-def get_survei_chart_payload(approved_queryset):
+def get_landing_stats(approved_queryset, current_year):
+    approved_this_year_filter = (
+        Q(pimpinan_at__year=current_year)
+        | (Q(pimpinan_at__isnull=True) & Q(updated_at__year=current_year))
+    )
+    stats = approved_queryset.aggregate(
+        kegiatan_berjalan=Count(
+            "id",
+            filter=approved_this_year_filter & ~Q(return_current_step=ReturnStepChoices.COMPLETED),
+        ),
+        kegiatan_selesai=Count(
+            "id",
+            filter=Q(return_current_step=ReturnStepChoices.COMPLETED, return_completed_at__year=current_year),
+        ),
+        total_kegiatan_survei=Count("id", filter=Q(layanan_kegiatan__isnull=False)),
+    )
+    return {key: int(value or 0) for key, value in stats.items()}
+
+
+def get_survei_chart_payload():
     through_model = PeminjamanRequest._meta.get_field("kegiatan_survei").remote_field.through
     rows = list(
         through_model.objects.filter(
@@ -82,11 +106,16 @@ def get_layanan_chart_payload(approved_queryset):
 
 def get_pengukuran_chart_payload(approved_queryset):
     pengukuran_queryset = approved_queryset.filter(return_started_at__isnull=False)
+    aggregate_kwargs = {
+        field_config["key"]: Sum(field_config["key"])
+        for field_config in PENGUKURAN_FIELD_CONFIG
+    }
+    totals = pengukuran_queryset.aggregate(**aggregate_kwargs)
     labels = []
     data = []
 
     for field_config in PENGUKURAN_FIELD_CONFIG:
-        total = pengukuran_queryset.aggregate(total=Sum(field_config["key"]))["total"] or 0
+        total = totals.get(field_config["key"]) or 0
         if total <= 0:
             continue
         labels.append(field_config["label"])
@@ -117,39 +146,61 @@ def get_inventory_category_cards():
 
 
 def get_equipment_cards():
-    return LandingPeralatanCard.objects.filter(is_active=True).order_by(
-        "urutan", "nama_barang", "id"
+    cards = (
+        LandingPeralatanCard.objects.filter(is_active=True)
+        .only(
+            "kategori_barang",
+            "nama_barang",
+            "jenis_barang",
+            "merek_tipe_alat",
+            "fungsi_alat",
+            "spesifikasi_alat",
+            "ringkasan_alat",
+            "foto_barang",
+            "urutan",
+        )
+        .order_by("urutan", "nama_barang", "id")
     )
+    return [
+        {
+            "kategori_barang_label": card.get_kategori_barang_display() or "Peralatan",
+            "nama_barang": card.nama_barang or "-",
+            "jenis_barang": card.jenis_barang or "-",
+            "merek_tipe_alat": card.merek_tipe_alat or "-",
+            "fungsi_alat": card.fungsi_alat or "-",
+            "spesifikasi_alat": card.spesifikasi_alat or "-",
+            "ringkasan_alat": card.ringkasan_alat or "-",
+            "foto_url": card.foto_barang.url if card.foto_barang else "",
+        }
+        for card in cards
+    ]
 
 
-def get_public_landing_context():
+def build_public_landing_context():
     now = timezone.localtime()
     current_year = now.year
     approved_queryset = get_approved_peminjaman_queryset()
-
-    ongoing_count = approved_queryset.filter(landing_approved_at__year=current_year).exclude(
-        return_current_step=ReturnStepChoices.COMPLETED
-    ).count()
-    completed_count = approved_queryset.filter(
-        return_current_step=ReturnStepChoices.COMPLETED,
-        return_completed_at__year=current_year,
-    ).count()
-    total_kegiatan_survei = approved_queryset.filter(layanan_kegiatan__isnull=False).count()
-    total_peralatan_survei = BarangLaboratorium.objects.count()
+    landing_stats = get_landing_stats(approved_queryset, current_year)
+    landing_stats["jumlah_peralatan_survei"] = BarangLaboratorium.objects.count()
+    landing_stats["current_year"] = current_year
 
     return {
-        "landing_stats": {
-            "kegiatan_berjalan": ongoing_count,
-            "kegiatan_selesai": completed_count,
-            "total_kegiatan_survei": total_kegiatan_survei,
-            "jumlah_peralatan_survei": total_peralatan_survei,
-            "current_year": current_year,
-        },
+        "landing_stats": landing_stats,
         "landing_charts": {
-            "survei": get_survei_chart_payload(approved_queryset),
+            "survei": get_survei_chart_payload(),
             "layanan": get_layanan_chart_payload(approved_queryset),
             "pengukuran": get_pengukuran_chart_payload(approved_queryset),
         },
         "inventory_cards": get_inventory_category_cards(),
         "equipment_cards": get_equipment_cards(),
     }
+
+
+def get_public_landing_context():
+    cached_context = cache.get(LANDING_CONTEXT_CACHE_KEY)
+    if cached_context is not None:
+        return cached_context
+
+    context = build_public_landing_context()
+    cache.set(LANDING_CONTEXT_CACHE_KEY, context, LANDING_CONTEXT_CACHE_TIMEOUT)
+    return context

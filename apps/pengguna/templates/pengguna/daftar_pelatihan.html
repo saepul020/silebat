@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+
+{% block title %}Daftar Pelatihan{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Daftar Pelatihan</h1>
+    <p>Kelola data pelatihan pengguna SILEBAT.</p>
+</div>
+
+<div class="table-wrapper table-panel">
+    <div class="table-toolbar">
+        <h3 class="table-title">Data Pelatihan</h3>
+        <div class="table-toolbar-actions">
+            <a href="{% url 'pengguna:pelatihan_tambah' %}" class="btn btn-primary"><i class="bi bi-plus-circle"></i>&nbsp;Tambah Pelatihan</a>
+        </div>
+    </div>
+
+    {% include 'components/master_entries_control.html' %}
+
+    <div class="table-scroll-area table-scroll--list" tabindex="0" aria-label="Scroll tabel data pelatihan">
+        <table class="table-data list-table--pengguna list-table--pelatihan">
+            <thead>
+                <tr>
+                    {% if can_view_all_pelatihan %}<th class="cell-wrap">Pengguna</th>{% endif %}
+                    <th class="cell-wrap">Nama Pelatihan</th>
+                    <th>Tipe Pelatihan</th>
+                    <th>Jenis Pelatihan</th>
+                    <th>Mulai</th>
+                    <th>Selesai</th>
+                    <th class="cell-wrap">Lokasi</th>
+                    <th class="cell-action">Aksi</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    {% if can_view_all_pelatihan %}<td class="cell-wrap">{{ item.user.get_full_name|default:item.user.username }}</td>{% endif %}
+                    <td class="cell-wrap">{{ item.nama_pelatihan }}</td>
+                    <td>{{ item.tipe_pelatihan }}</td>
+                    <td>{{ item.jenis_pelatihan }}</td>
+                    <td>{{ item.tanggal_mulai|date:'d M Y' }}</td>
+                    <td>{{ item.tanggal_selesai|date:'d M Y' }}</td>
+                    <td class="cell-wrap">{{ item.lokasi_pelatihan }}</td>
+                    <td class="cell-action">
+                        <div class="table-action-group">
+                            <a href="{% url 'pengguna:pelatihan_detail' item.pk %}" class="btn btn-secondary btn-sm" title="Detail">
+                                <i class="bi bi-eye-fill"></i>
+                            </a>
+                            <a href="{% url 'pengguna:pelatihan_edit' item.pk %}" class="btn btn-warning btn-sm" title="Edit">
+                                <i class="bi bi-pencil-square"></i>
+                            </a>
+                            <button
+                                type="button"
+                                class="btn btn-danger btn-sm js-delete-btn" data-delete-modal="operasional"
+                                data-delete-url="{% url 'pengguna:pelatihan_hapus' item.pk %}"
+                                data-item-name="{{ item.nama_pelatihan }}"
+                                data-item-meta="{{ item.tipe_pelatihan }} - {{ item.tanggal_mulai|date:'d M Y' }} s.d. {{ item.tanggal_selesai|date:'d M Y' }}"
+                                title="Hapus"
+                            >
+                                <i class="bi bi-trash3-fill"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="{% if can_view_all_pelatihan %}8{% else %}7{% endif %}"><div class="empty-state">Belum ada data pelatihan.</div></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% include 'components/master_pagination.html' %}
+</div>
+
+<div class="delete-modal" id="operasionalDeleteModal">
+    <div class="delete-modal-backdrop" id="operasionalDeleteModalBackdrop"></div>
+
+    <div class="delete-modal-card" role="dialog" aria-modal="true" aria-labelledby="operasionalDeleteModalTitle">
+        <div class="delete-modal-header">
+            <h3 id="operasionalDeleteModalTitle">Konfirmasi Hapus</h3>
+            <button type="button" class="delete-modal-close" id="operasionalDeleteModalClose" aria-label="Tutup">&times;</button>
+        </div>
+
+        <div class="delete-modal-body">
+            <p>Apakah Anda yakin ingin menghapus data pelatihan berikut?</p>
+
+            <div class="delete-user-info">
+                <p><strong>Nama Pelatihan:</strong> <span id="operasionalDeleteItemName">-</span></p>
+                <p><strong>Info:</strong> <span id="operasionalDeleteItemMeta">-</span></p>
+            </div>
+
+            <p class="delete-warning-text">Tindakan ini tidak dapat dibatalkan.</p>
+        </div>
+
+        <div class="delete-modal-actions">
+            <button type="button" class="btn btn-secondary" id="operasionalDeleteModalCancel">Batal</button>
+
+            <form method="post" id="operasionalDeleteForm">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger">Ya, Hapus</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

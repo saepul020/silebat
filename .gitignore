@@ -1,44 +1,39 @@
-# Python
+# Python cache
 __pycache__/
 *.py[cod]
-*.pyc
 *.pyo
 *.pyd
 
-# Virtual Environment
+# Virtual environment
 env/
 venv/
 .venv/
 
-# Django
+# Django runtime/local data
 *.log
 *.sqlite3
-local_settings.py
 db.sqlite3
 db.sqlite3-journal
 data_backup_sqlite.json
+local_settings.py
 
-# Environment
+# Environment secrets
 .env
 .env.local
 .env.production
-986
-# Media Upload
+
+# User uploads and collected static output
 media/
 uploads/
-
-# Static collected files
 staticfiles/
 
-# IDE
+# IDE/OS files
 .vscode/
 .idea/
-
-# OS
 .DS_Store
 Thumbs.db
 
-# Backup/archive
+# Backup/archive files
 *.zip
 *.rar
 *.bak

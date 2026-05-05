@@ -119,19 +119,24 @@
         </div>
         {% endif %}
 
-        {% if role_access.show_pengguna %}
+        {% if role_access.show_pengguna_menu %}
         <div class="nav-group">
             <button type="button" class="nav-link nav-toggle" aria-expanded="false">
                 <span class="nav-left">
                     <span class="nav-icon">
                         <i class="bi bi-person-fill-gear"></i>
                     </span>
-                    <span class="nav-text">Manajemen Pengguna</span>
+                    <span class="nav-text">Pengguna</span>
                 </span>
                 <span class="nav-arrow"><i class="bi bi-chevron-down"></i></span>
             </button>
             <div class="sub-menu">
-                <a href="{% url 'pengguna:daftar' %}" class="sub-link">Data Pengguna</a>
+                <a href="{% url 'pengguna:dashboard_sdm' %}" class="sub-link">Dashboard SDM</a>
+                <a href="{% url 'pengguna:detail' request.user.pk %}" class="sub-link">Pengaturan Profil</a>
+                <a href="{% url 'pengguna:pelatihan_daftar' %}" class="sub-link">Data Pelatihan</a>
+                {% if role_access.show_data_pengguna %}
+                    <a href="{% url 'pengguna:daftar' %}" class="sub-link">Data Pengguna</a>
+                {% endif %}
             </div>
         </div>
         {% endif %}

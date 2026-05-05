@@ -77,7 +77,11 @@
         {% if can_edit_obj %}
             <a href="{% url 'pengguna:edit' obj.pk %}" class="btn btn-primary">Edit Pengguna</a>
         {% endif %}
-        <a href="{% url 'pengguna:daftar' %}" class="btn btn-secondary">Kembali</a>
+        {% if role_access.show_data_pengguna %}
+            <a href="{% url 'pengguna:daftar' %}" class="btn btn-secondary">Kembali</a>
+        {% else %}
+            <a href="{% url 'dashboard:index' %}" class="btn btn-secondary">Kembali</a>
+        {% endif %}
     </div>
 </div>
 {% endblock %}

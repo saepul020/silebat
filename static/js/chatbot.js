@@ -19,13 +19,28 @@ function initPublicChatbot() {
     }
 
     chatToggle.addEventListener('click', function () {
-        chatToggle.classList.toggle('open');
-        chatWindow.classList.toggle('open');
+        const isOpen = !chatWindow.classList.contains('open');
+
+        chatToggle.classList.toggle('open', isOpen);
+        chatWindow.classList.toggle('open', isOpen);
+        chatToggle.setAttribute('aria-expanded', String(isOpen));
+        chatWindow.setAttribute('aria-hidden', String(!isOpen));
+
         if (!chatOpened) {
             chatOpened = true;
             window.setTimeout(function () {
                 addBotMsg('Halo! 👋 Saya asisten virtual Laboratorium Balai Air Tanah. Ada yang bisa saya bantu?');
             }, 350);
+        }
+
+        if (isOpen) {
+            window.setTimeout(function () {
+                try {
+                    chatInput.focus({ preventScroll: true });
+                } catch (error) {
+                    chatInput.focus();
+                }
+            }, 120);
         }
     });
 

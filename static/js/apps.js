@@ -22,6 +22,7 @@ document.addEventListener('DOMContentLoaded', function () {
         initMasterDataFormValidation,
         initOperasionalFormValidation,
         initPenggunaCreateFormValidation,
+        initPelatihanFormBehavior,
         initGlobalQtyStepperBehavior,
         initPeminjamanFormBehavior,
         initNotificationAnnouncementFormBehavior,
@@ -1369,6 +1370,494 @@ function initInlineFileProxyControls() {
         }
 
         updateText();
+    });
+}
+
+
+
+
+/* ========================================
+   HALAMAN DATA PELATIHAN
+   Menangani lock field berdasarkan Tipe Pelatihan,
+   validasi realtime, dan date-picker dengan style global.
+======================================== */
+function initPelatihanFormBehavior() {
+    const form = document.querySelector('[data-pelatihan-form="true"]');
+    if (!form) {
+        return;
+    }
+
+    const typeField = form.querySelector('[data-training-type-field="true"]');
+    const dependentGroups = form.querySelectorAll('[data-training-dependent-group="true"]');
+    const startDateInput = form.querySelector('[data-training-start-date="true"]');
+    const endDateInput = form.querySelector('[data-training-end-date="true"]');
+    const dateInputs = form.querySelectorAll('[data-training-date-picker="true"]');
+    const monthNamesLongId = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+    const monthNamesShortId = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    const dayNamesShortId = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+    const monthLookup = {
+        jan: 0, januari: 0, january: 0,
+        feb: 1, februari: 1, february: 1,
+        mar: 2, maret: 2, march: 2,
+        apr: 3, april: 3,
+        mei: 4, may: 4,
+        jun: 5, juni: 5, june: 5,
+        jul: 6, juli: 6, july: 6,
+        agu: 7, agustus: 7, aug: 7, august: 7,
+        sep: 8, sept: 8, september: 8,
+        okt: 9, oktober: 9, oct: 9, october: 9,
+        nov: 10, november: 10,
+        des: 11, desember: 11, dec: 11, december: 11,
+    };
+
+    const dependentFields = [];
+    dependentGroups.forEach(function (group) {
+        group.querySelectorAll('input, select, textarea, button').forEach(function (field) {
+            if (field.type === 'hidden') {
+                return;
+            }
+            if (!dependentFields.includes(field)) {
+                dependentFields.push(field);
+            }
+        });
+    });
+
+    function getFormGroup(element) {
+        return element ? element.closest('.form-group') : null;
+    }
+
+    function clearGroupErrors(group) {
+        if (!group) {
+            return;
+        }
+        group.classList.remove('has-error');
+        group.querySelectorAll('.input-error-text').forEach(function (errorNode) {
+            if (!errorNode.hasAttribute('data-inline-file-error-node')) {
+                errorNode.remove();
+            } else {
+                errorNode.hidden = true;
+                errorNode.textContent = '';
+            }
+        });
+    }
+
+    function addGroupError(group, message) {
+        if (!group || !message) {
+            return;
+        }
+        clearGroupErrors(group);
+        group.classList.add('has-error');
+        const errorNode = document.createElement('p');
+        errorNode.className = 'input-error-text';
+        errorNode.textContent = String(message).trim().startsWith('*') ? String(message).trim() : `*${String(message).trim()}`;
+        group.appendChild(errorNode);
+    }
+
+    function setFieldDisabledState(field, disabled) {
+        if (!field) {
+            return;
+        }
+        field.disabled = disabled;
+        if (disabled) {
+            field.setAttribute('aria-disabled', 'true');
+        } else {
+            field.removeAttribute('aria-disabled');
+        }
+    }
+
+    function hasTypeValue() {
+        return Boolean(typeField && String(typeField.value || '').trim());
+    }
+
+    function syncDependentLock() {
+        const unlocked = hasTypeValue();
+        dependentGroups.forEach(function (group) {
+            group.classList.toggle('is-locked', !unlocked);
+            group.setAttribute('aria-disabled', unlocked ? 'false' : 'true');
+        });
+        dependentFields.forEach(function (field) {
+            setFieldDisabledState(field, !unlocked);
+        });
+        setFieldDisabledState(typeField, false);
+    }
+
+    function createDateAtMidday(year, monthIndex, day) {
+        const date = new Date(year, monthIndex, day, 12, 0, 0, 0);
+        if (
+            Number.isNaN(date.getTime()) ||
+            date.getFullYear() !== year ||
+            date.getMonth() !== monthIndex ||
+            date.getDate() !== day
+        ) {
+            return null;
+        }
+        return date;
+    }
+
+    function parseDisplayDate(value) {
+        const rawValue = String(value || '').trim();
+        if (!rawValue) {
+            return null;
+        }
+
+        let match = rawValue.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+        if (match) {
+            return createDateAtMidday(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+        }
+
+        match = rawValue.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
+        if (match) {
+            return createDateAtMidday(Number(match[3]), Number(match[2]) - 1, Number(match[1]));
+        }
+
+        match = rawValue.match(/^(\d{1,2})\s+([A-Za-zÀ-ÿ.]+)\s+(\d{4})$/);
+        if (match) {
+            const monthKey = String(match[2] || '').toLowerCase().replace(/\.$/, '');
+            const monthIndex = monthLookup[monthKey];
+            if (monthIndex === undefined) {
+                return null;
+            }
+            return createDateAtMidday(Number(match[3]), monthIndex, Number(match[1]));
+        }
+
+        return null;
+    }
+
+    function formatDateForInput(date) {
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = monthNamesShortId[date.getMonth()] || String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        return `${day} ${month} ${year}`;
+    }
+
+    function formatDateForCalendarLabel(year, monthIndex) {
+        return `${monthNamesLongId[monthIndex]} ${year}`;
+    }
+
+    function dateOnlyKey(date) {
+        return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+    }
+
+    function setInputDateValue(input, date) {
+        if (!input || !date) {
+            return;
+        }
+        input.value = formatDateForInput(date);
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    function getMinimumDateForInput(input) {
+        if (!input || input !== endDateInput || !startDateInput) {
+            return null;
+        }
+        return parseDisplayDate(startDateInput.value);
+    }
+
+    function setupDatePicker(input) {
+        if (!input || input.dataset.datePickerReady === 'true') {
+            return;
+        }
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'date-picker-control';
+        input.parentNode.insertBefore(wrapper, input);
+        wrapper.appendChild(input);
+
+        const toggleButton = document.createElement('button');
+        toggleButton.type = 'button';
+        toggleButton.className = 'date-picker-toggle';
+        toggleButton.setAttribute('aria-label', `Pilih ${input.getAttribute('placeholder') || 'tanggal'}`);
+        toggleButton.innerHTML = '<i class="bi bi-calendar3"></i>';
+        wrapper.appendChild(toggleButton);
+
+        const popup = document.createElement('div');
+        popup.className = 'date-picker-popup date-picker-popup--training';
+        popup.hidden = true;
+        popup.innerHTML = `
+            <div class="date-picker-header">
+                <button type="button" class="date-picker-nav" data-calendar-nav="prev" aria-label="Bulan sebelumnya">&lsaquo;</button>
+                <div class="date-picker-title" data-calendar-title="true"></div>
+                <button type="button" class="date-picker-nav" data-calendar-nav="next" aria-label="Bulan berikutnya">&rsaquo;</button>
+            </div>
+            <div class="date-picker-weekdays" data-calendar-weekdays="true"></div>
+            <div class="date-picker-grid" data-calendar-grid="true"></div>
+            <div class="date-picker-footer">
+                <button type="button" class="date-picker-footer-btn" data-calendar-action="today">Hari ini</button>
+                <button type="button" class="date-picker-footer-btn" data-calendar-action="clear">Kosongkan</button>
+            </div>
+        `;
+        wrapper.appendChild(popup);
+
+        const title = popup.querySelector('[data-calendar-title="true"]');
+        const weekdays = popup.querySelector('[data-calendar-weekdays="true"]');
+        const grid = popup.querySelector('[data-calendar-grid="true"]');
+        const prevButton = popup.querySelector('[data-calendar-nav="prev"]');
+        const nextButton = popup.querySelector('[data-calendar-nav="next"]');
+        const todayButton = popup.querySelector('[data-calendar-action="today"]');
+        const clearButton = popup.querySelector('[data-calendar-action="clear"]');
+        const initialDate = parseDisplayDate(input.value) || new Date();
+        const state = { year: initialDate.getFullYear(), month: initialDate.getMonth() };
+
+        weekdays.innerHTML = dayNamesShortId.map(function (dayName) {
+            return `<span class="date-picker-weekday">${dayName}</span>`;
+        }).join('');
+
+        function renderCalendar() {
+            grid.innerHTML = '';
+            title.textContent = formatDateForCalendarLabel(state.year, state.month);
+
+            const firstDay = new Date(state.year, state.month, 1, 12, 0, 0, 0);
+            const startOffset = firstDay.getDay();
+            const daysInMonth = new Date(state.year, state.month + 1, 0, 12, 0, 0, 0).getDate();
+            const selectedDate = parseDisplayDate(input.value);
+            const minimumDate = getMinimumDateForInput(input);
+            const today = new Date();
+            const todayKey = dateOnlyKey(today);
+
+            for (let index = 0; index < 42; index += 1) {
+                const dayButton = document.createElement('button');
+                dayButton.type = 'button';
+                dayButton.className = 'date-picker-day';
+
+                const dayNumber = index - startOffset + 1;
+                if (dayNumber < 1 || dayNumber > daysInMonth) {
+                    dayButton.classList.add('is-empty');
+                    dayButton.tabIndex = -1;
+                    dayButton.disabled = true;
+                    grid.appendChild(dayButton);
+                    continue;
+                }
+
+                const candidate = createDateAtMidday(state.year, state.month, dayNumber);
+                if (!candidate) {
+                    continue;
+                }
+
+                dayButton.textContent = String(dayNumber);
+                if (selectedDate && dateOnlyKey(candidate) === dateOnlyKey(selectedDate)) {
+                    dayButton.classList.add('is-selected');
+                }
+                if (dateOnlyKey(candidate) === todayKey) {
+                    dayButton.classList.add('is-today');
+                }
+                if (minimumDate && candidate.getTime() < minimumDate.getTime()) {
+                    dayButton.disabled = true;
+                    dayButton.classList.add('is-disabled');
+                    dayButton.setAttribute('aria-disabled', 'true');
+                    grid.appendChild(dayButton);
+                    continue;
+                }
+
+                dayButton.addEventListener('click', function () {
+                    setInputDateValue(input, candidate);
+                    closePopup();
+                    input.focus();
+                });
+                grid.appendChild(dayButton);
+            }
+        }
+
+        function adjustPopupPosition() {
+            popup.style.left = '0';
+            popup.style.right = 'auto';
+            const viewportPadding = 12;
+            const rect = popup.getBoundingClientRect();
+            const wrapperRect = wrapper.getBoundingClientRect();
+
+            if (rect.right > window.innerWidth - viewportPadding) {
+                const overflowRight = rect.right - (window.innerWidth - viewportPadding);
+                popup.style.left = `${Math.min(0, -overflowRight)}px`;
+            }
+
+            const updatedRect = popup.getBoundingClientRect();
+            if (updatedRect.left < viewportPadding) {
+                popup.style.left = `${viewportPadding - wrapperRect.left}px`;
+            }
+        }
+
+        function openPopup() {
+            if (input.disabled) {
+                return;
+            }
+            const selectedDate = parseDisplayDate(input.value);
+            const baseDate = selectedDate || new Date();
+            state.year = baseDate.getFullYear();
+            state.month = baseDate.getMonth();
+            renderCalendar();
+            popup.hidden = false;
+            wrapper.classList.add('is-open');
+            adjustPopupPosition();
+            window.setTimeout(adjustPopupPosition, 0);
+        }
+
+        function closePopup() {
+            popup.hidden = true;
+            wrapper.classList.remove('is-open');
+            popup.style.left = '';
+            popup.style.right = '';
+        }
+
+        toggleButton.addEventListener('click', function (event) {
+            event.preventDefault();
+            if (input.disabled) {
+                return;
+            }
+            if (popup.hidden) {
+                openPopup();
+                return;
+            }
+            closePopup();
+        });
+
+        prevButton.addEventListener('click', function () {
+            state.month = state.month === 0 ? 11 : state.month - 1;
+            state.year = state.month === 11 ? state.year - 1 : state.year;
+            renderCalendar();
+        });
+
+        nextButton.addEventListener('click', function () {
+            state.month = state.month === 11 ? 0 : state.month + 1;
+            state.year = state.month === 0 ? state.year + 1 : state.year;
+            renderCalendar();
+        });
+
+        todayButton.addEventListener('click', function () {
+            setInputDateValue(input, new Date());
+            closePopup();
+            input.focus();
+        });
+
+        clearButton.addEventListener('click', function () {
+            input.value = '';
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+            closePopup();
+            input.focus();
+        });
+
+        input.addEventListener('input', renderCalendar);
+        document.addEventListener('click', function (event) {
+            if (!wrapper.contains(event.target)) {
+                closePopup();
+            }
+        });
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape' && !popup.hidden) {
+                closePopup();
+            }
+        });
+
+        input.dataset.datePickerReady = 'true';
+    }
+
+    function validateRequiredField(field, message) {
+        if (!field || field.disabled) {
+            return true;
+        }
+        const hasValue = field.type === 'file'
+            ? Boolean(field.files && field.files.length)
+            : Boolean(String(field.value || '').trim());
+        if (!hasValue) {
+            addGroupError(getFormGroup(field), message);
+            return false;
+        }
+        clearGroupErrors(getFormGroup(field));
+        return true;
+    }
+
+    function validateDateRange() {
+        if (!startDateInput || !endDateInput || startDateInput.disabled || endDateInput.disabled) {
+            return true;
+        }
+        const startRawValue = String(startDateInput.value || '').trim();
+        const endRawValue = String(endDateInput.value || '').trim();
+        if (!startRawValue || !endRawValue) {
+            return true;
+        }
+
+        const startDate = parseDisplayDate(startRawValue);
+        const endDate = parseDisplayDate(endRawValue);
+        if (startRawValue && !startDate) {
+            addGroupError(getFormGroup(startDateInput), 'Format mulai tanggal tidak valid.');
+            return false;
+        }
+        if (endRawValue && !endDate) {
+            addGroupError(getFormGroup(endDateInput), 'Format selesai tanggal tidak valid.');
+            return false;
+        }
+        if (startDate && endDate && endDate < startDate) {
+            addGroupError(getFormGroup(endDateInput), 'Selesai tanggal tidak boleh lebih awal dari mulai tanggal.');
+            return false;
+        }
+
+        clearGroupErrors(getFormGroup(startDateInput));
+        clearGroupErrors(getFormGroup(endDateInput));
+        return true;
+    }
+
+    function validateTrainingForm() {
+        let isValid = true;
+        if (!validateRequiredField(typeField, 'Tipe pelatihan wajib dipilih.')) {
+            isValid = false;
+        }
+        if (!hasTypeValue()) {
+            return isValid;
+        }
+
+        [
+            [form.querySelector('#id_jenis_pelatihan'), 'Jenis pelatihan wajib dipilih.'],
+            [form.querySelector('#id_nama_pelatihan'), 'Nama pelatihan wajib diisi.'],
+            [startDateInput, 'Mulai tanggal pelatihan wajib diisi.'],
+            [endDateInput, 'Selesai tanggal pelatihan wajib diisi.'],
+            [form.querySelector('#id_lokasi_pelatihan'), 'Lokasi pelatihan wajib diisi.'],
+            [form.querySelector('#id_uraian_pelatihan'), 'Uraian pelatihan wajib diisi.'],
+        ].forEach(function (item) {
+            if (!validateRequiredField(item[0], item[1])) {
+                isValid = false;
+            }
+        });
+
+        if (!validateDateRange()) {
+            isValid = false;
+        }
+        return isValid;
+    }
+
+    dateInputs.forEach(setupDatePicker);
+    syncDependentLock();
+
+    if (typeField) {
+        typeField.addEventListener('change', function () {
+            clearGroupErrors(getFormGroup(typeField));
+            syncDependentLock();
+        });
+    }
+
+    form.querySelectorAll('input, select, textarea').forEach(function (field) {
+        field.addEventListener('input', function () {
+            if (field.value || field.files?.length) {
+                clearGroupErrors(getFormGroup(field));
+            }
+            validateDateRange();
+        });
+        field.addEventListener('change', function () {
+            if (field.value || field.files?.length) {
+                clearGroupErrors(getFormGroup(field));
+            }
+            validateDateRange();
+        });
+    });
+
+    form.addEventListener('submit', function (event) {
+        syncDependentLock();
+        if (!validateTrainingForm()) {
+            event.preventDefault();
+            const firstError = form.querySelector('.form-group.has-error .input-error-text');
+            if (firstError) {
+                firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
     });
 }
 

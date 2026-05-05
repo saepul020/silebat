@@ -252,14 +252,14 @@ input {
 
 .nav-brand-text .top {
   color: var(--teal);
-  font-size: .72rem;
+  font-size: .92rem;
   font-weight: 800;
   letter-spacing: .08em;
 }
 
 .nav-brand-text .bot {
   color: var(--navy);
-  font-size: .82rem;
+  font-size: .52rem;
   font-weight: 500;
   line-height: 1.28;
   white-space: normal;
@@ -380,6 +380,10 @@ input {
   min-width: 0;
 }
 
+.hero-location-link {
+  display: inline-block;
+}
+
 .hero-tag {
   display: inline-flex;
   align-items: center;
@@ -428,7 +432,8 @@ input {
 
 .hero-img-card {
   position: relative;
-  height: 410px;
+  height: clamp(320px, 34vw, 410px);
+  aspect-ratio: 4 / 3;
   overflow: hidden;
   border-radius: 30px;
   background: var(--navy);
@@ -456,6 +461,12 @@ input {
   border: 2px solid rgba(255, 255, 255, .92);
   border-radius: inherit;
   box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .34);
+}
+
+.hero-img-card picture {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .hero-img-card img {
@@ -872,10 +883,46 @@ input {
 
 .chart-wrap--fixed {
   height: 300px;
+  min-height: 300px;
+}
+
+.chart-wrap--scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 8px;
+  scrollbar-color: rgba(16, 62, 111, .28) transparent;
+  scrollbar-width: thin;
+}
+
+.chart-wrap--scroll::-webkit-scrollbar {
+  height: 7px;
+}
+
+.chart-wrap--scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chart-wrap--scroll::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(16, 62, 111, .24);
+}
+
+.chart-canvas-frame {
+  position: relative;
+  min-width: var(--chart-min-width, 100%);
+  height: 100%;
+  contain: layout paint;
 }
 
 .chart-wrap canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
   max-width: 100% !important;
+}
+
+.chart-wrap--scroll canvas {
+  max-width: none !important;
 }
 
 /* ============================================================
@@ -1271,6 +1318,16 @@ input {
   text-align: center;
 }
 
+.landing-empty-state--error {
+  border-color: rgba(220, 53, 69, .34);
+  background: rgba(220, 53, 69, .07);
+  color: #9f1239;
+}
+
+.chart-wrap.is-chart-error {
+  min-height: 220px;
+}
+
 .chart-wrap .landing-empty-state {
   display: flex;
   align-items: center;
@@ -1377,11 +1434,11 @@ input {
   }
 
   .nav-brand-text .top {
-    font-size: .68rem;
+    font-size: .92rem;
   }
 
   .nav-brand-text .bot {
-    font-size: .78rem;
+    font-size: .52rem;
   }
 
   .mobile-menu {
@@ -1521,6 +1578,10 @@ input {
     width: min(100% - 28px, 1200px);
   }
 
+  .hero-location-link {
+    display: none;
+  }
+
   .section-title {
     font-size: clamp(1.48rem, 8vw, 1.9rem);
   }
@@ -1595,6 +1656,11 @@ input {
 
   .chart-wrap--fixed {
     height: 270px;
+  }
+
+  .chart-wrap--scroll {
+    margin-inline: -2px;
+    padding-bottom: 10px;
   }
 
   .profil-feat {

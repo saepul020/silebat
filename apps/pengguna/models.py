@@ -22,11 +22,11 @@ ROLE_RENAME_MAP = {
 
 ROLE_DESCRIPTIONS = {
     "Super Admin": "Semua akses tanpa pengecualian.",
-    "User": "Dashboard, Permintaan Peminjaman, Laporan Peminjaman, serta detail dan edit profil milik sendiri.",
-    "Admin Lab": "Semua app kecuali app Pengguna. Tetap dapat membuka detail dan edit profil milik sendiri.",
-    "Teknisi Lab": "Semua app kecuali app Pengguna. Tetap dapat membuka detail dan edit profil milik sendiri.",
-    "Kepala Lab": "Dashboard, Verifikasi, Laporan, serta detail dan edit profil milik sendiri.",
-    "Pimpinan": "Dashboard, Verifikasi, Laporan, serta detail dan edit profil milik sendiri.",
+    "User": "Dashboard, Permintaan Peminjaman, Laporan Peminjaman, Dashboard SDM, Data Pelatihan, serta detail dan edit profil milik sendiri.",
+    "Admin Lab": "Semua app kecuali Data Pengguna. Tetap dapat membuka Dashboard SDM, Data Pelatihan, serta detail dan edit profil milik sendiri.",
+    "Teknisi Lab": "Semua app kecuali Data Pengguna. Tetap dapat membuka Dashboard SDM, Data Pelatihan, serta detail dan edit profil milik sendiri.",
+    "Kepala Lab": "Dashboard, Verifikasi, Laporan, Dashboard SDM, Data Pelatihan, serta detail dan edit profil milik sendiri.",
+    "Pimpinan": "Dashboard, Verifikasi, Laporan, Dashboard SDM, Data Pelatihan, serta detail dan edit profil milik sendiri.",
 }
 
 
@@ -118,3 +118,60 @@ class UserProfile(models.Model):
 
     def __str__(self):
         return f"Profil {self.user.get_full_name() or self.user.username}"
+
+
+class Pelatihan(models.Model):
+    TIPE_INTERNAL = "Pelatihan Internal"
+    TIPE_EKSTERNAL = "Pelatihan Eksternal"
+    TIPE_CHOICES = [
+        (TIPE_INTERNAL, TIPE_INTERNAL),
+        (TIPE_EKSTERNAL, TIPE_EKSTERNAL),
+    ]
+
+    JENIS_LABORATORIUM = "Laboratorium"
+    JENIS_NON_LABORATORIUM = "Non-Laboratorium"
+    JENIS_CHOICES = [
+        (JENIS_LABORATORIUM, JENIS_LABORATORIUM),
+        (JENIS_NON_LABORATORIUM, JENIS_NON_LABORATORIUM),
+    ]
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="data_pelatihan",
+    )
+    tipe_pelatihan = models.CharField(max_length=30, choices=TIPE_CHOICES)
+    jenis_pelatihan = models.CharField(max_length=30, choices=JENIS_CHOICES)
+    nama_pelatihan = models.CharField(max_length=255)
+    tanggal_mulai = models.DateField()
+    tanggal_selesai = models.DateField()
+    lokasi_pelatihan = models.CharField(max_length=255)
+    uraian_pelatihan = models.TextField(default="")
+    file_sertifikat = models.FileField(
+        upload_to="pengguna/pelatihan/sertifikat/",
+        blank=True,
+        null=True,
+    )
+    file_materi = models.FileField(
+        upload_to="pengguna/pelatihan/materi/",
+        blank=True,
+        null=True,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-tanggal_mulai", "-created_at"]
+        indexes = [
+            models.Index(fields=["user", "-tanggal_mulai"]),
+            models.Index(fields=["tipe_pelatihan", "jenis_pelatihan"]),
+        ]
+
+    def __str__(self):
+        return self.nama_pelatihan
+
+    @property
+    def periode_pelatihan(self):
+        if self.tanggal_mulai == self.tanggal_selesai:
+            return self.tanggal_mulai
+        return f"{self.tanggal_mulai} - {self.tanggal_selesai}"

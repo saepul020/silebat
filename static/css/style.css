@@ -1650,6 +1650,24 @@ input[type="hidden"] {
     line-height: 1.45;
 }
 
+
+.pelatihan-file-card .document-file-link-wrap__info {
+    flex: 1 1 auto;
+    width: 100%;
+    min-width: 0;
+}
+
+.pelatihan-file-name {
+    display: block;
+    min-width: 0;
+    max-width: 100%;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis;
+    overflow-wrap: normal !important;
+    word-break: normal !important;
+}
+
 .document-file-link-wrap.is-disabled {
     background: var(--color-soft-gray);
     border-color: var(--border);
@@ -1679,6 +1697,15 @@ input[type="hidden"] {
     cursor: not-allowed;
     pointer-events: none;
     text-decoration: none;
+}
+
+
+.document-file-link-wrap .pelatihan-file-name {
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis;
+    overflow-wrap: normal !important;
+    word-break: normal !important;
 }
 
 @media (max-width: 640px) {
@@ -8432,5 +8459,117 @@ select.return-status-select option:disabled {
     .detail-qr-actions .btn {
         width: 100%;
         justify-content: center;
+    }
+}
+
+/* =========================
+   DATA PELATIHAN PENGGUNA
+========================= */
+.pelatihan-form-card .master-fieldset-stack {
+    gap: 18px;
+}
+
+.pelatihan-form-card .form-row--date-range {
+    align-items: start;
+}
+
+.detail-avatar--icon .detail-avatar__fallback {
+    font-size: 3rem;
+}
+
+/* =========================
+   DATA PELATIHAN - PENYEMPURNAAN FORM & DETAIL
+========================= */
+.pelatihan-form-card .form-row--single > .form-group,
+.pelatihan-form-card .pelatihan-type-row > .form-group {
+    grid-column: 1 / -1;
+    width: 100%;
+}
+
+.pelatihan-form-card .pelatihan-type-row select,
+.pelatihan-form-card .form-group-full :is(input, select, textarea) {
+    width: 100%;
+}
+
+.pelatihan-form-card textarea {
+    min-height: 128px;
+    line-height: 1.55;
+}
+
+.pelatihan-form-card .date-picker-popup--training {
+    width: min(320px, 100%);
+}
+
+.pelatihan-form-card .date-picker-popup--training .date-picker-title {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.pelatihan-form-card .date-picker-popup--training .date-picker-footer {
+    flex-wrap: nowrap;
+}
+
+.pelatihan-form-card .date-picker-popup--training .date-picker-footer-btn {
+    white-space: nowrap;
+    flex: 1 1 0;
+    text-align: center;
+}
+
+.pelatihan-form-card .date-picker-popup--training .date-picker-day,
+.pelatihan-form-card .date-picker-popup--training .date-picker-weekday {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+}
+
+.detail-grid--pelatihan {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
+}
+
+.detail-grid--pelatihan .detail-item--span-2,
+.detail-grid--pelatihan .detail-item--full {
+    grid-column: 1 / -1;
+}
+
+.detail-grid--pelatihan .detail-item--long-text p {
+    font-weight: 500;
+    line-height: 1.65;
+    white-space: normal;
+}
+
+@media (max-width: 640px) {
+    .pelatihan-form-card .date-picker-popup--training {
+        width: 100%;
+        min-width: min(292px, calc(100vw - 48px));
+        max-width: calc(100vw - 48px);
+        padding: 12px;
+    }
+
+    .pelatihan-form-card .date-picker-popup--training .date-picker-weekdays,
+    .pelatihan-form-card .date-picker-popup--training .date-picker-grid {
+        gap: 4px;
+    }
+
+    .pelatihan-form-card .date-picker-popup--training .date-picker-day {
+        min-height: 34px;
+        font-size: 0.8rem;
+    }
+
+    .pelatihan-form-card .date-picker-popup--training .date-picker-footer-btn {
+        padding: 7px 6px;
+        font-size: 0.74rem;
+    }
+
+    .detail-grid--pelatihan {
+        grid-template-columns: 1fr;
+    }
+
+    .detail-grid--pelatihan .detail-item,
+    .detail-grid--pelatihan .detail-item--span-2,
+    .detail-grid--pelatihan .detail-item--full {
+        grid-column: 1 / -1;
     }
 }

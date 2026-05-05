@@ -1,5 +1,7 @@
+from datetime import date, datetime
 from io import BytesIO
 import os
+import re
 
 from django import forms
 from django.contrib.auth import password_validation
@@ -15,13 +17,137 @@ from apps.core.upload_validation import (
 )
 from apps.operasional.models import TimKegiatan
 
-from .models import User, UserProfile, get_default_role_queryset
+
+from .models import Pelatihan, User, UserProfile, get_default_role_queryset
 
 try:
     from PIL import Image
 except ImportError:  # pragma: no cover
     Image = None
 
+
+
+DATE_INPUT_FORMATS = ["%d/%m/%Y", "%d-%m-%Y", "%Y-%m-%d", "%d %b %Y", "%d %B %Y"]
+MONTH_LOOKUP = {
+    "jan": 1,
+    "januari": 1,
+    "january": 1,
+    "feb": 2,
+    "februari": 2,
+    "february": 2,
+    "mar": 3,
+    "maret": 3,
+    "march": 3,
+    "apr": 4,
+    "april": 4,
+    "mei": 5,
+    "may": 5,
+    "jun": 6,
+    "juni": 6,
+    "june": 6,
+    "jul": 7,
+    "juli": 7,
+    "july": 7,
+    "agu": 8,
+    "agustus": 8,
+    "aug": 8,
+    "august": 8,
+    "sep": 9,
+    "sept": 9,
+    "september": 9,
+    "okt": 10,
+    "oktober": 10,
+    "oct": 10,
+    "october": 10,
+    "nov": 11,
+    "november": 11,
+    "des": 12,
+    "desember": 12,
+    "dec": 12,
+    "december": 12,
+}
+DATE_HELP_TEXT = "Gunakan salah satu format: 01 Januari 2026, 01/01/2026, 01-01-2026, atau 01 Jan 2026."
+
+
+def parse_flexible_date(value):
+    if value in (None, ""):
+        return None
+
+    if isinstance(value, datetime):
+        return value.date()
+
+    if isinstance(value, date):
+        return value
+
+    raw_value = str(value).strip()
+    if not raw_value:
+        return None
+
+    normalized_value = re.sub(r"\s+", " ", raw_value)
+
+    for fmt in DATE_INPUT_FORMATS:
+        try:
+            return datetime.strptime(normalized_value, fmt).date()
+        except ValueError:
+            continue
+
+    month_name_match = re.fullmatch(
+        r"(\d{1,2})\s+([A-Za-zÀ-ÿ.]+)\s+(\d{4})", normalized_value
+    )
+    if month_name_match:
+        day = int(month_name_match.group(1))
+        month_key = month_name_match.group(2).strip().lower().rstrip(".")
+        year = int(month_name_match.group(3))
+        month = MONTH_LOOKUP.get(month_key)
+        if month:
+            return date(year, month, day)
+
+    numeric_match = re.fullmatch(r"(\d{1,2})[/-](\d{1,2})[/-](\d{4})", normalized_value)
+    if numeric_match:
+        day = int(numeric_match.group(1))
+        month = int(numeric_match.group(2))
+        year = int(numeric_match.group(3))
+        return date(year, month, day)
+
+    iso_match = re.fullmatch(r"(\d{4})-(\d{1,2})-(\d{1,2})", normalized_value)
+    if iso_match:
+        year = int(iso_match.group(1))
+        month = int(iso_match.group(2))
+        day = int(iso_match.group(3))
+        return date(year, month, day)
+
+    raise ValueError("invalid date format")
+
+
+class DateInput(forms.DateInput):
+    input_type = "text"
+
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault("format", "%d %b %Y")
+        attrs = kwargs.setdefault("attrs", {})
+        attrs.setdefault("placeholder", "Masukan tanggal sesuai format")
+        attrs.setdefault("autocomplete", "off")
+        super().__init__(*args, **kwargs)
+
+
+class FlexibleDateField(forms.DateField):
+    default_error_messages = {
+        "invalid": DATE_HELP_TEXT,
+    }
+
+    def to_python(self, value):
+        if value in self.empty_values:
+            return None
+
+        if isinstance(value, date):
+            if isinstance(value, datetime):
+                return value.date()
+            return value
+
+        try:
+            return parse_flexible_date(value)
+        except (TypeError, ValueError):
+            raise forms.ValidationError(self.error_messages["invalid"], code="invalid")
 
 def _clean_digit_only_field(value, label):
     value = (value or "").strip()
@@ -753,3 +879,173 @@ class UserProfileForm(forms.ModelForm):
                     exclude_pk=profile.pk,
                 )
         return profile
+
+
+class PelatihanForm(forms.ModelForm):
+    tanggal_mulai = FlexibleDateField(
+        input_formats=DATE_INPUT_FORMATS,
+        widget=DateInput(
+            attrs={
+                "data-training-date-picker": "true",
+                "data-training-start-date": "true",
+                "placeholder": "Pilih mulai tanggal",
+            }
+        ),
+        label="Mulai Tanggal",
+        error_messages={
+            "required": "Mulai tanggal pelatihan wajib diisi.",
+            "invalid": DATE_HELP_TEXT,
+        },
+    )
+    tanggal_selesai = FlexibleDateField(
+        input_formats=DATE_INPUT_FORMATS,
+        widget=DateInput(
+            attrs={
+                "data-training-date-picker": "true",
+                "data-training-end-date": "true",
+                "placeholder": "Pilih selesai tanggal",
+            }
+        ),
+        label="Selesai Tanggal",
+        error_messages={
+            "required": "Selesai tanggal pelatihan wajib diisi.",
+            "invalid": DATE_HELP_TEXT,
+        },
+    )
+
+    class Meta:
+        model = Pelatihan
+        fields = [
+            "tipe_pelatihan",
+            "jenis_pelatihan",
+            "nama_pelatihan",
+            "tanggal_mulai",
+            "tanggal_selesai",
+            "lokasi_pelatihan",
+            "uraian_pelatihan",
+            "file_sertifikat",
+            "file_materi",
+        ]
+        labels = {
+            "tipe_pelatihan": "Tipe Pelatihan",
+            "jenis_pelatihan": "Jenis Pelatihan",
+            "nama_pelatihan": "Nama Pelatihan",
+            "lokasi_pelatihan": "Lokasi Pelatihan",
+            "uraian_pelatihan": "Uraian Pelatihan",
+            "file_sertifikat": "File Sertifikat",
+            "file_materi": "File Materi",
+        }
+        widgets = {
+            "tipe_pelatihan": forms.Select(
+                attrs={
+                    "autocomplete": "off",
+                    "data-training-type-field": "true",
+                }
+            ),
+            "jenis_pelatihan": forms.Select(attrs={"autocomplete": "off"}),
+            "nama_pelatihan": forms.TextInput(
+                attrs={
+                    "placeholder": "Masukkan nama pelatihan",
+                    "autocomplete": "off",
+                }
+            ),
+            "lokasi_pelatihan": forms.TextInput(
+                attrs={
+                    "placeholder": "Masukkan lokasi pelatihan",
+                    "autocomplete": "off",
+                }
+            ),
+            "uraian_pelatihan": forms.Textarea(
+                attrs={
+                    "placeholder": "Masukkan uraian singkat pelatihan",
+                    "rows": 4,
+                    "autocomplete": "off",
+                }
+            ),
+            "file_sertifikat": forms.FileInput(
+                attrs={
+                    "accept": ".jpg,.jpeg,.png,.pdf",
+                    "class": "input-file--proxy",
+                    "data-inline-file-input": "true",
+                    "data-inline-file-placeholder": "Pilih file sertifikat",
+                    "data-inline-file-extensions": "jpg,jpeg,png,pdf",
+                    "data-inline-file-error": "File Sertifikat hanya boleh berupa file JPG, JPEG, PNG, atau PDF.",
+                }
+            ),
+            "file_materi": forms.FileInput(
+                attrs={
+                    "accept": ".pdf,.zip,.rar",
+                    "class": "input-file--proxy",
+                    "data-inline-file-input": "true",
+                    "data-inline-file-placeholder": "Pilih file materi",
+                    "data-inline-file-extensions": "pdf,zip,rar",
+                    "data-inline-file-error": "File Materi hanya boleh berupa file PDF, ZIP, atau RAR.",
+                }
+            ),
+        }
+        error_messages = {
+            "tipe_pelatihan": {"required": "Tipe pelatihan wajib dipilih."},
+            "jenis_pelatihan": {"required": "Jenis pelatihan wajib dipilih."},
+            "nama_pelatihan": {"required": "Nama pelatihan wajib diisi."},
+            "lokasi_pelatihan": {"required": "Lokasi pelatihan wajib diisi."},
+            "uraian_pelatihan": {"required": "Uraian pelatihan wajib diisi."},
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        for field_name, field in self.fields.items():
+            field.help_text = ""
+            if field_name not in {"file_sertifikat", "file_materi"}:
+                field.required = True
+                field.widget.attrs["required"] = "required"
+
+        self.fields["tipe_pelatihan"].choices = [("", "Pilih tipe pelatihan")] + list(Pelatihan.TIPE_CHOICES)
+        self.fields["jenis_pelatihan"].choices = [("", "Pilih jenis pelatihan")] + list(Pelatihan.JENIS_CHOICES)
+        self.fields["file_sertifikat"].required = False
+        self.fields["file_materi"].required = False
+        self.fields["file_sertifikat"].widget.attrs.pop("required", None)
+        self.fields["file_materi"].widget.attrs.pop("required", None)
+
+        apply_upload_widget_validation_attrs(
+            self.fields["file_sertifikat"],
+            allowed_extensions="jpg,jpeg,png,pdf",
+            invalid_extension_message="File Sertifikat hanya boleh berupa file JPG, JPEG, PNG, atau PDF.",
+            max_size_bytes=MAX_UPLOAD_SIZE_BYTES,
+            max_size_message=build_max_upload_size_message("File Sertifikat"),
+        )
+        apply_upload_widget_validation_attrs(
+            self.fields["file_materi"],
+            allowed_extensions="pdf,zip,rar",
+            invalid_extension_message="File Materi hanya boleh berupa file PDF, ZIP, atau RAR.",
+            max_size_bytes=MAX_UPLOAD_SIZE_BYTES,
+            max_size_message=build_max_upload_size_message("File Materi"),
+        )
+
+    def clean_file_sertifikat(self):
+        return validate_uploaded_file(
+            self.cleaned_data.get("file_sertifikat"),
+            allowed_extensions={".jpg", ".jpeg", ".png", ".pdf"},
+            invalid_extension_message="File Sertifikat hanya boleh berupa file JPG, JPEG, PNG, atau PDF.",
+            max_size_bytes=MAX_UPLOAD_SIZE_BYTES,
+            max_size_message=build_max_upload_size_message("File Sertifikat"),
+        )
+
+    def clean_file_materi(self):
+        return validate_uploaded_file(
+            self.cleaned_data.get("file_materi"),
+            allowed_extensions={".pdf", ".zip", ".rar"},
+            invalid_extension_message="File Materi hanya boleh berupa file PDF, ZIP, atau RAR.",
+            max_size_bytes=MAX_UPLOAD_SIZE_BYTES,
+            max_size_message=build_max_upload_size_message("File Materi"),
+        )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        tanggal_mulai = cleaned_data.get("tanggal_mulai")
+        tanggal_selesai = cleaned_data.get("tanggal_selesai")
+
+        if tanggal_mulai and tanggal_selesai and tanggal_selesai < tanggal_mulai:
+            self.add_error("tanggal_selesai", "Selesai tanggal tidak boleh lebih awal dari mulai tanggal.")
+
+        return cleaned_data

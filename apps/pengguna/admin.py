@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 
-from .models import Role, User, UserProfile
+from .models import Pelatihan, Role, User, UserProfile
 
 
 @admin.register(User)
@@ -25,3 +25,18 @@ class UserProfileAdmin(admin.ModelAdmin):
     list_display = ('user', 'role', 'jabatan', 'nama_tim')
     search_fields = ('user__username', 'user__first_name', 'jabatan', 'nama_tim__nama_tim')
     list_select_related = ('user', 'role', 'nama_tim')
+
+
+@admin.register(Pelatihan)
+class PelatihanAdmin(admin.ModelAdmin):
+    list_display = (
+        'nama_pelatihan',
+        'user',
+        'tipe_pelatihan',
+        'jenis_pelatihan',
+        'tanggal_mulai',
+        'tanggal_selesai',
+    )
+    list_filter = ('tipe_pelatihan', 'jenis_pelatihan')
+    search_fields = ('nama_pelatihan', 'lokasi_pelatihan', 'uraian_pelatihan', 'user__username', 'user__first_name')
+    list_select_related = ('user',)

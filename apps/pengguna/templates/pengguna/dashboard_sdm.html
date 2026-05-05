@@ -1,0 +1,133 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Dashboard SDM{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/style_dashboard.css' %}?v=20260505-sdm-v3">
+{% endblock %}
+
+{% block content %}
+<div class="page-header dashboard-header">
+    <div>
+        <h1>Dashboard SDM</h1>
+        <p>Ringkasan awal data SDM. Konfigurasi dashboard lanjutan akan diterapkan kemudian.</p>
+    </div>
+</div>
+
+<div class="dashboard-stats-grid sdm-stats">
+    <section class="card dashboard-stat-card dashboard-stat-card--primary sdm-stat">
+        <div class="dashboard-stat-card__icon" aria-hidden="true"><i class="bi bi-mortarboard-fill"></i></div>
+        <div class="dashboard-stat-card__body">
+            <p class="dashboard-stat-card__label">Total Pelatihan</p>
+            <h2 class="dashboard-stat-card__value">{{ total_pelatihan }}</h2>
+        </div>
+    </section>
+</div>
+
+<div class="sdm-charts">
+    <section class="card dashboard-chart-card sdm-chart">
+        <div class="dashboard-chart-card__header">
+            <div class="dashboard-chart-card__top">
+                <h3 class="card-title">Rekap Tipe Pelatihan</h3>
+                <div class="chart-download">
+                    <button type="button" class="chart-download__toggle" aria-label="Download chart Rekap Tipe Pelatihan" aria-expanded="false" data-chart-menu-toggle>
+                        <i class="bi bi-three-dots-vertical"></i>
+                    </button>
+                    <div class="chart-download__menu" data-chart-menu>
+                        <button type="button" data-chart-download="jpg" data-chart-target="sdmTipeChart" data-chart-title="Rekap Tipe Pelatihan"><i class="bi bi-filetype-jpg" aria-hidden="true"></i><span>Download JPG</span></button>
+                    </div>
+                </div>
+            </div>
+            <div class="dashboard-chart-filters">
+                <div class="dashboard-filter">
+                    <select id="sdmTipeYear" aria-label="Filter tahun tipe pelatihan" title="Filter tahun">
+                        <option value="all">All</option>
+                        {% for year in sdm_tipe_chart.availableYears %}
+                            <option value="{{ year }}" {% if year == sdm_tipe_chart.defaultYear %}selected{% endif %}>{{ year }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div class="dashboard-chart-area" data-chart-wrapper="sdm-tipe">
+            <canvas id="sdmTipeChart" aria-label="Grafik Rekap Tipe Pelatihan"></canvas>
+            <div class="dashboard-chart-empty is-hidden" data-chart-empty="sdm-tipe">-</div>
+        </div>
+    </section>
+
+    <section class="card dashboard-chart-card sdm-chart">
+        <div class="dashboard-chart-card__header">
+            <div class="dashboard-chart-card__top">
+                <h3 class="card-title">Rekap Jenis Pelatihan</h3>
+                <div class="chart-download">
+                    <button type="button" class="chart-download__toggle" aria-label="Download chart Rekap Jenis Pelatihan" aria-expanded="false" data-chart-menu-toggle>
+                        <i class="bi bi-three-dots-vertical"></i>
+                    </button>
+                    <div class="chart-download__menu" data-chart-menu>
+                        <button type="button" data-chart-download="jpg" data-chart-target="sdmJenisChart" data-chart-title="Rekap Jenis Pelatihan"><i class="bi bi-filetype-jpg" aria-hidden="true"></i><span>Download JPG</span></button>
+                    </div>
+                </div>
+            </div>
+            <div class="dashboard-chart-filters">
+                <div class="dashboard-filter">
+                    <select id="sdmJenisYear" aria-label="Filter tahun jenis pelatihan" title="Filter tahun">
+                        <option value="all">All</option>
+                        {% for year in sdm_jenis_chart.availableYears %}
+                            <option value="{{ year }}" {% if year == sdm_jenis_chart.defaultYear %}selected{% endif %}>{{ year }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div class="dashboard-chart-area" data-chart-wrapper="sdm-jenis">
+            <canvas id="sdmJenisChart" aria-label="Grafik Rekap Jenis Pelatihan"></canvas>
+            <div class="dashboard-chart-empty is-hidden" data-chart-empty="sdm-jenis">-</div>
+        </div>
+    </section>
+</div>
+
+<div class="table-wrapper table-panel sdm-latest">
+    <div class="table-toolbar">
+        <h3 class="table-title">Pelatihan Terbaru</h3>
+        <a href="{% url 'pengguna:pelatihan_daftar' %}" class="btn btn-secondary">Lihat Data Pelatihan</a>
+    </div>
+
+    <div class="table-scroll-area table-scroll--list" tabindex="0" aria-label="Scroll tabel pelatihan terbaru">
+        <table class="table-data list-table--pengguna">
+            <thead>
+                <tr>
+                    <th class="cell-wrap">Nama Pelatihan</th>
+                    <th>Tipe Pelatihan</th>
+                    <th>Jenis Pelatihan</th>
+                    <th>Mulai</th>
+                    <th>Selesai</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in pelatihan_terbaru %}
+                <tr>
+                    <td class="cell-wrap">{{ item.nama_pelatihan }}</td>
+                    <td>{{ item.tipe_pelatihan }}</td>
+                    <td>{{ item.jenis_pelatihan }}</td>
+                    <td>{{ item.tanggal_mulai|date:'d M Y' }}</td>
+                    <td>{{ item.tanggal_selesai|date:'d M Y' }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5"><div class="empty-state">Belum ada data pelatihan.</div></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{{ sdm_tipe_chart|json_script:"sdm-tipe-data" }}
+{{ sdm_jenis_chart|json_script:"sdm-jenis-data" }}
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
+<script src="{% static 'js/dashboard.js' %}?v=20260505-sdm-v3" defer></script>
+{% endblock %}

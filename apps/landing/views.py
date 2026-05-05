@@ -8,7 +8,7 @@ from apps.core.permissions import is_super_admin, user_passes_access
 
 from .forms import LandingPeralatanCardForm
 from .models import LandingPeralatanCard
-from .services import get_public_landing_context
+from .services import get_public_landing_context, invalidate_public_landing_cache
 
 
 landing_manage_required = user_passes_access(
@@ -68,6 +68,7 @@ def equipment_create(request):
     form = LandingPeralatanCardForm(request.POST or None, request.FILES or None)
     if request.method == "POST" and form.is_valid():
         form.save()
+        invalidate_public_landing_cache()
         messages.success(request, "Konten peralatan landing page berhasil ditambahkan.")
         return redirect("landing:equipment_list")
 
@@ -90,6 +91,7 @@ def equipment_update(request, pk):
     form = LandingPeralatanCardForm(request.POST or None, request.FILES or None, instance=card)
     if request.method == "POST" and form.is_valid():
         form.save()
+        invalidate_public_landing_cache()
         messages.success(request, "Konten peralatan landing page berhasil diperbarui.")
         return redirect("landing:equipment_list")
 
@@ -111,5 +113,6 @@ def equipment_delete(request, pk):
     card = get_object_or_404(LandingPeralatanCard, pk=pk)
     if request.method == "POST":
         card.delete()
+        invalidate_public_landing_cache()
         messages.success(request, "Konten peralatan landing page berhasil dihapus.")
     return redirect("landing:equipment_list")

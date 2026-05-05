@@ -82,6 +82,7 @@ function initDashboardCharts() {
     initApprovedPeminjamanChart();
     initSurveiKegiatanChart();
     initInstansiTujuanChart();
+    initSdmCharts();
 }
 
 function readDashboardChartData(scriptId) {
@@ -634,6 +635,230 @@ function initLayananKegiatanChart() {
     yearFilter.addEventListener('change', renderChart);
     window.addEventListener('resize', debounce(renderChart, 180));
     renderChart();
+}
+
+
+function getSdmPalette(index) {
+    const palette = [
+        { background: 'rgba(16, 62, 111, 0.82)', border: 'rgba(16, 62, 111, 1)' },
+        { background: 'rgba(100, 205, 209, 0.82)', border: 'rgba(100, 205, 209, 1)' },
+        { background: 'rgba(73, 126, 184, 0.82)', border: 'rgba(73, 126, 184, 1)' },
+        { background: 'rgba(86, 173, 142, 0.82)', border: 'rgba(86, 173, 142, 1)' },
+    ];
+    return palette[index % palette.length];
+}
+
+function buildSdmData(source, selectedYear) {
+    const rows = Array.isArray(source?.rows) ? source.rows : [];
+    const categories = Array.isArray(source?.categories) ? source.categories : [];
+    const totals = new Map();
+
+    categories.forEach(function (category) {
+        totals.set(String(category.id), 0);
+    });
+
+    rows.forEach(function (row) {
+        if (selectedYear !== 'all' && Number(row.year) !== Number(selectedYear)) {
+            return;
+        }
+
+        const key = String(row.key || '').trim();
+        if (!key) {
+            return;
+        }
+
+        totals.set(key, Number(totals.get(key) || 0) + Number(row.total || 0));
+    });
+
+    const labels = categories.map(function (category) {
+        return category.label || category.id;
+    });
+    const data = categories.map(function (category) {
+        return Number(totals.get(String(category.id)) || 0);
+    });
+    const maxValue = Math.max.apply(null, data.concat([0]));
+
+    return {
+        labels: labels,
+        data: data,
+        maxValue: maxValue,
+    };
+}
+
+function updateSdmEmptyState(key, hasData) {
+    const emptyState = document.querySelector('[data-chart-empty="' + key + '"]');
+    if (!emptyState) {
+        return;
+    }
+
+    emptyState.classList.toggle('is-hidden', hasData);
+}
+
+function buildSdmBarData(source, selectedYear) {
+    const chartData = buildSdmData(source, selectedYear);
+    const colors = chartData.labels.map(function (_, index) {
+        return getSdmPalette(index);
+    });
+
+    return {
+        labels: chartData.labels,
+        datasets: [
+            {
+                label: 'Total Pelatihan',
+                data: chartData.data,
+                backgroundColor: colors.map(function (color) { return color.background; }),
+                borderColor: colors.map(function (color) { return color.border; }),
+                borderWidth: 1,
+                borderRadius: 8,
+                borderSkipped: false,
+                categoryPercentage: isMobileViewport() ? 0.76 : 0.68,
+                barPercentage: isMobileViewport() ? 0.82 : 0.76,
+                maxBarThickness: isSmallMobileViewport() ? 34 : 54,
+            },
+        ],
+        maxValue: chartData.maxValue,
+        hasData: chartData.data.some(function (value) { return Number(value) > 0; }),
+    };
+}
+
+function buildSdmPieData(source, selectedYear) {
+    const chartData = buildSdmData(source, selectedYear);
+    const colors = chartData.labels.map(function (_, index) {
+        return getSdmPalette(index);
+    });
+
+    return {
+        labels: chartData.labels,
+        datasets: [
+            {
+                data: chartData.data,
+                backgroundColor: colors.map(function (color) { return color.background; }),
+                borderColor: colors.map(function (color) { return color.border; }),
+                borderWidth: 1,
+                hoverOffset: 8,
+            },
+        ],
+        hasData: chartData.data.some(function (value) { return Number(value) > 0; }),
+    };
+}
+
+function createSdmPieOptions() {
+    return {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: {
+            duration: 850,
+            easing: 'easeOutQuart',
+        },
+        plugins: {
+            legend: {
+                position: 'bottom',
+                labels: {
+                    usePointStyle: true,
+                    boxWidth: isSmallMobileViewport() ? 7 : (isMobileViewport() ? 8 : 10),
+                    padding: isSmallMobileViewport() ? 8 : (isMobileViewport() ? 10 : 14),
+                    font: {
+                        size: getChartFontSize(12, 10, 9),
+                    },
+                },
+            },
+            tooltip: {
+                callbacks: {
+                    label: function (context) {
+                        const numericValue = Number(context.raw || 0);
+                        const dataset = context.dataset?.data || [];
+                        const total = dataset.reduce(function (sum, value) {
+                            return sum + Number(value || 0);
+                        }, 0);
+                        const percentage = total > 0 ? ' (' + ((numericValue / total) * 100).toFixed(1).replace('.0', '') + '%)' : '';
+                        return context.label + ': ' + (numericValue === 0 ? '-' : numericValue) + percentage;
+                    },
+                },
+                titleFont: {
+                    size: getChartFontSize(12, 10, 9),
+                },
+                bodyFont: {
+                    size: getChartFontSize(12, 10, 9),
+                },
+            },
+        },
+    };
+}
+
+function initSdmTipeChart() {
+    const canvas = document.getElementById('sdmTipeChart');
+    const source = readDashboardChartData('sdm-tipe-data');
+    const yearFilter = document.getElementById('sdmTipeYear');
+
+    if (!canvas || !source || !yearFilter) {
+        return;
+    }
+
+    let chartInstance = null;
+
+    function renderChart() {
+        const chartData = buildSdmBarData(source, normalizeDashboardYearFilter(yearFilter.value));
+        const options = createBaseBarOptions(chartData.maxValue);
+        options.plugins.legend.display = false;
+        options.plugins.tooltip.callbacks = {
+            label: function (context) {
+                const numericValue = Number(context.raw || 0);
+                return 'Total: ' + (numericValue === 0 ? '-' : numericValue);
+            },
+        };
+        options.scales.x.ticks.callback = function (value) {
+            return wrapChartLabel(this.getLabelForValue(value), isMobileViewport() ? 12 : 18, 2);
+        };
+        updateSdmEmptyState('sdm-tipe', chartData.hasData);
+        chartInstance = upsertBarChart(chartInstance, canvas, chartData.labels, chartData.datasets, options);
+    }
+
+    yearFilter.addEventListener('change', renderChart);
+    window.addEventListener('resize', debounce(renderChart, 180));
+    renderChart();
+}
+
+function initSdmJenisChart() {
+    const canvas = document.getElementById('sdmJenisChart');
+    const source = readDashboardChartData('sdm-jenis-data');
+    const yearFilter = document.getElementById('sdmJenisYear');
+
+    if (!canvas || !source || !yearFilter) {
+        return;
+    }
+
+    let chartInstance = null;
+
+    function renderChart() {
+        const chartData = buildSdmPieData(source, normalizeDashboardYearFilter(yearFilter.value));
+        updateSdmEmptyState('sdm-jenis', chartData.hasData);
+
+        if (!chartInstance) {
+            chartInstance = new Chart(canvas, {
+                type: 'pie',
+                data: {
+                    labels: chartData.labels,
+                    datasets: chartData.datasets,
+                },
+                options: createSdmPieOptions(),
+            });
+            return;
+        }
+
+        chartInstance.data.labels = chartData.labels;
+        chartInstance.data.datasets = chartData.datasets;
+        chartInstance.options = createSdmPieOptions();
+        chartInstance.update();
+    }
+
+    yearFilter.addEventListener('change', renderChart);
+    window.addEventListener('resize', debounce(renderChart, 180));
+    renderChart();
+}
+
+function initSdmCharts() {
+    initSdmTipeChart();
+    initSdmJenisChart();
 }
 
 function wrapChartLabel(label, maxCharsPerLine, maxLines) {

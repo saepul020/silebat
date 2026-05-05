@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+
+{% block title %}Detail Pelatihan{% endblock %}
+
+{% block content %}
+<div class="page-header detail-header">
+    <div>
+        <h1>Detail Pelatihan</h1>
+        <p>Informasi lengkap data pelatihan pengguna.</p>
+    </div>
+</div>
+
+<div class="card detail-user-card detail-pelatihan-card">
+    <div class="detail-profile-top detail-header-primary">
+        <div class="detail-avatar detail-avatar--icon">
+            <div class="detail-avatar__fallback"><i class="bi bi-mortarboard-fill"></i></div>
+        </div>
+        <div class="detail-profile-meta">
+            <h2>{{ obj.nama_pelatihan }}</h2>
+            <p>{{ obj.tipe_pelatihan }} &bull; {{ obj.jenis_pelatihan }}</p>
+            {% if can_view_all_pelatihan %}<span class="detail-role-chip">{{ obj.user.get_full_name|default:obj.user.username }}</span>{% endif %}
+        </div>
+    </div>
+
+    <div class="detail-grid detail-grid--info detail-grid--pelatihan">
+        <div class="detail-item">
+            <label>Tipe Pelatihan</label>
+            <p>{{ obj.tipe_pelatihan }}</p>
+        </div>
+
+        <div class="detail-item">
+            <label>Jenis Pelatihan</label>
+            <p>{{ obj.jenis_pelatihan }}</p>
+        </div>
+
+        <div class="detail-item">
+            <label>Mulai Tanggal</label>
+            <p>{{ obj.tanggal_mulai|date:'d M Y' }}</p>
+        </div>
+
+        <div class="detail-item">
+            <label>Selesai Tanggal</label>
+            <p>{{ obj.tanggal_selesai|date:'d M Y' }}</p>
+        </div>
+
+        <div class="detail-item detail-item--full detail-item--span-2">
+            <label>Lokasi Pelatihan</label>
+            <p>{{ obj.lokasi_pelatihan|default:'-' }}</p>
+        </div>
+
+        <div class="detail-item detail-item--full detail-item--span-2 detail-item--long-text">
+            <label>Uraian Pelatihan</label>
+            <p>{{ obj.uraian_pelatihan|default:'-'|linebreaksbr }}</p>
+        </div>
+
+        <div class="detail-item">
+            <label>File Sertifikat</label>
+            <p>
+                {% if obj.file_sertifikat %}
+                    <a href="{{ obj.file_sertifikat.url }}" target="_blank" rel="noopener noreferrer">Lihat File Sertifikat</a>
+                {% else %}
+                    -
+                {% endif %}
+            </p>
+        </div>
+
+        <div class="detail-item">
+            <label>File Materi</label>
+            <p>
+                {% if obj.file_materi %}
+                    <a href="{{ obj.file_materi.url }}" target="_blank" rel="noopener noreferrer">Lihat File Materi</a>
+                {% else %}
+                    -
+                {% endif %}
+            </p>
+        </div>
+    </div>
+
+    <div class="detail-card-action detail-card-actions">
+        <a href="{% url 'pengguna:pelatihan_edit' obj.pk %}" class="btn btn-primary">Edit Pelatihan</a>
+        <a href="{% url 'pengguna:pelatihan_daftar' %}" class="btn btn-secondary">Kembali</a>
+    </div>
+</div>
+{% endblock %}

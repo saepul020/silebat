@@ -1,0 +1,157 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{{ page_title }}</h1>
+    <p>{{ page_subtitle }}</p>
+</div>
+
+<div class="card master-form-card pelatihan-form-card">
+    <form method="post" enctype="multipart/form-data" class="pengguna-form pelatihan-form" data-pelatihan-form="true" novalidate>
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+        <div class="form-global-errors">
+            {% for error in form.non_field_errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
+        </div>
+        {% endif %}
+
+        <fieldset>
+            <legend>Identitas Pelatihan</legend>
+
+            <div class="form-row form-row--single pelatihan-type-row">
+                <div class="form-group form-group-full {% if form.tipe_pelatihan.errors %}has-error{% endif %}">
+                    <label for="{{ form.tipe_pelatihan.id_for_label }}">{{ form.tipe_pelatihan.label }}</label>
+                    {{ form.tipe_pelatihan }}
+                    {% for error in form.tipe_pelatihan.errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
+                </div>
+            </div>
+        </fieldset>
+
+        <div class="master-fieldset-stack is-status-dependent{% if not form.tipe_pelatihan.value %} is-locked{% endif %}" data-training-dependent-group="true">
+            <fieldset>
+                <legend>Detail Pelatihan</legend>
+
+                <div class="form-row">
+                    <div class="form-group {% if form.jenis_pelatihan.errors %}has-error{% endif %}">
+                        <label for="{{ form.jenis_pelatihan.id_for_label }}">{{ form.jenis_pelatihan.label }}</label>
+                        {{ form.jenis_pelatihan }}
+                        {% for error in form.jenis_pelatihan.errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
+                    </div>
+
+                    <div class="form-group {% if form.nama_pelatihan.errors %}has-error{% endif %}">
+                        <label for="{{ form.nama_pelatihan.id_for_label }}">{{ form.nama_pelatihan.label }}</label>
+                        {{ form.nama_pelatihan }}
+                        {% for error in form.nama_pelatihan.errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
+                    </div>
+                </div>
+
+                <div class="form-row form-row--date-range">
+                    <div class="form-group {% if form.tanggal_mulai.errors %}has-error{% endif %}">
+                        <label for="{{ form.tanggal_mulai.id_for_label }}">{{ form.tanggal_mulai.label }}</label>
+                        {{ form.tanggal_mulai }}
+                        {% for error in form.tanggal_mulai.errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
+                    </div>
+
+                    <div class="form-group {% if form.tanggal_selesai.errors %}has-error{% endif %}">
+                        <label for="{{ form.tanggal_selesai.id_for_label }}">{{ form.tanggal_selesai.label }}</label>
+                        {{ form.tanggal_selesai }}
+                        {% for error in form.tanggal_selesai.errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
+                    </div>
+                </div>
+
+                <div class="form-row form-row--single">
+                    <div class="form-group form-group-full {% if form.lokasi_pelatihan.errors %}has-error{% endif %}">
+                        <label for="{{ form.lokasi_pelatihan.id_for_label }}">{{ form.lokasi_pelatihan.label }}</label>
+                        {{ form.lokasi_pelatihan }}
+                        {% for error in form.lokasi_pelatihan.errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
+                    </div>
+                </div>
+
+                <div class="form-row form-row--single">
+                    <div class="form-group form-group-full {% if form.uraian_pelatihan.errors %}has-error{% endif %}">
+                        <label for="{{ form.uraian_pelatihan.id_for_label }}">{{ form.uraian_pelatihan.label }}</label>
+                        {{ form.uraian_pelatihan }}
+                        {% for error in form.uraian_pelatihan.errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
+                    </div>
+                </div>
+            </fieldset>
+
+            <fieldset>
+                <legend>Dokumen Pelatihan</legend>
+
+                <div class="form-row">
+                    <div class="form-group {% if form.file_sertifikat.errors %}has-error{% endif %}">
+                        <label for="{{ form.file_sertifikat.id_for_label }}">{{ form.file_sertifikat.label }}</label>
+                        {% if is_edit and obj.file_sertifikat %}
+                        <div class="document-file-link-wrap pelatihan-file-card">
+                            <div class="document-file-link-wrap__info">
+                                <span class="document-file-link-wrap__icon"><i class="bi bi-file-earmark-text-fill"></i></span>
+                                <span class="document-file-link-wrap__title pelatihan-file-name">{{ obj.file_sertifikat.name|cut:'pengguna/pelatihan/sertifikat/' }}</span>
+                            </div>
+                            <a href="{{ obj.file_sertifikat.url }}" target="_blank" rel="noopener" class="document-file-link">Buka file</a>
+                        </div>
+                        {% endif %}
+
+                        <div class="upload-input-wrap upload-input-wrap--inline upload-input-wrap--file-proxy" data-inline-file-proxy>
+                            <div class="upload-input-wrap__field">
+                                {{ form.file_sertifikat }}
+                                <label for="{{ form.file_sertifikat.id_for_label }}" class="file-input-proxy">
+                                    <span class="file-input-proxy__button" aria-hidden="true"><i class="bi bi-upload"></i></span>
+                                    <span class="file-input-proxy__text is-placeholder" data-inline-file-text>Pilih file sertifikat</span>
+                                </label>
+                            </div>
+                            <div class="upload-file-state upload-file-state--inline is-hidden" data-inline-file-state>
+                                <button type="button" class="upload-file-state__action upload-file-state__action--icon" data-inline-file-clear title="Batalkan Upload" aria-label="Batalkan Upload">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <p class="input-help-text">Opsional. Format: JPG, JPEG, PNG, atau PDF. Maksimal 7 MB.</p>
+                        <p class="input-error-text" data-inline-file-error-node hidden></p>
+                        {% for error in form.file_sertifikat.errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
+                    </div>
+
+                    <div class="form-group {% if form.file_materi.errors %}has-error{% endif %}">
+                        <label for="{{ form.file_materi.id_for_label }}">{{ form.file_materi.label }}</label>
+                        {% if is_edit and obj.file_materi %}
+                        <div class="document-file-link-wrap pelatihan-file-card">
+                            <div class="document-file-link-wrap__info">
+                                <span class="document-file-link-wrap__icon"><i class="bi bi-file-earmark-zip-fill"></i></span>
+                                <span class="document-file-link-wrap__title pelatihan-file-name">{{ obj.file_materi.name|cut:'pengguna/pelatihan/materi/' }}</span>
+                            </div>
+                            <a href="{{ obj.file_materi.url }}" target="_blank" rel="noopener" class="document-file-link">Buka file</a>
+                        </div>
+                        {% endif %}
+
+                        <div class="upload-input-wrap upload-input-wrap--inline upload-input-wrap--file-proxy" data-inline-file-proxy>
+                            <div class="upload-input-wrap__field">
+                                {{ form.file_materi }}
+                                <label for="{{ form.file_materi.id_for_label }}" class="file-input-proxy">
+                                    <span class="file-input-proxy__button" aria-hidden="true"><i class="bi bi-upload"></i></span>
+                                    <span class="file-input-proxy__text is-placeholder" data-inline-file-text>Pilih file materi</span>
+                                </label>
+                            </div>
+                            <div class="upload-file-state upload-file-state--inline is-hidden" data-inline-file-state>
+                                <button type="button" class="upload-file-state__action upload-file-state__action--icon" data-inline-file-clear title="Batalkan Upload" aria-label="Batalkan Upload">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <p class="input-help-text">Opsional. Format: PDF, ZIP, atau RAR. Maksimal 7 MB.</p>
+                        <p class="input-error-text" data-inline-file-error-node hidden></p>
+                        {% for error in form.file_materi.errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
+                    </div>
+                </div>
+            </fieldset>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">{{ submit_label }}</button>
+            <a href="{% url 'pengguna:pelatihan_daftar' %}" class="btn btn-secondary">Kembali</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -138,5 +138,7 @@ def build_role_access(user):
         "show_laporan_peminjaman_only": role_name == ROLE_USER,
         "show_master_data": role_name in FULL_LAB_ACCESS_ROLES,
         "show_operasional": role_name == ROLE_SUPER_ADMIN,
-        "show_pengguna": role_name == ROLE_SUPER_ADMIN,
+        "show_pengguna": is_authenticated,
+        "show_pengguna_menu": is_authenticated,
+        "show_data_pengguna": role_name == ROLE_SUPER_ADMIN,
     }

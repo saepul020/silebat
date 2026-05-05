@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', function () {
     initBackToTop();
     initScrollReveal();
     initLandingCounters();
-    initLandingCharts();
+    initChartsWhenVisible();
 });
 
 function readLandingJson(scriptId, fallbackValue) {
@@ -28,8 +28,9 @@ function initLandingNavbar() {
     const navbar = document.getElementById('navbar');
     const hamburger = document.getElementById('hamburger');
     const mobileMenu = document.getElementById('mobileMenu');
-    const menuLinks = document.querySelectorAll('.nav-menu a, .mobile-menu a[href^="#"]');
-    const sections = document.querySelectorAll('section[id], footer[id], .profil-features[id]');
+    const menuLinks = Array.from(document.querySelectorAll('.nav-menu a, .mobile-menu a[href^="#"]'));
+    const sections = Array.from(document.querySelectorAll('section[id], footer[id], .profil-features[id]'));
+    let sectionPositions = [];
     let ticking = false;
 
     function setMobileMenu(open) {
@@ -45,17 +46,23 @@ function initLandingNavbar() {
         document.body.classList.toggle('menu-open', open);
     }
 
-    function setActiveLink() {
-        if (!sections.length) {
+    function refreshSectionPositions() {
+        sectionPositions = sections.map(function (section) {
+            return {
+                id: section.id,
+                top: section.getBoundingClientRect().top + window.scrollY,
+            };
+        });
+    }
+
+    function setActiveLink(scrollTop) {
+        if (!sectionPositions.length) {
             return;
         }
 
-        let current = sections[0].id;
-        sections.forEach(function (section) {
-            if (window.scrollY >= section.offsetTop - 120) {
-                current = section.id;
-            }
-        });
+        const current = sectionPositions.reduce(function (activeId, section) {
+            return scrollTop >= section.top - 120 ? section.id : activeId;
+        }, sectionPositions[0].id);
 
         menuLinks.forEach(function (link) {
             link.classList.toggle('active', link.getAttribute('href') === '#' + current);
@@ -63,10 +70,11 @@ function initLandingNavbar() {
     }
 
     function updateNavbarState() {
+        const scrollTop = window.scrollY;
         if (navbar) {
-            navbar.classList.toggle('scrolled', window.scrollY > 40);
+            navbar.classList.toggle('scrolled', scrollTop > 40);
         }
-        setActiveLink();
+        setActiveLink(scrollTop);
         ticking = false;
     }
 
@@ -75,7 +83,7 @@ function initLandingNavbar() {
             return;
         }
         ticking = true;
-        window.requestAnimationFrame(updateNavbarState);
+        requestAnimationFrameSafe(updateNavbarState);
     }
 
     if (hamburger && mobileMenu) {
@@ -106,26 +114,40 @@ function initLandingNavbar() {
                 setMobileMenu(false);
             }
         });
-
-        window.addEventListener('resize', function () {
-            if (window.innerWidth > 860) {
-                setMobileMenu(false);
-            }
-        });
     }
 
+    refreshSectionPositions();
     updateNavbarState();
+
+    window.addEventListener('resize', function () {
+        refreshSectionPositions();
+        if (window.innerWidth > 860) {
+            setMobileMenu(false);
+        }
+        requestNavbarUpdate();
+    }, { passive: true });
+    window.addEventListener('load', refreshSectionPositions, { once: true });
     window.addEventListener('scroll', requestNavbarUpdate, { passive: true });
 }
 
 function initBackToTop() {
     const button = document.getElementById('backTop');
+    let ticking = false;
+
     if (!button) {
         return;
     }
 
-    window.addEventListener('scroll', function () {
+    function updateBackToTop() {
         button.classList.toggle('show', window.scrollY > 400);
+        ticking = false;
+    }
+
+    window.addEventListener('scroll', function () {
+        if (!ticking) {
+            ticking = true;
+            requestAnimationFrameSafe(updateBackToTop);
+        }
     }, { passive: true });
 
     button.addEventListener('click', function () {
@@ -289,27 +311,218 @@ function hasChartData(chartPayload) {
         && chartPayload.data.some(function (value) { return Number(value || 0) > 0; });
 }
 
-function showChartEmpty(canvasId) {
+function showChartMessage(canvasId, message, state) {
     const canvas = document.getElementById(canvasId);
     const empty = document.querySelector('[data-chart-empty="' + canvasId + '"]');
+    const frame = document.querySelector('[data-chart-frame="' + canvasId + '"]');
+    const wrap = canvas ? canvas.closest('.chart-wrap') : null;
 
     if (canvas) {
         canvas.classList.add('is-hidden');
     }
+    if (frame) {
+        frame.classList.add('is-hidden');
+    }
+    if (wrap) {
+        wrap.classList.toggle('is-chart-error', state === 'error');
+    }
     if (empty) {
+        if (message) {
+            empty.textContent = message;
+        }
+        empty.classList.toggle('landing-empty-state--error', state === 'error');
         empty.classList.remove('is-hidden');
     }
 }
 
-function initLandingCharts() {
-    if (typeof Chart === 'undefined') {
+function showChartEmpty(canvasId) {
+    showChartMessage(canvasId, null, 'empty');
+}
+
+function showChartError(canvasId, message) {
+    showChartMessage(
+        canvasId,
+        message || 'Grafik gagal dimuat. Periksa koneksi internet atau muat ulang halaman.',
+        'error'
+    );
+}
+
+function splitLongChartWord(word, maxLength) {
+    const chunks = [];
+    const text = String(word || '');
+
+    for (let index = 0; index < text.length; index += maxLength) {
+        chunks.push(text.slice(index, index + maxLength));
+    }
+
+    return chunks;
+}
+
+function wrapChartLabel(value, maxLength) {
+    const label = Array.isArray(value) ? value.join(' ') : String(value || '-');
+    const words = label.split(/\s+/).filter(Boolean);
+    const lines = [];
+    let currentLine = '';
+
+    words.forEach(function (word) {
+        if (word.length > maxLength) {
+            if (currentLine) {
+                lines.push(currentLine);
+                currentLine = '';
+            }
+            lines.push.apply(lines, splitLongChartWord(word, maxLength));
+            return;
+        }
+
+        const candidate = currentLine ? currentLine + ' ' + word : word;
+        if (candidate.length > maxLength) {
+            if (currentLine) {
+                lines.push(currentLine);
+            }
+            currentLine = word;
+            return;
+        }
+
+        currentLine = candidate;
+    });
+
+    if (currentLine) {
+        lines.push(currentLine);
+    }
+
+    return lines.length ? lines : ['-'];
+}
+
+function getLongestLabelLength(labels) {
+    if (!Array.isArray(labels) || !labels.length) {
+        return 0;
+    }
+
+    return labels.reduce(function (longest, label) {
+        return Math.max(longest, String(label || '').length);
+    }, 0);
+}
+
+function getBarChartLayoutPlan(canvas, labels, horizontal) {
+    const frame = canvas.closest('.chart-canvas-frame');
+    const scrollWrap = canvas.closest('.chart-wrap--scroll');
+
+    if (!frame || !scrollWrap) {
+        return null;
+    }
+
+    const labelCount = Array.isArray(labels) ? labels.length : 0;
+    const longestLabelLength = getLongestLabelLength(labels);
+    const currentWidth = scrollWrap.clientWidth || 0;
+    const minVisibleWidth = Math.max(currentWidth, 320);
+    const itemWidth = horizontal ? 56 : 72;
+    const labelWidthBuffer = Math.min(Math.max(longestLabelLength - 18, 0) * 9, 260);
+    const densityWidth = labelCount * itemWidth + labelWidthBuffer;
+    const needsScroll = labelCount > (horizontal ? 5 : 4) || longestLabelLength > (horizontal ? 28 : 18);
+    const minWidth = needsScroll ? Math.max(minVisibleWidth, densityWidth, 560) : minVisibleWidth;
+
+    return {
+        frame: frame,
+        scrollWrap: scrollWrap,
+        minWidth: Math.ceil(minWidth),
+        needsScroll: needsScroll,
+    };
+}
+
+function applyBarChartLayout(layoutPlan) {
+    if (!layoutPlan) {
         return;
     }
 
+    layoutPlan.frame.style.setProperty('--chart-min-width', layoutPlan.minWidth + 'px');
+    layoutPlan.scrollWrap.classList.toggle('is-scrollable', layoutPlan.needsScroll);
+}
+
+function requestAnimationFrameSafe(callback) {
+    if (typeof window.requestAnimationFrame === 'function') {
+        window.requestAnimationFrame(callback);
+        return;
+    }
+    window.setTimeout(callback, 16);
+}
+
+function initChartsWhenVisible() {
+    const chartsSection = document.querySelector('.charts');
+    let initialized = false;
+
+    function runOnce() {
+        if (initialized) {
+            return;
+        }
+        initialized = true;
+        initLandingCharts();
+    }
+
+    if (!chartsSection || typeof IntersectionObserver === 'undefined') {
+        runOnce();
+        return;
+    }
+
+    const observer = new IntersectionObserver(function (entries) {
+        if (entries[0] && entries[0].isIntersecting) {
+            observer.disconnect();
+            requestAnimationFrameSafe(runOnce);
+        }
+    }, {
+        rootMargin: '240px 0px',
+        threshold: 0.05,
+    });
+
+    observer.observe(chartsSection);
+}
+
+function initLandingCharts() {
     const charts = readLandingJson('landing-chart-data', {});
-    renderLandingBarChart('chartSurvei', charts.survei, 'Jumlah Kegiatan', false);
-    renderLandingPieChart('chartLayanan', charts.layanan);
-    renderLandingBarChart('chartLapangan', charts.pengukuran, 'Jumlah Titik/Lintasan', true);
+    const chartConfigs = [
+        { type: 'bar', canvasId: 'chartSurvei', payload: charts.survei, label: 'Jumlah Kegiatan', horizontal: false },
+        { type: 'doughnut', canvasId: 'chartLayanan', payload: charts.layanan },
+        { type: 'bar', canvasId: 'chartLapangan', payload: charts.pengukuran, label: 'Jumlah Titik/Lintasan', horizontal: true },
+    ];
+
+    const renderableConfigs = chartConfigs.filter(function (config) {
+        if (!hasChartData(config.payload)) {
+            showChartEmpty(config.canvasId);
+            return false;
+        }
+        return true;
+    });
+
+    if (!renderableConfigs.length) {
+        return;
+    }
+
+    if (typeof Chart === 'undefined') {
+        const message = 'Grafik gagal dimuat karena library Chart.js tidak tersedia. Periksa koneksi internet/CDN lalu muat ulang halaman.';
+        renderableConfigs.forEach(function (config) {
+            showChartError(config.canvasId, message);
+        });
+        return;
+    }
+
+    requestAnimationFrameSafe(function () {
+        const layoutPlans = renderableConfigs
+            .filter(function (config) { return config.type === 'bar'; })
+            .map(function (config) {
+                const canvas = document.getElementById(config.canvasId);
+                return canvas ? getBarChartLayoutPlan(canvas, config.payload.labels, config.horizontal) : null;
+            });
+
+        requestAnimationFrameSafe(function () {
+            layoutPlans.forEach(applyBarChartLayout);
+            renderableConfigs.forEach(function (config) {
+                if (config.type === 'bar') {
+                    renderLandingBarChart(config.canvasId, config.payload, config.label, config.horizontal);
+                    return;
+                }
+                renderLandingPieChart(config.canvasId, config.payload);
+            });
+        });
+    });
 }
 
 function renderLandingBarChart(canvasId, chartPayload, label, horizontal) {
@@ -322,6 +535,10 @@ function renderLandingBarChart(canvasId, chartPayload, label, horizontal) {
         showChartEmpty(canvasId);
         return;
     }
+
+    const categoryAxis = horizontal ? 'y' : 'x';
+    const categoryLabelLength = horizontal ? 22 : 14;
+    const originalLabels = chartPayload.labels;
 
     new Chart(canvas.getContext('2d'), {
         type: 'bar',
@@ -341,10 +558,24 @@ function renderLandingBarChart(canvasId, chartPayload, label, horizontal) {
             responsive: true,
             maintainAspectRatio: false,
             indexAxis: horizontal ? 'y' : 'x',
+            animation: {
+                duration: 380,
+            },
+            layout: {
+                padding: {
+                    bottom: horizontal ? 2 : 10,
+                },
+            },
             plugins: {
                 legend: { display: false },
                 tooltip: {
                     callbacks: {
+                        title: function (items) {
+                            if (!items.length) {
+                                return '';
+                            }
+                            return originalLabels[items[0].dataIndex] || 'Data';
+                        },
                         label: function (context) {
                             return 'Total: ' + Number(context.raw || 0).toLocaleString('id-ID');
                         },
@@ -355,12 +586,34 @@ function renderLandingBarChart(canvasId, chartPayload, label, horizontal) {
                 x: {
                     beginAtZero: horizontal,
                     grid: { display: horizontal, color: '#f0f4f6' },
-                    ticks: { precision: 0, font: { family: 'Poppins', size: 10 } },
+                    ticks: {
+                        precision: 0,
+                        autoSkip: false,
+                        maxRotation: 0,
+                        minRotation: 0,
+                        font: { family: 'Poppins', size: 10 },
+                        callback: function (value) {
+                            if (categoryAxis === 'x') {
+                                return wrapChartLabel(this.getLabelForValue(value), categoryLabelLength);
+                            }
+                            return Number(value || 0).toLocaleString('id-ID');
+                        },
+                    },
                 },
                 y: {
                     beginAtZero: !horizontal,
                     grid: { display: !horizontal, color: '#f0f4f6' },
-                    ticks: { precision: 0, font: { family: 'Poppins', size: 10 } },
+                    ticks: {
+                        precision: 0,
+                        autoSkip: false,
+                        font: { family: 'Poppins', size: 10 },
+                        callback: function (value) {
+                            if (categoryAxis === 'y') {
+                                return wrapChartLabel(this.getLabelForValue(value), categoryLabelLength);
+                            }
+                            return Number(value || 0).toLocaleString('id-ID');
+                        },
+                    },
                 },
             },
         },
@@ -393,6 +646,9 @@ function renderLandingPieChart(canvasId, chartPayload) {
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            animation: {
+                duration: 380,
+            },
             plugins: {
                 legend: {
                     position: 'bottom',
