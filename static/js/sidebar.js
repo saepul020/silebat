@@ -83,15 +83,22 @@ function initSidebarNavigation() {
 
         const href = normalizePath(rawHref);
 
-        if ((href === '/' && currentPath === '/') || (href !== '/' && currentPath.startsWith(href))) {
+        if (isPathMatch(href, currentPath)) {
             link.classList.add('active');
         }
     });
 
-    navGroups.forEach(function (group) {
-        const toggleButton = group.querySelector('.nav-toggle');
-        const subLinks = group.querySelectorAll('.sub-link');
-        let hasActiveChild = false;
+    function isPathMatch(href, path) {
+        if (href === '/') {
+            return path === '/';
+        }
+
+        return path === href || path.startsWith(href + '/');
+    }
+
+    function getBestActiveSubLink(subLinks) {
+        let activeLink = null;
+        let activeHrefLength = -1;
 
         subLinks.forEach(function (link) {
             const rawHref = link.getAttribute('href');
@@ -102,13 +109,22 @@ function initSidebarNavigation() {
 
             const href = normalizePath(rawHref);
 
-            if (currentPath === href || (href !== '/' && currentPath.startsWith(href))) {
-                link.classList.add('active');
-                hasActiveChild = true;
+            if (isPathMatch(href, currentPath) && href.length > activeHrefLength) {
+                activeLink = link;
+                activeHrefLength = href.length;
             }
         });
 
-        if (hasActiveChild) {
+        return activeLink;
+    }
+
+    navGroups.forEach(function (group) {
+        const toggleButton = group.querySelector('.nav-toggle');
+        const subLinks = group.querySelectorAll('.sub-link');
+        const activeChild = getBestActiveSubLink(subLinks);
+
+        if (activeChild) {
+            activeChild.classList.add('active');
             group.classList.add('active');
         }
 

@@ -482,6 +482,7 @@ function initLandingCharts() {
         { type: 'bar', canvasId: 'chartSurvei', payload: charts.survei, label: 'Jumlah Kegiatan', horizontal: false },
         { type: 'doughnut', canvasId: 'chartLayanan', payload: charts.layanan },
         { type: 'bar', canvasId: 'chartLapangan', payload: charts.pengukuran, label: 'Jumlah Titik/Lintasan', horizontal: true },
+        { type: 'bar', canvasId: 'chartInstansi', payload: charts.instansi, label: 'Jumlah Kegiatan', horizontal: false },
     ];
 
     const renderableConfigs = chartConfigs.filter(function (config) {

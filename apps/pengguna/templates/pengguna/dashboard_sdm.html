@@ -4,16 +4,30 @@
 {% block title %}Dashboard SDM{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/style_dashboard.css' %}?v=20260505-sdm-v3">
+<link rel="stylesheet" href="{% static 'css/style_dashboard.css' %}?v=20260505-sdm-v6">
 {% endblock %}
 
 {% block content %}
 <div class="page-header dashboard-header">
     <div>
         <h1>Dashboard SDM</h1>
-        <p>Ringkasan awal data SDM. Konfigurasi dashboard lanjutan akan diterapkan kemudian.</p>
+        <p>Monitor data pelatihan SDM SILEBAT berdasarkan user dan rekap kategori pelatihan.</p>
     </div>
 </div>
+
+{% if show_sdm_user_filter %}
+<div class="sdm-filter-row">
+    <form class="sdm-user-filter" method="get" aria-label="Filter user pelatihan">
+        <label for="sdmUserFilter">Pilih User:</label>
+        <select id="sdmUserFilter" name="user" data-preserve-placeholder="true" data-placeholder-label="User" onchange="this.form.submit()">
+            <option value="" {% if not selected_sdm_user_id %}selected{% endif %}>Pilih user</option>
+            {% for user_opt in sdm_user_options %}
+                <option value="{{ user_opt.id }}" {% if user_opt.id == selected_sdm_user_id %}selected{% endif %}>{{ user_opt.name }}</option>
+            {% endfor %}
+        </select>
+    </form>
+</div>
+{% endif %}
 
 <div class="dashboard-stats-grid sdm-stats">
     <section class="card dashboard-stat-card dashboard-stat-card--primary sdm-stat">
@@ -129,5 +143,5 @@
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
-<script src="{% static 'js/dashboard.js' %}?v=20260505-sdm-v3" defer></script>
+<script src="{% static 'js/dashboard.js' %}?v=20260505-sdm-v6" defer></script>
 {% endblock %}

@@ -26,7 +26,6 @@ except ImportError:  # pragma: no cover
     Image = None
 
 
-
 DATE_INPUT_FORMATS = ["%d/%m/%Y", "%d-%m-%Y", "%Y-%m-%d", "%d %b %Y", "%d %B %Y"]
 MONTH_LOOKUP = {
     "jan": 1,
@@ -149,6 +148,7 @@ class FlexibleDateField(forms.DateField):
         except (TypeError, ValueError):
             raise forms.ValidationError(self.error_messages["invalid"], code="invalid")
 
+
 def _clean_digit_only_field(value, label):
     value = (value or "").strip()
     if not value:
@@ -161,12 +161,15 @@ def _clean_digit_only_field(value, label):
 
 
 def _apply_digit_only_attrs(field):
-    field.widget.attrs.update({
-        "inputmode": "numeric",
-        "pattern": "[0-9]*",
-        "data-digits-only": "true",
-        "title": f"{field.label} hanya boleh berisi angka.",
-    })
+    field.widget.attrs.update(
+        {
+            "inputmode": "numeric",
+            "pattern": "[0-9]*",
+            "data-digits-only": "true",
+            "title": f"{field.label} hanya boleh berisi angka.",
+        }
+    )
+
 
 class UserForm(UserCreationForm):
     nama_lengkap = forms.CharField(
@@ -333,7 +336,6 @@ class UserForm(UserCreationForm):
             raise forms.ValidationError("Nama lengkap wajib diisi.")
         return " ".join(nama_lengkap.split())
 
-
     def validate_password_for_user(self, user, password_field_name="password2"):
         """
         Validasi password bawaan Django tetap dipakai, tetapi pesan error
@@ -478,11 +480,15 @@ class UserUpdateForm(forms.ModelForm):
 
         if not self.allow_username_edit:
             self.fields["username"].disabled = True
-            self.fields["username"].widget.attrs.update({
-                "readonly": "readonly",
-                "aria-readonly": "true",
-            })
-            self.fields["username"].help_text = "Username hanya dapat diubah oleh Super Admin."
+            self.fields["username"].widget.attrs.update(
+                {
+                    "readonly": "readonly",
+                    "aria-readonly": "true",
+                }
+            )
+            self.fields[
+                "username"
+            ].help_text = "Username hanya dapat diubah oleh Super Admin."
 
     def clean_username(self):
         if not self.allow_username_edit and self.instance.pk:
@@ -830,9 +836,9 @@ class UserProfileForm(forms.ModelForm):
     def save(self, commit=True):
         persisted_profile = None
         if self.instance.pk:
-            persisted_profile = type(self.instance)._default_manager.filter(
-                pk=self.instance.pk
-            ).first()
+            persisted_profile = (
+                type(self.instance)._default_manager.filter(pk=self.instance.pk).first()
+            )
 
         old_foto_profil = getattr(persisted_profile, "foto_profil", None)
         old_ttd_digital = getattr(persisted_profile, "ttd_digital", None)
@@ -874,7 +880,9 @@ class UserProfileForm(forms.ModelForm):
             for existing_file in files_to_delete:
                 delete_file_if_unused(
                     type(profile),
-                    getattr(existing_file, 'field', None).name if getattr(existing_file, 'field', None) else '',
+                    getattr(existing_file, "field", None).name
+                    if getattr(existing_file, "field", None)
+                    else "",
                     existing_file,
                     exclude_pk=profile.pk,
                 )
@@ -951,7 +959,7 @@ class PelatihanForm(forms.ModelForm):
             ),
             "lokasi_pelatihan": forms.TextInput(
                 attrs={
-                    "placeholder": "Masukkan lokasi pelatihan",
+                    "placeholder": "Contoh: Bandung - Bintek SDA",
                     "autocomplete": "off",
                 }
             ),
@@ -1000,8 +1008,12 @@ class PelatihanForm(forms.ModelForm):
                 field.required = True
                 field.widget.attrs["required"] = "required"
 
-        self.fields["tipe_pelatihan"].choices = [("", "Pilih tipe pelatihan")] + list(Pelatihan.TIPE_CHOICES)
-        self.fields["jenis_pelatihan"].choices = [("", "Pilih jenis pelatihan")] + list(Pelatihan.JENIS_CHOICES)
+        self.fields["tipe_pelatihan"].choices = [("", "Pilih tipe pelatihan")] + list(
+            Pelatihan.TIPE_CHOICES
+        )
+        self.fields["jenis_pelatihan"].choices = [("", "Pilih jenis pelatihan")] + list(
+            Pelatihan.JENIS_CHOICES
+        )
         self.fields["file_sertifikat"].required = False
         self.fields["file_materi"].required = False
         self.fields["file_sertifikat"].widget.attrs.pop("required", None)
@@ -1046,6 +1058,9 @@ class PelatihanForm(forms.ModelForm):
         tanggal_selesai = cleaned_data.get("tanggal_selesai")
 
         if tanggal_mulai and tanggal_selesai and tanggal_selesai < tanggal_mulai:
-            self.add_error("tanggal_selesai", "Selesai tanggal tidak boleh lebih awal dari mulai tanggal.")
+            self.add_error(
+                "tanggal_selesai",
+                "Selesai tanggal tidak boleh lebih awal dari mulai tanggal.",
+            )
 
         return cleaned_data

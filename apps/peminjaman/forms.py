@@ -188,7 +188,7 @@ class PeminjamanRequestForm(forms.ModelForm):
         queryset=get_peminjam_dropdown_queryset(),
         required=True,
         label="Pilih Peminjam",
-        empty_label="Pilih peminjam",
+        empty_label="Pilih Peminjam",
         error_messages={"required": "Pilih peminjam wajib diisi."},
     )
     tanggal_mulai = FlexibleDateField(
@@ -273,7 +273,12 @@ class PeminjamanRequestForm(forms.ModelForm):
 
         if self.enable_peminjam_selection:
             self.fields["peminjam_user"].queryset = get_peminjam_dropdown_queryset()
-            self.fields["peminjam_user"].widget.attrs.update({"class": "select-input", "data-peminjam-select": "true"})
+            self.fields["peminjam_user"].widget.attrs.update({
+                "class": "select-input",
+                "data-peminjam-select": "true",
+                "data-preserve-placeholder": "true",
+                "data-placeholder-label": "Peminjam",
+            })
         else:
             self.fields.pop("peminjam_user", None)
         layanan_field = self.fields["layanan_kegiatan"]

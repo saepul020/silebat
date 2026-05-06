@@ -9,7 +9,7 @@ from apps.peminjaman.models import PeminjamanRequest, ReturnStepChoices, StepCho
 from .models import LandingPeralatanCard
 
 
-LANDING_CONTEXT_CACHE_KEY = "public_landing_context_v3"
+LANDING_CONTEXT_CACHE_KEY = "public_landing_context_v4"
 LANDING_CONTEXT_CACHE_TIMEOUT = 60
 
 LANDING_PALETTE = [
@@ -104,6 +104,21 @@ def get_layanan_chart_payload(approved_queryset):
     )
 
 
+def get_instansi_chart_payload(approved_queryset):
+    rows = list(
+        approved_queryset.filter(instansi_tujuan__isnull=False)
+        .exclude(instansi_tujuan__nama_instansi__iexact="Lainnya")
+        .values("instansi_tujuan__nama_instansi")
+        .annotate(total=Count("id"))
+        .filter(total__gt=0)
+        .order_by("instansi_tujuan__nama_instansi")
+    )
+    return build_chart_payload(
+        [row["instansi_tujuan__nama_instansi"] or "-" for row in rows],
+        [row["total"] for row in rows],
+    )
+
+
 def get_pengukuran_chart_payload(approved_queryset):
     pengukuran_queryset = approved_queryset.filter(return_started_at__isnull=False)
     aggregate_kwargs = {
@@ -190,6 +205,7 @@ def build_public_landing_context():
             "survei": get_survei_chart_payload(),
             "layanan": get_layanan_chart_payload(approved_queryset),
             "pengukuran": get_pengukuran_chart_payload(approved_queryset),
+            "instansi": get_instansi_chart_payload(approved_queryset),
         },
         "inventory_cards": get_inventory_category_cards(),
         "equipment_cards": get_equipment_cards(),

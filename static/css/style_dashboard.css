@@ -588,8 +588,71 @@
     grid-template-columns: 1fr;
 }
 
+.sdm-filter-row {
+    display: flex;
+    justify-content: flex-end;
+    margin: -4px 0 12px;
+}
+
 .sdm-stat {
     width: 100%;
+    min-height: 112px;
+    max-height: none;
+}
+
+.sdm-user-filter {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    max-width: 100%;
+}
+
+.sdm-user-filter label {
+    flex: 0 0 auto;
+    margin: 0;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--text);
+    white-space: nowrap;
+}
+
+.sdm-user-filter select {
+    width: auto;
+    min-width: max-content;
+    max-width: min(58vw, 360px);
+    field-sizing: content;
+    min-height: 36px;
+    padding: 7px 28px 7px 10px;
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    background-color: var(--color-white);
+    color: var(--color-primary-navy);
+    font-size: 0.84rem;
+    font-weight: 700;
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+    outline: none;
+}
+
+.sdm-user-filter select:focus {
+    border-color: var(--color-aqua-teal);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-aqua-teal) 18%, transparent);
+}
+
+.sdm-user-filter select.is-placeholder-state {
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.sdm-user-filter select option {
+    color: var(--color-primary-navy);
+}
+
+.sdm-user-filter select option[value=""] {
+    color: var(--text-muted);
 }
 
 .sdm-charts {
@@ -618,5 +681,163 @@
     .sdm-chart {
         height: clamp(350px, 78vw, 420px);
         max-height: none;
+    }
+
+    .sdm-filter-row {
+        justify-content: flex-start;
+        margin: -2px 0 10px;
+    }
+
+    .sdm-stat {
+        min-height: 112px;
+    }
+
+    .sdm-user-filter {
+        width: 100%;
+        gap: 6px;
+    }
+
+    .sdm-user-filter label {
+        font-size: 0.76rem;
+    }
+
+    .sdm-user-filter select {
+        flex: 1 1 auto;
+        min-width: 0;
+        max-width: 100%;
+        min-height: 32px;
+        padding: 5px 26px 5px 9px;
+        font-size: 0.76rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .sdm-user-filter label {
+        font-size: 0.72rem;
+    }
+
+    .sdm-user-filter select {
+        min-height: 30px;
+        padding: 4px 24px 4px 8px;
+        font-size: 0.72rem;
+    }
+}
+
+.dashboard-active-table {
+    margin: 0 0 20px;
+}
+
+.dashboard-active-table .table-toolbar {
+    justify-content: flex-start;
+    gap: 12px;
+}
+
+.dashboard-item-detail-btn {
+    gap: 6px;
+    white-space: nowrap;
+}
+
+.dashboard-item-modal.show {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.dashboard-item-modal .delete-modal-backdrop {
+    z-index: 0;
+}
+
+.dashboard-item-modal__card {
+    margin: 0;
+    z-index: 1;
+}
+
+.dashboard-item-modal .delete-modal-header p {
+    margin: 4px 0 0;
+    color: var(--text-soft);
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.dashboard-item-modal .loan-summary-section:first-child,
+.dashboard-item-modal .loan-summary-empty:first-child {
+    margin-top: 0;
+}
+
+.dashboard-item-modal .tbl-scroll--sum-lab {
+    min-width: 760px;
+}
+
+.dashboard-item-modal .tbl-scroll--sum-support,
+.dashboard-item-modal .tbl-scroll--sum-material {
+    min-width: 620px;
+}
+
+.dashboard-item-modal__actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    background: var(--color-white);
+    border-top: 1px solid var(--border);
+    padding: 16px 22px calc(16px + env(safe-area-inset-bottom, 0px));
+}
+
+@media (max-width: 768px) {
+    .dashboard-active-table {
+        margin-bottom: 16px;
+    }
+
+    .dashboard-item-modal.show {
+        padding: 14px;
+    }
+
+    .dashboard-item-detail-btn {
+        width: 100%;
+        min-width: 92px;
+        padding-inline: 10px;
+        font-size: 0.78rem;
+    }
+
+    .dashboard-item-modal .delete-modal-header p {
+        font-size: 0.8rem;
+    }
+
+    .dashboard-item-modal .tbl-scroll--sum-lab {
+        min-width: 640px;
+    }
+
+    .dashboard-item-modal .tbl-scroll--sum-support,
+    .dashboard-item-modal .tbl-scroll--sum-material {
+        min-width: 520px;
+    }
+
+    .dashboard-item-modal__actions {
+        padding: 14px 18px calc(14px + env(safe-area-inset-bottom, 0px));
+    }
+}
+
+@media (max-width: 480px) {
+    .dashboard-item-modal.show {
+        padding: 10px;
+    }
+
+    .dashboard-item-detail-btn {
+        min-width: 82px;
+        padding: 6px 9px;
+        font-size: 0.72rem;
+    }
+
+    .dashboard-item-modal .tbl-scroll--sum-lab {
+        min-width: 580px;
+    }
+
+    .dashboard-item-modal .tbl-scroll--sum-support,
+    .dashboard-item-modal .tbl-scroll--sum-material {
+        min-width: 460px;
+    }
+
+    .dashboard-item-modal__actions .btn {
+        width: 100%;
     }
 }

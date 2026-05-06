@@ -23,10 +23,14 @@ from apps.core.import_utils import (
     string_cell as _string_cell,
 )
 from apps.core.permissions import (
+    ROLE_KEPALA_LAB,
+    ROLE_PIMPINAN,
+    ROLE_SUPER_ADMIN,
     can_access_pengguna_app,
     can_edit_user,
     can_view_user_detail,
     deny_access,
+    get_role_name,
     is_super_admin,
 )
 
@@ -45,6 +49,8 @@ IMPORT_PENGGUNA_HEADERS = [
 ]
 IMPORT_PENGGUNA_REQUIRED_HEADERS = IMPORT_PENGGUNA_HEADERS[:]
 IMPORT_PENGGUNA_MAX_SIZE = 7 * 1024 * 1024
+
+SDM_MONITOR_ROLES = {ROLE_KEPALA_LAB, ROLE_PIMPINAN, ROLE_SUPER_ADMIN}
 
 
 def _deny_import_access(request):
@@ -593,10 +599,58 @@ def detail_pengguna(request, pk):
     )
 
 
+def _get_sdm_user_options():
+    users = (
+        User.objects.select_related('profile', 'profile__role')
+        .exclude(profile__role__nama=ROLE_SUPER_ADMIN)
+        .order_by('first_name', 'username')
+    )
+    return [
+        {
+            'id': str(user.pk),
+            'name': user.get_full_name() or user.username,
+            'user': user,
+        }
+        for user in users
+    ]
+
+
+def _resolve_sdm_user_filter(request, role_name, user_options):
+    can_filter = role_name in SDM_MONITOR_ROLES
+    option_map = {item['id']: item for item in user_options}
+
+    if not can_filter:
+        return False, str(request.user.pk), request.user
+
+    raw_user_id = request.GET.get('user')
+    if raw_user_id is None:
+        raw_user_id = '' if role_name == ROLE_SUPER_ADMIN else str(request.user.pk)
+
+    raw_user_id = str(raw_user_id).strip()
+    if raw_user_id == '':
+        return True, '', None
+
+    option = option_map.get(raw_user_id)
+    if option:
+        return True, raw_user_id, option['user']
+
+    fallback_id = '' if role_name == ROLE_SUPER_ADMIN else str(request.user.pk)
+    option = option_map.get(fallback_id)
+    return True, fallback_id if option else '', option['user'] if option else None
+
+
 @login_required
 def dashboard_sdm(request):
-    pelatihan_qs = Pelatihan.objects.select_related('user')
-    if not is_super_admin(request.user):
+    role_name = get_role_name(request.user)
+    user_options = _get_sdm_user_options() if role_name in SDM_MONITOR_ROLES else []
+    can_filter_sdm, selected_user_id, selected_user = _resolve_sdm_user_filter(request, role_name, user_options)
+    pelatihan_qs = Pelatihan.objects.select_related('user', 'user__profile', 'user__profile__role')
+
+    if can_filter_sdm:
+        pelatihan_qs = pelatihan_qs.exclude(user__profile__role__nama=ROLE_SUPER_ADMIN)
+        if selected_user is not None:
+            pelatihan_qs = pelatihan_qs.filter(user=selected_user)
+    else:
         pelatihan_qs = pelatihan_qs.filter(user=request.user)
 
     total_pelatihan = pelatihan_qs.count()
@@ -666,7 +720,9 @@ def dashboard_sdm(request):
             'pelatihan_terbaru': pelatihan_terbaru,
             'sdm_tipe_chart': sdm_tipe_chart,
             'sdm_jenis_chart': sdm_jenis_chart,
-            'is_config_placeholder': True,
+            'show_sdm_user_filter': can_filter_sdm,
+            'sdm_user_options': user_options,
+            'selected_sdm_user_id': selected_user_id,
         },
     )
 

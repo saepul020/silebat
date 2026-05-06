@@ -1,4 +1,5 @@
 from datetime import date, datetime, time
+import re
 from io import BytesIO
 
 from django.contrib import messages
@@ -50,6 +51,20 @@ from .views import format_date_id, format_optional_numeric_display
 
 IMPORT_RIWAYAT_SESSION_KEY = "riwayat_peminjaman_import_validated_rows"
 IMPORT_RIWAYAT_MAX_SIZE = 7 * 1024 * 1024
+NOMOR_LAMA_RE = re.compile(r"^PMJ-(\d{4})(\d{2})(\d{2})-(\d+)$", re.IGNORECASE)
+
+
+def _normalize_nomor_pengajuan(value):
+    nomor = (value or "").strip()
+    match = NOMOR_LAMA_RE.match(nomor)
+    if not match:
+        return nomor
+    tahun, bulan, tanggal, urut = match.groups()
+    try:
+        urut_baru = f"{int(urut):03d}"
+    except (TypeError, ValueError):
+        urut_baru = urut
+    return f"PMJ-{tahun[-2:]}{bulan}{tanggal}-{urut_baru}"
 
 PEMINJAMAN_SHEET = "Peminjaman"
 LAB_SHEET = "Peralatan Survei"
@@ -431,7 +446,7 @@ def _validate_peminjaman_sheet(workbook):
 
         row_errors = []
         data = {
-            "nomor_pengajuan": cell(row, "Nomor Pengajuan"),
+            "nomor_pengajuan": _normalize_nomor_pengajuan(cell(row, "Nomor Pengajuan")),
             "username_peminjam": cell(row, "Username Peminjam"),
             "nama_peminjam": cell(row, "Nama Peminjam"),
             "no_hp_peminjam": cell(row, "Nomor Telepon"),
@@ -525,7 +540,7 @@ def _validate_lab_sheet(workbook, nomor_set):
             continue
         row_errors = []
         data = {
-            "nomor_pengajuan": cell(row, "Nomor Pengajuan"),
+            "nomor_pengajuan": _normalize_nomor_pengajuan(cell(row, "Nomor Pengajuan")),
             "nama_barang": cell(row, "Nama Barang"),
             "tipe_merek_barang": cell(row, "Tipe / Merek Barang"),
             "jenis_barang": cell(row, "Jenis Barang"),
@@ -632,7 +647,7 @@ def _validate_qty_sheet(workbook, *, sheet_name, headers, required_headers, item
         row_errors = []
         volume_header = "Volume Dipinjam"
         data = {
-            "nomor_pengajuan": cell(row, "Nomor Pengajuan"),
+            "nomor_pengajuan": _normalize_nomor_pengajuan(cell(row, "Nomor Pengajuan")),
             "nama_barang": cell(row, "Nama Barang"),
             "kategori_barang": cell(row, "Kategori Barang") if "Kategori Barang" in headers else "-",
             "satuan": cell(row, "Satuan") or ("Buah" if item_kind == "bahan" else "Unit"),
@@ -1438,7 +1453,7 @@ def download_format_import_riwayat_peminjaman(request):
         PEMINJAMAN_SHEET,
         PEMINJAMAN_HEADERS,
         sample=[
-            "PMJ-20250115-0001",
+            "PMJ-250115-001",
             "",
             "Budi Santoso",
             "081234567890",
@@ -1471,7 +1486,7 @@ def download_format_import_riwayat_peminjaman(request):
         LAB_SHEET,
         LAB_HEADERS,
         sample=[
-            "PMJ-20250115-0001",
+            "PMJ-250115-001",
             "GPS Garmin 64s",
             "Garmin 64s",
             "GPS Handheld",
@@ -1498,7 +1513,7 @@ def download_format_import_riwayat_peminjaman(request):
         PENUNJANG_SHEET,
         PENUNJANG_HEADERS,
         sample=[
-            "PMJ-20250115-0001",
+            "PMJ-250115-001",
             "Payung Lapangan",
             "Payung Lipat",
             "Penunjang Operasional Lapangan",
@@ -1518,7 +1533,7 @@ def download_format_import_riwayat_peminjaman(request):
         BAHAN_SHEET,
         BAHAN_HEADERS,
         sample=[
-            "PMJ-20250115-0001",
+            "PMJ-250115-001",
             "Botol Sampel",
             "Bahan Lapangan",
             10,
@@ -1535,7 +1550,7 @@ def download_format_import_riwayat_peminjaman(request):
         PERALATAN_LAB_SHEET,
         PERALATAN_LAB_HEADERS,
         sample=[
-            "PMJ-20250115-0001",
+            "PMJ-250115-001",
             "Pompa Uji Laboratorium",
             "Grundfos",
             "Pompa",

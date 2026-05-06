@@ -5,7 +5,61 @@
 document.addEventListener('DOMContentLoaded', function () {
     initDashboardCharts();
     initChartDownloadActions();
+    initDashboardActiveItemModals();
 });
+
+function initDashboardActiveItemModals() {
+    const openButtons = document.querySelectorAll('[data-active-item-modal-open]');
+    if (!openButtons.length) {
+        return;
+    }
+
+    let activeModal = null;
+
+    function closeModal(modal) {
+        if (!modal) {
+            return;
+        }
+        modal.classList.remove('show');
+        if (activeModal === modal) {
+            activeModal = null;
+        }
+        if (!document.querySelector('.dashboard-item-modal.show')) {
+            document.body.classList.remove('is-scroll-locked');
+        }
+    }
+
+    function openModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (!modal) {
+            return;
+        }
+        if (activeModal && activeModal !== modal) {
+            closeModal(activeModal);
+        }
+        modal.classList.add('show');
+        document.body.classList.add('is-scroll-locked');
+        activeModal = modal;
+    }
+
+    openButtons.forEach(function (button) {
+        button.addEventListener('click', function () {
+            openModal(button.getAttribute('data-active-item-modal-open'));
+        });
+    });
+
+    document.querySelectorAll('.dashboard-item-modal [data-active-item-modal-close]').forEach(function (button) {
+        button.addEventListener('click', function () {
+            closeModal(button.closest('.dashboard-item-modal'));
+        });
+    });
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape' && activeModal) {
+            closeModal(activeModal);
+        }
+    });
+}
 
 const DASHBOARD_MONTH_LABELS = {
     1: 'Jan',

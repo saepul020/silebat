@@ -77,6 +77,10 @@ def _snapshot_int(source, attr, current=None):
     return current
 
 
+def make_nomor_peminjaman(tanggal, pk):
+    return f"PMJ-{tanggal.strftime('%y%m%d')}-{pk:03d}"
+
+
 class PeminjamanRequest(models.Model):
     nomor_pengajuan = models.CharField(max_length=30, unique=True, blank=True)
     peminjam = models.ForeignKey(
@@ -261,7 +265,7 @@ class PeminjamanRequest(models.Model):
         super().save(*args, **kwargs)
         if is_new and not self.nomor_pengajuan:
             tanggal = timezone.localdate(self.submitted_at or timezone.now())
-            self.nomor_pengajuan = f"PMJ-{tanggal.strftime('%Y%m%d')}-{self.pk:04d}"
+            self.nomor_pengajuan = make_nomor_peminjaman(tanggal, self.pk)
             super().save(update_fields=["nomor_pengajuan"])
 
     @property

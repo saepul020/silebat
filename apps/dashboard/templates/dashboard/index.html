@@ -4,7 +4,7 @@
 {% block title %}Dashboard{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/style_dashboard.css' %}?v=20260505-sdm-v3">
+<link rel="stylesheet" href="{% static 'css/style_dashboard.css' %}?v=20260505-dashboard-items-v2">
 {% endblock %}
 
 {% block content %}
@@ -37,6 +37,201 @@
         </div>
     </section>
 </div>
+
+<div class="table-wrapper table-panel dashboard-active-table">
+    <div class="table-toolbar">
+        <h3 class="table-title">Data Kegiatan Aktif</h3>
+    </div>
+
+    <div class="table-scroll-area table-scroll--list" tabindex="0" aria-label="Scroll tabel data kegiatan aktif">
+        <table class="table-data list-table--peminjaman">
+            <thead>
+                <tr>
+                    <th>Nomor</th>
+                    <th class="cell-wrap">Peminjam</th>
+                    <th class="cell-wrap">Layanan</th>
+                    <th class="cell-wrap">Instansi Tujuan</th>
+                    <th>Periode</th>
+                    <th class="cell-status">Proses Peminjaman</th>
+                    <th class="cell-status">Proses Pengembalian</th>
+                    <th class="cell-action">Detail Barang</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in active_peminjaman %}
+                <tr>
+                    <td>{{ item.nomor_pengajuan }}</td>
+                    <td class="cell-wrap"><strong>{{ item.nama_peminjam }}</strong></td>
+                    <td class="cell-wrap">{{ item.layanan_kegiatan_label|default:'-' }}</td>
+                    <td class="cell-wrap">{{ item.instansi_tujuan.nama_instansi|default:item.instansi_tujuan_lainnya|default:'-' }}</td>
+                    <td>{{ item.tanggal_mulai|date:'d M Y' }}<br><small>s/d {{ item.tanggal_selesai|date:'d M Y' }}</small></td>
+                    <td class="cell-status">
+                        <span class="status-badge {{ item.proses_peminjaman_badge_class }}">{{ item.proses_peminjaman_label }}</span>
+                    </td>
+                    <td class="cell-status">
+                        <span class="status-badge {{ item.proses_pengembalian_badge_class }}">{{ item.proses_pengembalian_label }}</span>
+                        {% if item.pengembalian_status_tags %}
+                        <div class="status-tag-list">
+                            {% for tag in item.pengembalian_status_tags %}
+                            <span class="status-badge badge-secondary">{{ tag }}</span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </td>
+                    <td class="cell-action">
+                        <button type="button" class="btn btn-secondary btn-sm dashboard-item-detail-btn" data-active-item-modal-open="activeItemsModal{{ item.pk }}" title="Detail barang {{ item.nomor_pengajuan }}">
+                            <i class="bi bi-eye-fill" aria-hidden="true"></i>
+                            <span>Detail</span>
+                        </button>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8"><div class="empty-state">Belum ada data kegiatan aktif.</div></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% for item in active_peminjaman %}
+<div class="delete-modal dashboard-item-modal" id="activeItemsModal{{ item.pk }}">
+    <div class="delete-modal-backdrop" data-active-item-modal-close></div>
+    <div class="delete-modal-card loan-summary-modal dashboard-item-modal__card" role="dialog" aria-modal="true" aria-labelledby="activeItemsModalTitle{{ item.pk }}">
+        <div class="delete-modal-header">
+            <div>
+                <h3 id="activeItemsModalTitle{{ item.pk }}">Detail Barang Dipinjam</h3>
+                <p>{{ item.nomor_pengajuan }} - {{ item.nama_peminjam }}</p>
+            </div>
+            <button type="button" class="delete-modal-close" data-active-item-modal-close aria-label="Tutup">&times;</button>
+        </div>
+
+        <div class="delete-modal-body loan-summary-body dashboard-item-modal__body">
+            {% with lab_items=item.barang_laboratorium_items.all penunjang_items=item.barang_penunjang_items.all bahan_items=item.bahan_operasional_items.all peralatan_lab_items=item.peralatan_laboratorium_items.all %}
+                {% if lab_items or penunjang_items or bahan_items or peralatan_lab_items %}
+                    {% if lab_items %}
+                    <div class="card loan-summary-section">
+                        <h3 class="card-title">Data Peralatan Survei Lapangan yang Dipinjam</h3>
+                        <div class="table-scroll compact-table loan-summary-table-scroll">
+                            <table class="table-mobile-scroll tbl-scroll--sum-lab">
+                                <thead>
+                                    <tr>
+                                        <th>Nama Barang</th>
+                                        <th>Tipe / Merek</th>
+                                        <th>Kode Laboratorium</th>
+                                        <th>Volume</th>
+                                        <th>Tgl Perbaikan</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for barang in lab_items %}
+                                    <tr>
+                                        <td>{{ barang.snapshot_nama_barang|default:barang.barang.nama_barang|default:'-' }}</td>
+                                        <td>{{ barang.snapshot_tipe_merek_barang|default:barang.barang.tipe_merek_barang|default:'-' }}</td>
+                                        <td>{{ barang.snapshot_kode_laboratorium|default:barang.barang.kode_laboratorium|default:'-' }}</td>
+                                        <td>{{ barang.snapshot_volume|default:barang.barang.volume|default:'1' }}</td>
+                                        <td>{{ barang.barang.tanggal_perbaikan|date:'d M Y'|default:'-' }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if penunjang_items %}
+                    <div class="card loan-summary-section">
+                        <h3 class="card-title">Data Barang Penunjang Lapangan yang Dipinjam</h3>
+                        <div class="table-scroll compact-table loan-summary-table-scroll">
+                            <table class="table-mobile-scroll tbl-scroll--sum-support">
+                                <thead>
+                                    <tr>
+                                        <th>Nama Barang</th>
+                                        <th>Tipe / Merek</th>
+                                        <th>Volume</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for barang in penunjang_items %}
+                                    <tr>
+                                        <td>{{ barang.snapshot_nama_barang|default:barang.barang.nama_barang|default:'-' }}</td>
+                                        <td>{{ barang.snapshot_tipe_merek_barang|default:barang.barang.tipe_merek_barang|default:'-' }}</td>
+                                        <td>{{ barang.volume|default:'-' }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if bahan_items %}
+                    <div class="card loan-summary-section">
+                        <h3 class="card-title">Data Bahan Operasional yang Dipinjam</h3>
+                        <div class="table-scroll compact-table loan-summary-table-scroll">
+                            <table class="table-mobile-scroll tbl-scroll--sum-material">
+                                <thead>
+                                    <tr>
+                                        <th>Nama Barang</th>
+                                        <th>Volume</th>
+                                        <th>Satuan</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for barang in bahan_items %}
+                                    <tr>
+                                        <td>{{ barang.snapshot_nama_barang|default:barang.bahan.nama_barang|default:'-' }}</td>
+                                        <td>{{ barang.volume|default:'-' }}</td>
+                                        <td>{{ barang.snapshot_satuan|default:barang.bahan.satuan|default:'-' }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if peralatan_lab_items %}
+                    <div class="card loan-summary-section">
+                        <h3 class="card-title">Data Peralatan Laboratorium yang Dipinjam</h3>
+                        <div class="table-scroll compact-table loan-summary-table-scroll">
+                            <table class="table-mobile-scroll tbl-scroll--sum-lab">
+                                <thead>
+                                    <tr>
+                                        <th>Nama Barang</th>
+                                        <th>Tipe / Merek</th>
+                                        <th>Kode Laboratorium</th>
+                                        <th>Volume</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for barang in peralatan_lab_items %}
+                                    <tr>
+                                        <td>{{ barang.snapshot_nama_barang|default:barang.barang.nama_barang|default:'-' }}</td>
+                                        <td>{{ barang.snapshot_tipe_merek_barang|default:barang.barang.tipe_merek_barang|default:'-' }}</td>
+                                        <td>{{ barang.snapshot_kode_laboratorium|default:barang.barang.kode_laboratorium|default:'-' }}</td>
+                                        <td>{{ barang.volume|default:'-' }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    {% endif %}
+                {% else %}
+                    <div class="card loan-summary-empty"><div class="empty-state">Belum ada barang yang dipinjam.</div></div>
+                {% endif %}
+            {% endwith %}
+        </div>
+
+        <div class="delete-modal-actions dashboard-item-modal__actions">
+            <button type="button" class="btn btn-secondary" data-active-item-modal-close>Tutup</button>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
 
 <div class="dashboard-chart-grid">
     <section class="card dashboard-chart-card dashboard-chart-card--wide">
@@ -269,6 +464,7 @@
     </div>
 </section>
 
+
 {{ tim_chart|json_script:"tim-chart-data" }}
 {{ layanan_chart|json_script:"layanan-chart-data" }}
 {{ pengukuran_chart|json_script:"pengukuran-chart-data" }}
@@ -279,5 +475,5 @@
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
-<script src="{% static 'js/dashboard.js' %}?v=20260505-sdm-v3" defer></script>
+<script src="{% static 'js/dashboard.js' %}?v=20260505-dashboard-items-v2" defer></script>
 {% endblock %}

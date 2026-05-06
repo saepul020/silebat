@@ -1,0 +1,122 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Display Dashboard Laboratorium | SILEBAT</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=20260505-pelatihan-v3">
+    <link rel="stylesheet" href="{% static 'css/style_dashboard.css' %}?v=20260505-dashboard-items-v2">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="{% static 'css/dashboard_display.css' %}?v=20260506-tv-v5">
+</head>
+<body class="tv-body">
+    <main class="tv-page" aria-label="Display realtime laboratorium SILEBAT">
+        <header class="page-header dashboard-header tv-head">
+            <div class="tv-head__title">
+                <h1>Dashboard Laboratorium SILEBAT</h1>
+                <p>Informasi realtime kegiatan peminjaman dan layanan Laboratorium.</p>
+            </div>
+            <div class="tv-head__meta" aria-label="Waktu display">
+                <span data-tv-date>{{ display_generated_at|date:'l, d F Y' }}</span>
+                <strong data-tv-clock>{{ display_generated_at|date:'H:i' }} WIB</strong>
+            </div>
+        </header>
+
+        <section class="dashboard-stats-grid tv-stats" aria-label="Ringkasan peminjaman">
+            <article class="card dashboard-stat-card dashboard-stat-card--success tv-stat-card">
+                <div class="dashboard-stat-card__icon" aria-hidden="true">
+                    <i class="bi bi-check2-circle"></i>
+                </div>
+                <div class="dashboard-stat-card__body">
+                    <p class="dashboard-stat-card__label">Peminjaman Selesai</p>
+                    <h2 class="dashboard-stat-card__value">{{ dashboard_stats.completed_count }}</h2>
+                </div>
+            </article>
+
+            <article class="card dashboard-stat-card dashboard-stat-card--primary tv-stat-card">
+                <div class="dashboard-stat-card__icon" aria-hidden="true">
+                    <i class="bi bi-arrow-repeat"></i>
+                </div>
+                <div class="dashboard-stat-card__body">
+                    <p class="dashboard-stat-card__label">Peminjaman Berjalan</p>
+                    <h2 class="dashboard-stat-card__value">{{ dashboard_stats.ongoing_count }}</h2>
+                </div>
+            </article>
+        </section>
+
+        <section class="table-wrapper table-panel dashboard-active-table tv-active-table" data-tv-active-url="{% url 'dashboard:display_active_data' portal_slug=tv_slug %}" aria-label="Data kegiatan aktif">
+            <div class="table-toolbar">
+                <h3 class="table-title">Data Kegiatan Aktif</h3>
+                <span class="tv-live-badge">Realtime</span>
+            </div>
+
+            <div class="table-scroll-area table-scroll--list tv-table-wrap" tabindex="0" aria-label="Tabel data kegiatan aktif display TV">
+                <table class="table-data list-table--peminjaman tv-table">
+                    <thead>
+                        <tr>
+                            <th>Nomor</th>
+                            <th class="cell-wrap">Peminjam</th>
+                            <th class="cell-wrap">Layanan</th>
+                            <th class="cell-wrap">Instansi Tujuan</th>
+                            <th>Periode</th>
+                            <th class="cell-status">Proses Peminjaman</th>
+                            <th class="cell-status">Proses Pengembalian</th>
+                        </tr>
+                    </thead>
+                    <tbody data-tv-active-body>
+                        {% include 'dashboard/partials/display_active_rows.html' %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="card dashboard-chart-card dashboard-chart-card--full tv-chart-card" aria-label="Slide grafik dashboard">
+            <div class="dashboard-chart-card__header tv-chart-head">
+                <div class="dashboard-chart-card__top tv-chart-top">
+                    <h3 class="card-title" data-tv-slide-title>Rekap Peminjaman</h3>
+                    <div class="tv-dots" aria-hidden="true">
+                        <span class="is-active" data-tv-dot></span>
+                        <span data-tv-dot></span>
+                        <span data-tv-dot></span>
+                        <span data-tv-dot></span>
+                        <span data-tv-dot></span>
+                        <span data-tv-dot></span>
+                    </div>
+                </div>
+            </div>
+            <div class="dashboard-chart-area tv-chart-stage">
+                <article class="tv-chart-slide is-active" data-tv-slide data-title="Rekap Peminjaman">
+                    <canvas id="tvApprovedChart" aria-label="Grafik rekap peminjaman"></canvas>
+                </article>
+                <article class="tv-chart-slide" data-tv-slide data-title="Layanan Kegiatan">
+                    <canvas id="tvLayananChart" aria-label="Grafik layanan kegiatan"></canvas>
+                </article>
+                <article class="tv-chart-slide" data-tv-slide data-title="Data Pengukuran Lapangan">
+                    <canvas id="tvPengukuranChart" aria-label="Grafik data pengukuran lapangan"></canvas>
+                </article>
+                <article class="tv-chart-slide" data-tv-slide data-title="Tim Kegiatan">
+                    <canvas id="tvTimChart" aria-label="Grafik tim kegiatan"></canvas>
+                </article>
+                <article class="tv-chart-slide" data-tv-slide data-title="Kegiatan Survei">
+                    <canvas id="tvSurveiChart" aria-label="Grafik kegiatan survei"></canvas>
+                </article>
+                <article class="tv-chart-slide" data-tv-slide data-title="Instansi Tujuan Kegiatan">
+                    <canvas id="tvInstansiChart" aria-label="Grafik instansi tujuan kegiatan"></canvas>
+                </article>
+                <div class="tv-chart-empty is-hidden" data-tv-chart-empty>-</div>
+            </div>
+        </section>
+    </main>
+
+    {{ tim_chart|json_script:"tim-chart-data" }}
+    {{ layanan_chart|json_script:"layanan-chart-data" }}
+    {{ pengukuran_chart|json_script:"pengukuran-chart-data" }}
+    {{ approved_peminjaman_chart|json_script:"approved-peminjaman-chart-data" }}
+    {{ survei_chart|json_script:"survei-chart-data" }}
+    {{ instansi_chart|json_script:"instansi-chart-data" }}
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
+    <script src="{% static 'js/dashboard_display.js' %}?v=20260506-tv-v5" defer></script>
+</body>
+</html>

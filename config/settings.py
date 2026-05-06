@@ -34,6 +34,7 @@ ALLOWED_HOSTS = [
 ]
 
 PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "http://127.0.0.1:8000")
+DASHBOARD_TV_SLUG = os.getenv("DASHBOARD_TV_SLUG", "lab-tv-realtime-silebat-7q4m2x9v")
 
 CSRF_TRUSTED_ORIGINS = [
     origin.strip()

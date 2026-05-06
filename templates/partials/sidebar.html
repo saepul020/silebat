@@ -119,7 +119,6 @@
         </div>
         {% endif %}
 
-        {% if role_access.show_pengguna_menu %}
         <div class="nav-group">
             <button type="button" class="nav-link nav-toggle" aria-expanded="false">
                 <span class="nav-left">
@@ -132,15 +131,13 @@
             </button>
             <div class="sub-menu">
                 <a href="{% url 'pengguna:dashboard_sdm' %}" class="sub-link">Dashboard SDM</a>
-                <a href="{% url 'pengguna:detail' request.user.pk %}" class="sub-link">Pengaturan Profil</a>
                 <a href="{% url 'pengguna:pelatihan_daftar' %}" class="sub-link">Data Pelatihan</a>
                 {% if role_access.show_data_pengguna %}
-                    <a href="{% url 'pengguna:daftar' %}" class="sub-link">Data Pengguna</a>
+                <a href="{% url 'pengguna:daftar' %}" class="sub-link">Data Pengguna</a>
                 {% endif %}
+                <a href="{% url 'pengguna:detail' request.user.pk %}" class="sub-link">Pengaturan Profil</a>
             </div>
         </div>
-        {% endif %}
-
 
         {% if role_access.is_super_admin %}
         <div class="nav-group">

@@ -1,7 +1,10 @@
+from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Sum
 from django.db.models.functions import Coalesce, ExtractYear, TruncMonth, Trim
+from django.http import Http404, JsonResponse
 from django.shortcuts import render
+from django.template.loader import render_to_string
 from django.utils import timezone
 
 from apps.core.permissions import get_role_name
@@ -76,6 +79,31 @@ def get_approved_peminjaman_queryset():
         .annotate(dashboard_approved_at=Coalesce("pimpinan_at", "updated_at"))
     )
 
+
+
+def get_active_peminjaman_queryset():
+    return (
+        PeminjamanRequest.objects.select_related(
+            "peminjam",
+            "layanan_kegiatan",
+            "tim_kegiatan",
+            "instansi_tujuan",
+        )
+        .prefetch_related(
+            "barang_laboratorium_items__barang",
+            "barang_penunjang_items__barang",
+            "peralatan_laboratorium_items__barang",
+            "bahan_operasional_items__bahan",
+            "pengembalian_lab_items",
+            "pengembalian_penunjang_items",
+            "pengembalian_peralatan_laboratorium_items",
+            "pengembalian_bahan_items",
+        )
+        .exclude(current_step=StepChoices.REJECTED)
+        .exclude(return_current_step=ReturnStepChoices.COMPLETED)
+        .order_by("-submitted_at", "-id")
+    )
+
 def get_pengukuran_lapangan_queryset(queryset):
     return queryset.filter(return_started_at__isnull=False)
 
@@ -96,6 +124,24 @@ def build_sum_rows_by_month(queryset, date_field, value_field, row_key):
         }
         for row in aggregated_rows
         if row.get("month")
+    ]
+
+def build_sum_rows_by_year(queryset, date_field, value_field, row_key):
+    aggregated_rows = list(
+        queryset.filter(**{f"{value_field}__isnull": False, f"{value_field}__gt": 0})
+        .annotate(year=ExtractYear(date_field))
+        .values("year")
+        .annotate(total=Sum(value_field))
+        .order_by("year")
+    )
+    return [
+        {
+            "year": int(row["year"]),
+            row_key: value_field,
+            "total": int(row["total"] or 0),
+        }
+        for row in aggregated_rows
+        if row.get("year")
     ]
 
 def build_count_rows_by_month(queryset, date_field):
@@ -126,8 +172,7 @@ def get_dashboard_greeting_period(current_time):
     return "Malam"
 
 
-@login_required
-def index(request):
+def build_dashboard_context(request=None, active_limit=None):
     approved_peminjaman_qs = get_approved_peminjaman_queryset()
     pengukuran_lapangan_qs = get_pengukuran_lapangan_queryset(approved_peminjaman_qs)
     now = timezone.localtime()
@@ -417,6 +462,7 @@ def index(request):
 
     pengukuran_available_years = {current_year}
     pengukuran_chart_rows = []
+    pengukuran_year_rows = []
     pengukuran_chart_categories = []
     for index, field_config in enumerate(PENGUKURAN_FIELD_CONFIG):
         row_key = field_config["key"]
@@ -426,8 +472,16 @@ def index(request):
             row_key,
             "pengukuranKey",
         )
+        year_rows = build_sum_rows_by_year(
+            pengukuran_lapangan_qs,
+            "return_started_at",
+            row_key,
+            "pengukuranKey",
+        )
         pengukuran_chart_rows.extend(monthly_rows)
+        pengukuran_year_rows.extend(year_rows)
         pengukuran_available_years.update(row["year"] for row in monthly_rows if row.get("year"))
+        pengukuran_available_years.update(row["year"] for row in year_rows if row.get("year"))
         pengukuran_chart_categories.append(
             {
                 "id": row_key,
@@ -440,6 +494,7 @@ def index(request):
     pengukuran_chart = {
         "categories": pengukuran_chart_categories,
         "rows": pengukuran_chart_rows,
+        "yearRows": pengukuran_year_rows,
         "availableYears": sorted(pengukuran_available_years),
         "defaultYear": current_year,
         "defaultMonth": current_month,
@@ -464,11 +519,20 @@ def index(request):
         "defaultMonth": current_month,
     }
 
-    greeting_name = request.user.get_full_name() or request.user.username or get_role_name(request.user) or "Pengguna"
-    greeting_time_source = request.user.last_login or now
+    active_peminjaman = get_active_peminjaman_queryset()
+    if active_limit:
+        active_peminjaman = active_peminjaman[:active_limit]
+
+    if request is not None and request.user.is_authenticated:
+        greeting_name = request.user.get_full_name() or request.user.username or get_role_name(request.user) or "Pengguna"
+        greeting_time_source = request.user.last_login or now
+    else:
+        greeting_name = "Laboratorium"
+        greeting_time_source = now
     greeting_period = get_dashboard_greeting_period(timezone.localtime(greeting_time_source))
 
     context = {
+        "active_peminjaman": active_peminjaman,
         "dashboard_stats": {
             "completed_count": completed_count,
             "ongoing_count": ongoing_count,
@@ -486,5 +550,39 @@ def index(request):
         ],
         "dashboard_greeting_name": greeting_name,
         "dashboard_greeting_period": greeting_period,
+        "display_generated_at": now,
     }
-    return render(request, "dashboard/index.html", context)
+    return context
+
+
+@login_required
+def index(request):
+    return render(request, "dashboard/index.html", build_dashboard_context(request))
+
+
+def display(request, portal_slug):
+    if portal_slug != settings.DASHBOARD_TV_SLUG:
+        raise Http404("Halaman display tidak ditemukan.")
+
+    context = build_dashboard_context(active_limit=8)
+    context["tv_slug"] = portal_slug
+    return render(request, "dashboard/display.html", context)
+
+
+def display_active_data(request, portal_slug):
+    if portal_slug != settings.DASHBOARD_TV_SLUG:
+        raise Http404("Data display tidak ditemukan.")
+
+    active_peminjaman = get_active_peminjaman_queryset()[:8]
+    html = render_to_string(
+        "dashboard/partials/display_active_rows.html",
+        {"active_peminjaman": active_peminjaman},
+        request=request,
+    )
+    response = JsonResponse({
+        "html": html,
+        "updatedAt": timezone.localtime().isoformat(),
+    })
+    response["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    response["Pragma"] = "no-cache"
+    return response

@@ -1,0 +1,19 @@
+{% for item in active_peminjaman %}
+<tr>
+    <td>{{ item.nomor_pengajuan }}</td>
+    <td class="cell-wrap"><strong>{{ item.nama_peminjam }}</strong></td>
+    <td class="cell-wrap">{{ item.layanan_kegiatan_label|default:'-' }}</td>
+    <td class="cell-wrap">{{ item.instansi_tujuan.nama_instansi|default:item.instansi_tujuan_lainnya|default:'-' }}</td>
+    <td>{{ item.tanggal_mulai|date:'d M Y' }}<br><small>s/d {{ item.tanggal_selesai|date:'d M Y' }}</small></td>
+    <td class="cell-status">
+        <span class="status-badge {{ item.proses_peminjaman_badge_class }}">{{ item.proses_peminjaman_label }}</span>
+    </td>
+    <td class="cell-status">
+        <span class="status-badge {{ item.proses_pengembalian_badge_class }}">{{ item.proses_pengembalian_label }}</span>
+    </td>
+</tr>
+{% empty %}
+<tr>
+    <td colspan="7"><div class="empty-state tv-empty">Belum ada data kegiatan aktif.</div></td>
+</tr>
+{% endfor %}
