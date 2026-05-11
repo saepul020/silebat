@@ -180,10 +180,10 @@ function initTvCharts() {
     Chart.register(tvZeroDashPlugin);
     window.tvChartInstances = [
         createTvApprovedChart(),
-        createTvCategoryChart('tvLayananChart', 'layanan-chart-data', 'layananId', 'Total Peminjaman', 12, 45),
+        createTvCategoryChart('tvLayananChart', 'layanan-chart-data', 'layananId', 'Total Peminjaman', 12, 45, true),
         createTvPengukuranChart(),
-        createTvGroupedChart('tvTimChart', 'tim-chart-data', 'timId', 'teams'),
-        createTvCategoryChart('tvSurveiChart', 'survei-chart-data', 'surveiId', 'Total Peminjaman', 10, 50),
+        createTvGroupedChart('tvTimChart', 'tim-chart-data', 'timId', 'teams', true),
+        createTvCategoryChart('tvSurveiChart', 'survei-chart-data', 'surveiId', 'Total Peminjaman', 10, 50, true),
         createTvCategoryChart('tvInstansiChart', 'instansi-chart-data', 'instansiId', 'Total Peminjaman', 10, 50),
     ].filter(Boolean);
 }
@@ -315,7 +315,8 @@ function createTvChart(canvasId, labels, datasets, maxValue, options) {
     });
 }
 
-function buildTvBarDataset(label, data, backgroundColor, borderColor, isGrouped) {
+function buildTvBarDataset(label, data, backgroundColor, borderColor, isGrouped, isTight) {
+    const dense = Boolean(isTight);
     return {
         label: label,
         data: data,
@@ -324,9 +325,9 @@ function buildTvBarDataset(label, data, backgroundColor, borderColor, isGrouped)
         borderWidth: 1,
         borderRadius: 6,
         borderSkipped: false,
-        categoryPercentage: isGrouped ? 0.82 : 0.74,
-        barPercentage: isGrouped ? 0.86 : 0.78,
-        maxBarThickness: isGrouped ? 30 : 40,
+        categoryPercentage: isGrouped ? (dense ? 0.94 : 0.82) : (dense ? 0.92 : 0.74),
+        barPercentage: isGrouped ? (dense ? 0.94 : 0.86) : (dense ? 0.92 : 0.78),
+        maxBarThickness: isGrouped ? (dense ? 34 : 30) : (dense ? 46 : 40),
     };
 }
 
@@ -358,7 +359,7 @@ function createTvApprovedChart() {
     return createTvChart(
         'tvApprovedChart',
         monthKeys.map(formatTvMonth),
-        [buildTvBarDataset(dataset.label || 'Total Peminjaman', data, dataset.backgroundColor || 'rgba(16, 62, 111, 0.82)', dataset.borderColor || 'rgba(16, 62, 111, 1)', false)],
+        [buildTvBarDataset(dataset.label || 'Total Peminjaman', data, dataset.backgroundColor || 'rgba(16, 62, 111, 0.82)', dataset.borderColor || 'rgba(16, 62, 111, 1)', false, true)],
         maxValue,
         options,
     );
@@ -400,13 +401,13 @@ function createTvPengukuranChart() {
     return createTvChart(
         'tvPengukuranChart',
         labels,
-        [buildTvBarDataset('Akumulasi Tahun Berjalan', data, colors, colors, false)],
+        [buildTvBarDataset('Akumulasi Tahun Berjalan', data, colors, colors, false, true)],
         maxValue,
         options,
     );
 }
 
-function createTvGroupedChart(canvasId, scriptId, categoryKey, categoryConfigKey) {
+function createTvGroupedChart(canvasId, scriptId, categoryKey, categoryConfigKey, isTight) {
     const source = readTvData(scriptId);
     if (!source) {
         return null;
@@ -438,6 +439,7 @@ function createTvGroupedChart(canvasId, scriptId, categoryKey, categoryConfigKey
             category.backgroundColor || 'rgba(16, 62, 111, 0.82)',
             category.borderColor || category.backgroundColor || 'rgba(16, 62, 111, 1)',
             true,
+            isTight,
         );
     });
     const maxValue = datasets.reduce(function (highest, dataset) {
@@ -448,7 +450,7 @@ function createTvGroupedChart(canvasId, scriptId, categoryKey, categoryConfigKey
     return createTvChart(canvasId, monthKeys.map(formatTvMonth), datasets, maxValue, options);
 }
 
-function createTvCategoryChart(canvasId, scriptId, idKey, datasetLabel, wrapWidth, rotation) {
+function createTvCategoryChart(canvasId, scriptId, idKey, datasetLabel, wrapWidth, rotation, isTight) {
     const source = readTvData(scriptId);
     if (!source) {
         return null;
@@ -483,7 +485,7 @@ function createTvCategoryChart(canvasId, scriptId, idKey, datasetLabel, wrapWidt
     return createTvChart(
         canvasId,
         labels,
-        [buildTvBarDataset(datasetLabel, data, colors, colors, false)],
+        [buildTvBarDataset(datasetLabel, data, colors, colors, false, isTight)],
         maxValue,
         options,
     );

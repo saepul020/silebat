@@ -22,6 +22,8 @@ from apps.core.import_utils import (
     load_import_worksheet as _load_shared_import_worksheet,
     string_cell as _string_cell,
 )
+from apps.operasional.models import TimKegiatan, normalize_tim_kegiatan_name
+
 from apps.core.permissions import (
     ROLE_KEPALA_LAB,
     ROLE_PIMPINAN,
@@ -46,8 +48,19 @@ IMPORT_PENGGUNA_HEADERS = [
     "Nomor HP",
     "Kata Sandi",
     "Peran",
+    "Jabatan",
+    "Nama Tim",
+    "Alamat",
 ]
-IMPORT_PENGGUNA_REQUIRED_HEADERS = IMPORT_PENGGUNA_HEADERS[:]
+IMPORT_PENGGUNA_REQUIRED_HEADERS = [
+    "Username",
+    "Nama Lengkap dan Gelar",
+    "Email",
+    "NIP / NIK",
+    "Nomor HP",
+    "Kata Sandi",
+    "Peran",
+]
 IMPORT_PENGGUNA_MAX_SIZE = 7 * 1024 * 1024
 
 SDM_MONITOR_ROLES = {ROLE_KEPALA_LAB, ROLE_PIMPINAN, ROLE_SUPER_ADMIN}
@@ -88,6 +101,7 @@ def _validate_pengguna_import(file_obj):
 
     role_queryset = get_default_role_queryset()
     role_map = {role.nama.lower(): role.nama for role in role_queryset}
+    tim_map = {normalize_tim_kegiatan_name(tim.nama_tim).lower(): tim.pk for tim in TimKegiatan.objects.all()}
     rows = []
     errors = []
     seen_username = {}
@@ -111,6 +125,9 @@ def _validate_pengguna_import(file_obj):
             'no_hp': cell(row, 'Nomor HP'),
             'password': cell(row, 'Kata Sandi'),
             'role': cell(row, 'Peran'),
+            'jabatan': cell(row, 'Jabatan'),
+            'nama_tim': normalize_tim_kegiatan_name(cell(row, 'Nama Tim')),
+            'alamat': cell(row, 'Alamat'),
         }
 
         for header in IMPORT_PENGGUNA_REQUIRED_HEADERS:
@@ -142,6 +159,10 @@ def _validate_pengguna_import(file_obj):
             else:
                 data['role'] = role_map[role_key]
 
+        tim_key = data['nama_tim'].lower()
+        if tim_key and tim_key not in tim_map:
+            row_errors.append('Nama Tim tidak sesuai pilihan yang tersedia.')
+
         _validate_duplicate_value(row_errors=row_errors, seen=seen_username, value=data['username'], excel_row_number=excel_row_number, label='Username')
         _validate_duplicate_value(row_errors=row_errors, seen=seen_email, value=data['email'], excel_row_number=excel_row_number, label='Email')
         _validate_duplicate_value(row_errors=row_errors, seen=seen_nip, value=data['nip'], excel_row_number=excel_row_number, label='NIP / NIK')
@@ -161,6 +182,7 @@ def _validate_pengguna_import(file_obj):
             continue
 
         data['nama_lengkap'] = ' '.join(data['nama_lengkap'].split())
+        data['nama_tim_id'] = tim_map.get(tim_key) if tim_key else None
         rows.append(data)
 
     if not rows and not errors:
@@ -200,6 +222,9 @@ def _save_pengguna_import(rows):
             user.save()
             profile, _ = UserProfile.objects.get_or_create(user=user)
             profile.role = role
+            profile.jabatan = row.get('jabatan') or None
+            profile.nama_tim_id = row.get('nama_tim_id')
+            profile.alamat = row.get('alamat') or None
             profile.save()
 
     return len(rows), []
@@ -409,6 +434,7 @@ def download_format_import_pengguna(request):
         return _deny_import_access(request)
 
     role_values = [role.nama for role in get_default_role_queryset()]
+    tim_values = [normalize_tim_kegiatan_name(tim.nama_tim) for tim in TimKegiatan.objects.order_by('nama_tim')]
     return _download_import_template(
         headers=IMPORT_PENGGUNA_HEADERS,
         sample=[
@@ -419,12 +445,17 @@ def download_format_import_pengguna(request):
             '081234567890',
             'PasswordRahasia123',
             'User',
+            'Staf Laboratorium',
+            tim_values[0] if tim_values else '',
+            'Jl. Contoh No. 1, Kupang',
         ],
         references=[
             ('Peran', role_values),
+            ('Nama Tim', tim_values),
         ],
         validations={
             'Peran': role_values,
+            **({'Nama Tim': tim_values} if tim_values else {}),
         },
         worksheet_title='Format Import Pengguna',
         filename='format_import_daftar_pengguna.xlsx',

@@ -516,7 +516,6 @@ def build_dashboard_context(request=None, active_limit=None):
         "rows": approved_peminjaman_rows,
         "availableYears": approved_peminjaman_available_years,
         "defaultYear": current_year,
-        "defaultMonth": current_month,
     }
 
     active_peminjaman = get_active_peminjaman_queryset()

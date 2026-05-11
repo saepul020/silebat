@@ -8573,3 +8573,150 @@ select.return-status-select option:disabled {
         grid-column: 1 / -1;
     }
 }
+
+/* =========================
+   DETAIL BARANG - GRAFIK PEMINJAMAN
+   Bar chart riwayat peminjaman alat.
+========================= */
+.asset-chart-card {
+    margin: 24px 0 22px;
+    padding: 20px;
+    border: 1px solid var(--border);
+    border-radius: 22px;
+    background: linear-gradient(135deg, var(--color-white), var(--color-soft-blue));
+    box-shadow: 0 16px 36px rgba(16, 62, 111, 0.08);
+}
+
+.asset-chart-card--public {
+    background: linear-gradient(135deg, #ffffff, #eaf7fb);
+}
+
+.asset-chart-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+    margin-bottom: 16px;
+}
+
+.asset-chart-title {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+
+.asset-chart-title h3 {
+    margin: 0;
+    color: var(--color-primary-navy);
+    font-size: 1.1rem;
+}
+
+
+.asset-chart-filter {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 150px;
+}
+
+
+.asset-chart-filter select {
+    min-height: 42px;
+    padding: 8px 34px 8px 12px;
+    border: 1px solid var(--border-strong);
+    border-radius: 12px;
+    background: var(--color-white);
+    color: var(--color-primary-navy);
+    font-weight: 700;
+    outline: none;
+}
+
+.asset-chart-filter select:focus {
+    border-color: var(--color-primary-navy);
+    box-shadow: 0 0 0 3px rgba(16, 62, 111, 0.12);
+}
+
+
+
+.asset-chart-area {
+    position: relative;
+    height: 320px;
+    padding: 14px;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.86);
+    border: 1px solid rgba(16, 62, 111, 0.1);
+}
+
+.asset-chart-plot {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    min-width: 100%;
+}
+
+.asset-chart-area canvas {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.asset-chart-empty {
+    position: absolute;
+    inset: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.72);
+    color: var(--text-soft);
+    font-weight: 700;
+    text-align: center;
+    pointer-events: none;
+}
+
+.asset-chart-empty.is-hidden {
+    display: none;
+}
+
+@media (max-width: 680px) {
+    .asset-chart-card {
+        padding: 16px;
+        border-radius: 18px;
+    }
+
+    .asset-chart-head {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .asset-chart-filter {
+        width: 100%;
+    }
+
+    .asset-chart-area {
+        height: 280px;
+        padding: 10px;
+    }
+
+    .asset-chart-area--scroll {
+        overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: thin;
+    }
+
+    .asset-chart-area--scroll .asset-chart-plot {
+        width: var(--loan-chart-width, 100%);
+        min-width: var(--loan-chart-width, 100%);
+    }
+
+    .asset-chart-area--scroll::-webkit-scrollbar {
+        height: 8px;
+    }
+
+    .asset-chart-area--scroll::-webkit-scrollbar-thumb {
+        border-radius: 999px;
+        background: rgba(16, 62, 111, 0.32);
+    }
+}
+

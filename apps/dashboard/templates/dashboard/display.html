@@ -8,13 +8,13 @@
     <link rel="stylesheet" href="{% static 'css/style.css' %}?v=20260505-pelatihan-v3">
     <link rel="stylesheet" href="{% static 'css/style_dashboard.css' %}?v=20260505-dashboard-items-v2">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
-    <link rel="stylesheet" href="{% static 'css/dashboard_display.css' %}?v=20260506-tv-v5">
+    <link rel="stylesheet" href="{% static 'css/dashboard_display.css' %}?v=20260508-tv-full-v1">
 </head>
 <body class="tv-body">
     <main class="tv-page" aria-label="Display realtime laboratorium SILEBAT">
         <header class="page-header dashboard-header tv-head">
             <div class="tv-head__title">
-                <h1>Dashboard Laboratorium SILEBAT</h1>
+                <h1>Dashboard Laboratorium</h1>
                 <p>Informasi realtime kegiatan peminjaman dan layanan Laboratorium.</p>
             </div>
             <div class="tv-head__meta" aria-label="Waktu display">
@@ -117,6 +117,6 @@
     {{ instansi_chart|json_script:"instansi-chart-data" }}
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
-    <script src="{% static 'js/dashboard_display.js' %}?v=20260506-tv-v5" defer></script>
+    <script src="{% static 'js/dashboard_display.js' %}?v=20260508-tv-full-v1" defer></script>
 </body>
 </html>

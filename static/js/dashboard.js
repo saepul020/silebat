@@ -1030,9 +1030,8 @@ function initApprovedPeminjamanChart() {
     const canvas = document.getElementById('approvedPeminjamanChart');
     const source = readDashboardChartData('approved-peminjaman-chart-data');
     const yearFilter = document.getElementById('approvedPeminjamanChartYearFilter');
-    const monthFilter = document.getElementById('approvedPeminjamanChartMonthFilter');
 
-    if (!canvas || !source || !yearFilter || !monthFilter) {
+    if (!canvas || !source || !yearFilter) {
         return;
     }
 
@@ -1042,7 +1041,7 @@ function initApprovedPeminjamanChart() {
         const chartData = buildMonthlySingleSeriesChartData(
             source,
             normalizeDashboardYearFilter(yearFilter.value),
-            normalizeDashboardMonthFilter(monthFilter.value),
+            DASHBOARD_MONTH_FILTER_ALL_MONTHS,
         );
         const options = createBaseBarOptions(chartData.maxValue);
         options.plugins.legend.display = false;
@@ -1057,7 +1056,6 @@ function initApprovedPeminjamanChart() {
     }
 
     yearFilter.addEventListener('change', renderChart);
-    monthFilter.addEventListener('change', renderChart);
     window.addEventListener('resize', debounce(renderChart, 180));
     renderChart();
 }

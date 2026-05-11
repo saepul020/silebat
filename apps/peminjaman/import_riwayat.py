@@ -17,6 +17,8 @@ from apps.master_data.models import (
     BarangLaboratorium,
     BarangPenunjangOperasional,
     PeralatanLaboratorium,
+    KategoriBahanOperasionalChoices,
+    KategoriBarangPenunjangChoices,
     KondisiBarangChoices,
     SatuanAsetChoices,
     SatuanBahanChoices,
@@ -66,6 +68,40 @@ def _normalize_nomor_pengajuan(value):
         urut_baru = urut
     return f"PMJ-{tahun[-2:]}{bulan}{tanggal}-{urut_baru}"
 
+
+def _clean_asset_value(value):
+    text = str(value or "").strip()
+    return text if text and text != "-" else ""
+
+
+def _find_master_asset(model, row):
+    """Coba hubungkan riwayat import ke master aktif tanpa mengubah stok."""
+    kode_lab = _clean_asset_value(row.get("kode_laboratorium"))
+    if kode_lab:
+        found = model.objects.filter(kode_laboratorium__iexact=kode_lab).order_by("id").first()
+        if found:
+            return found
+
+    kode_bmn = _clean_asset_value(row.get("kode_aset_bmn"))
+    if kode_bmn:
+        found = model.objects.filter(kode_aset_bmn__iexact=kode_bmn).order_by("id").first()
+        if found:
+            return found
+
+    nama = _clean_asset_value(row.get("nama_barang"))
+    tipe = _clean_asset_value(row.get("tipe_merek_barang"))
+    jenis = _clean_asset_value(row.get("jenis_barang"))
+    if nama and tipe:
+        qs = model.objects.filter(
+            nama_barang__iexact=nama,
+            tipe_merek_barang__iexact=tipe,
+        )
+        if jenis:
+            qs = qs.filter(jenis_barang__iexact=jenis)
+        return qs.order_by("id").first()
+
+    return None
+
 PEMINJAMAN_SHEET = "Peminjaman"
 LAB_SHEET = "Peralatan Survei"
 PENUNJANG_SHEET = "Barang Penunjang"
@@ -84,6 +120,7 @@ PEMINJAMAN_HEADERS = [
     "Tim Kegiatan",
     "Instansi Tujuan",
     "Organisasi Instansi",
+    "Alamat Instansi",
     "Tanggal Mulai",
     "Tanggal Selesai",
     "Tanggal Pengembalian",
@@ -457,6 +494,7 @@ def _validate_peminjaman_sheet(workbook):
             "tim_kegiatan": normalize_tim_kegiatan_name(cell(row, "Tim Kegiatan")),
             "instansi_tujuan": cell(row, "Instansi Tujuan"),
             "organisasi_instansi": cell(row, "Organisasi Instansi") or InstansiKlien.OrganisasiChoices.EKSTERNAL_PU,
+            "alamat_instansi": cell(row, "Alamat Instansi"),
             "kegiatan_survei": _split_list(cell(row, "Kegiatan Survei")),
             "survei_lainnya": cell(row, "Survei Lainnya"),
         }
@@ -635,6 +673,8 @@ def _validate_qty_sheet(workbook, *, sheet_name, headers, required_headers, item
     satuan_aset_values = _choice_values(SatuanAsetChoices.choices)
     satuan_bahan_values = _choice_values(SatuanBahanChoices.choices)
     kondisi_values = _choice_values(KondisiBarangChoices.choices)
+    kategori_penunjang_values = _choice_values(KategoriBarangPenunjangChoices.choices)
+    kategori_bahan_values = _choice_values(KategoriBahanOperasionalChoices.choices)
     rows = []
     errors = []
 
@@ -677,6 +717,14 @@ def _validate_qty_sheet(workbook, *, sheet_name, headers, required_headers, item
         except ValueError as exc:
             row_errors.append(str(exc))
             data["volume_dipinjam"] = 0
+
+        if item_kind == "penunjang" and data.get("kategori_barang") not in ("", "-"):
+            if data["kategori_barang"] not in kategori_penunjang_values:
+                row_errors.append("Kategori Barang tidak sesuai pilihan yang tersedia.")
+
+        if item_kind == "bahan" and data.get("kategori_barang") not in ("", "-"):
+            if data["kategori_barang"] not in kategori_bahan_values:
+                row_errors.append("Kategori Barang tidak sesuai pilihan yang tersedia.")
 
         if item_kind == "bahan":
             for qty_header, key in (("Sisa", "qty_sisa"), ("Transfer", "qty_transfer")):
@@ -776,19 +824,26 @@ def _get_or_create_tim(name):
     return obj
 
 
-def _get_or_create_instansi(name, organisasi):
+def _get_or_create_instansi(name, organisasi, alamat=None):
     if not name:
         return None
+    alamat_bersih = (alamat or "").strip() or "-"
     obj, created = InstansiKlien.objects.get_or_create(
         nama_instansi=name,
         defaults={
-            "alamat_instansi": "-",
+            "alamat_instansi": alamat_bersih,
             "organisasi": organisasi or InstansiKlien.OrganisasiChoices.EKSTERNAL_PU,
         },
     )
+    update_fields = []
     if not created and organisasi and obj.organisasi != organisasi:
         obj.organisasi = organisasi
-        obj.save(update_fields=["organisasi"])
+        update_fields.append("organisasi")
+    if not created and alamat and obj.alamat_instansi in ("", "-"):
+        obj.alamat_instansi = alamat_bersih
+        update_fields.append("alamat_instansi")
+    if update_fields:
+        obj.save(update_fields=update_fields)
     return obj
 
 
@@ -922,6 +977,8 @@ def _build_report_snapshot(row, lab_items, penunjang_items, bahan_items, peralat
             "kegiatan_survei": list(row.get("kegiatan_survei") or []) + ([f"Lainnya: {row.get('survei_lainnya')}"] if row.get("survei_lainnya") else []),
             "tim_kegiatan": row.get("tim_kegiatan") or "-",
             "instansi_tujuan": row.get("instansi_tujuan") or "-",
+            "alamat_instansi": row.get("alamat_instansi") or "-",
+            "organisasi_instansi": row.get("organisasi_instansi") or "-",
             "mulai_tanggal": format_date_id(mulai),
             "selesai_tanggal": format_date_id(selesai),
             "total_hari": row.get("total_hari") or 1,
@@ -953,7 +1010,9 @@ def _prepare_grouped_items(payload):
 def _create_lab_items(pengajuan, rows):
     report_items = []
     for row in rows:
-        barang = None  # Riwayat import disimpan sebagai snapshot agar tidak mengubah/bergantung pada master data aktif.
+        barang = _find_master_asset(BarangLaboratorium, row)
+        if barang and PeminjamanBarangLaboratorium.objects.filter(pengajuan=pengajuan, barang=barang).exists():
+            barang = None
         borrowed = PeminjamanBarangLaboratorium.objects.create(
             pengajuan=pengajuan,
             barang=barang,
@@ -1142,7 +1201,9 @@ def _create_bahan_items(pengajuan, rows):
 def _create_peralatan_lab_items(pengajuan, rows):
     report_items = []
     for row in rows:
-        barang = None  # Riwayat import disimpan sebagai snapshot agar tidak mengubah/bergantung pada master data aktif.
+        barang = _find_master_asset(PeralatanLaboratorium, row)
+        if barang and PeminjamanPeralatanLaboratorium.objects.filter(pengajuan=pengajuan, barang=barang).exists():
+            barang = None
         borrowed = PeminjamanPeralatanLaboratorium.objects.create(
             pengajuan=pengajuan,
             barang=barang,
@@ -1252,7 +1313,11 @@ def _save_import_payload(payload, actor):
                 nip_peminjam=row.get("nip_peminjam") or "",
                 layanan_kegiatan=_get_or_create_layanan(row.get("layanan_kegiatan")),
                 tim_kegiatan=_get_or_create_tim(row.get("tim_kegiatan")),
-                instansi_tujuan=_get_or_create_instansi(row.get("instansi_tujuan"), row.get("organisasi_instansi")),
+                instansi_tujuan=_get_or_create_instansi(
+                    row.get("instansi_tujuan"),
+                    row.get("organisasi_instansi"),
+                    row.get("alamat_instansi"),
+                ),
                 instansi_tujuan_lainnya="" if row.get("instansi_tujuan") else row.get("instansi_tujuan", ""),
                 tanggal_mulai=date.fromisoformat(row["tanggal_mulai"]),
                 tanggal_selesai=date.fromisoformat(row["tanggal_selesai"]),
@@ -1448,6 +1513,12 @@ def download_format_import_riwayat_peminjaman(request):
     kondisi_values = [value for value, _label in KondisiBarangChoices.choices]
     return_values = [label for _value, label in ReturnItemStatusChoices.choices]
     organisasi_values = [value for value, _label in InstansiKlien.OrganisasiChoices.choices]
+    kategori_penunjang_values = [value for value, _label in KategoriBarangPenunjangChoices.choices]
+    kategori_bahan_values = [value for value, _label in KategoriBahanOperasionalChoices.choices]
+    layanan_values = [item.jenis_layanan for item in LayananKegiatan.objects.order_by("jenis_layanan")]
+    tim_values = [normalize_tim_kegiatan_name(item.nama_tim) for item in TimKegiatan.objects.order_by("nama_tim")]
+    instansi_values = [item.nama_instansi for item in InstansiKlien.objects.order_by("nama_instansi")]
+    survei_values = [item.jenis_survei for item in SurveiKegiatan.objects.order_by("jenis_survei")]
 
     add_sheet(
         PEMINJAMAN_SHEET,
@@ -1464,6 +1535,7 @@ def download_format_import_riwayat_peminjaman(request):
             "Tim Layanan Teknis",
             "Dinas PUPR Kabupaten Contoh",
             "Eksternal PU",
+            "Jl. Contoh Instansi No. 10",
             "2025-01-15",
             "2025-01-17",
             "2025-01-18",
@@ -1527,7 +1599,10 @@ def download_format_import_riwayat_peminjaman(request):
             "",
             "",
         ],
-        validations={"Satuan": satuan_aset_values},
+        validations={
+            "Kategori Barang": kategori_penunjang_values,
+            "Satuan": satuan_aset_values,
+        },
     )
     add_sheet(
         BAHAN_SHEET,
@@ -1544,7 +1619,10 @@ def download_format_import_riwayat_peminjaman(request):
             "",
             "Sisa 2 botol dikembalikan.",
         ],
-        validations={"Satuan": satuan_bahan_values},
+        validations={
+            "Kategori Barang": kategori_bahan_values,
+            "Satuan": satuan_bahan_values,
+        },
     )
     add_sheet(
         PERALATAN_LAB_SHEET,
@@ -1579,6 +1657,12 @@ def download_format_import_riwayat_peminjaman(request):
     reference_sheet = workbook.create_sheet("Referensi Pilihan")
     references = [
         ("Organisasi Instansi", organisasi_values),
+        ("Layanan Kegiatan", layanan_values),
+        ("Tim Kegiatan", tim_values),
+        ("Instansi Tujuan", instansi_values),
+        ("Kegiatan Survei", survei_values),
+        ("Kategori Penunjang", kategori_penunjang_values),
+        ("Kategori Bahan", kategori_bahan_values),
         ("Status Barang", status_values),
         ("Satuan Aset", satuan_aset_values),
         ("Satuan Bahan", satuan_bahan_values),

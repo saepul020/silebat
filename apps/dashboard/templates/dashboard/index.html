@@ -256,15 +256,6 @@
                         {% endfor %}
                     </select>
                 </div>
-                <div class="dashboard-filter dashboard-filter--mode">
-                    <select id="approvedPeminjamanChartMonthFilter" aria-label="Filter mode/bulan rekap peminjaman" title="Filter mode data">
-                        <option value="all_months">All Bulan</option>
-                        <option value="accumulated">Akumulasi</option>
-                        {% for month in month_choices %}
-                            <option value="{{ month.value }}" {% if month.value == approved_peminjaman_chart.defaultMonth %}selected{% endif %}>{{ month.label }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
             </div>
         </div>
         <div class="dashboard-chart-area" data-chart-wrapper="approved-peminjaman">
@@ -475,5 +466,5 @@
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
-<script src="{% static 'js/dashboard.js' %}?v=20260505-dashboard-items-v2" defer></script>
+<script src="{% static 'js/dashboard.js' %}?v=20260508-appr-year" defer></script>
 {% endblock %}

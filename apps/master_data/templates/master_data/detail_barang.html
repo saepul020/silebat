@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}{{ page_title }}{% endblock %}
 
@@ -61,6 +62,38 @@
     </div>
     {% endif %}
 
+    {% if loan_chart %}
+    <section class="asset-chart-card{% if loan_chart.scrollMobile %} asset-chart-card--scroll{% endif %}" aria-label="{{ loan_chart.title }}">
+        <div class="asset-chart-head">
+            <div class="asset-chart-title">
+                <div>
+                    <h3>{{ loan_chart.title }}</h3>
+                </div>
+            </div>
+
+            <div class="asset-chart-filter">
+                <select id="assetLoanYear" data-loan-year-filter aria-label="Filter tahun riwayat peminjaman">
+                    <option value="{{ loan_chart.allValue }}" {% if loan_chart.selectedYear == loan_chart.allValue %}selected{% endif %}>All</option>
+                    {% for year in loan_chart.availableYears %}
+                        <option value="{{ year }}" {% if year == loan_chart.selectedYear %}selected{% endif %}>{{ year }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div class="asset-chart-area{% if loan_chart.scrollMobile %} asset-chart-area--scroll{% endif %}" data-loan-chart-wrap>
+            <div class="asset-chart-plot" data-loan-chart-plot>
+                <canvas id="assetLoanChart" data-loan-chart-canvas aria-label="Grafik riwayat peminjaman {{ obj.nama_barang }}"></canvas>
+            </div>
+            <div class="asset-chart-empty is-hidden" data-loan-chart-empty>
+                Belum ada data peminjaman untuk filter ini.
+            </div>
+        </div>
+    </section>
+
+    {{ loan_chart|json_script:"asset-loan-chart-data" }}
+    {% endif %}
+
     <div class="detail-grid detail-grid--info">
         {% for item in detail_items %}
             <div class="detail-item {% if item.full %}detail-item--full{% endif %}">
@@ -81,4 +114,11 @@
         <a href="{% url back_url_name %}" class="btn btn-secondary">Kembali</a>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+{% if loan_chart %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
+<script src="{% static 'js/master_detail.js' %}?v=20260508-loan-chart-v2" defer></script>
+{% endif %}
 {% endblock %}

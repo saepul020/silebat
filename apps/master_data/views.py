@@ -1,3 +1,4 @@
+from datetime import date, datetime
 from io import BytesIO
 
 from django.contrib import messages
@@ -15,9 +16,12 @@ from apps.core.import_utils import (
     string_cell as _string_cell,
 )
 from django.db import transaction
+from django.db.models import Count, Q
 from django.db.models.deletion import ProtectedError
+from django.db.models.functions import Coalesce, ExtractYear, TruncMonth
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 from django.utils.formats import date_format
 from django.urls import reverse
 
@@ -59,6 +63,8 @@ IMPORT_BARANG_LAB_HEADERS = [
     "Kondisi Barang",
     "Lokasi Barang",
     "Kategori Barang",
+    "Tanggal Pemeliharaan",
+    "Tanggal Perbaikan",
     "Catatan",
 ]
 IMPORT_BARANG_LAB_REQUIRED_HEADERS = [
@@ -76,6 +82,21 @@ IMPORT_BARANG_LAB_REQUIRED_HEADERS = [
 IMPORT_BARANG_LAB_MAX_SIZE = 7 * 1024 * 1024
 
 FORM_TEMPLATE = "master_data/master_form.html"
+PINJAM_YEAR_ALL = "all"
+MONTH_LABELS_ID = {
+    1: "Jan",
+    2: "Feb",
+    3: "Mar",
+    4: "Apr",
+    5: "Mei",
+    6: "Jun",
+    7: "Jul",
+    8: "Agu",
+    9: "Sep",
+    10: "Okt",
+    11: "Nov",
+    12: "Des",
+}
 
 ASSET_FIELD_GROUPS = [
     ("Status Barang", [["status_barang"]]),
@@ -406,6 +427,121 @@ def _ensure_qr_codes_for_context_items(context):
     ensure_master_qr_codes(items)
 
 
+def _get_pinjam_year(request, available_years):
+    current_year = timezone.localdate().year
+    raw_year = (request.GET.get("tahun_pinjam") or "").strip().lower()
+    valid_years = {int(year) for year in available_years if year}
+
+    if raw_year == PINJAM_YEAR_ALL:
+        return PINJAM_YEAR_ALL
+    try:
+        requested_year = int(raw_year)
+    except (TypeError, ValueError):
+        return current_year
+    return requested_year if requested_year in valid_years else current_year
+
+
+def _clean_match_value(value):
+    text = str(value or "").strip()
+    return text if text and text != "-" else ""
+
+
+def _snapshot_asset_q(obj):
+    """
+    Data laporan lama/import riwayat disimpan sebagai snapshot dengan FK barang
+    bernilai NULL. Chart harus tetap menghitung baris tersebut dengan cara
+    mencocokkan kode aset/laboratorium, lalu fallback ke identitas nama+tipe.
+    """
+    query = Q(barang=obj)
+    null_fk = Q(barang__isnull=True)
+
+    kode_lab = _clean_match_value(getattr(obj, "kode_laboratorium", ""))
+    if kode_lab:
+        query |= null_fk & Q(snapshot_kode_laboratorium__iexact=kode_lab)
+
+    kode_bmn = _clean_match_value(getattr(obj, "kode_aset_bmn", ""))
+    if kode_bmn:
+        query |= null_fk & Q(snapshot_kode_aset_bmn__iexact=kode_bmn)
+
+    nama = _clean_match_value(getattr(obj, "nama_barang", ""))
+    tipe = _clean_match_value(getattr(obj, "tipe_merek_barang", ""))
+    jenis = _clean_match_value(getattr(obj, "jenis_barang", ""))
+    if nama and tipe:
+        fallback = null_fk & Q(snapshot_nama_barang__iexact=nama) & Q(snapshot_tipe_merek_barang__iexact=tipe)
+        if jenis:
+            fallback &= Q(snapshot_jenis_barang__iexact=jenis)
+        query |= fallback
+
+    return query
+
+
+def _build_pinjam_chart(request, obj, *, item_model, label):
+    try:
+        from apps.peminjaman.models import StepChoices
+    except Exception:
+        return None
+
+    current_year = timezone.localdate().year
+    date_expr = Coalesce(
+        "pengajuan__pimpinan_at",
+        "pengajuan__return_completed_at",
+        "pengajuan__submitted_at",
+        "pengajuan__updated_at",
+    )
+    base_qs = item_model.objects.filter(
+        _snapshot_asset_q(obj),
+        pengajuan__current_step=StepChoices.APPROVED,
+    )
+    monthly_rows = list(
+        base_qs.annotate(pinjam_at=date_expr)
+        .annotate(month=TruncMonth("pinjam_at"))
+        .values("month")
+        .annotate(total=Count("id"))
+        .order_by("month")
+    )
+    year_rows = list(
+        base_qs.annotate(pinjam_at=date_expr)
+        .annotate(year=ExtractYear("pinjam_at"))
+        .values("year")
+        .annotate(total=Count("id"))
+        .order_by("year")
+    )
+    available_years = sorted(
+        {
+            int(row["year"])
+            for row in year_rows
+            if row.get("year")
+        }
+        | {current_year}
+    )
+    selected_year = _get_pinjam_year(request, available_years)
+    return {
+        "title": f"Riwayat Peminjaman {label}",
+        "datasetLabel": "Jumlah Peminjaman",
+        "chartTitle": "Rekap Peminjaman Alat",
+        "scrollMobile": True,
+        "availableYears": available_years,
+        "selectedYear": selected_year,
+        "currentYear": current_year,
+        "allValue": PINJAM_YEAR_ALL,
+        "monthLabels": MONTH_LABELS_ID,
+        "rows": [
+            {
+                "year": row["month"].year,
+                "month": row["month"].month,
+                "total": int(row.get("total") or 0),
+            }
+            for row in monthly_rows
+            if row.get("month")
+        ],
+        "yearRows": [
+            {"year": int(row["year"]), "total": int(row.get("total") or 0)}
+            for row in year_rows
+            if row.get("year")
+        ],
+    }
+
+
 def _build_detail_context(
     *,
     obj,
@@ -417,6 +553,7 @@ def _build_detail_context(
     top_meta,
     chips,
     detail_items,
+    loan_chart=None,
     top_icon="bi-box-seam",
     photo_attr="foto_barang",
 ):
@@ -431,6 +568,7 @@ def _build_detail_context(
         "top_meta": _display_value(top_meta),
         "chips": [chip for chip in chips if chip],
         "detail_items": detail_items,
+        "loan_chart": loan_chart,
         "photo_url": _safe_file_url(getattr(obj, photo_attr, None))
         if photo_attr
         else None,
@@ -451,6 +589,7 @@ def _render_public_master_detail(
     top_meta,
     chips,
     detail_items,
+    loan_chart=None,
     top_icon="bi-box-seam",
     photo_attr="foto_barang",
 ):
@@ -464,6 +603,7 @@ def _render_public_master_detail(
             "top_meta": _display_value(top_meta),
             "chips": [chip for chip in chips if chip],
             "detail_items": detail_items,
+            "loan_chart": loan_chart,
             "photo_url": _safe_file_url(getattr(obj, photo_attr, None))
             if photo_attr
             else None,
@@ -578,6 +718,26 @@ def _year_cell(value):
     return year
 
 
+def _date_import_cell(value, label):
+    if value in (None, ''):
+        return None
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, date):
+        return value
+    raw_value = str(value).strip()
+    if not raw_value:
+        return None
+    if raw_value.endswith('.0'):
+        raw_value = raw_value[:-2]
+    for date_format_pattern in ('%Y-%m-%d', '%d/%m/%Y', '%d-%m-%Y'):
+        try:
+            return datetime.strptime(raw_value, date_format_pattern).date()
+        except ValueError:
+            continue
+    raise ValueError(f'{label} harus berupa tanggal valid dengan format YYYY-MM-DD.')
+
+
 IMPORT_BARANG_PENUNJANG_SESSION_KEY = "barang_penunjang_import_validated_rows"
 IMPORT_BAHAN_OPERASIONAL_SESSION_KEY = "bahan_operasional_import_validated_rows"
 IMPORT_FASILITAS_RUANGAN_SESSION_KEY = "fasilitas_ruangan_import_validated_rows"
@@ -617,6 +777,9 @@ IMPORT_FASILITAS_RUANGAN_HEADERS = [
     "Kategori Barang",
     "Kondisi Barang",
     "Lokasi Barang",
+    "Tanggal Pemeliharaan",
+    "Tanggal Perbaikan",
+    "Catatan",
 ]
 IMPORT_FASILITAS_RUANGAN_REQUIRED_HEADERS = [
     "Status Barang",
@@ -643,6 +806,9 @@ IMPORT_PERALATAN_LABORATORIUM_HEADERS = [
     "Tahun Perolehan",
     "Kondisi Barang",
     "Lokasi Barang",
+    "Tanggal Pemeliharaan",
+    "Tanggal Perbaikan",
+    "Catatan",
 ]
 IMPORT_PERALATAN_LABORATORIUM_REQUIRED_HEADERS = [
     "Status Barang",
@@ -894,6 +1060,7 @@ def _validate_asset_status_import(
             'satuan': cell(row, 'Satuan'),
             'kondisi_barang': cell(row, 'Kondisi Barang'),
             'lokasi_barang': cell(row, 'Lokasi Barang'),
+            'catatan': cell(row, 'Catatan'),
         }
         if include_kategori:
             data['kategori_barang'] = cell(row, 'Kategori Barang')
@@ -930,6 +1097,16 @@ def _validate_asset_status_import(
         except ValueError as exc:
             row_errors.append(str(exc))
             data['tahun_perolehan'] = None
+
+        for field_name, header_label in (
+            ('tanggal_pemeliharaan', 'Tanggal Pemeliharaan'),
+            ('tanggal_perbaikan', 'Tanggal Perbaikan'),
+        ):
+            try:
+                data[field_name] = _date_import_cell(cell(row, header_label), header_label)
+            except ValueError as exc:
+                row_errors.append(str(exc))
+                data[field_name] = None
 
         if data['status_barang'] == StatusBarangChoices.BMN:
             if not data['kode_aset_bmn']:
@@ -1295,6 +1472,16 @@ def _validate_barang_laboratorium_import(file_obj):
             row_errors.append(str(exc))
             data['tahun_perolehan'] = None
 
+        for field_name, header_label in (
+            ('tanggal_pemeliharaan', 'Tanggal Pemeliharaan'),
+            ('tanggal_perbaikan', 'Tanggal Perbaikan'),
+        ):
+            try:
+                data[field_name] = _date_import_cell(cell(row, header_label), header_label)
+            except ValueError as exc:
+                row_errors.append(str(exc))
+                data[field_name] = None
+
         kode_lab_key = data['kode_laboratorium'].lower()
         if kode_lab_key:
             if kode_lab_key in seen_kode_laboratorium:
@@ -1377,6 +1564,8 @@ def download_format_import_barang_laboratorium(request):
             'Baik',
             'Gudang Laboratorium',
             'Topografi (TS)',
+            '2026-03-01',
+            '2026-04-01',
             'Contoh data, silakan hapus/ganti sebelum import.',
         ],
         references=[
@@ -1539,6 +1728,9 @@ def download_format_import_fasilitas_ruangan(request):
             'Fasilitas Ruangan',
             'Baik',
             'Ruang Laboratorium 1',
+            '2026-03-01',
+            '2026-04-01',
+            'Contoh catatan sarana.',
         ],
         references=[
             ('Status Barang', status_values),
@@ -1820,7 +2012,49 @@ def _get_barang_laboratorium_detail_items(obj):
     ]
 
 
+def _get_peralatan_laboratorium_detail_items(obj):
+    return [
+        {"label": "Nama Barang", "value": _display_value(obj.nama_barang)},
+        {
+            "label": "Tipe / Merek Barang",
+            "value": _display_value(obj.tipe_merek_barang),
+        },
+        {"label": "Jenis Barang", "value": _display_value(obj.jenis_barang)},
+        {"label": "Status Barang", "value": _display_value(obj.status_barang)},
+        {"label": "Kode Aset BMN", "value": _display_value(obj.kode_aset_bmn)},
+        {
+            "label": "Kode Laboratorium",
+            "value": _display_value(obj.kode_laboratorium),
+        },
+        {"label": "Volume Baik", "value": _display_value(obj.volume_baik)},
+        {"label": "Volume Rusak", "value": _display_value(obj.volume_rusak)},
+        {"label": "Total Volume", "value": _display_value(obj.total_volume)},
+        {"label": "Satuan", "value": _display_value(obj.satuan)},
+        {"label": "Ketersediaan", "value": _display_value(obj.ketersediaan)},
+        {"label": "Tahun Perolehan", "value": _display_value(obj.tahun_perolehan)},
+        {
+            "label": "Kondisi Barang",
+            "value": _display_value(
+                obj.kondisi_barang if obj.status_barang == StatusBarangChoices.BMN else None
+            ),
+        },
+        {"label": "Lokasi Barang", "value": _display_value(obj.lokasi_barang)},
+        {
+            "label": "Pemeliharaan Terakhir",
+            "value": _display_date(obj.tanggal_pemeliharaan),
+        },
+        {
+            "label": "Perbaikan Terakhir",
+            "value": _display_date(obj.tanggal_perbaikan),
+        },
+        _ik_alat_detail_item(obj),
+        {"label": "Catatan", "value": _display_value(obj.catatan), "full": True},
+    ]
+
+
 def public_barang_laboratorium(request, token):
+    from apps.peminjaman.models import PeminjamanBarangLaboratorium
+
     obj = get_object_or_404(BarangLaboratorium, qr_token=token)
     return _render_public_master_detail(
         request,
@@ -1830,6 +2064,12 @@ def public_barang_laboratorium(request, token):
         top_meta=obj.kode_laboratorium,
         chips=[obj.status_barang, obj.ketersediaan],
         detail_items=_get_barang_laboratorium_detail_items(obj),
+        loan_chart=_build_pinjam_chart(
+            request,
+            obj,
+            item_model=PeminjamanBarangLaboratorium,
+            label="Peralatan Survei Lapangan",
+        ),
         top_icon="bi-tools",
     )
 
@@ -1916,6 +2156,8 @@ def public_fasilitas_ruangan(request, token):
 
 
 def public_peralatan_laboratorium(request, token):
+    from apps.peminjaman.models import PeminjamanPeralatanLaboratorium
+
     obj = get_object_or_404(PeralatanLaboratorium, qr_token=token)
     return _render_public_master_detail(
         request,
@@ -1924,32 +2166,21 @@ def public_peralatan_laboratorium(request, token):
         page_subtitle="Informasi public peralatan laboratorium.",
         top_meta=obj.kode_laboratorium,
         chips=[obj.status_barang, obj.ketersediaan],
-        detail_items=[
-            {"label": "Nama Barang", "value": _display_value(obj.nama_barang)},
-            {"label": "Tipe / Merek Barang", "value": _display_value(obj.tipe_merek_barang)},
-            {"label": "Jenis Barang", "value": _display_value(obj.jenis_barang)},
-            {"label": "Status Barang", "value": _display_value(obj.status_barang)},
-            {"label": "Kode Aset BMN", "value": _display_value(obj.kode_aset_bmn)},
-            {"label": "Kode Laboratorium", "value": _display_value(obj.kode_laboratorium)},
-            {"label": "Volume Baik", "value": _display_value(obj.volume_baik)},
-            {"label": "Volume Rusak", "value": _display_value(obj.volume_rusak)},
-            {"label": "Total Volume", "value": _display_value(obj.total_volume)},
-            {"label": "Satuan", "value": _display_value(obj.satuan)},
-            {"label": "Ketersediaan", "value": _display_value(obj.ketersediaan)},
-            {"label": "Tahun Perolehan", "value": _display_value(obj.tahun_perolehan)},
-            {"label": "Kondisi Barang", "value": _display_value(obj.kondisi_barang if obj.status_barang == StatusBarangChoices.BMN else None)},
-            {"label": "Lokasi Barang", "value": _display_value(obj.lokasi_barang)},
-            {"label": "Pemeliharaan Terakhir", "value": _display_date(obj.tanggal_pemeliharaan)},
-            {"label": "Perbaikan Terakhir", "value": _display_date(obj.tanggal_perbaikan)},
-            _ik_alat_detail_item(obj),
-            {"label": "Catatan", "value": _display_value(obj.catatan), "full": True},
-        ],
+        detail_items=_get_peralatan_laboratorium_detail_items(obj),
+        loan_chart=_build_pinjam_chart(
+            request,
+            obj,
+            item_model=PeminjamanPeralatanLaboratorium,
+            label="Peralatan Laboratorium",
+        ),
         top_icon="bi-pc-display",
     )
 
 
 @login_required
 def detail_barang_laboratorium(request, pk):
+    from apps.peminjaman.models import PeminjamanBarangLaboratorium
+
     obj = get_object_or_404(BarangLaboratorium, pk=pk)
     context = _build_detail_context(
         obj=obj,
@@ -1961,6 +2192,12 @@ def detail_barang_laboratorium(request, pk):
         top_meta=obj.kode_laboratorium,
         chips=[obj.status_barang, obj.ketersediaan],
         detail_items=_get_barang_laboratorium_detail_items(obj),
+        loan_chart=_build_pinjam_chart(
+            request,
+            obj,
+            item_model=PeminjamanBarangLaboratorium,
+            label="Peralatan Survei Lapangan",
+        ),
         top_icon="bi-tools",
     )
     return render(request, "master_data/detail_barang.html", context)
@@ -2267,6 +2504,8 @@ def data_peralatan_laboratorium(request):
 
 @login_required
 def detail_peralatan_laboratorium(request, pk):
+    from apps.peminjaman.models import PeminjamanPeralatanLaboratorium
+
     obj = get_object_or_404(PeralatanLaboratorium, pk=pk)
     context = _build_detail_context(
         obj=obj,
@@ -2277,38 +2516,13 @@ def detail_peralatan_laboratorium(request, pk):
         back_url_name="master_data:data_peralatan_laboratorium",
         top_meta=obj.kode_laboratorium,
         chips=[obj.status_barang, obj.ketersediaan],
-        detail_items=[
-            {"label": "Nama Barang", "value": _display_value(obj.nama_barang)},
-            {
-                "label": "Tipe / Merek Barang",
-                "value": _display_value(obj.tipe_merek_barang),
-            },
-            {"label": "Jenis Barang", "value": _display_value(obj.jenis_barang)},
-            {"label": "Status Barang", "value": _display_value(obj.status_barang)},
-            {"label": "Kode Aset BMN", "value": _display_value(obj.kode_aset_bmn)},
-            {
-                "label": "Kode Laboratorium",
-                "value": _display_value(obj.kode_laboratorium),
-            },
-            {"label": "Volume Baik", "value": _display_value(obj.volume_baik)},
-            {"label": "Volume Rusak", "value": _display_value(obj.volume_rusak)},
-            {"label": "Total Volume", "value": _display_value(obj.total_volume)},
-            {"label": "Satuan", "value": _display_value(obj.satuan)},
-            {"label": "Ketersediaan", "value": _display_value(obj.ketersediaan)},
-            {"label": "Tahun Perolehan", "value": _display_value(obj.tahun_perolehan)},
-            {"label": "Kondisi Barang", "value": _display_value(obj.kondisi_barang if obj.status_barang == StatusBarangChoices.BMN else None)},
-            {"label": "Lokasi Barang", "value": _display_value(obj.lokasi_barang)},
-            {
-                "label": "Pemeliharaan Terakhir",
-                "value": _display_date(obj.tanggal_pemeliharaan),
-            },
-            {
-                "label": "Perbaikan Terakhir",
-                "value": _display_date(obj.tanggal_perbaikan),
-            },
-            _ik_alat_detail_item(obj),
-            {"label": "Catatan", "value": _display_value(obj.catatan), "full": True},
-        ],
+        detail_items=_get_peralatan_laboratorium_detail_items(obj),
+        loan_chart=_build_pinjam_chart(
+            request,
+            obj,
+            item_model=PeminjamanPeralatanLaboratorium,
+            label="Peralatan Laboratorium",
+        ),
         top_icon="bi-pc-display",
     )
     return render(request, "master_data/detail_barang.html", context)
@@ -2404,6 +2618,9 @@ def download_format_import_peralatan_laboratorium(request):
             2026,
             'Baik',
             'Ruang Laboratorium 1',
+            '2026-03-01',
+            '2026-04-01',
+            'Contoh catatan peralatan.',
         ],
         references=[
             ('Status Barang', status_values),

@@ -1,0 +1,23 @@
+{% if pinjam_chart %}
+<section class="asset-loan-chart" aria-label="{{ pinjam_chart.title }}">
+    <div class="asset-loan-chart__head">
+        <div>
+            <h3>{{ pinjam_chart.title }}</h3>
+            <p>{{ pinjam_chart.subtitle }}</p>
+        </div>
+        <div class="asset-loan-chart__filter">
+            <label for="loanChartYear">Tahun</label>
+            <select id="loanChartYear" aria-label="Filter tahun riwayat peminjaman">
+                <option value="all">All</option>
+                {% for year in pinjam_chart.availableYears %}
+                    <option value="{{ year }}" {% if year == pinjam_chart.defaultYear %}selected{% endif %}>{{ year }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+    <div class="asset-loan-chart__area" data-loan-wrap>
+        <canvas id="loanChart" aria-label="Grafik jumlah peminjaman alat"></canvas>
+        <div class="asset-loan-chart__empty is-hidden" data-loan-empty>Belum ada data peminjaman pada periode ini.</div>
+    </div>
+</section>
+{% endif %}
