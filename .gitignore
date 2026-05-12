@@ -19,6 +19,7 @@ local_settings.py
 
 # Environment secrets
 .env
+.env.backup
 .env.local
 .env.production
 
