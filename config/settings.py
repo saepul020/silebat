@@ -12,20 +12,62 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 import os
 from pathlib import Path
+from urllib.parse import parse_qs, urlparse, unquote
+
+from dotenv import load_dotenv
+
+# Build paths inside the project like this: BASE_DIR / 'subdir'.
+BASE_DIR = Path(__file__).resolve().parent.parent
+ON_VERCEL = os.getenv("VERCEL") == "1"
+
+# Di Vercel, gunakan Environment Variables dari dashboard Vercel.
+# File .env lokal sengaja tidak dimuat agar konfigurasi Docker/dev
+# tidak ikut terbawa ke production serverless.
+if not ON_VERCEL:
+    load_dotenv(BASE_DIR / ".env")
 
 
 def env_bool(key, default=False):
     val = os.getenv(key)
     if val is None:
         return default
-    return val.lower() in ["1", "true", "yes", "on"]
+    return val.strip().lower() in ["1", "true", "yes", "on"]
 
 
-from dotenv import load_dotenv
+def env_list(key, default=""):
+    return [item.strip() for item in os.getenv(key, default).split(",") if item.strip()]
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(BASE_DIR / ".env")
+
+def add_unique(items, value):
+    if value and value not in items:
+        items.append(value)
+
+
+def vercel_hosts():
+    hosts = []
+    for key in ["VERCEL_URL", "VERCEL_PROJECT_PRODUCTION_URL"]:
+        host = os.getenv(key, "").strip()
+        if host:
+            add_unique(hosts, host.replace("https://", "").replace("http://", ""))
+    return hosts
+
+
+def db_from_url(url):
+    parsed = urlparse(url)
+    engine = "django.db.backends.postgresql"
+    query = parse_qs(parsed.query)
+    cfg = {
+        "ENGINE": engine,
+        "NAME": unquote(parsed.path.lstrip("/")),
+        "USER": unquote(parsed.username or ""),
+        "PASSWORD": unquote(parsed.password or ""),
+        "HOST": parsed.hostname or "",
+        "PORT": str(parsed.port or ""),
+    }
+    sslmode = query.get("sslmode", [""])[0]
+    if sslmode:
+        cfg["OPTIONS"] = {"sslmode": sslmode}
+    return cfg
 
 
 # Quick-start development settings - unsuitable for production
@@ -35,22 +77,22 @@ load_dotenv(BASE_DIR / ".env")
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = env_bool("DEBUG", True)
+DEBUG = env_bool("DEBUG", not ON_VERCEL)
 
-ALLOWED_HOSTS = [
-    host.strip()
-    for host in os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
-    if host.strip()
-]
+DEFAULT_HOSTS = "localhost,127.0.0.1,0.0.0.0,silebat-cujz.vercel.app"
+ALLOWED_HOSTS = env_list("ALLOWED_HOSTS", DEFAULT_HOSTS)
+for host in vercel_hosts():
+    add_unique(ALLOWED_HOSTS, host)
 
-PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "http://127.0.0.1:8000")
+PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "https://silebat-cujz.vercel.app" if ON_VERCEL else "http://127.0.0.1:8000")
 DASHBOARD_TV_SLUG = os.getenv("DASHBOARD_TV_SLUG", "lab-tv-realtime-silebat-7q4m2x9v")
 
-CSRF_TRUSTED_ORIGINS = [
-    origin.strip()
-    for origin in os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",")
-    if origin.strip()
-]
+CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS")
+for origin in [PUBLIC_BASE_URL, "https://silebat-cujz.vercel.app"]:
+    if origin.startswith(("http://", "https://")):
+        add_unique(CSRF_TRUSTED_ORIGINS, origin.rstrip("/"))
+for host in vercel_hosts():
+    add_unique(CSRF_TRUSTED_ORIGINS, f"https://{host}")
 
 
 # Application definition
@@ -109,8 +151,12 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
+DB_URL = os.getenv("DATABASE_URL") or os.getenv("POSTGRES_URL")
+
 DATABASES = {
-    "default": {
+    "default": db_from_url(DB_URL)
+    if DB_URL
+    else {
         "ENGINE": os.getenv("DB_ENGINE", "django.db.backends.postgresql"),
         "NAME": os.getenv("DB_NAME", "silebat_db"),
         "USER": os.getenv("DB_USER", "postgres"),
@@ -172,3 +218,8 @@ LOGOUT_REDIRECT_URL = "/"
 if not DEBUG:
     SECURE_CONTENT_TYPE_NOSNIFF = True
     X_FRAME_OPTIONS = "DENY"
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    USE_X_FORWARDED_HOST = env_bool("USE_X_FORWARDED_HOST", ON_VERCEL)
+    SESSION_COOKIE_SECURE = env_bool("SESSION_COOKIE_SECURE", ON_VERCEL)
+    CSRF_COOKIE_SECURE = env_bool("CSRF_COOKIE_SECURE", ON_VERCEL)
+    SECURE_SSL_REDIRECT = env_bool("SECURE_SSL_REDIRECT", False)
