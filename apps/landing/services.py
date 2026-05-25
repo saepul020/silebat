@@ -1,5 +1,9 @@
+import logging
+
 from django.core.cache import cache
+from django.db import DatabaseError
 from django.db.models import Count, Q, Sum
+from django.db.utils import InterfaceError, OperationalError, ProgrammingError
 from django.utils import timezone
 
 from apps.master_data.models import BarangLaboratorium, KategoriBarangLaboratoriumChoices
@@ -9,8 +13,11 @@ from apps.peminjaman.models import PeminjamanRequest, ReturnStepChoices, StepCho
 from .models import LandingPeralatanCard
 
 
-LANDING_CONTEXT_CACHE_KEY = "public_landing_context_v4"
+logger = logging.getLogger(__name__)
+
+LANDING_CONTEXT_CACHE_KEY = "public_landing_context_v5"
 LANDING_CONTEXT_CACHE_TIMEOUT = 60
+LANDING_FALLBACK_CACHE_TIMEOUT = 10
 
 LANDING_PALETTE = [
     "#103e6f",
@@ -50,6 +57,32 @@ def build_chart_payload(labels, data):
         "labels": labels,
         "data": [int(value or 0) for value in data],
         "colors": [LANDING_PALETTE[index % len(LANDING_PALETTE)] for index, _ in enumerate(labels)],
+    }
+
+
+def get_empty_chart_payload():
+    return build_chart_payload([], [])
+
+
+def get_empty_public_landing_context():
+    current_year = timezone.localtime().year
+    return {
+        "landing_stats": {
+            "kegiatan_berjalan": 0,
+            "kegiatan_selesai": 0,
+            "total_kegiatan_survei": 0,
+            "jumlah_peralatan_survei": 0,
+            "current_year": current_year,
+        },
+        "landing_charts": {
+            "survei": get_empty_chart_payload(),
+            "layanan": get_empty_chart_payload(),
+            "pengukuran": get_empty_chart_payload(),
+            "instansi": get_empty_chart_payload(),
+        },
+        "inventory_cards": [],
+        "equipment_cards": [],
+        "landing_data_unavailable": True,
     }
 
 
@@ -217,6 +250,13 @@ def get_public_landing_context():
     if cached_context is not None:
         return cached_context
 
-    context = build_public_landing_context()
+    try:
+        context = build_public_landing_context()
+    except (DatabaseError, InterfaceError, OperationalError, ProgrammingError):
+        logger.exception("Data landing publik belum tersedia atau database tidak dapat diakses.")
+        context = get_empty_public_landing_context()
+        cache.set(LANDING_CONTEXT_CACHE_KEY, context, LANDING_FALLBACK_CACHE_TIMEOUT)
+        return context
+
     cache.set(LANDING_CONTEXT_CACHE_KEY, context, LANDING_CONTEXT_CACHE_TIMEOUT)
     return context

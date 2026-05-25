@@ -38,6 +38,14 @@ def env_list(key, default=""):
     return [item.strip() for item in os.getenv(key, default).split(",") if item.strip()]
 
 
+def first_env(*keys):
+    for key in keys:
+        value = os.getenv(key, "").strip()
+        if value:
+            return value
+    return ""
+
+
 def add_unique(items, value):
     if value and value not in items:
         items.append(value)
@@ -65,6 +73,8 @@ def db_from_url(url):
         "PORT": str(parsed.port or ""),
     }
     sslmode = query.get("sslmode", [""])[0]
+    if DB_CONN_MAX_AGE:
+        cfg["CONN_MAX_AGE"] = DB_CONN_MAX_AGE
     if sslmode:
         cfg["OPTIONS"] = {"sslmode": sslmode}
     return cfg
@@ -151,7 +161,8 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-DB_URL = os.getenv("DATABASE_URL") or os.getenv("POSTGRES_URL")
+DB_URL = first_env("DATABASE_URL", "POSTGRES_URL", "POSTGRES_PRISMA_URL", "POSTGRES_URL_NON_POOLING")
+DB_CONN_MAX_AGE = int(os.getenv("DB_CONN_MAX_AGE", "0"))
 
 DATABASES = {
     "default": db_from_url(DB_URL)
@@ -163,6 +174,7 @@ DATABASES = {
         "PASSWORD": os.getenv("DB_PASSWORD", ""),
         "HOST": os.getenv("DB_HOST", "db"),
         "PORT": os.getenv("DB_PORT", "5432"),
+        "CONN_MAX_AGE": DB_CONN_MAX_AGE,
     }
 }
 
