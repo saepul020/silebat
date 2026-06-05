@@ -18,13 +18,9 @@ from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-ON_VERCEL = os.getenv("VERCEL") == "1"
 
-# Di Vercel, gunakan Environment Variables dari dashboard Vercel.
-# File .env lokal sengaja tidak dimuat agar konfigurasi Docker/dev
-# tidak ikut terbawa ke production serverless.
-if not ON_VERCEL:
-    load_dotenv(BASE_DIR / ".env")
+# Target deploy project: local development, Docker demo, dan Oracle VPS.
+load_dotenv(BASE_DIR / ".env")
 
 
 def env_bool(key, default=False):
@@ -38,26 +34,9 @@ def env_list(key, default=""):
     return [item.strip() for item in os.getenv(key, default).split(",") if item.strip()]
 
 
-def first_env(*keys):
-    for key in keys:
-        value = os.getenv(key, "").strip()
-        if value:
-            return value
-    return ""
-
-
 def add_unique(items, value):
     if value and value not in items:
         items.append(value)
-
-
-def vercel_hosts():
-    hosts = []
-    for key in ["VERCEL_URL", "VERCEL_PROJECT_PRODUCTION_URL"]:
-        host = os.getenv(key, "").strip()
-        if host:
-            add_unique(hosts, host.replace("https://", "").replace("http://", ""))
-    return hosts
 
 
 def db_from_url(url):
@@ -87,22 +66,17 @@ def db_from_url(url):
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = env_bool("DEBUG", not ON_VERCEL)
+DEBUG = env_bool("DEBUG", True)
 
-DEFAULT_HOSTS = "localhost,127.0.0.1,0.0.0.0,silebat-cujz.vercel.app"
+DEFAULT_HOSTS = "localhost,127.0.0.1,0.0.0.0"
 ALLOWED_HOSTS = env_list("ALLOWED_HOSTS", DEFAULT_HOSTS)
-for host in vercel_hosts():
-    add_unique(ALLOWED_HOSTS, host)
 
-PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "https://silebat-cujz.vercel.app" if ON_VERCEL else "http://127.0.0.1:8000")
+PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "http://127.0.0.1:8000")
 DASHBOARD_TV_SLUG = os.getenv("DASHBOARD_TV_SLUG", "lab-tv-realtime-silebat-7q4m2x9v")
 
 CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS")
-for origin in [PUBLIC_BASE_URL, "https://silebat-cujz.vercel.app"]:
-    if origin.startswith(("http://", "https://")):
-        add_unique(CSRF_TRUSTED_ORIGINS, origin.rstrip("/"))
-for host in vercel_hosts():
-    add_unique(CSRF_TRUSTED_ORIGINS, f"https://{host}")
+if PUBLIC_BASE_URL.startswith(("http://", "https://")):
+    add_unique(CSRF_TRUSTED_ORIGINS, PUBLIC_BASE_URL.rstrip("/"))
 
 
 # Application definition
@@ -161,7 +135,7 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-DB_URL = first_env("DATABASE_URL", "POSTGRES_URL", "POSTGRES_PRISMA_URL", "POSTGRES_URL_NON_POOLING")
+DB_URL = os.getenv("DATABASE_URL", "").strip()
 DB_CONN_MAX_AGE = int(os.getenv("DB_CONN_MAX_AGE", "0"))
 
 DATABASES = {
@@ -231,7 +205,7 @@ if not DEBUG:
     SECURE_CONTENT_TYPE_NOSNIFF = True
     X_FRAME_OPTIONS = "DENY"
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-    USE_X_FORWARDED_HOST = env_bool("USE_X_FORWARDED_HOST", ON_VERCEL)
-    SESSION_COOKIE_SECURE = env_bool("SESSION_COOKIE_SECURE", ON_VERCEL)
-    CSRF_COOKIE_SECURE = env_bool("CSRF_COOKIE_SECURE", ON_VERCEL)
+    USE_X_FORWARDED_HOST = env_bool("USE_X_FORWARDED_HOST", False)
+    SESSION_COOKIE_SECURE = env_bool("SESSION_COOKIE_SECURE", False)
+    CSRF_COOKIE_SECURE = env_bool("CSRF_COOKIE_SECURE", False)
     SECURE_SSL_REDIRECT = env_bool("SECURE_SSL_REDIRECT", False)

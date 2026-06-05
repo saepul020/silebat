@@ -12,7 +12,7 @@ Stack utama:
 - Django 6.0.x
 - PostgreSQL
 - Gunicorn, Nginx, Docker Compose
-- Vercel/serverless support melalui environment variable
+- Target runtime: local development, Docker demo, dan Oracle VPS publish
 - Static/media lokal melalui `static/`, `staticfiles/`, dan `media/`
 
 Konfigurasi penting:

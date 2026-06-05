@@ -17,11 +17,11 @@
     fetchpriority="high"
   />
 
-  <link rel="stylesheet" href="{% static 'css/landing_critical.css' %}?v=20260605-hero-responsive-v1">
+  <link rel="stylesheet" href="{% static 'css/landing_critical.css' %}?v=20260605-wide-desktop-v1">
 
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=DM+Serif+Display&display=swap">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-  <link rel="stylesheet" href="{% static 'css/landing_page.css' %}?v=20260605-hero-responsive-v1">
+  <link rel="stylesheet" href="{% static 'css/landing_page.css' %}?v=20260605-wide-desktop-v1">
   <link rel="stylesheet" href="{% static 'css/chatbot.css' %}?v=20260604-avatar-img-v1">
 </head>
 <body>
@@ -292,10 +292,20 @@
     <div class="alat-grid">
       {% for card in inventory_cards %}
       <div class="alat-card">
-        <div class="alat-icon"><i class="{{ card.icon }}"></i></div>
-        <div class="alat-num">{{ card.total }}</div>
-        <div class="alat-unit">Unit</div>
-        <div class="alat-name">{{ card.label }}</div>
+        <div class="alat-pic">
+          {% if card.img %}
+            <img src="{% static card.img %}" alt="Foto {{ card.label }}" loading="lazy" decoding="async">
+          {% else %}
+            <div class="alat-pic-empty" aria-hidden="true"></div>
+          {% endif %}
+        </div>
+        <div class="alat-body">
+          <div class="alat-count">
+            <span class="alat-num">{{ card.total }}</span>
+            <span class="alat-unit">Unit</span>
+          </div>
+          <div class="alat-name">{{ card.label }}</div>
+        </div>
       </div>
       {% empty %}
       <div class="landing-empty-state">Belum ada data kategori peralatan survei lapangan.</div>
@@ -397,7 +407,11 @@
         </div>
         <div class="footer-contact-item">
           <i class="bi bi-telephone-fill"></i>
-          <span>0819 1300 9001</span>
+          <a href="tel:+622220463967" aria-label="Telepon kantor Laboratorium Balai Air Tanah"><span>(022) 20463967</span></a>
+        </div>
+        <div class="footer-contact-item">
+          <i class="bi bi-whatsapp"></i>
+          <a href="https://wa.me/6281913009001?text=Halo%2C%20saya%20ingin%20bertanya%20dan%20berkoordinasi%20terkait%20layanan%20Laboratorium%20Balai%20Air%20Tanah.%20Terima%20kasih." target="_blank" rel="noopener noreferrer" aria-label="Chat WhatsApp Laboratorium Balai Air Tanah"><span>0819 1300 9001</span></a>
         </div>
         <div class="footer-contact-item">
           <i class="bi bi-envelope-fill"></i>

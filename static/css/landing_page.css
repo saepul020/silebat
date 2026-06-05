@@ -17,6 +17,8 @@
   --radius: 18px;
   --radius-sm: 12px;
   --navbar-height: 72px;
+  --container-w: 1200px;
+  --container-pad: 48px;
 }
 
 *,
@@ -63,7 +65,7 @@ input {
    UTILITIES
 ============================================================ */
 .container {
-  width: min(100% - 48px, 1200px);
+  width: min(100% - var(--container-pad), var(--container-w));
   margin-inline: auto;
 }
 
@@ -989,7 +991,9 @@ input {
 
 .alat-card {
   min-width: 0;
-  padding: 26px 20px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   border: 2px solid transparent;
   border-radius: var(--radius);
   background: var(--white);
@@ -1004,21 +1008,51 @@ input {
   transform: translateY(-6px);
 }
 
-.alat-icon {
+.alat-pic {
+  min-width: 0;
+  height: 180px;
+  overflow: hidden;
+  background: linear-gradient(135deg, rgba(184, 225, 242, .44), rgba(240, 244, 246, .86));
+}
+
+.alat-pic img,
+.alat-pic-empty {
+  width: 100%;
+  height: 100%;
+}
+
+.alat-pic img {
+  object-fit: cover;
+  transform: scale(1);
+  transition: transform .45s ease;
+}
+
+.alat-card:hover .alat-pic img {
+  transform: scale(1.05);
+}
+
+.alat-pic-empty {
+  background: rgba(16, 62, 111, .04);
+}
+
+.alat-body {
+  flex: 1 1 auto;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: 60px;
-  height: 60px;
-  margin: 0 auto 16px;
-  border-radius: 18px;
-  background: linear-gradient(135deg, var(--navy), #1a5c9c);
-  color: var(--white);
-  font-size: 1.6rem;
+  gap: 8px;
+  padding: 18px 16px 20px;
+}
+
+.alat-count {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 6px;
 }
 
 .alat-num {
-  margin-bottom: 6px;
   color: var(--navy);
   font-size: 2rem;
   font-weight: 800;
@@ -1034,7 +1068,6 @@ input {
 }
 
 .alat-name {
-  margin-top: 8px;
   color: #374151;
   font-size: .88rem;
   font-weight: 600;
@@ -1341,6 +1374,15 @@ input {
   color: var(--teal);
 }
 
+.footer-contact-item a {
+  color: inherit;
+  transition: color .2s ease;
+}
+
+.footer-contact-item a:hover {
+  color: var(--teal);
+}
+
 .footer-bottom {
   display: flex;
   align-items: center;
@@ -1423,6 +1465,75 @@ input {
 /* ============================================================
    RESPONSIVE
 ============================================================ */
+@media (min-width: 2200px) {
+  :root {
+    --container-w: 1680px;
+    --container-pad: 96px;
+  }
+
+  .hero-inner {
+    gap: 76px;
+    padding: 104px 0 82px;
+  }
+
+  .hero h1,
+  .hero-desc {
+    max-width: 640px;
+  }
+
+  .hero-img-card {
+    height: clamp(440px, 24vw, 540px);
+  }
+
+  .hero-wave {
+    height: 150px;
+  }
+
+  .profil,
+  .traffic,
+  .charts,
+  .alat-utama,
+  .peralatan {
+    padding: 96px 0;
+  }
+
+  .profil-grid {
+    gap: 78px;
+  }
+
+  .profil-img {
+    height: 480px;
+  }
+
+  .stats-grid,
+  .alat-grid {
+    gap: 24px;
+  }
+
+  .charts-grid,
+  .peralatan-grid {
+    gap: 32px;
+  }
+
+  .chart-wrap--fixed {
+    height: 360px;
+    min-height: 360px;
+  }
+
+  .alat-pic,
+  .peralatan-img {
+    height: 220px;
+  }
+
+  .footer {
+    padding-top: 76px;
+  }
+
+  .footer-grid {
+    gap: 56px;
+  }
+}
+
 @media (max-width: 1080px) {
   .nav-brand {
     max-width: 310px;
@@ -1738,10 +1849,17 @@ input {
   }
 
   .stat-card,
-  .alat-card,
   .chart-card,
   .peralatan-body {
     padding: 18px;
+  }
+
+  .alat-pic {
+    height: 132px;
+  }
+
+  .alat-body {
+    padding: 14px;
   }
 
   .stat-num,

@@ -15,7 +15,7 @@ from .models import LandingPeralatanCard
 
 logger = logging.getLogger(__name__)
 
-LANDING_CONTEXT_CACHE_KEY = "public_landing_context_v5"
+LANDING_CONTEXT_CACHE_KEY = "public_landing_context_v6"
 LANDING_CONTEXT_CACHE_TIMEOUT = 60
 LANDING_FALLBACK_CACHE_TIMEOUT = 10
 
@@ -32,15 +32,15 @@ LANDING_PALETTE = [
     "#155e75",
 ]
 
-CATEGORY_ICON_MAP = {
-    KategoriBarangLaboratoriumChoices.BOREHOLE_CAMERA: "bi bi-camera-video-fill",
-    KategoriBarangLaboratoriumChoices.DRONE: "bi bi-send-fill",
-    KategoriBarangLaboratoriumChoices.GEOLISTRIK: "bi bi-lightning-charge-fill",
-    KategoriBarangLaboratoriumChoices.INFILTRASI: "bi bi-water",
-    KategoriBarangLaboratoriumChoices.INSTRUMEN_KEAIRAN: "bi bi-moisture",
-    KategoriBarangLaboratoriumChoices.LOGGING: "bi bi-reception-4",
-    KategoriBarangLaboratoriumChoices.TOPOGRAFI_TS: "bi bi-crosshair",
-    KategoriBarangLaboratoriumChoices.PENDUKUNG_SURVEI_LAPANGAN: "bi bi-box-seam-fill",
+CATEGORY_IMG_MAP = {
+    KategoriBarangLaboratoriumChoices.BOREHOLE_CAMERA: "assets/img/borehole.png",
+    KategoriBarangLaboratoriumChoices.DRONE: "assets/img/drone.png",
+    KategoriBarangLaboratoriumChoices.GEOLISTRIK: "assets/img/geolistrik.png",
+    KategoriBarangLaboratoriumChoices.INFILTRASI: "assets/img/infiltrometer.png",
+    KategoriBarangLaboratoriumChoices.INSTRUMEN_KEAIRAN: "assets/img/kualitas-air.png",
+    KategoriBarangLaboratoriumChoices.LOGGING: "assets/img/logging.png",
+    KategoriBarangLaboratoriumChoices.TOPOGRAFI_TS: "assets/img/total-station.png",
+    KategoriBarangLaboratoriumChoices.PENDUKUNG_SURVEI_LAPANGAN: "assets/img/pendukung-survei.png",
 }
 
 
@@ -187,7 +187,7 @@ def get_inventory_category_cards():
         {
             "label": choice_labels.get(row["kategori_barang"], row["kategori_barang"] or "-"),
             "total": int(row["total"] or 0),
-            "icon": CATEGORY_ICON_MAP.get(row["kategori_barang"], "bi bi-box-seam-fill"),
+            "img": CATEGORY_IMG_MAP.get(row["kategori_barang"], ""),
         }
         for row in rows
     ]
