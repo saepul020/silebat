@@ -1838,7 +1838,8 @@ input {
     border-radius: 22px;
   }
 
-  .profil::before {
+  .profil::before,
+  .charts::before {
     display: none;
   }
 
