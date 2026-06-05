@@ -627,8 +627,27 @@ input {
    PROFIL SECTION
 ============================================================ */
 .profil {
+  position: relative;
+  overflow: hidden;
   padding: 82px 0;
   background: var(--white);
+  isolation: isolate;
+}
+
+.profil::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 0 auto;
+  z-index: 0;
+  width: 100%;
+  background: url("../assets/img/silhouette-1.png") right center / auto 100% no-repeat;
+  opacity: 27%;
+  pointer-events: none;
+}
+
+.profil > .container {
+  position: relative;
+  z-index: 1;
 }
 
 .profil-grid {
@@ -831,8 +850,27 @@ input {
    CHARTS SECTION
 ============================================================ */
 .charts {
+  position: relative;
+  overflow: hidden;
   padding: 82px 0;
   background: var(--white);
+  isolation: isolate;
+}
+
+.charts::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  z-index: 0;
+  width: 100%;
+  background: url("../assets/img/silhouette-2.png") left center / auto 100% no-repeat;
+  opacity: 20%;
+  pointer-events: none;
+}
+
+.charts > .container {
+  position: relative;
+  z-index: 1;
 }
 
 .charts-grid {
@@ -1355,8 +1393,8 @@ input {
 
 #backTop {
   position: fixed;
-  right: 32px;
-  bottom: 100px;
+  right: 50px;
+  bottom: 138px;
   z-index: 800;
   display: none;
   align-items: center;
@@ -1523,13 +1561,20 @@ input {
 
   .hero-image-wrap {
     display: grid;
+    width: 100%;
+    max-width: 100%;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
+    justify-items: stretch;
+    margin-inline: auto;
   }
 
   .hero-img-card {
     grid-column: 1 / -1;
-    height: 300px;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    aspect-ratio: 2528 / 1696;
     border-radius: 26px;
   }
 
@@ -1537,8 +1582,15 @@ input {
   .hero-badge2 {
     position: static;
     justify-content: center;
+    width: 100%;
+    min-width: 0;
     min-height: 72px;
     text-align: left;
+  }
+
+  .hero-badge2 {
+    display: flex;
+    flex-direction: column;
   }
 
   .hero-wave {
@@ -1614,18 +1666,44 @@ input {
   }
 
   .hero-img-card {
-    height: 240px;
+    width: 100%;
+    max-width: 100%;
     border-radius: 22px;
   }
 
   .hero-image-wrap {
-    grid-template-columns: 1fr;
+    width: 100%;
+    max-width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
   }
 
   .hero-badge,
   .hero-badge2 {
-    padding: 12px 14px;
+    min-height: 66px;
+    padding: 10px;
     border-radius: 16px;
+  }
+
+  .hero-badge {
+    gap: 8px;
+  }
+
+  .hero-badge .icon {
+    font-size: 1.1rem;
+  }
+
+  .hero-badge .text .t1,
+  .hero-badge2 .t1 {
+    font-size: .62rem;
+  }
+
+  .hero-badge .text .t2 {
+    font-size: .76rem;
+  }
+
+  .hero-badge2 .t2 {
+    font-size: 1rem;
   }
 
   .hero-wave {
@@ -1647,6 +1725,10 @@ input {
   .profil-img {
     height: 235px;
     border-radius: 22px;
+  }
+
+  .profil::before {
+    display: none;
   }
 
   .stats-grid,
@@ -1692,8 +1774,8 @@ input {
   }
 
   #backTop {
-    right: 18px;
-    bottom: 88px;
+    right: 31px;
+    bottom: 108px;
   }
 }
 

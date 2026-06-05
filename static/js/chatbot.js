@@ -12,19 +12,17 @@ function initPublicChatbot() {
     const chatBody = document.getElementById('chatBody');
     const chatInput = document.getElementById('chatInput');
     const chatSend = document.getElementById('chatSend');
+    const chatClose = document.getElementById('chatClose');
     let chatOpened = false;
 
-    if (!chatToggle || !chatWindow || !chatBody || !chatInput || !chatSend) {
+    if (!chatToggle || !chatWindow || !chatBody || !chatInput || !chatSend || !chatClose) {
         return;
     }
 
     chatToggle.addEventListener('click', function () {
         const isOpen = !chatWindow.classList.contains('open');
 
-        chatToggle.classList.toggle('open', isOpen);
-        chatWindow.classList.toggle('open', isOpen);
-        chatToggle.setAttribute('aria-expanded', String(isOpen));
-        chatWindow.setAttribute('aria-hidden', String(!isOpen));
+        setOpen(isOpen);
 
         if (!chatOpened) {
             chatOpened = true;
@@ -44,6 +42,10 @@ function initPublicChatbot() {
         }
     });
 
+    chatClose.addEventListener('click', function () {
+        setOpen(false);
+    });
+
     chatSend.addEventListener('click', sendMessage);
     chatInput.addEventListener('keydown', function (event) {
         if (event.key === 'Enter') {
@@ -57,6 +59,12 @@ function initPublicChatbot() {
 
     function addUserMsg(text) {
         addMessage(text, 'user');
+    }
+
+    function setOpen(isOpen) {
+        chatWindow.classList.toggle('open', isOpen);
+        chatToggle.setAttribute('aria-expanded', String(isOpen));
+        chatWindow.setAttribute('aria-hidden', String(!isOpen));
     }
 
     function addMessage(text, type) {
