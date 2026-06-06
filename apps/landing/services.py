@@ -33,14 +33,14 @@ LANDING_PALETTE = [
 ]
 
 CATEGORY_IMG_MAP = {
-    KategoriBarangLaboratoriumChoices.BOREHOLE_CAMERA: "assets/img/borehole.png",
-    KategoriBarangLaboratoriumChoices.DRONE: "assets/img/drone.png",
-    KategoriBarangLaboratoriumChoices.GEOLISTRIK: "assets/img/geolistrik.png",
-    KategoriBarangLaboratoriumChoices.INFILTRASI: "assets/img/infiltrometer.png",
-    KategoriBarangLaboratoriumChoices.INSTRUMEN_KEAIRAN: "assets/img/kualitas-air.png",
-    KategoriBarangLaboratoriumChoices.LOGGING: "assets/img/logging.png",
-    KategoriBarangLaboratoriumChoices.TOPOGRAFI_TS: "assets/img/total-station.png",
-    KategoriBarangLaboratoriumChoices.PENDUKUNG_SURVEI_LAPANGAN: "assets/img/pendukung-survei.png",
+    KategoriBarangLaboratoriumChoices.BOREHOLE_CAMERA: "assets/img/borehole.webp",
+    KategoriBarangLaboratoriumChoices.DRONE: "assets/img/drone.webp",
+    KategoriBarangLaboratoriumChoices.GEOLISTRIK: "assets/img/geolistrik.webp",
+    KategoriBarangLaboratoriumChoices.INFILTRASI: "assets/img/infiltrometer.webp",
+    KategoriBarangLaboratoriumChoices.INSTRUMEN_KEAIRAN: "assets/img/kualitas-air.webp",
+    KategoriBarangLaboratoriumChoices.LOGGING: "assets/img/logging.webp",
+    KategoriBarangLaboratoriumChoices.TOPOGRAFI_TS: "assets/img/total-station.webp",
+    KategoriBarangLaboratoriumChoices.PENDUKUNG_SURVEI_LAPANGAN: "assets/img/pendukung-survei.webp",
 }
 
 

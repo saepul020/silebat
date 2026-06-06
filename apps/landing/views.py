@@ -1,7 +1,8 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.templatetags.static import static
 
 from apps.core.list_pagination import paginate_list
 from apps.core.permissions import is_super_admin, user_passes_access
@@ -18,7 +19,29 @@ landing_manage_required = user_passes_access(
 
 
 def public_home(request):
-    return render(request, "landing/index.html", get_public_landing_context())
+    context = {
+        **get_public_landing_context(),
+        "canonical_url": request.build_absolute_uri(request.path),
+        "social_image_url": request.build_absolute_uri(static("assets/img/foto-kegiatan-gl-desktop.webp")),
+    }
+    return render(request, "landing/index.html", context)
+
+
+def robots_txt(request):
+    sitemap_url = request.build_absolute_uri("/sitemap.xml")
+    content = f"User-agent: *\nAllow: /\nSitemap: {sitemap_url}\n"
+    return HttpResponse(content, content_type="text/plain; charset=utf-8")
+
+
+def sitemap_xml(request):
+    homepage_url = request.build_absolute_uri("/")
+    content = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        f"  <url><loc>{homepage_url}</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>\n"
+        "</urlset>\n"
+    )
+    return HttpResponse(content, content_type="application/xml; charset=utf-8")
 
 
 @login_required

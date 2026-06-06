@@ -455,7 +455,9 @@ function initChartsWhenVisible() {
             return;
         }
         initialized = true;
-        initLandingCharts();
+        loadChartLibrary(chartsSection)
+            .then(initLandingCharts)
+            .catch(initLandingCharts);
     }
 
     if (!chartsSection || typeof IntersectionObserver === 'undefined') {
@@ -474,6 +476,34 @@ function initChartsWhenVisible() {
     });
 
     observer.observe(chartsSection);
+}
+
+function loadChartLibrary(chartsSection) {
+    if (typeof Chart !== 'undefined') {
+        return Promise.resolve();
+    }
+
+    const scriptUrl = chartsSection?.dataset.chartjsUrl;
+    if (!scriptUrl) {
+        return Promise.reject(new Error('URL Chart.js tidak tersedia.'));
+    }
+
+    return new Promise(function (resolve, reject) {
+        const existing = document.querySelector('script[data-chartjs-loader]');
+        if (existing) {
+            existing.addEventListener('load', resolve, { once: true });
+            existing.addEventListener('error', reject, { once: true });
+            return;
+        }
+
+        const script = document.createElement('script');
+        script.src = scriptUrl;
+        script.async = true;
+        script.dataset.chartjsLoader = 'true';
+        script.addEventListener('load', resolve, { once: true });
+        script.addEventListener('error', reject, { once: true });
+        document.head.appendChild(script);
+    });
 }
 
 function initLandingCharts() {

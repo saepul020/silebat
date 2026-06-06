@@ -6,6 +6,8 @@ app_name = "landing"
 
 urlpatterns = [
     path("", views.public_home, name="home"),
+    path("robots.txt", views.robots_txt, name="robots_txt"),
+    path("sitemap.xml", views.sitemap_xml, name="sitemap_xml"),
     path("landing/peralatan/", views.equipment_list, name="equipment_list"),
     path("landing/peralatan/cek-urutan/", views.equipment_order_check, name="equipment_order_check"),
     path("landing/peralatan/tambah/", views.equipment_create, name="equipment_create"),

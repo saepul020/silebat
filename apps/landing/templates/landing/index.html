@@ -4,35 +4,46 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SILEBAT</title>
-
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <title>SILEBAT - Sistem Elektronik Laboratorium Balai Air Tanah</title>
+  <meta name="description" content="SILEBAT menyediakan informasi layanan, kegiatan survei, data operasional, dan peralatan Laboratorium Balai Air Tanah." />
+  <meta name="theme-color" content="#103e6f" />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="{{ canonical_url }}" />
+  <meta property="og:locale" content="id_ID" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="SILEBAT - Sistem Elektronik Laboratorium Balai Air Tanah" />
+  <meta property="og:description" content="Informasi layanan, kegiatan survei, data operasional, dan peralatan Laboratorium Balai Air Tanah." />
+  <meta property="og:url" content="{{ canonical_url }}" />
+  <meta property="og:image" content="{{ social_image_url }}" />
   <link
     rel="preload"
     as="image"
-    href="{% static 'assets/img/foto_kegiatan_gl.jpeg' %}"
-    type="image/jpeg"
+    href="{% static 'assets/img/foto-kegiatan-gl-desktop.webp' %}"
+    imagesrcset="{% static 'assets/img/foto-kegiatan-gl-mobile.webp' %} 768w, {% static 'assets/img/foto-kegiatan-gl-desktop.webp' %} 1280w"
+    imagesizes="(max-width: 860px) calc(100vw - 36px), (max-width: 1200px) 50vw, 600px"
+    type="image/webp"
     fetchpriority="high"
   />
+  <link rel="preload" href="{% static 'fonts/poppins-regular.woff2' %}" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="{% static 'fonts/dm-serif-display-regular.woff2' %}" as="font" type="font/woff2" crossorigin />
 
   <link rel="stylesheet" href="{% static 'css/landing_critical.css' %}?v=20260605-wide-desktop-v1">
-
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=DM+Serif+Display&display=swap">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-  <link rel="stylesheet" href="{% static 'css/landing_page.css' %}?v=20260605-charts-mobile-bg-v1">
+  <link rel="stylesheet" href="{% static 'css/landing_fonts.css' %}?v=20260606-v1">
+  <link rel="stylesheet" href="{% static 'vendor/bootstrap-icons/bootstrap-icons.min.css' %}?v=1.11.3">
+  <link rel="stylesheet" href="{% static 'css/landing_page.css' %}?v=20260606-performance-v1">
   <link rel="stylesheet" href="{% static 'css/chatbot.css' %}?v=20260604-avatar-img-v1">
 </head>
 <body>
 
+<a class="skip-link" href="#main-content">Lewati ke konten utama</a>
+
 <!-- === NAVBAR === -->
-<nav class="navbar" id="navbar">
+<nav class="navbar" id="navbar" aria-label="Navigasi utama">
   <div class="container">
     <div class="nav-inner">
       <a href="#beranda" class="nav-brand" aria-label="SILEBAT - Beranda">
         <div class="nav-logo">
-          <img src="{% static 'assets/img/silebat-logo.png' %}" alt="SILEBAT Logo">
+          <img src="{% static 'assets/img/silebat-logo.webp' %}" alt="SILEBAT" width="180" height="165">
         </div>
         <div class="nav-brand-text">
           <div class="top">SILEBAT</div>
@@ -67,6 +78,7 @@
   </div>
 </nav>
 
+<main id="main-content">
 <!-- === HERO === -->
 <section class="hero" id="beranda">
   <div class="container">
@@ -87,11 +99,13 @@
       <div class="hero-image-wrap">
         <div class="hero-img-card">
           <picture>
+            <source media="(max-width: 860px)" srcset="{% static 'assets/img/foto-kegiatan-gl-mobile.webp' %}" type="image/webp">
+            <source srcset="{% static 'assets/img/foto-kegiatan-gl-desktop.webp' %}" type="image/webp">
             <img
-              src="{% static 'assets/img/foto_kegiatan_gl.jpeg' %}"
+              src="{% static 'assets/img/foto-kegiatan-gl-desktop.webp' %}"
               alt="Foto kegiatan survei geolistrik Laboratorium Balai Air Tanah"
-              width="2528"
-              height="1696"
+              width="1280"
+              height="859"
               fetchpriority="high"
               loading="eager"
               decoding="async"
@@ -140,7 +154,11 @@
     </div>
     <div class="profil-grid">
       <div class="profil-img">
-        <img src="{% static 'assets/img/foto_lab.jpeg' %}" alt="Foto Laboratorium Balai Air Tanah" width="4080" height="3060" loading="lazy" decoding="async">
+        <picture>
+          <source media="(max-width: 860px)" srcset="{% static 'assets/img/foto-lab-mobile.webp' %}" type="image/webp">
+          <source srcset="{% static 'assets/img/foto-lab-desktop.webp' %}" type="image/webp">
+          <img src="{% static 'assets/img/foto-lab-desktop.webp' %}" alt="Foto Laboratorium Balai Air Tanah" width="1200" height="902" loading="lazy" decoding="async">
+        </picture>
       </div>
       <div>
         <span class="section-label">Fungsi & Layanan</span>
@@ -226,7 +244,7 @@
 </section>
 
 <!-- === GRAFIK KEGIATAN === -->
-<section class="charts" id="visualisasi">
+<section class="charts" id="visualisasi" data-chartjs-url="{% static 'vendor/chartjs/chart.umd.min.js' %}">
   <div class="container">
     <span class="section-label">GRAFIK KEGIATAN</span>
     <h2 class="section-title">Rekap Data & Kegiatan</h2>
@@ -294,7 +312,7 @@
       <div class="alat-card">
         <div class="alat-pic">
           {% if card.img %}
-            <img src="{% static card.img %}" alt="Foto {{ card.label }}" loading="lazy" decoding="async">
+            <img src="{% static card.img %}" alt="Foto {{ card.label }}" width="640" height="360" loading="lazy" decoding="async" fetchpriority="low">
           {% else %}
             <div class="alat-pic-empty" aria-hidden="true"></div>
           {% endif %}
@@ -329,7 +347,7 @@
       <div class="peralatan-card">
         <div class="peralatan-img {% if item.foto_url %}peralatan-img--photo{% endif %}">
           {% if item.foto_url %}
-            <img src="{{ item.foto_url }}" alt="Foto {{ item.nama_barang }}" class="peralatan-photo" loading="lazy" decoding="async">
+            <img src="{{ item.foto_url }}" alt="Foto {{ item.nama_barang }}" class="peralatan-photo" loading="lazy" decoding="async" fetchpriority="low">
           {% else %}
             <i class="bi bi-box-seam-fill"></i>
           {% endif %}
@@ -352,6 +370,7 @@
     </div>
   </div>
 </section>
+</main>
 
 <!-- === FOOTER === -->
 <footer class="footer" id="kontak">
@@ -359,7 +378,7 @@
     <div class="footer-grid">
       <div class="footer-brand">
         <div class="footer-logo">
-          <div class="footer-logo-icon"><img src="{% static 'assets/img/silebat-logo.png' %}" alt="SILEBAT Logo"></div>
+          <div class="footer-logo-icon"><img src="{% static 'assets/img/silebat-logo.webp' %}" alt="SILEBAT" width="180" height="165" loading="lazy" decoding="async"></div>
           <div class="footer-logo-text">
             <div class="t1">BALAI AIR TANAH</div>
             <div class="t2">Laboratorium</div>
@@ -369,15 +388,15 @@
           Laboratorium lapangan untuk pemetaan potensi, inspeksi sumur bor, dan evaluasi air tanah.
         </p>
         <div class="footer-socials">
-          <a href="https://www.instagram.com/pu_sda_balaiairtanah/" target="_blank" rel="noopener noreferrer" class="social-btn"><i class="bi bi-instagram"></i></a>
-          <a href="https://www.facebook.com/pupr.sda.balaiairtanah" target="_blank" rel="noopener noreferrer" class="social-btn"><i class="bi bi-facebook"></i></a>
-          <a href="https://x.com/pu_sda_bat" target="_blank" rel="noopener noreferrer" class="social-btn"><i class="bi bi-twitter-x"></i></a>
-          <a href="https://www.youtube.com/@pu_sda_balaiairtanah" target="_blank" rel="noopener noreferrer" class="social-btn"><i class="bi bi-youtube"></i></a>
+          <a href="https://www.instagram.com/pu_sda_balaiairtanah/" target="_blank" rel="noopener noreferrer" class="social-btn" aria-label="Instagram Balai Air Tanah"><i class="bi bi-instagram"></i></a>
+          <a href="https://www.facebook.com/pupr.sda.balaiairtanah" target="_blank" rel="noopener noreferrer" class="social-btn" aria-label="Facebook Balai Air Tanah"><i class="bi bi-facebook"></i></a>
+          <a href="https://x.com/pu_sda_bat" target="_blank" rel="noopener noreferrer" class="social-btn" aria-label="X Balai Air Tanah"><i class="bi bi-twitter-x"></i></a>
+          <a href="https://www.youtube.com/@pu_sda_balaiairtanah" target="_blank" rel="noopener noreferrer" class="social-btn" aria-label="YouTube Balai Air Tanah"><i class="bi bi-youtube"></i></a>
         </div>
       </div>
 
       <div class="footer-col">
-        <h4>Navigasi</h4>
+        <h2>Navigasi</h2>
         <ul>
           <li><a href="#beranda">Beranda</a></li>
           <li><a href="#profil">Profil Laboratorium</a></li>
@@ -389,18 +408,18 @@
       </div>
 
       <div class="footer-col">
-        <h4>Layanan</h4>
+        <h2>Layanan</h2>
         <ul>
-          <li><a href="#">Survei & Pemetaan Air Tanah</a></li>
-          <li><a href="#">Pengukuran Geolistrik</a></li>
-          <li><a href="#">Pengukuran & Monitoring Lapangan</a></li>
-          <li><a href="#">Inspeksi Sumur Bor</a></li>
-          <li><a href="#">Peminjaman Alat Survei</a></li>
+          <li><a href="#layanan">Survei & Pemetaan Air Tanah</a></li>
+          <li><a href="#layanan">Pengukuran Geolistrik</a></li>
+          <li><a href="#layanan">Pengukuran & Monitoring Lapangan</a></li>
+          <li><a href="#layanan">Inspeksi Sumur Bor</a></li>
+          <li><a href="#layanan">Peminjaman Alat Survei</a></li>
         </ul>
       </div>
 
       <div class="footer-col">
-        <h4>Kontak</h4>
+        <h2>Kontak</h2>
         <div class="footer-contact-item">
           <i class="bi bi-geo-alt-fill"></i>
           <a href="https://maps.app.goo.gl/wZUmN4X5trfTV9Pw9" target="_blank" rel="noopener noreferrer"><span>Jl. Ir. H. Juanda No. 193, Bandung, Jawa Barat 40135</span></a>
@@ -415,7 +434,7 @@
         </div>
         <div class="footer-contact-item">
           <i class="bi bi-envelope-fill"></i>
-          <span>balaiairtanah@pu.go.id</span>
+          <a href="mailto:balaiairtanah@pu.go.id"><span>balaiairtanah@pu.go.id</span></a>
         </div>
         <div class="footer-contact-item">
           <i class="bi bi-clock-fill"></i>
@@ -436,7 +455,7 @@
   <div class="chat-window" id="chatWindow" role="dialog" aria-modal="false" aria-hidden="true" aria-labelledby="chatTitle">
     <div class="chat-head">
       <div class="chat-avatar">
-        <img src="{% static 'assets/img/icon-tanya-sobat.png' %}" alt="" width="964" height="1016" decoding="async">
+        <img src="{% static 'assets/img/icon-tanya-sobat.webp' %}" alt="" width="300" height="316" loading="lazy" decoding="async">
       </div>
       <div class="chat-head-text">
         <div class="t1" id="chatTitle">Asisten Virtual</div>
@@ -445,24 +464,24 @@
       <div class="chat-online"></div>
       <button class="chat-close" id="chatClose" type="button" aria-label="Tutup chat"><i class="bi bi-x-lg"></i></button>
     </div>
-    <div class="chat-body" id="chatBody"></div>
+    <div class="chat-body" id="chatBody" aria-live="polite"></div>
     <div class="chat-foot">
-      <input type="text" class="chat-input" id="chatInput" placeholder="Ketik pesan..." />
+      <label class="sr-only" for="chatInput">Pesan untuk asisten virtual</label>
+      <input type="text" class="chat-input" id="chatInput" name="message" placeholder="Ketik pesan..." autocomplete="off" />
       <button class="chat-send" id="chatSend" type="button" aria-label="Kirim pesan"><i class="bi bi-send-fill"></i></button>
     </div>
   </div>
   <button class="chat-toggle" id="chatToggle" type="button" aria-label="Chat" aria-controls="chatWindow" aria-expanded="false">
-    <img class="chat-icon" src="{% static 'assets/img/icon-tanya-sobat.png' %}" alt="" width="964" height="1016" decoding="async">
+    <img class="chat-icon" src="{% static 'assets/img/icon-tanya-sobat.webp' %}" alt="" width="300" height="316" loading="lazy" decoding="async">
   </button>
 </div>
 
 <!-- Back to top -->
-<button id="backTop" aria-label="Kembali ke atas"><i class="bi bi-arrow-up"></i></button>
+<button id="backTop" type="button" aria-label="Kembali ke atas"><i class="bi bi-arrow-up"></i></button>
 
 {{ landing_stats|json_script:"landing-stats-data" }}
 {{ landing_charts|json_script:"landing-chart-data" }}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js" defer></script>
-<script src="{% static 'js/landing_page.js' %}?v=20260505-instansi-v1" defer></script>
+<script src="{% static 'js/landing_page.js' %}?v=20260606-performance-v1" defer></script>
 <script src="{% static 'js/chatbot.js' %}?v=20260604-head-close-v1" defer></script>
 </body>
 </html>

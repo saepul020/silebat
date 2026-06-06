@@ -272,6 +272,13 @@
   40% { opacity: 1; }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .chat-window.open,
+  .typing span {
+    animation: none;
+  }
+}
+
 @media (max-width: 560px) {
   .chat-fab {
     right: 14px;
