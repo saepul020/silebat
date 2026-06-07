@@ -32,7 +32,7 @@
                     <td class="cell-wrap">{{ item.ketua_tim.get_full_name|default:item.ketua_tim.username|default:'-' }}</td>
                     <td class="cell-action">
                         <div class="table-action-group">
-                            <a href="{% url 'operasional:edit_tim' item.pk %}" class="btn btn-warning btn-sm">
+                            <a href="{% url 'operasional:edit_tim' item.pk %}?next={{ request.get_full_path|urlencode }}" class="btn btn-warning btn-sm">
                                 <i class="bi bi-pencil-square"></i>
                             </a>
                             <button

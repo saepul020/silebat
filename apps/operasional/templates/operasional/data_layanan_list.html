@@ -30,7 +30,7 @@
                     <td class="cell-wrap">{{ item.jenis_layanan }}</td>
                     <td class="cell-action">
                         <div class="table-action-group">
-                            <a href="{% url 'operasional:edit_layanan' item.pk %}" class="btn btn-warning btn-sm">
+                            <a href="{% url 'operasional:edit_layanan' item.pk %}?next={{ request.get_full_path|urlencode }}" class="btn btn-warning btn-sm">
                                 <i class="bi bi-pencil-square"></i>
                             </a>
                             <button

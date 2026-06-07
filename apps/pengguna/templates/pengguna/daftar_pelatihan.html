@@ -47,7 +47,7 @@
                             <a href="{% url 'pengguna:pelatihan_detail' item.pk %}" class="btn btn-secondary btn-sm" title="Detail">
                                 <i class="bi bi-eye-fill"></i>
                             </a>
-                            <a href="{% url 'pengguna:pelatihan_edit' item.pk %}" class="btn btn-warning btn-sm" title="Edit">
+                            <a href="{% url 'pengguna:pelatihan_edit' item.pk %}?next={{ request.get_full_path|urlencode }}" class="btn btn-warning btn-sm" title="Edit">
                                 <i class="bi bi-pencil-square"></i>
                             </a>
                             <button

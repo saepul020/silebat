@@ -71,7 +71,7 @@
                     </td>
                     <td class="cell-action">
                         <div class="table-action-group">
-                            <a href="{% url 'landing:equipment_update' item.pk %}" class="btn btn-warning btn-sm" title="Edit">
+                            <a href="{% url 'landing:equipment_update' item.pk %}?next={{ request.get_full_path|urlencode }}" class="btn btn-warning btn-sm" title="Edit">
                                 <i class="bi bi-pencil-square"></i>
                             </a>
                             <button type="button" class="btn btn-danger btn-sm js-delete-btn" data-delete-modal="master" data-delete-url="{% url 'landing:equipment_delete' item.pk %}" data-item-name="{{ item.nama_barang|display_dash }}" data-item-meta="{{ item.get_kategori_barang_display|display_dash }}">

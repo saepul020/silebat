@@ -6,6 +6,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
 from apps.core.list_pagination import paginate_list
+from apps.core.navigation import get_next_url, redirect_next
 from apps.core.permissions import ROLE_SUPER_ADMIN, deny_access, get_role_name
 
 from .forms import AnnouncementForm
@@ -15,6 +16,21 @@ from .services import (
     mark_all_as_read,
     publish_announcement_to_users,
     visible_notifications,
+)
+
+NOTIFICATION_LIST_SEARCH_FIELDS = (
+    "title",
+    "message",
+    "category",
+    "source_pengajuan__nomor_pengajuan",
+    "source_pengajuan__nama_peminjam",
+)
+ANNOUNCEMENT_LIST_SEARCH_FIELDS = (
+    "title",
+    "message",
+    "created_by__username",
+    "created_by__first_name",
+    "created_by__last_name",
 )
 
 
@@ -28,7 +44,11 @@ def index(request):
     elif filter_status == "sudah-dibaca":
         queryset = queryset.filter(is_read=True)
 
-    pagination_context = paginate_list(request, queryset)
+    pagination_context = paginate_list(
+        request,
+        queryset,
+        search_fields=NOTIFICATION_LIST_SEARCH_FIELDS,
+    )
     context = {
         "items": pagination_context["items"],
         "filter_status": filter_status,
@@ -111,7 +131,7 @@ def edit_pengumuman(request, pk):
                 request,
                 f'Pengumuman "{updated_announcement.title}" berhasil diperbarui dan disinkronkan kembali untuk {total_user} user aktif sesuai jadwal tampil.',
             )
-            return redirect("notifikasi:riwayat_pengumuman")
+            return redirect_next(request, "notifikasi:riwayat_pengumuman")
     else:
         form = AnnouncementForm(instance=announcement)
 
@@ -126,6 +146,7 @@ def edit_pengumuman(request, pk):
             "submit_icon": "bi-save",
             "is_edit_mode": True,
             "announcement": announcement,
+            "next_url": get_next_url(request),
         },
     )
 
@@ -149,7 +170,11 @@ def riwayat_pengumuman(request):
     elif filter_status == "selesai":
         queryset = queryset.filter(publish_end_at__lt=now)
 
-    pagination_context = paginate_list(request, queryset)
+    pagination_context = paginate_list(
+        request,
+        queryset,
+        search_fields=ANNOUNCEMENT_LIST_SEARCH_FIELDS,
+    )
     items = pagination_context["items"]
 
     for item in items:

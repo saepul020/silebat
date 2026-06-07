@@ -11,6 +11,7 @@
 <div class="card user-form-card">
     <form method="post" enctype="multipart/form-data" class="pengguna-form"{% if not is_edit %} data-pengguna-create-form="true" novalidate{% endif %}>
         {% csrf_token %}
+        {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
 
         {% if form_user.non_field_errors or form_profile.non_field_errors %}
         <div class="alert alert-danger">
@@ -339,7 +340,9 @@
 
         <div class="form-actions">
             <button type="submit" class="btn btn-primary">{{ submit_label }}</button>
-            {% if is_edit and obj %}
+            {% if next_url %}
+                <a href="{{ next_url }}" class="btn btn-secondary">Kembali</a>
+            {% elif is_edit and obj %}
                 <a href="{% url 'pengguna:detail' obj.pk %}" class="btn btn-secondary">Kembali</a>
             {% else %}
                 <a href="{% url 'pengguna:daftar' %}" class="btn btn-secondary">Kembali</a>

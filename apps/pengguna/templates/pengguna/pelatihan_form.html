@@ -11,6 +11,7 @@
 <div class="card master-form-card pelatihan-form-card">
     <form method="post" enctype="multipart/form-data" class="pengguna-form pelatihan-form" data-pelatihan-form="true" novalidate>
         {% csrf_token %}
+        {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
 
         {% if form.non_field_errors %}
         <div class="form-global-errors">
@@ -150,7 +151,7 @@
 
         <div class="form-actions">
             <button type="submit" class="btn btn-primary">{{ submit_label }}</button>
-            <a href="{% url 'pengguna:pelatihan_daftar' %}" class="btn btn-secondary">Kembali</a>
+            <a href="{% if next_url %}{{ next_url }}{% else %}{% url 'pengguna:pelatihan_daftar' %}{% endif %}" class="btn btn-secondary">Kembali</a>
         </div>
     </form>
 </div>

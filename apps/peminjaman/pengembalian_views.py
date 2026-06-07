@@ -38,6 +38,7 @@ from .models import (
 RETURN_APPROVAL_OPTIONS = [("setujui", "Setuju"), ("perbaiki", "Perbaiki")]
 RETURN_PIMPINAN_TEAM_NAME = TIM_LAYANAN_TEKNIS_NAME
 RETURN_PIMPINAN_LABEL = "Ketua Tim Layanan Teknis"
+RETURN_ITEM_NOTE_MAX_LENGTH = 1000
 
 
 def _can_edit_return_end_date(user, obj):
@@ -183,6 +184,7 @@ def _build_rows(obj):
                 "borrowed": borrowed,
                 "asal_peminjaman_label": getattr(borrowed, "asal_peminjaman_label", "Laboratorium"),
                 "status": getattr(current, "status", ""),
+                "note": getattr(current, "note", ""),
                 "transfer_target_id": getattr(current, "transfer_target_id", None),
                 "transfer_target": getattr(current, "transfer_target", None),
                 "inline_errors": [],
@@ -202,6 +204,7 @@ def _build_rows(obj):
                 "qty_rusak": "" if current is None else current.qty_rusak,
                 "qty_hilang": "" if current is None else current.qty_hilang,
                 "qty_transfer": "" if current is None else current.qty_transfer,
+                "note": getattr(current, "note", ""),
                 "transfer_target_id": getattr(current, "transfer_target_id", None),
                 "transfer_target": getattr(current, "transfer_target", None),
                 "transfer_enabled": bool(getattr(current, "qty_transfer", 0) and getattr(current, "transfer_target_id", None)),
@@ -222,6 +225,7 @@ def _build_rows(obj):
                 "qty_rusak": "" if current is None else current.qty_rusak,
                 "qty_hilang": "" if current is None else current.qty_hilang,
                 "qty_transfer": "" if current is None else current.qty_transfer,
+                "note": getattr(current, "note", ""),
                 "transfer_target_id": getattr(current, "transfer_target_id", None),
                 "transfer_target": getattr(current, "transfer_target", None),
                 "transfer_enabled": bool(getattr(current, "qty_transfer", 0) and getattr(current, "transfer_target_id", None)),
@@ -239,6 +243,7 @@ def _build_rows(obj):
                 "borrowed": borrowed,
                 "qty_sisa": getattr(current, "qty_sisa", ""),
                 "qty_transfer": "" if current is None else getattr(current, "qty_transfer", 0),
+                "note": getattr(current, "note", ""),
                 "transfer_target_id": getattr(current, "transfer_target_id", None),
                 "transfer_target": getattr(current, "transfer_target", None),
                 "transfer_enabled": bool(getattr(current, "qty_transfer", 0) and getattr(current, "transfer_target_id", None)),
@@ -283,6 +288,19 @@ def _parse_pengukuran_data(post_data):
     return {field: _parse_optional_non_negative_int(post_data.get(field)) for field in fields}
 
 
+def _parse_item_note(post_data, section, item_id, error_bucket):
+    note = (post_data.get(f"{section}_note_{item_id}") or "").strip()
+    if len(note) > RETURN_ITEM_NOTE_MAX_LENGTH:
+        _append_inline_error(
+            error_bucket,
+            section,
+            item_id,
+            f"Catatan pengembalian maksimal {RETURN_ITEM_NOTE_MAX_LENGTH} karakter.",
+        )
+        return note, False
+    return note, True
+
+
 def _build_error_bucket():
     return {
         "global": [],
@@ -323,6 +341,10 @@ def _classify_row_field_errors(section, row, messages):
     for message in messages:
         normalized = str(message or "").strip()
         lowered = normalized.lower()
+
+        if "catatan pengembalian" in lowered:
+            add_error("note", normalized)
+            continue
 
         if section == "lab":
             if "status pengembalian" in lowered:
@@ -423,25 +445,31 @@ def _parse_pengembalian_data(obj, post_data):
     for borrowed in obj.barang_laboratorium_items.select_related("barang"):
         status = (post_data.get(f"lab_status_{borrowed.barang_id}") or "").strip()
         transfer_target_id = _parse_int(post_data.get(f"lab_transfer_target_{borrowed.barang_id}"), 0) or None
+        note, note_valid = _parse_item_note(post_data, "lab", borrowed.barang_id, error_bucket)
+        row_has_errors = not note_valid
 
         if not status:
             _append_inline_error(error_bucket, "lab", borrowed.barang_id, "Status pengembalian wajib dipilih.")
-            continue
-        if status not in allowed_lab_statuses:
+            row_has_errors = True
+        elif status not in allowed_lab_statuses:
             _append_inline_error(error_bucket, "lab", borrowed.barang_id, "Status pengembalian tidak valid.")
-            continue
-        if status == ReturnItemStatusChoices.TRANSFER:
+            row_has_errors = True
+        elif status == ReturnItemStatusChoices.TRANSFER:
             if not transfer_target_id or transfer_target_id not in transfer_targets:
                 _append_inline_error(error_bucket, "lab", borrowed.barang_id, "Tujuan transfer wajib dipilih.")
-                continue
+                row_has_errors = True
         else:
             transfer_target_id = None
+
+        if row_has_errors:
+            continue
 
         parsed_lab.append(
             {
                 "barang": borrowed.barang,
                 "status": status,
                 "transfer_target_id": transfer_target_id,
+                "note": note,
             }
         )
 
@@ -456,7 +484,8 @@ def _parse_pengembalian_data(obj, post_data):
             transfer_enabled = post_data.get(f"{section_key}_transfer_enabled_{item_id}") == "1"
             qty_transfer = _parse_int(post_data.get(f"{section_key}_transfer_{item_id}"))
             transfer_target_id = _parse_int(post_data.get(f"{section_key}_transfer_target_{item_id}"), 0) or None
-            row_has_errors = False
+            note, note_valid = _parse_item_note(post_data, section_key, item_id, error_bucket)
+            row_has_errors = not note_valid
 
             for label, qty in (
                 ("Dikembalikan (Baik)", qty_dikembalikan),
@@ -515,6 +544,7 @@ def _parse_pengembalian_data(obj, post_data):
                     "qty_hilang": qty_hilang,
                     "qty_transfer": qty_transfer,
                     "transfer_target_id": transfer_target_id,
+                    "note": note,
                 }
             )
         return parsed_rows
@@ -538,7 +568,8 @@ def _parse_pengembalian_data(obj, post_data):
         transfer_enabled = post_data.get(f"bahan_transfer_enabled_{borrowed.bahan_id}") == "1"
         qty_transfer = _parse_int(post_data.get(f"bahan_transfer_{borrowed.bahan_id}"))
         transfer_target_id = _parse_int(post_data.get(f"bahan_transfer_target_{borrowed.bahan_id}"), 0) or None
-        row_has_errors = False
+        note, note_valid = _parse_item_note(post_data, "bahan", borrowed.bahan_id, error_bucket)
+        row_has_errors = not note_valid
 
         for label, qty in (
             ("Dikembalikan", qty_sisa),
@@ -593,6 +624,7 @@ def _parse_pengembalian_data(obj, post_data):
                 "qty_sisa": qty_sisa,
                 "qty_transfer": qty_transfer,
                 "transfer_target_id": transfer_target_id,
+                "note": note,
             }
         )
 
@@ -610,6 +642,7 @@ def _save_pengembalian_data(obj, parsed_lab, parsed_penunjang, parsed_peralatan_
             defaults={
                 "status": item["status"],
                 "transfer_target_id": item["transfer_target_id"],
+                "note": item["note"],
             },
         )
     obj.pengembalian_lab_items.exclude(barang_id__in=lab_ids).delete()
@@ -626,6 +659,7 @@ def _save_pengembalian_data(obj, parsed_lab, parsed_penunjang, parsed_peralatan_
                 "qty_hilang": item["qty_hilang"],
                 "qty_transfer": item["qty_transfer"],
                 "transfer_target_id": item["transfer_target_id"],
+                "note": item["note"],
             },
         )
     obj.pengembalian_penunjang_items.exclude(barang_id__in=penunjang_ids).delete()
@@ -642,6 +676,7 @@ def _save_pengembalian_data(obj, parsed_lab, parsed_penunjang, parsed_peralatan_
                 "qty_hilang": item["qty_hilang"],
                 "qty_transfer": item["qty_transfer"],
                 "transfer_target_id": item["transfer_target_id"],
+                "note": item["note"],
             },
         )
     obj.pengembalian_peralatan_laboratorium_items.exclude(barang_id__in=peralatan_lab_ids).delete()
@@ -656,6 +691,7 @@ def _save_pengembalian_data(obj, parsed_lab, parsed_penunjang, parsed_peralatan_
                 "qty_sisa": item["qty_sisa"],
                 "qty_transfer": item["qty_transfer"],
                 "transfer_target_id": item["transfer_target_id"],
+                "note": item["note"],
             },
         )
     obj.pengembalian_bahan_items.exclude(bahan_id__in=bahan_ids).delete()
@@ -671,6 +707,7 @@ def _build_post_rows(obj, post_data):
     for row in lab_rows:
         barang_id = row["borrowed"].barang_id
         row["status"] = (post_data.get(f"lab_status_{barang_id}") or row["status"] or "").strip()
+        row["note"] = post_data.get(f"lab_note_{barang_id}", row["note"])
         row["transfer_target_id"] = _parse_int(post_data.get(f"lab_transfer_target_{barang_id}"), 0) or None
         row["transfer_target"] = None
 
@@ -679,6 +716,7 @@ def _build_post_rows(obj, post_data):
         row["qty_dikembalikan"] = post_data.get(f"penunjang_dikembalikan_{barang_id}", row["qty_dikembalikan"])
         row["qty_rusak"] = post_data.get(f"penunjang_rusak_{barang_id}", row["qty_rusak"])
         row["qty_hilang"] = post_data.get(f"penunjang_hilang_{barang_id}", row["qty_hilang"])
+        row["note"] = post_data.get(f"penunjang_note_{barang_id}", row["note"])
         row["transfer_enabled"] = post_data.get(f"penunjang_transfer_enabled_{barang_id}") == "1"
         row["qty_transfer"] = post_data.get(f"penunjang_transfer_{barang_id}", row["qty_transfer"])
         if not row["transfer_enabled"]:
@@ -693,6 +731,7 @@ def _build_post_rows(obj, post_data):
         row["qty_dikembalikan"] = post_data.get(f"peralatan_lab_dikembalikan_{barang_id}", row["qty_dikembalikan"])
         row["qty_rusak"] = post_data.get(f"peralatan_lab_rusak_{barang_id}", row["qty_rusak"])
         row["qty_hilang"] = post_data.get(f"peralatan_lab_hilang_{barang_id}", row["qty_hilang"])
+        row["note"] = post_data.get(f"peralatan_lab_note_{barang_id}", row["note"])
         row["transfer_enabled"] = post_data.get(f"peralatan_lab_transfer_enabled_{barang_id}") == "1"
         row["qty_transfer"] = post_data.get(f"peralatan_lab_transfer_{barang_id}", row["qty_transfer"])
         if not row["transfer_enabled"]:
@@ -708,6 +747,7 @@ def _build_post_rows(obj, post_data):
             f"bahan_dikembalikan_{bahan_id}",
             post_data.get(f"bahan_sisa_{bahan_id}", row["qty_sisa"]),
         )
+        row["note"] = post_data.get(f"bahan_note_{bahan_id}", row["note"])
         row["transfer_enabled"] = post_data.get(f"bahan_transfer_enabled_{bahan_id}") == "1"
         row["qty_transfer"] = post_data.get(f"bahan_transfer_{bahan_id}", row["qty_transfer"])
         if not row["transfer_enabled"]:
@@ -906,6 +946,7 @@ def pengembalian_pengajuan(request, pk):
                 ReturnStepChoices.PIMPINAN_BA: RETURN_PIMPINAN_LABEL,
                 ReturnStepChoices.PIMPINAN_TRANSFER: RETURN_PIMPINAN_LABEL,
                 ReturnStepChoices.COMPLETED: "Selesai",
-            }.get(obj.return_current_step, "-")
+            }.get(obj.return_current_step, "-"),
+            "return_item_note_max_length": RETURN_ITEM_NOTE_MAX_LENGTH,
         },
     )

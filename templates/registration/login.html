@@ -7,6 +7,7 @@
     <title>Login SILEBAT</title>
     <link rel="stylesheet" href="{% static 'css/style.css' %}?v=20260428-green-success-v1">
     <link rel="stylesheet" href="{% static 'css/style_login.css' %}?v=20260428-green-success-v1">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
 </head>
 <body class="login-body">
     <div class="login-wrapper">
@@ -39,7 +40,12 @@
 
                 <div class="form-group{% if form.password.errors %} has-error{% endif %}">
                     <label for="{{ form.password.id_for_label }}">Password</label>
-                    {{ form.password }}
+                    <div class="password-field-wrap">
+                        {{ form.password }}
+                        <button type="button" class="password-toggle-button" data-password-toggle data-password-target="{{ form.password.id_for_label }}" aria-label="Tampilkan password" aria-pressed="false">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </div>
                     {% for error in form.password.errors %}
                     <p class="input-error-text">*{{ error }}</p>
                     {% endfor %}

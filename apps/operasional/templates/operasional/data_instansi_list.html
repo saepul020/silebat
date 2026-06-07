@@ -44,7 +44,7 @@
                     <td class="cell-wrap cell-wrap--wide">{{ item.alamat_instansi }}</td>
                     <td class="cell-action">
                         <div class="table-action-group">
-                            <a href="{% url 'operasional:edit_instansi' item.pk %}" class="btn btn-warning btn-sm">
+                            <a href="{% url 'operasional:edit_instansi' item.pk %}?next={{ request.get_full_path|urlencode }}" class="btn btn-warning btn-sm">
                                 <i class="bi bi-pencil-square"></i>
                             </a>
                             <button

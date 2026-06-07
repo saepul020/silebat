@@ -12,7 +12,7 @@
     left: 0;
     bottom: 0;
     overflow-y: auto;
-    transition: transform 0.3s ease;
+    transition: transform 0.3s ease, visibility 0s linear;
     z-index: 1000;
     scrollbar-width: thin;
 }
@@ -189,6 +189,20 @@
 
 .sub-link[href="#"] {
     opacity: 0.88;
+}
+
+@media (min-width: 993px) {
+    body.sidebar-hidden .sidebar {
+        visibility: hidden;
+        pointer-events: none;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease, visibility 0s linear 0.3s;
+    }
+
+    body.sidebar-hidden .app-main {
+        margin-left: 0;
+        width: 100%;
+    }
 }
 
 /* =========================

@@ -1,5 +1,5 @@
 <div class="master-list-controls">
-    <form method="get" class="master-entries-form" data-master-entries-form="true" aria-label="Filter jumlah data yang ditampilkan">
+    <form method="get" class="master-entries-form" data-master-entries-form="true" aria-label="Cari dan filter data yang ditampilkan">
         <select id="masterEntriesSelect" name="entries" class="master-entries-select js-show-entries-select" data-skip-placeholder="true" aria-label="Show Entries">
             <option value="10" {% if has_entries_filter and selected_entries == '10' %}selected{% endif %}>10</option>
             <option value="25" {% if selected_entries == '25' %}selected{% endif %}>25</option>
@@ -17,11 +17,33 @@
         </select>
         {% endif %}
 
+        <div class="master-list-search list-search-box">
+            <i class="bi bi-search" aria-hidden="true"></i>
+            <input
+                type="search"
+                name="{{ search_param|default:'q' }}"
+                value="{{ search_query|default:'' }}"
+                placeholder="Cari data..."
+                aria-label="Cari data"
+                autocomplete="off"
+                maxlength="{{ search_max_length|default:100 }}"
+                data-master-search
+            >
+            <button type="button" class="master-list-search-clear list-search-clear" data-master-search-clear aria-label="Hapus pencarian" title="Hapus pencarian" {% if not has_search %}hidden{% endif %}>
+                <i class="bi bi-x-lg" aria-hidden="true"></i>
+            </button>
+        </div>
+
+        {% for key, value in list_filter_params %}
+        <input type="hidden" name="{{ key }}" value="{{ value }}">
+        {% endfor %}
         <input type="hidden" name="page" value="1">
     </form>
 
     <p class="master-entries-info">
-        {% if total_count %}
+        {% if has_search %}
+            {{ total_count }} hasil untuk "{{ search_query }}"
+        {% elif total_count %}
             Menampilkan {{ start_index }} - {{ end_index }} dari {{ total_count }} data
         {% else %}
             Menampilkan 0 data

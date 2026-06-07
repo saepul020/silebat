@@ -24,6 +24,9 @@ const TV_MONTH_LABELS = {
     12: 'Des',
 };
 
+const TV_COMPACT_WIDTH = 1280;
+const TV_COMPACT_HEIGHT = 800;
+
 const tvZeroDashPlugin = {
     id: 'tvZeroDashPlugin',
     afterDatasetsDraw(chart) {
@@ -299,6 +302,46 @@ function createTvBaseOptions(maxValue, wrapWidth, rotation) {
     };
 }
 
+function getTvInstansiTickProfile(width, height) {
+    const viewportWidth = Math.max(Number(width || window.innerWidth || 0), 1);
+    const viewportHeight = Math.max(Number(height || window.innerHeight || 0), 1);
+    const compact = viewportWidth <= TV_COMPACT_WIDTH || viewportHeight <= TV_COMPACT_HEIGHT;
+
+    if (!compact) {
+        return {
+            maxLines: 2,
+            rotation: 50,
+            wrapWidth: 10,
+            fontSize: 9,
+        };
+    }
+
+    return {
+        maxLines: 1,
+        rotation: 90,
+        wrapWidth: viewportWidth <= 1024 ? 11 : 13,
+        fontSize: viewportWidth <= 1024 ? 7 : 8,
+    };
+}
+
+function applyTvInstansiAxis(options, size) {
+    const ticks = options?.scales?.x?.ticks;
+    if (!ticks) {
+        return;
+    }
+
+    const profile = getTvInstansiTickProfile(size?.width, size?.height);
+    ticks.autoSkip = false;
+    delete ticks.maxTicksLimit;
+    ticks.maxRotation = profile.rotation;
+    ticks.minRotation = profile.rotation;
+    ticks.align = 'center';
+    ticks.font.size = profile.fontSize;
+    ticks.callback = function (value) {
+        return wrapTvLabel(this.getLabelForValue(value), profile.wrapWidth, profile.maxLines);
+    };
+}
+
 function createTvChart(canvasId, labels, datasets, maxValue, options) {
     const canvas = document.getElementById(canvasId);
     if (!canvas) {
@@ -481,6 +524,18 @@ function createTvCategoryChart(canvasId, scriptId, idKey, datasetLabel, wrapWidt
     const maxValue = Math.max.apply(null, data.concat([0]));
     const options = createTvBaseOptions(maxValue, wrapWidth, rotation);
     options.plugins.legend.display = false;
+    if (canvasId === 'tvInstansiChart') {
+        applyTvInstansiAxis(options, {
+            width: window.innerWidth,
+            height: window.innerHeight,
+        });
+        options.onResize = function (chart, size) {
+            applyTvInstansiAxis(chart.config.options, {
+                width: size?.width || window.innerWidth,
+                height: window.innerHeight,
+            });
+        };
+    }
 
     return createTvChart(
         canvasId,
@@ -529,7 +584,7 @@ function wrapTvLabel(label, maxCharsPerLine, maxLines) {
     if (lines.length > maxLines) {
         const limited = lines.slice(0, maxLines);
         const lastIndex = limited.length - 1;
-        limited[lastIndex] = limited[lastIndex].slice(0, Math.max(1, maxCharsPerLine - 1)).replace(/[\s.]+$/g, '') + '…';
+        limited[lastIndex] = limited[lastIndex].slice(0, Math.max(1, maxCharsPerLine - 3)).replace(/[\s.]+$/g, '') + '...';
         return limited;
     }
 

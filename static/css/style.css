@@ -136,6 +136,10 @@ img {
    MESSAGE / ALERT
 ========================= */
 .message-wrapper {
+    margin: 0;
+}
+
+.message-wrapper .alert {
     margin-bottom: 20px;
 }
 
@@ -165,6 +169,44 @@ img {
     background: var(--danger-bg);
     color: var(--danger-text);
     border-color: var(--danger-border);
+}
+
+.success-popup-stack {
+    position: absolute;
+    z-index: 850;
+    top: 14px;
+    left: 50%;
+    width: min(520px, calc(100% - (var(--content-padding) * 2)));
+    display: grid;
+    gap: 10px;
+    transform: translateX(-50%);
+    pointer-events: none;
+}
+
+.success-popup {
+    margin: 0;
+    box-shadow: var(--shadow-strong);
+    opacity: 1;
+    transform: translateY(0);
+    transition: opacity 0.24s ease, transform 0.24s ease;
+    animation: success-popup-in 0.24s ease both;
+}
+
+.success-popup.is-hiding {
+    opacity: 0;
+    transform: translateY(-10px);
+}
+
+@keyframes success-popup-in {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 
@@ -604,6 +646,7 @@ textarea {
 ========================= */
 .app-content {
     padding: var(--content-padding);
+    position: relative;
 }
 
 
@@ -2425,44 +2468,209 @@ input[type="hidden"] {
     padding: 22px;
 }
 
-.inventory-toggle-section {
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+.inventory-sheet {
+    overflow: hidden;
 }
 
-.inventory-toggle-section.is-collapsed {
-    border-color: var(--border-strong);
+.inventory-sheet-tabs {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(180px, 1fr));
+    gap: 0;
+    margin: 0 -22px;
+    padding: 0 22px;
+    overflow-x: auto;
+    border-bottom: 1px solid var(--border);
+    scroll-margin-top: calc(var(--navbar-height) + 12px);
+    scrollbar-width: thin;
 }
 
-.inventory-section-toolbar {
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-    margin: -4px 0 14px;
-}
-
-.inventory-toggle-button {
+.inventory-sheet-tab {
+    position: relative;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
-    min-height: 38px;
-    padding: 8px 14px;
-    border-radius: 999px;
+    min-height: 52px;
+    padding: 10px 14px;
+    border: 0;
+    border-right: 1px solid var(--border);
+    background: var(--color-soft-gray);
+    color: var(--text-soft);
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.84rem;
     font-weight: 700;
-    line-height: 1.2;
+    line-height: 1.35;
+    text-align: center;
+    transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-.inventory-toggle-button i {
-    font-size: 0.95rem;
-    line-height: 1;
+.inventory-sheet-tab:first-child {
+    border-left: 1px solid var(--border);
 }
 
-.inventory-toggle-content[hidden] {
+.inventory-sheet-tab::after {
+    content: '';
+    position: absolute;
+    inset: auto 0 -1px;
+    height: 3px;
+    background: transparent;
+}
+
+.inventory-sheet-tab:hover,
+.inventory-sheet-tab.is-active {
+    background: var(--color-white);
+    color: var(--primary);
+}
+
+.inventory-sheet-tab.is-active::after {
+    background: var(--primary);
+}
+
+.inventory-sheet-panels {
+    margin-top: 20px;
+}
+
+.inventory-sheet-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.list-search-box {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-height: 42px;
+    padding: 0 10px 0 13px;
+    overflow: hidden;
+    border: 0;
+    border-radius: 10px;
+    background: var(--color-soft-gray);
+    color: var(--text-soft);
+}
+
+.list-search-box:focus-within {
+    box-shadow: none;
+}
+
+.list-search-box > i {
+    flex: 0 0 auto;
+}
+
+.list-search-box input {
+    width: 100%;
+    min-width: 0;
+    padding: 9px 0;
+    border: 0 !important;
+    outline: 0 !important;
+    background: transparent;
+    box-shadow: none !important;
+    color: var(--text-primary);
+    font: inherit;
+}
+
+.list-search-box input:focus {
+    border: 0 !important;
+    outline: 0 !important;
+    box-shadow: none !important;
+}
+
+.list-search-box input::-webkit-search-cancel-button {
+    appearance: none;
+}
+
+.list-search-clear {
+    display: inline-grid;
+    flex: 0 0 auto;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    place-items: center;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-soft);
+    cursor: pointer;
+}
+
+.list-search-clear[hidden] {
     display: none !important;
 }
 
-.inventory-toggle-section.is-collapsed .inventory-section-toolbar {
-    margin-bottom: 0;
+.list-search-clear:hover,
+.list-search-clear:focus-visible {
+    background: var(--color-white);
+    color: var(--primary);
+    outline: none;
+}
+
+.inventory-sheet-search {
+    width: min(100%, 420px);
+}
+
+.inventory-sheet-result {
+    flex: 0 0 auto;
+    color: var(--text-soft);
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+
+.inventory-sheet-panel[hidden] {
+    display: none !important;
+}
+
+.peminjaman-form .inventory-sheet-panel .table-scroll table.table-mobile-scroll tr.is-search-hidden {
+    display: none !important;
+}
+
+.inventory-sheet-panel .table-scroll {
+    max-height: none;
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+}
+
+.inventory-sheet-panel .table-mobile-scroll thead {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+}
+
+.inventory-sheet-backtop {
+    position: fixed;
+    left: var(--inventory-backtop-left, 50%);
+    bottom: 24px;
+    z-index: 80;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 42px;
+    padding: 9px 13px;
+    border: 1px solid var(--border-strong);
+    border-radius: 10px;
+    background: var(--primary);
+    box-shadow: 0 10px 24px rgba(16, 62, 111, 0.22);
+    color: var(--color-white);
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.82rem;
+    font-weight: 800;
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(-50%, 12px);
+    transition: opacity 0.2s ease, transform 0.2s ease, background-color 0.2s ease;
+}
+
+.inventory-sheet-backtop.is-visible {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translate(-50%, 0);
+}
+
+.inventory-sheet-backtop:hover {
+    background: var(--primary-dark);
 }
 
 .activity-subsection {
@@ -6785,14 +6993,44 @@ select.return-status-select option:disabled {
 }
 
 @media (max-width: 768px) {
-    .inventory-section-toolbar {
-        justify-content: stretch;
-        margin-top: 0;
+    .inventory-sheet-tabs {
+        grid-template-columns: repeat(4, minmax(168px, 1fr));
+        margin-inline: -18px;
+        padding-inline: 18px;
     }
 
-    .inventory-toggle-button {
+    .inventory-sheet-tab {
+        justify-content: flex-start;
+        min-height: 48px;
+        padding: 9px 12px;
+        font-size: 0.78rem;
+        text-align: left;
+    }
+
+    .inventory-sheet-toolbar {
+        align-items: stretch;
+        flex-direction: column;
+        gap: 7px;
+    }
+
+    .inventory-sheet-search {
         width: 100%;
     }
+
+    .inventory-sheet-result {
+        padding-left: 2px;
+    }
+
+    .inventory-sheet-backtop {
+        bottom: 14px;
+        min-width: 42px;
+        padding: 9px 11px;
+    }
+
+    .inventory-sheet-backtop span {
+        display: none;
+    }
+
 }
 
 /* =========================
@@ -6884,6 +7122,22 @@ select.return-status-select option:disabled {
 .peminjaman-form .tbl-scroll--ret-support .input-qty.input-qty--stepper,
 .peminjaman-form .tbl-scroll--ret-support input.input-qty--stepper[type='number'] {
     text-align: center !important;
+}
+
+.peminjaman-form .return-note-col {
+    min-width: 220px;
+}
+
+.peminjaman-form .return-item-note {
+    width: 100%;
+    min-width: 200px;
+    min-height: 62px;
+    resize: vertical;
+    line-height: 1.35;
+}
+
+.peminjaman-form .return-item-note:disabled {
+    resize: none;
 }
 
 /* =========================
@@ -7401,7 +7655,7 @@ select.return-status-select option:disabled {
    PEMINJAMAN - MOBILE QTY TABLE
 ========================= */
 @media (max-width: 768px) {
-    .peminjaman-form .inventory-toggle-content .table-scroll-area.table-scroll--qty-inline-offset {
+    .peminjaman-form .inventory-sheet-panel .table-scroll-area.table-scroll--qty-inline-offset {
         padding-left: 10px !important;
         padding-right: 8px !important;
         padding-bottom: 4px !important;
@@ -7409,14 +7663,14 @@ select.return-status-select option:disabled {
         scroll-padding-left: 10px;
     }
 
-    .peminjaman-form .inventory-toggle-content .table-scroll-area.table-scroll--qty-inline-offset > table.table-mobile-scroll--qty-first {
+    .peminjaman-form .inventory-sheet-panel .table-scroll-area.table-scroll--qty-inline-offset > table.table-mobile-scroll--qty-first {
         margin-left: 0 !important;
         margin-right: 0 !important;
     }
 }
 
 @media (max-width: 420px) {
-    .peminjaman-form .inventory-toggle-content .table-scroll-area.table-scroll--qty-inline-offset {
+    .peminjaman-form .inventory-sheet-panel .table-scroll-area.table-scroll--qty-inline-offset {
         padding-left: 8px !important;
         padding-right: 6px !important;
         scroll-padding-left: 8px;
@@ -7426,7 +7680,7 @@ select.return-status-select option:disabled {
 /* =========================
    PEMINJAMAN - QTY TABLE LEFT OFFSET ALL SCREENS
 ========================= */
-.peminjaman-form .inventory-toggle-content .table-scroll-area.table-scroll--qty-inline-offset {
+.peminjaman-form .inventory-sheet-panel .table-scroll-area.table-scroll--qty-inline-offset {
     padding-left: 14px !important;
     padding-right: 12px !important;
     padding-bottom: 4px !important;
@@ -7434,13 +7688,13 @@ select.return-status-select option:disabled {
     scroll-padding-left: 14px !important;
 }
 
-.peminjaman-form .inventory-toggle-content .table-scroll-area.table-scroll--qty-inline-offset > table.table-mobile-scroll--qty-first {
+.peminjaman-form .inventory-sheet-panel .table-scroll-area.table-scroll--qty-inline-offset > table.table-mobile-scroll--qty-first {
     margin-left: 0 !important;
     margin-right: 0 !important;
 }
 
 @media (max-width: 768px) {
-    .peminjaman-form .inventory-toggle-content .table-scroll-area.table-scroll--qty-inline-offset {
+    .peminjaman-form .inventory-sheet-panel .table-scroll-area.table-scroll--qty-inline-offset {
         padding-left: 10px !important;
         padding-right: 8px !important;
         padding-bottom: 4px !important;
@@ -7449,7 +7703,7 @@ select.return-status-select option:disabled {
 }
 
 @media (max-width: 420px) {
-    .peminjaman-form .inventory-toggle-content .table-scroll-area.table-scroll--qty-inline-offset {
+    .peminjaman-form .inventory-sheet-panel .table-scroll-area.table-scroll--qty-inline-offset {
         padding-left: 8px !important;
         padding-right: 6px !important;
         scroll-padding-left: 8px !important;
@@ -7472,6 +7726,13 @@ select.return-status-select option:disabled {
 }
 
 .master-list-controls {
+    --master-control-font: 1rem;
+    --master-control-height: 38px;
+    --master-control-radius: 10px;
+    --master-search-clear: 28px;
+    --master-search-gap: 9px;
+    --master-search-icon: 1rem;
+    --master-search-pad: 10px;
     border-bottom: 1px solid var(--border);
 }
 
@@ -7481,11 +7742,50 @@ select.return-status-select option:disabled {
 
 .master-entries-form {
     display: inline-flex;
-    flex: 0 0 auto;
+    flex: 0 1 auto;
     align-items: center;
     gap: 10px;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     min-width: 0;
+}
+
+.master-list-search {
+    flex: 0 1 230px;
+    width: min(230px, 24vw);
+    min-width: 160px;
+    min-height: var(--master-control-height);
+    height: var(--master-control-height);
+    gap: var(--master-search-gap);
+    padding-inline: var(--master-search-pad);
+    border-radius: var(--master-control-radius);
+    font-size: var(--master-control-font);
+}
+
+.master-list-search > i {
+    font-size: var(--master-search-icon);
+    line-height: 1;
+}
+
+.master-list-search input {
+    height: 100%;
+    padding-block: 0;
+    font-size: inherit;
+    line-height: 1.2;
+}
+
+.master-list-search .list-search-clear {
+    width: var(--master-search-clear);
+    height: var(--master-search-clear);
+    font-size: var(--master-search-icon);
+}
+
+.table-scroll--list .is-list-search-hidden,
+.table-scroll--list .is-list-search-empty[hidden] {
+    display: none !important;
+}
+
+.master-list-controls--local .master-list-search {
+    max-width: 230px;
 }
 
 .master-entries-info,
@@ -7508,13 +7808,14 @@ select.return-status-select option:disabled {
 .master-entries-select {
     width: 112px;
     min-width: 112px;
-    height: 38px;
+    height: var(--master-control-height);
     border: 1px solid var(--border);
-    border-radius: 10px;
+    border-radius: var(--master-control-radius);
     background: var(--color-white);
     color: var(--text);
     padding: 0 34px 0 12px;
     font: inherit;
+    font-size: var(--master-control-font);
     cursor: pointer;
 }
 
@@ -7592,6 +7893,16 @@ select.return-status-select option:disabled {
         padding: 10px clamp(8px, 3vw, 16px);
     }
 
+    .master-list-controls {
+        --master-control-font: clamp(0.74rem, 2.3vw, 0.86rem);
+        --master-control-height: 34px;
+        --master-control-radius: 9px;
+        --master-search-clear: clamp(22px, 6vw, 26px);
+        --master-search-gap: clamp(5px, 1.5vw, 8px);
+        --master-search-icon: clamp(0.72rem, 2.3vw, 0.86rem);
+        --master-search-pad: clamp(7px, 2vw, 10px);
+    }
+
     .master-entries-form {
         width: auto;
         justify-content: flex-start;
@@ -7612,10 +7923,7 @@ select.return-status-select option:disabled {
     .master-entries-select {
         width: clamp(92px, 26vw, 112px);
         min-width: 0;
-        height: 34px;
-        border-radius: 9px;
         padding: 0 28px 0 10px;
-        font-size: clamp(0.74rem, 2.3vw, 0.86rem);
     }
 
     .master-year-select {
@@ -7638,6 +7946,16 @@ select.return-status-select option:disabled {
         padding: 9px 8px;
     }
 
+    .master-list-controls {
+        --master-control-font: clamp(0.66rem, 3vw, 0.76rem);
+        --master-control-height: clamp(30px, 8.5vw, 32px);
+        --master-control-radius: clamp(7px, 2vw, 8px);
+        --master-search-clear: clamp(20px, 6vw, 24px);
+        --master-search-gap: clamp(4px, 1.5vw, 6px);
+        --master-search-icon: clamp(0.66rem, 3vw, 0.76rem);
+        --master-search-pad: clamp(6px, 2vw, 8px);
+    }
+
     .master-entries-form {
         display: inline-flex;
         gap: 6px;
@@ -7645,7 +7963,6 @@ select.return-status-select option:disabled {
 
     .master-entries-select {
         width: clamp(88px, 30vw, 104px);
-        height: 32px;
         padding-right: 24px;
         padding-left: 8px;
     }
@@ -7712,6 +8029,11 @@ select.return-status-select option:disabled {
     }
 
     .master-list-controls {
+        --master-control-font: clamp(0.68rem, 1.9vw, 0.78rem);
+        --master-control-height: 31px;
+        --master-control-radius: 8px;
+        --master-search-clear: clamp(20px, 5vw, 24px);
+        --master-search-icon: clamp(0.68rem, 1.9vw, 0.78rem);
         grid-template-columns: minmax(88px, 0.32fr) minmax(0, 1fr);
     }
 
@@ -7737,11 +8059,8 @@ select.return-status-select option:disabled {
 
     .master-entries-select {
         width: clamp(88px, 20vw, 104px);
-        height: 31px;
-        border-radius: 8px;
         padding-left: 8px;
         padding-right: 24px;
-        font-size: clamp(0.68rem, 1.9vw, 0.78rem);
     }
 
     .master-pagination {
@@ -7771,6 +8090,36 @@ select.return-status-select option:disabled {
     .master-page-link--prev .master-page-label-short,
     .master-page-link--next .master-page-label-short {
         display: inline;
+    }
+}
+
+@media (max-width: 768px) {
+    .master-list-controls {
+        display: flex;
+        align-items: center;
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+
+    .master-entries-form {
+        width: 100%;
+        max-width: 100%;
+        flex: 1 1 100%;
+        flex-wrap: wrap;
+    }
+
+    .master-list-search,
+    .master-list-controls--local .master-list-search {
+        flex: 1 0 100%;
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    .master-entries-info {
+        flex-basis: 100%;
+        width: 100%;
+        text-align: left;
     }
 }
 
@@ -8719,4 +9068,3 @@ select.return-status-select option:disabled {
         background: rgba(16, 62, 111, 0.32);
     }
 }
-

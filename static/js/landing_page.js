@@ -556,6 +556,13 @@ function initLandingCharts() {
     });
 }
 
+function getChartFontSize() {
+    if (window.innerWidth >= 2200) {
+        return 13;
+    }
+    return window.innerWidth <= 560 ? 11 : 12;
+}
+
 function renderLandingBarChart(canvasId, chartPayload, label, horizontal) {
     const canvas = document.getElementById(canvasId);
     if (!canvas) {
@@ -569,6 +576,7 @@ function renderLandingBarChart(canvasId, chartPayload, label, horizontal) {
 
     const categoryAxis = horizontal ? 'y' : 'x';
     const categoryLabelLength = horizontal ? 22 : 14;
+    const fontSize = getChartFontSize();
     const originalLabels = chartPayload.labels;
 
     new Chart(canvas.getContext('2d'), {
@@ -622,7 +630,7 @@ function renderLandingBarChart(canvasId, chartPayload, label, horizontal) {
                         autoSkip: false,
                         maxRotation: 0,
                         minRotation: 0,
-                        font: { family: 'Poppins', size: 10 },
+                        font: { family: 'Poppins', size: fontSize },
                         callback: function (value) {
                             if (categoryAxis === 'x') {
                                 return wrapChartLabel(this.getLabelForValue(value), categoryLabelLength);
@@ -637,7 +645,7 @@ function renderLandingBarChart(canvasId, chartPayload, label, horizontal) {
                     ticks: {
                         precision: 0,
                         autoSkip: false,
-                        font: { family: 'Poppins', size: 10 },
+                        font: { family: 'Poppins', size: fontSize },
                         callback: function (value) {
                             if (categoryAxis === 'y') {
                                 return wrapChartLabel(this.getLabelForValue(value), categoryLabelLength);
@@ -662,6 +670,8 @@ function renderLandingPieChart(canvasId, chartPayload) {
         return;
     }
 
+    const fontSize = getChartFontSize();
+
     new Chart(canvas.getContext('2d'), {
         type: 'doughnut',
         data: {
@@ -683,7 +693,7 @@ function renderLandingPieChart(canvasId, chartPayload) {
             plugins: {
                 legend: {
                     position: 'bottom',
-                    labels: { font: { family: 'Poppins', size: 10 }, padding: 12, boxWidth: 12 },
+                    labels: { font: { family: 'Poppins', size: fontSize }, padding: 14, boxWidth: 14 },
                 },
                 tooltip: {
                     callbacks: {

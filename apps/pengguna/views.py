@@ -15,6 +15,7 @@ from django.utils import timezone
 
 from apps.core.file_cleanup import delete_file_if_unused, delete_instance_files
 from apps.core.list_pagination import paginate_list
+from apps.core.navigation import get_next_url, redirect_next
 from apps.core.excel_utils import build_excel_response
 from apps.core.import_utils import (
     import_cell as _import_cell,
@@ -64,6 +65,28 @@ IMPORT_PENGGUNA_REQUIRED_HEADERS = [
 IMPORT_PENGGUNA_MAX_SIZE = 7 * 1024 * 1024
 
 SDM_MONITOR_ROLES = {ROLE_KEPALA_LAB, ROLE_PIMPINAN, ROLE_SUPER_ADMIN}
+USER_LIST_SEARCH_FIELDS = (
+    "username",
+    "first_name",
+    "last_name",
+    "email",
+    "nip",
+    "no_hp",
+    "profile__role__nama",
+    "profile__jabatan",
+    "profile__nama_tim__nama_tim",
+    "profile__alamat",
+)
+PELATIHAN_LIST_SEARCH_FIELDS = (
+    "user__username",
+    "user__first_name",
+    "user__last_name",
+    "tipe_pelatihan",
+    "jenis_pelatihan",
+    "nama_pelatihan",
+    "lokasi_pelatihan",
+    "uraian_pelatihan",
+)
 
 
 def _deny_import_access(request):
@@ -465,7 +488,7 @@ def download_format_import_pengguna(request):
 
 def _render_daftar_pengguna(request, import_context=None):
     queryset = User.objects.select_related('profile', 'profile__role', 'profile__nama_tim').order_by('username')
-    pagination_context = paginate_list(request, queryset)
+    pagination_context = paginate_list(request, queryset, search_fields=USER_LIST_SEARCH_FIELDS)
     users = pagination_context["items"]
     for user in users:
         user.safe_profile
@@ -569,7 +592,7 @@ def edit_pengguna(request, pk):
             else:
                 messages.success(request, 'Data pengguna berhasil diperbarui.')
 
-            return redirect('pengguna:detail', pk=updated_user.pk)
+            return redirect_next(request, 'pengguna:detail', pk=updated_user.pk)
     else:
         form_user = UserUpdateForm(instance=user, allow_username_edit=allow_admin_fields)
         form_profile = UserProfileForm(instance=profile, allow_role_edit=allow_admin_fields)
@@ -582,6 +605,7 @@ def edit_pengguna(request, pk):
         'submit_label': 'Update',
         'is_edit': True,
         'obj': user,
+        'next_url': get_next_url(request),
     }
     return render(request, 'pengguna/tambah_pengguna.html', context)
 
@@ -772,7 +796,7 @@ def _get_pelatihan_for_user_or_404(request, pk):
 @login_required
 def daftar_pelatihan(request):
     queryset = _get_pelatihan_queryset_for_user(request.user)
-    pagination_context = paginate_list(request, queryset)
+    pagination_context = paginate_list(request, queryset, search_fields=PELATIHAN_LIST_SEARCH_FIELDS)
     context = {
         'items': pagination_context['items'],
         'can_view_all_pelatihan': is_super_admin(request.user),
@@ -827,7 +851,7 @@ def edit_pelatihan(request, pk):
                 delete_file_if_unused(Pelatihan, 'file_materi', old_file_materi, exclude_pk=updated.pk)
 
             messages.success(request, 'Data pelatihan berhasil diperbarui.')
-            return redirect('pengguna:pelatihan_detail', pk=updated.pk)
+            return redirect_next(request, 'pengguna:pelatihan_detail', pk=updated.pk)
     else:
         form = PelatihanForm(instance=pelatihan)
 
@@ -841,6 +865,7 @@ def edit_pelatihan(request, pk):
             'submit_label': 'Update',
             'is_edit': True,
             'obj': pelatihan,
+            'next_url': get_next_url(request),
         },
     )
 

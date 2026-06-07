@@ -43,6 +43,8 @@
         <h3 class="table-title">Data Kegiatan Aktif</h3>
     </div>
 
+    {% include 'components/local_list_search.html' with search_placeholder='Cari kegiatan aktif...' search_label='Cari kegiatan aktif' %}
+
     <div class="table-scroll-area table-scroll--list" tabindex="0" aria-label="Scroll tabel data kegiatan aktif">
         <table class="table-data list-table--peminjaman">
             <thead>

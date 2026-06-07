@@ -42,7 +42,7 @@
                     <td class="cell-wrap">{{ item.kop_dokumen.name|default:'-' }}</td>
                     <td class="cell-action">
                         <div class="table-action-group">
-                            <a href="{% url 'operasional:edit_kop_dokumen' item.pk %}" class="btn btn-warning btn-sm">
+                            <a href="{% url 'operasional:edit_kop_dokumen' item.pk %}?next={{ request.get_full_path|urlencode }}" class="btn btn-warning btn-sm">
                                 <i class="bi bi-pencil-square"></i>
                             </a>
                         </div>

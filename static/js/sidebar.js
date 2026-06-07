@@ -8,42 +8,124 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 /* ========================================
-   SIDEBAR MOBILE
-   Toggle sidebar pada layar kecil.
+   SIDEBAR TOGGLE
+   Mengatur sidebar off-canvas mobile dan hide/unhide desktop.
 ======================================== */
 function initSidebarToggle() {
     const menuToggle = document.getElementById('menuToggle');
     const sidebar = document.getElementById('sidebar');
-    const mobileBreakpoint = 992;
+    const mobileMedia = window.matchMedia('(max-width: 992px)');
+    const storageKey = 'silebat:sidebar-hidden';
+    let desktopHidden = readDesktopState();
 
     if (!menuToggle || !sidebar) {
         return;
     }
 
-    function setSidebarState(isOpen) {
+    function readDesktopState() {
+        try {
+            return window.localStorage.getItem(storageKey) === 'true';
+        } catch (error) {
+            return false;
+        }
+    }
+
+    function saveDesktopState(isHidden) {
+        try {
+            window.localStorage.setItem(storageKey, String(isHidden));
+        } catch (error) {
+            console.warn('Preferensi sidebar tidak dapat disimpan.', error);
+        }
+    }
+
+    function notifyLayoutChange() {
+        window.setTimeout(function () {
+            window.dispatchEvent(new Event('resize'));
+        }, 320);
+    }
+
+    function syncMenuToggle() {
+        const icon = menuToggle.querySelector('i');
+
+        if (mobileMedia.matches) {
+            const isOpen = sidebar.classList.contains('show');
+            menuToggle.setAttribute('aria-expanded', String(isOpen));
+            menuToggle.setAttribute('aria-label', isOpen ? 'Tutup menu' : 'Buka menu');
+            menuToggle.title = isOpen ? 'Tutup menu' : 'Buka menu';
+            if (icon) {
+                icon.className = isOpen ? 'bi bi-x-lg' : 'bi bi-list';
+            }
+            return;
+        }
+
+        menuToggle.setAttribute('aria-expanded', String(!desktopHidden));
+        menuToggle.setAttribute('aria-label', desktopHidden ? 'Tampilkan sidebar' : 'Sembunyikan sidebar');
+        menuToggle.title = desktopHidden ? 'Tampilkan sidebar' : 'Sembunyikan sidebar';
+        if (icon) {
+            icon.className = desktopHidden ? 'bi bi-layout-sidebar-inset' : 'bi bi-list';
+        }
+    }
+
+    function setMobileState(isOpen) {
         sidebar.classList.toggle('show', isOpen);
-        menuToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        sidebar.setAttribute('aria-hidden', String(!isOpen));
+        syncMenuToggle();
+    }
+
+    function setDesktopState(isHidden, persist) {
+        desktopHidden = isHidden;
+        document.body.classList.toggle('sidebar-hidden', isHidden);
+        sidebar.setAttribute('aria-hidden', String(isHidden));
+        if (persist) {
+            saveDesktopState(isHidden);
+        }
+        syncMenuToggle();
+        notifyLayoutChange();
+    }
+
+    function syncViewportState() {
+        sidebar.classList.remove('show');
+        if (mobileMedia.matches) {
+            document.body.classList.remove('sidebar-hidden');
+            setMobileState(false);
+            return;
+        }
+
+        setDesktopState(desktopHidden, false);
     }
 
     menuToggle.addEventListener('click', function (event) {
         event.stopPropagation();
-        setSidebarState(!sidebar.classList.contains('show'));
+        if (mobileMedia.matches) {
+            setMobileState(!sidebar.classList.contains('show'));
+            return;
+        }
+
+        setDesktopState(!desktopHidden, true);
     });
 
     document.addEventListener('click', function (event) {
         const isClickInsideSidebar = sidebar.contains(event.target);
         const isClickToggle = menuToggle.contains(event.target);
 
-        if (!isClickInsideSidebar && !isClickToggle && window.innerWidth <= mobileBreakpoint) {
-            setSidebarState(false);
+        if (!isClickInsideSidebar && !isClickToggle && mobileMedia.matches) {
+            setMobileState(false);
         }
     });
 
-    window.addEventListener('resize', function () {
-        if (window.innerWidth > mobileBreakpoint) {
-            setSidebarState(false);
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape' && mobileMedia.matches && sidebar.classList.contains('show')) {
+            setMobileState(false);
+            menuToggle.focus({ preventScroll: true });
         }
     });
+
+    if (typeof mobileMedia.addEventListener === 'function') {
+        mobileMedia.addEventListener('change', syncViewportState);
+    } else {
+        mobileMedia.addListener(syncViewportState);
+    }
+    syncViewportState();
 }
 
 /* ========================================

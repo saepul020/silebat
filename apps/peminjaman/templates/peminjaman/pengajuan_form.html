@@ -180,16 +180,35 @@
             </div>
         </fieldset>
 
-        <fieldset class="peminjaman-section-card inventory-toggle-section is-collapsed" data-inventory-toggle-section data-lab-inventory-section>
-            <legend>Data Peralatan Survei Lapangan yang akan Dipinjam</legend>
-            <div class="inventory-section-toolbar">
-                <button type="button" class="btn btn-secondary inventory-toggle-button" data-inventory-toggle data-show-text="Tampilkan" data-hide-text="Sembunyikan" aria-expanded="false" aria-controls="inventorySectionSurvey">
-                    <i class="bi bi-eye" aria-hidden="true"></i>
-                    <span>Tampilkan</span>
+        <fieldset class="peminjaman-section-card inventory-sheet" data-inventory-sheet>
+            <legend>Data Barang yang akan Dipinjam</legend>
+            <div class="inventory-sheet-tabs" role="tablist" aria-label="Kategori data barang">
+                <button type="button" class="inventory-sheet-tab is-active" id="inventoryTabSurvey" role="tab" aria-selected="true" aria-controls="inventorySectionSurvey" data-inventory-tab="survey">
+                    <span>Peralatan Survei Lapangan</span>
+                </button>
+                <button type="button" class="inventory-sheet-tab" id="inventoryTabPenunjang" role="tab" aria-selected="false" aria-controls="inventorySectionPenunjang" data-inventory-tab="penunjang">
+                    <span>Barang Penunjang Lapangan</span>
+                </button>
+                <button type="button" class="inventory-sheet-tab" id="inventoryTabBahan" role="tab" aria-selected="false" aria-controls="inventorySectionBahan" data-inventory-tab="bahan">
+                    <span>Bahan Operasional</span>
+                </button>
+                <button type="button" class="inventory-sheet-tab" id="inventoryTabPeralatanLab" role="tab" aria-selected="false" aria-controls="inventorySectionPeralatanLab" data-inventory-tab="peralatan-lab">
+                    <span>Peralatan Laboratorium</span>
                 </button>
             </div>
-            <div id="inventorySectionSurvey" class="inventory-toggle-content" data-inventory-toggle-content hidden>
-            <p class="table-scroll-hint">Pilih terlebih dahulu opsi "Kegiatan Survei" yang sesuai jika item barang tidak ada.</p>
+
+            <div class="inventory-sheet-panels">
+            <div class="inventory-sheet-toolbar">
+                <div class="inventory-sheet-search list-search-box">
+                    <i class="bi bi-search" aria-hidden="true"></i>
+                    <input type="search" id="inventorySearchInput" placeholder="Cari Peralatan Survei Lapangan..." aria-label="Cari item pada kategori Peralatan Survei Lapangan" autocomplete="off" maxlength="100" data-inventory-search data-unsaved-ignore-field>
+                    <button type="button" class="inventory-sheet-search-clear list-search-clear" data-inventory-search-clear aria-label="Hapus pencarian" title="Hapus pencarian" hidden>
+                        <i class="bi bi-x-lg" aria-hidden="true"></i>
+                    </button>
+                </div>
+                <span class="inventory-sheet-result" data-inventory-search-result aria-live="polite"></span>
+            </div>
+            <section id="inventorySectionSurvey" class="inventory-sheet-panel is-active" role="tabpanel" aria-labelledby="inventoryTabSurvey" data-inventory-panel="survey" data-lab-inventory-section>
             <div class="table-wrapper table-responsive compact-table table-shell">
                 <div class="table-scroll-area table-scroll" tabindex="0" aria-label="Scroll tabel peralatan survei lapangan">
                 <table class="table-mobile-scroll table-mobile-scroll--lab">
@@ -217,13 +236,13 @@
                     </thead>
                     <tbody data-lab-inventory-body>
                         {% for group in lab_item_groups %}
-                        <tr data-lab-category-group data-lab-category="{{ group.kategori_barang|default:'' }}" class="lab-category-row {% if not group.is_visible %}is-hidden{% endif %}">
+                        <tr data-inventory-group data-lab-category-group data-lab-category="{{ group.kategori_barang|default:'' }}" class="lab-category-row {% if not group.is_visible %}is-hidden{% endif %}">
                             <td colspan="8">
                                 <strong class="lab-category-title">{{ group.kategori_barang|default:'Tanpa Kategori' }}</strong>
                             </td>
                         </tr>
                         {% for item in group.items %}
-                        <tr data-lab-item-row data-lab-category="{{ item.kategori_barang|default:'Tanpa Kategori' }}" class="{% if not item.is_visible_by_survey %}is-hidden{% endif %}">
+                        <tr data-inventory-row data-lab-item-row data-lab-category="{{ item.kategori_barang|default:'Tanpa Kategori' }}" class="{% if not item.is_visible_by_survey %}is-hidden{% endif %}">
                             <td data-label="Pilih" class="cell-select">
                                 <input type="checkbox" name="lab_item_ids" value="{{ item.id }}" data-base-disabled="{% if not item.is_available_for_selection %}true{% else %}false{% endif %}" {% if item.is_selected %}checked{% endif %} {% if not item.is_available_for_selection or not item.is_visible_by_survey %}disabled{% endif %}>
                             </td>
@@ -240,23 +259,14 @@
                         <tr><td colspan="8"><div class="empty-state">Belum ada data peralatan survei lapangan.</div></td></tr>
                         {% endfor %}
                         <tr data-lab-filter-empty class="is-hidden"><td colspan="8"><div class="empty-state">Belum ada peralatan survei lapangan yang sesuai dengan pilihan Kegiatan Survei.</div></td></tr>
+                        <tr data-inventory-search-empty class="is-hidden"><td colspan="8"><div class="empty-state">Item barang yang dicari tidak ditemukan.</div></td></tr>
                     </tbody>
                 </table>
                 </div>
             </div>
-            </div>
-        </fieldset>
+            </section>
 
-        <fieldset class="peminjaman-section-card inventory-toggle-section is-collapsed" data-inventory-toggle-section>
-            <legend>Data Barang Penunjang Lapangan yang akan Dipinjam</legend>
-            <div class="inventory-section-toolbar">
-                <button type="button" class="btn btn-secondary inventory-toggle-button" data-inventory-toggle data-show-text="Tampilkan" data-hide-text="Sembunyikan" aria-expanded="false" aria-controls="inventorySectionPenunjang">
-                    <i class="bi bi-eye" aria-hidden="true"></i>
-                    <span>Tampilkan</span>
-                </button>
-            </div>
-            <div id="inventorySectionPenunjang" class="inventory-toggle-content" data-inventory-toggle-content hidden>
-            <p class="table-scroll-hint">Isi jumlah Barang Penunjang Lapangan sesuai stok yang tersedia.</p>
+            <section id="inventorySectionPenunjang" class="inventory-sheet-panel" role="tabpanel" aria-labelledby="inventoryTabPenunjang" data-inventory-panel="penunjang" hidden>
             <div class="table-wrapper table-responsive compact-table table-shell">
                 <div class="table-scroll-area table-scroll table-scroll--qty-inline-offset" tabindex="0" aria-label="Scroll tabel barang penunjang lapangan">
                 <table class="table-mobile-scroll table-mobile-scroll--support table-mobile-scroll--qty-first">
@@ -278,13 +288,13 @@
                     </thead>
                     <tbody>
                         {% for group in penunjang_item_groups %}
-                        <tr class="lab-category-row">
+                        <tr class="lab-category-row" data-inventory-group>
                             <td colspan="5">
                                 <strong class="lab-category-title">{{ group.kategori_barang|default:'Tanpa Kategori' }}</strong>
                             </td>
                         </tr>
                         {% for item in group.items %}
-                        <tr>
+                        <tr data-inventory-row>
                             <td data-label="Jumlah" class="cell-qty">
                                 <div class="qty-stepper qty-stepper--compact" data-qty-stepper>
                                     <button type="button" class="qty-stepper__button" data-qty-step="down" aria-label="Kurangi jumlah {{ item.nama_barang }}">&minus;</button>
@@ -301,23 +311,14 @@
                         {% empty %}
                         <tr><td colspan="5"><div class="empty-state">Belum ada data barang penunjang lapangan.</div></td></tr>
                         {% endfor %}
+                        <tr data-inventory-search-empty class="is-hidden"><td colspan="5"><div class="empty-state">Item barang yang dicari tidak ditemukan.</div></td></tr>
                     </tbody>
                 </table>
                 </div>
             </div>
-            </div>
-        </fieldset>
+            </section>
 
-        <fieldset class="peminjaman-section-card inventory-toggle-section is-collapsed" data-inventory-toggle-section>
-            <legend>Data Bahan Operasional yang akan Dipinjam</legend>
-            <div class="inventory-section-toolbar">
-                <button type="button" class="btn btn-secondary inventory-toggle-button" data-inventory-toggle data-show-text="Tampilkan" data-hide-text="Sembunyikan" aria-expanded="false" aria-controls="inventorySectionBahan">
-                    <i class="bi bi-eye" aria-hidden="true"></i>
-                    <span>Tampilkan</span>
-                </button>
-            </div>
-            <div id="inventorySectionBahan" class="inventory-toggle-content" data-inventory-toggle-content hidden>
-            <p class="table-scroll-hint">Isi jumlah Bahan Operasional sesuai stok yang tersedia.</p>
+            <section id="inventorySectionBahan" class="inventory-sheet-panel" role="tabpanel" aria-labelledby="inventoryTabBahan" data-inventory-panel="bahan" hidden>
             <div class="table-wrapper table-responsive compact-table table-shell">
                 <div class="table-scroll-area table-scroll table-scroll--qty-inline-offset" tabindex="0" aria-label="Scroll tabel bahan operasional">
                 <table class="table-mobile-scroll table-mobile-scroll--material table-mobile-scroll--qty-first">
@@ -339,13 +340,13 @@
                     </thead>
                     <tbody>
                         {% for group in bahan_item_groups %}
-                        <tr class="lab-category-row">
+                        <tr class="lab-category-row" data-inventory-group>
                             <td colspan="5">
                                 <strong class="lab-category-title">{{ group.kategori_barang|default:'Tanpa Kategori' }}</strong>
                             </td>
                         </tr>
                         {% for item in group.items %}
-                        <tr>
+                        <tr data-inventory-row>
                             <td data-label="Jumlah" class="cell-qty">
                                 <div class="qty-stepper qty-stepper--compact" data-qty-stepper>
                                     <button type="button" class="qty-stepper__button" data-qty-step="down" aria-label="Kurangi jumlah {{ item.nama_barang }}">&minus;</button>
@@ -362,23 +363,14 @@
                         {% empty %}
                         <tr><td colspan="5"><div class="empty-state">Belum ada data bahan operasional.</div></td></tr>
                         {% endfor %}
+                        <tr data-inventory-search-empty class="is-hidden"><td colspan="5"><div class="empty-state">Item barang yang dicari tidak ditemukan.</div></td></tr>
                     </tbody>
                 </table>
                 </div>
             </div>
-            </div>
-        </fieldset>
+            </section>
 
-        <fieldset class="peminjaman-section-card inventory-toggle-section is-collapsed" data-inventory-toggle-section>
-            <legend>Data Peralatan Laboratorium yang akan Dipinjam</legend>
-            <div class="inventory-section-toolbar">
-                <button type="button" class="btn btn-secondary inventory-toggle-button" data-inventory-toggle data-show-text="Tampilkan" data-hide-text="Sembunyikan" aria-expanded="false" aria-controls="inventorySectionPeralatanLab">
-                    <i class="bi bi-eye" aria-hidden="true"></i>
-                    <span>Tampilkan</span>
-                </button>
-            </div>
-            <div id="inventorySectionPeralatanLab" class="inventory-toggle-content" data-inventory-toggle-content hidden>
-            <p class="table-scroll-hint">Isi jumlah Peralatan Laboratorium sesuai stok yang tersedia.</p>
+            <section id="inventorySectionPeralatanLab" class="inventory-sheet-panel" role="tabpanel" aria-labelledby="inventoryTabPeralatanLab" data-inventory-panel="peralatan-lab" hidden>
             <div class="table-wrapper table-responsive compact-table table-shell">
                 <div class="table-scroll-area table-scroll table-scroll--qty-inline-offset" tabindex="0" aria-label="Scroll tabel peralatan laboratorium">
                 <table class="table-mobile-scroll table-mobile-scroll--support table-mobile-scroll--qty-first">
@@ -402,7 +394,7 @@
                     </thead>
                     <tbody>
                         {% for item in peralatan_lab_items %}
-                        <tr>
+                        <tr data-inventory-row>
                             <td data-label="Jumlah" class="cell-qty">
                                 <div class="qty-stepper qty-stepper--compact" data-qty-stepper>
                                     <button type="button" class="qty-stepper__button" data-qty-step="down" aria-label="Kurangi jumlah {{ item.nama_barang }}">&minus;</button>
@@ -419,12 +411,18 @@
                         {% empty %}
                         <tr><td colspan="6"><div class="empty-state">Belum ada data peralatan laboratorium.</div></td></tr>
                         {% endfor %}
+                        <tr data-inventory-search-empty class="is-hidden"><td colspan="6"><div class="empty-state">Item barang yang dicari tidak ditemukan.</div></td></tr>
                     </tbody>
                 </table>
                 </div>
             </div>
+            </section>
             </div>
         </fieldset>
+        <button type="button" class="inventory-sheet-backtop" data-inventory-backtop aria-label="Kembali ke kategori barang" title="Kembali ke kategori barang">
+            <i class="bi bi-arrow-up" aria-hidden="true"></i>
+            <span>Kategori Barang</span>
+        </button>
 
         <div class="form-actions">
             {% if form.instance.pk %}

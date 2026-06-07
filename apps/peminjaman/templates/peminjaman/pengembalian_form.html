@@ -152,6 +152,7 @@
                             <th>Status Pengembalian</th>
                             <th class="return-transfer-col">Tujuan Transfer</th>
                             <th>Asal Peminjaman</th>
+                            <th class="return-note-col">Catatan Pengembalian</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -194,6 +195,11 @@
                                 {% endif %}
                             </td>
                             <td data-label="Asal Peminjaman" class="cell-wrap">{{ row.asal_peminjaman_label|default:row.borrowed.asal_peminjaman_label|default:'Laboratorium' }}</td>
+                            <td data-label="Catatan Pengembalian" class="return-note-col">
+                                <div class="return-field-group {% if row.field_errors.note %}has-error{% endif %}" data-return-field-group="true" data-error-key="note">
+                                    <textarea name="lab_note_{{ row.borrowed.barang_id }}" class="input-control return-item-note js-return-note" rows="2" maxlength="{{ return_item_note_max_length }}" placeholder="Opsional" {% if not editable_item_form %}disabled{% endif %}>{{ row.note }}</textarea>
+                                </div>
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -202,13 +208,16 @@
         </div>
         <div class="return-table-error-stack" data-return-error-stack="true">
             {% for row in lab_rows %}
-            <div class="return-table-error-item" data-return-error-row="true" data-return-row-id="lab_{{ row.borrowed.barang_id }}" {% if not row.field_errors.status and not row.field_errors.transfer_target %}hidden{% endif %}>
+            <div class="return-table-error-item" data-return-error-row="true" data-return-row-id="lab_{{ row.borrowed.barang_id }}" {% if not row.field_errors.status and not row.field_errors.transfer_target and not row.field_errors.note %}hidden{% endif %}>
                 <div class="return-table-error-messages">
                     <div class="return-table-error-entry" data-return-error-key="status" {% if not row.field_errors.status %}hidden{% endif %}>
                         {% for error in row.field_errors.status %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
                     </div>
                     <div class="return-table-error-entry" data-return-error-key="transfer_target" {% if not row.field_errors.transfer_target %}hidden{% endif %}>
                         {% for error in row.field_errors.transfer_target %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
+                    </div>
+                    <div class="return-table-error-entry" data-return-error-key="note" {% if not row.field_errors.note %}hidden{% endif %}>
+                        {% for error in row.field_errors.note %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
                     </div>
                 </div>
             </div>
@@ -236,6 +245,7 @@
                             <th>Transfer Barang</th>
                             <th class="return-transfer-col">Tujuan Transfer</th>
                             <th>Asal Peminjaman</th>
+                            <th class="return-note-col">Catatan Pengembalian</th>
                             <th>Validasi</th>
                         </tr>
                     </thead>
@@ -308,6 +318,11 @@
                                 {% endif %}
                             </td>
                             <td data-label="Asal Peminjaman" class="cell-wrap">{{ row.borrowed.asal_peminjaman_label|default:'Laboratorium' }}</td>
+                            <td data-label="Catatan Pengembalian" class="return-note-col">
+                                <div class="return-field-group {% if row.field_errors.note %}has-error{% endif %}" data-return-field-group="true" data-error-key="note">
+                                    <textarea name="penunjang_note_{{ row.borrowed.barang_id }}" class="input-control return-item-note js-return-note" rows="2" maxlength="{{ return_item_note_max_length }}" placeholder="Opsional" {% if not editable_item_form %}disabled{% endif %}>{{ row.note }}</textarea>
+                                </div>
+                            </td>
                             <td data-label="Validasi">
                                 <div class="return-field-group {% if row.field_errors.validation %}has-error{% endif %}" data-return-field-group="true" data-error-key="validation">
                                     <span class="return-validation-pill js-total-indicator">0/{{ row.borrowed.volume }}</span>
@@ -321,13 +336,14 @@
         </div>
         <div class="return-table-error-stack" data-return-error-stack="true">
             {% for row in penunjang_rows %}
-            <div class="return-table-error-item" data-return-error-row="true" data-return-row-id="penunjang_{{ row.borrowed.barang_id }}" {% if not row.field_errors.dikembalikan and not row.field_errors.rusak and not row.field_errors.hilang and not row.field_errors.transfer_qty and not row.field_errors.transfer_target and not row.field_errors.validation %}hidden{% endif %}>
+            <div class="return-table-error-item" data-return-error-row="true" data-return-row-id="penunjang_{{ row.borrowed.barang_id }}" {% if not row.field_errors.dikembalikan and not row.field_errors.rusak and not row.field_errors.hilang and not row.field_errors.transfer_qty and not row.field_errors.transfer_target and not row.field_errors.note and not row.field_errors.validation %}hidden{% endif %}>
                 <div class="return-table-error-messages">
                     <div class="return-table-error-entry" data-return-error-key="dikembalikan" {% if not row.field_errors.dikembalikan %}hidden{% endif %}>{% for error in row.field_errors.dikembalikan %}<p class="input-error-text">*{{ error }}</p>{% endfor %}</div>
                     <div class="return-table-error-entry" data-return-error-key="rusak" {% if not row.field_errors.rusak %}hidden{% endif %}>{% for error in row.field_errors.rusak %}<p class="input-error-text">*{{ error }}</p>{% endfor %}</div>
                     <div class="return-table-error-entry" data-return-error-key="hilang" {% if not row.field_errors.hilang %}hidden{% endif %}>{% for error in row.field_errors.hilang %}<p class="input-error-text">*{{ error }}</p>{% endfor %}</div>
                     <div class="return-table-error-entry" data-return-error-key="transfer_qty" {% if not row.field_errors.transfer_qty %}hidden{% endif %}>{% for error in row.field_errors.transfer_qty %}<p class="input-error-text">*{{ error }}</p>{% endfor %}</div>
                     <div class="return-table-error-entry" data-return-error-key="transfer_target" {% if not row.field_errors.transfer_target %}hidden{% endif %}>{% for error in row.field_errors.transfer_target %}<p class="input-error-text">*{{ error }}</p>{% endfor %}</div>
+                    <div class="return-table-error-entry" data-return-error-key="note" {% if not row.field_errors.note %}hidden{% endif %}>{% for error in row.field_errors.note %}<p class="input-error-text">*{{ error }}</p>{% endfor %}</div>
                     <div class="return-table-error-entry" data-return-error-key="validation" {% if not row.field_errors.validation %}hidden{% endif %}>{% for error in row.field_errors.validation %}<p class="input-error-text">*{{ error }}</p>{% endfor %}</div>
                 </div>
             </div>
@@ -352,6 +368,7 @@
                             <th>Transfer Barang</th>
                             <th class="return-transfer-col">Tujuan Transfer</th>
                             <th>Asal Peminjaman</th>
+                            <th class="return-note-col">Catatan Pengembalian</th>
                             <th>Validasi</th>
                         </tr>
                     </thead>
@@ -404,6 +421,11 @@
                                 {% endif %}
                             </td>
                             <td data-label="Asal Peminjaman" class="cell-wrap">{{ row.borrowed.asal_peminjaman_label|default:'Laboratorium' }}</td>
+                            <td data-label="Catatan Pengembalian" class="return-note-col">
+                                <div class="return-field-group {% if row.field_errors.note %}has-error{% endif %}" data-return-field-group="true" data-error-key="note">
+                                    <textarea name="bahan_note_{{ row.borrowed.bahan_id }}" class="input-control return-item-note js-return-note" rows="2" maxlength="{{ return_item_note_max_length }}" placeholder="Opsional" {% if not editable_item_form %}disabled{% endif %}>{{ row.note }}</textarea>
+                                </div>
+                            </td>
                             <td data-label="Validasi">
                                 <div class="return-field-group {% if row.field_errors.validation %}has-error{% endif %}" data-return-field-group="true" data-error-key="validation">
                                     <span class="return-validation-pill js-total-indicator">0/{{ row.borrowed.volume }}</span>
@@ -417,11 +439,12 @@
         </div>
         <div class="return-table-error-stack" data-return-error-stack="true">
             {% for row in bahan_rows %}
-            <div class="return-table-error-item" data-return-error-row="true" data-return-row-id="bahan_{{ row.borrowed.bahan_id }}" {% if not row.field_errors.dikembalikan and not row.field_errors.transfer_qty and not row.field_errors.transfer_target and not row.field_errors.validation %}hidden{% endif %}>
+            <div class="return-table-error-item" data-return-error-row="true" data-return-row-id="bahan_{{ row.borrowed.bahan_id }}" {% if not row.field_errors.dikembalikan and not row.field_errors.transfer_qty and not row.field_errors.transfer_target and not row.field_errors.note and not row.field_errors.validation %}hidden{% endif %}>
                 <div class="return-table-error-messages">
                     <div class="return-table-error-entry" data-return-error-key="dikembalikan" {% if not row.field_errors.dikembalikan %}hidden{% endif %}>{% for error in row.field_errors.dikembalikan %}<p class="input-error-text">*{{ error }}</p>{% endfor %}</div>
                     <div class="return-table-error-entry" data-return-error-key="transfer_qty" {% if not row.field_errors.transfer_qty %}hidden{% endif %}>{% for error in row.field_errors.transfer_qty %}<p class="input-error-text">*{{ error }}</p>{% endfor %}</div>
                     <div class="return-table-error-entry" data-return-error-key="transfer_target" {% if not row.field_errors.transfer_target %}hidden{% endif %}>{% for error in row.field_errors.transfer_target %}<p class="input-error-text">*{{ error }}</p>{% endfor %}</div>
+                    <div class="return-table-error-entry" data-return-error-key="note" {% if not row.field_errors.note %}hidden{% endif %}>{% for error in row.field_errors.note %}<p class="input-error-text">*{{ error }}</p>{% endfor %}</div>
                     <div class="return-table-error-entry" data-return-error-key="validation" {% if not row.field_errors.validation %}hidden{% endif %}>{% for error in row.field_errors.validation %}<p class="input-error-text">*{{ error }}</p>{% endfor %}</div>
                 </div>
             </div>
@@ -449,6 +472,7 @@
                             <th>Transfer Barang</th>
                             <th class="return-transfer-col">Tujuan Transfer</th>
                             <th>Asal Peminjaman</th>
+                            <th class="return-note-col">Catatan Pengembalian</th>
                             <th>Validasi</th>
                         </tr>
                     </thead>
@@ -521,6 +545,11 @@
                                 {% endif %}
                             </td>
                             <td data-label="Asal Peminjaman" class="cell-wrap">{{ row.borrowed.asal_peminjaman_label|default:'Laboratorium' }}</td>
+                            <td data-label="Catatan Pengembalian" class="return-note-col">
+                                <div class="return-field-group {% if row.field_errors.note %}has-error{% endif %}" data-return-field-group="true" data-error-key="note">
+                                    <textarea name="peralatan_lab_note_{{ row.borrowed.barang_id }}" class="input-control return-item-note js-return-note" rows="2" maxlength="{{ return_item_note_max_length }}" placeholder="Opsional" {% if not editable_item_form %}disabled{% endif %}>{{ row.note }}</textarea>
+                                </div>
+                            </td>
                             <td data-label="Validasi">
                                 <div class="return-field-group {% if row.field_errors.validation %}has-error{% endif %}" data-return-field-group="true" data-error-key="validation">
                                     <span class="return-validation-pill js-total-indicator">0/{{ row.borrowed.volume }}</span>
@@ -534,13 +563,14 @@
         </div>
         <div class="return-table-error-stack" data-return-error-stack="true">
             {% for row in peralatan_lab_rows %}
-            <div class="return-table-error-item" data-return-error-row="true" data-return-row-id="peralatan_lab_{{ row.borrowed.barang_id }}" {% if not row.field_errors.dikembalikan and not row.field_errors.rusak and not row.field_errors.hilang and not row.field_errors.transfer_qty and not row.field_errors.transfer_target and not row.field_errors.validation %}hidden{% endif %}>
+            <div class="return-table-error-item" data-return-error-row="true" data-return-row-id="peralatan_lab_{{ row.borrowed.barang_id }}" {% if not row.field_errors.dikembalikan and not row.field_errors.rusak and not row.field_errors.hilang and not row.field_errors.transfer_qty and not row.field_errors.transfer_target and not row.field_errors.note and not row.field_errors.validation %}hidden{% endif %}>
                 <div class="return-table-error-messages">
                     <div class="return-table-error-entry" data-return-error-key="dikembalikan" {% if not row.field_errors.dikembalikan %}hidden{% endif %}>{% for error in row.field_errors.dikembalikan %}<p class="input-error-text">*{{ error }}</p>{% endfor %}</div>
                     <div class="return-table-error-entry" data-return-error-key="rusak" {% if not row.field_errors.rusak %}hidden{% endif %}>{% for error in row.field_errors.rusak %}<p class="input-error-text">*{{ error }}</p>{% endfor %}</div>
                     <div class="return-table-error-entry" data-return-error-key="hilang" {% if not row.field_errors.hilang %}hidden{% endif %}>{% for error in row.field_errors.hilang %}<p class="input-error-text">*{{ error }}</p>{% endfor %}</div>
                     <div class="return-table-error-entry" data-return-error-key="transfer_qty" {% if not row.field_errors.transfer_qty %}hidden{% endif %}>{% for error in row.field_errors.transfer_qty %}<p class="input-error-text">*{{ error }}</p>{% endfor %}</div>
                     <div class="return-table-error-entry" data-return-error-key="transfer_target" {% if not row.field_errors.transfer_target %}hidden{% endif %}>{% for error in row.field_errors.transfer_target %}<p class="input-error-text">*{{ error }}</p>{% endfor %}</div>
+                    <div class="return-table-error-entry" data-return-error-key="note" {% if not row.field_errors.note %}hidden{% endif %}>{% for error in row.field_errors.note %}<p class="input-error-text">*{{ error }}</p>{% endfor %}</div>
                     <div class="return-table-error-entry" data-return-error-key="validation" {% if not row.field_errors.validation %}hidden{% endif %}>{% for error in row.field_errors.validation %}<p class="input-error-text">*{{ error }}</p>{% endfor %}</div>
                 </div>
             </div>

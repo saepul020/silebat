@@ -5,6 +5,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 
 from apps.core.permissions import ROLE_SUPER_ADMIN, get_role_name
+from apps.core.navigation import get_next_url, redirect_next
 from apps.core.list_pagination import paginate_list
 from apps.core.excel_utils import build_excel_response
 from apps.core.import_utils import (
@@ -83,6 +84,32 @@ IMPORT_BARANG_LAB_MAX_SIZE = 7 * 1024 * 1024
 
 FORM_TEMPLATE = "master_data/master_form.html"
 PINJAM_YEAR_ALL = "all"
+ASSET_LIST_SEARCH_FIELDS = (
+    "nama_barang",
+    "tipe_merek_barang",
+    "jenis_barang",
+    "status_barang",
+    "kode_aset_bmn",
+    "kode_laboratorium",
+    "satuan",
+    "ketersediaan",
+    "kondisi_barang",
+    "lokasi_barang",
+    "catatan",
+)
+PENUNJANG_LIST_SEARCH_FIELDS = (
+    "nama_barang",
+    "tipe_merek_barang",
+    "satuan",
+    "kategori_barang",
+    "ketersediaan",
+)
+BAHAN_LIST_SEARCH_FIELDS = (
+    "nama_barang",
+    "kategori_barang",
+    "satuan",
+    "ketersediaan",
+)
 MONTH_LABELS_ID = {
     1: "Jan",
     2: "Feb",
@@ -273,6 +300,7 @@ def _render_form_page(
     cancel_url,
     cancel_url_kwargs=None,
 ):
+    next_url = get_next_url(request)
     return render(
         request,
         FORM_TEMPLATE,
@@ -284,16 +312,17 @@ def _render_form_page(
             "submit_label": submit_label,
             "cancel_url": cancel_url,
             "cancel_url_kwargs": cancel_url_kwargs or {},
+            "next_url": next_url,
         },
     )
 
 
-def _resolve_redirect_target(redirect_to, saved_obj):
+def _resolve_redirect_target(request, redirect_to, saved_obj):
     if isinstance(redirect_to, tuple):
         url_name, kwargs_factory = redirect_to
         kwargs = kwargs_factory(saved_obj) if callable(kwargs_factory) else {}
-        return redirect(url_name, **kwargs)
-    return redirect(redirect_to)
+        return redirect_next(request, url_name, **kwargs)
+    return redirect_next(request, redirect_to)
 
 
 def _handle_form_page(
@@ -321,7 +350,7 @@ def _handle_form_page(
     if request.method == "POST" and form.is_valid():
         saved_obj = form.save()
         messages.success(request, success_message)
-        return _resolve_redirect_target(redirect_to, saved_obj)
+        return _resolve_redirect_target(request, redirect_to, saved_obj)
 
     return _render_form_page(
         request,
@@ -619,7 +648,11 @@ def index(request):
 
 def _render_barang_laboratorium_list(request, import_context=None):
     queryset = BarangLaboratorium.objects.order_by("nama_barang")
-    context = paginate_list(request, queryset)
+    context = paginate_list(
+        request,
+        queryset,
+        search_fields=(*ASSET_LIST_SEARCH_FIELDS, "kategori_barang"),
+    )
     _ensure_qr_codes_for_context_items(context)
     context.update(
         {
@@ -2249,7 +2282,7 @@ def hapus_barang_laboratorium(request, pk):
 
 def _render_barang_penunjang_list(request, import_context=None):
     queryset = BarangPenunjangOperasional.objects.order_by("nama_barang")
-    context = paginate_list(request, queryset)
+    context = paginate_list(request, queryset, search_fields=PENUNJANG_LIST_SEARCH_FIELDS)
     _ensure_qr_codes_for_context_items(context)
     context.update(
         {
@@ -2311,7 +2344,7 @@ def hapus_barang_penunjang(request, pk):
 
 def _render_bahan_operasional_list(request, import_context=None):
     queryset = BahanOperasional.objects.order_by("nama_barang")
-    context = paginate_list(request, queryset)
+    context = paginate_list(request, queryset, search_fields=BAHAN_LIST_SEARCH_FIELDS)
     _ensure_qr_codes_for_context_items(context)
     context.update(
         {
@@ -2373,7 +2406,11 @@ def hapus_bahan_operasional(request, pk):
 
 def _render_fasilitas_ruangan_list(request, import_context=None):
     queryset = FasilitasRuangan.objects.order_by("nama_barang")
-    context = paginate_list(request, queryset)
+    context = paginate_list(
+        request,
+        queryset,
+        search_fields=(*ASSET_LIST_SEARCH_FIELDS, "kategori_barang"),
+    )
     _ensure_qr_codes_for_context_items(context)
     context.update(
         {
@@ -2485,7 +2522,7 @@ def hapus_fasilitas_ruangan(request, pk):
 
 def _render_peralatan_laboratorium_list(request, import_context=None):
     queryset = PeralatanLaboratorium.objects.order_by("nama_barang")
-    context = paginate_list(request, queryset)
+    context = paginate_list(request, queryset, search_fields=ASSET_LIST_SEARCH_FIELDS)
     _ensure_qr_codes_for_context_items(context)
     context.update(
         {
@@ -2635,4 +2672,3 @@ def download_format_import_peralatan_laboratorium(request):
         worksheet_title='Format Import Alat Lab',
         filename='format_import_data_peralatan_laboratorium.xlsx',
     )
-

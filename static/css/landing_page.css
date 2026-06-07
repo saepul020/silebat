@@ -17,7 +17,7 @@
   --radius: 18px;
   --radius-sm: 12px;
   --navbar-height: 72px;
-  --container-w: 1200px;
+  --container-w: 1320px;
   --container-pad: 48px;
 }
 
@@ -32,6 +32,7 @@
 html {
   scroll-behavior: smooth;
   scroll-padding-top: calc(var(--navbar-height) + 18px);
+  font-size: 17px;
 }
 
 body {
@@ -117,7 +118,7 @@ input {
   gap: 8px;
   margin-bottom: 10px;
   color: var(--teal);
-  font-size: .75rem;
+  font-size: .82rem;
   font-weight: 600;
   letter-spacing: .10em;
   text-transform: uppercase;
@@ -127,14 +128,15 @@ input {
   margin-bottom: 14px;
   color: var(--navy);
   font-family: 'DM Serif Display', serif;
-  font-size: clamp(1.65rem, 3vw, 2.35rem);
+  font-size: clamp(1.9rem, 3vw, 2.65rem);
   line-height: 1.22;
 }
 
 .section-desc {
-  max-width: 620px;
+  max-width: 700px;
   color: var(--gray);
-  font-size: .96rem;
+  font-size: 1.04rem;
+  line-height: 1.72;
 }
 
 .btn {
@@ -147,7 +149,7 @@ input {
   border: 0;
   border-radius: 999px;
   cursor: pointer;
-  font-size: .9rem;
+  font-size: .96rem;
   font-weight: 700;
   line-height: 1.2;
   transition: transform .22s ease, box-shadow .22s ease, background-color .22s ease;
@@ -255,7 +257,7 @@ input {
   align-items: center;
   gap: 12px;
   min-width: 0;
-  max-width: 390px;
+  max-width: 430px;
   padding: 6px 0;
 }
 
@@ -287,14 +289,14 @@ input {
 
 .nav-brand-text .top {
   color: var(--teal);
-  font-size: .92rem;
+  font-size: 1rem;
   font-weight: 800;
   letter-spacing: .08em;
 }
 
 .nav-brand-text .bot {
   color: var(--navy);
-  font-size: .52rem;
+  font-size: .62rem;
   font-weight: 500;
   line-height: 1.28;
   white-space: normal;
@@ -317,7 +319,7 @@ input {
   padding: 8px 12px;
   border-radius: 999px;
   color: #374151;
-  font-size: .86rem;
+  font-size: .92rem;
   font-weight: 600;
   transition: color .2s ease, background-color .2s ease;
   white-space: nowrap;
@@ -406,7 +408,7 @@ input {
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(360px, 1fr);
+  grid-template-columns: minmax(0, 1.04fr) minmax(380px, .96fr);
   align-items: center;
   gap: 56px;
   padding: 82px 0 62px;
@@ -430,17 +432,17 @@ input {
   border-radius: 999px;
   background: rgba(100, 205, 209, .16);
   color: #2e8fa8;
-  font-size: .78rem;
+  font-size: .85rem;
   font-weight: 600;
   letter-spacing: .045em;
 }
 
 .hero h1 {
-  max-width: 560px;
+  max-width: 650px;
   margin-bottom: 18px;
   color: var(--navy);
   font-family: 'DM Serif Display', serif;
-  font-size: clamp(2.15rem, 4.2vw, 3.35rem);
+  font-size: clamp(2.5rem, 4.2vw, 3.75rem);
   line-height: 1.16;
 }
 
@@ -449,10 +451,11 @@ input {
 }
 
 .hero-desc {
-  max-width: 560px;
+  max-width: 650px;
   margin-bottom: 32px;
   color: var(--muted);
-  font-size: 1rem;
+  font-size: 1.08rem;
+  line-height: 1.75;
 }
 
 .hero-actions {
@@ -546,13 +549,13 @@ input {
 
 .hero-badge .text .t1 {
   color: var(--gray);
-  font-size: .74rem;
+  font-size: .8rem;
   font-weight: 600;
 }
 
 .hero-badge .text .t2 {
   color: var(--navy);
-  font-size: .95rem;
+  font-size: 1.02rem;
   font-weight: 800;
 }
 
@@ -566,14 +569,14 @@ input {
 }
 
 .hero-badge2 .t1 {
-  font-size: .7rem;
+  font-size: .78rem;
   font-weight: 600;
   opacity: .78;
 }
 
 .hero-badge2 .t2 {
   color: var(--teal);
-  font-size: 1.24rem;
+  font-size: 1.34rem;
   font-weight: 800;
 }
 
@@ -743,8 +746,8 @@ input {
 .profil-copy {
   margin-bottom: 24px;
   color: var(--gray);
-  font-size: .93rem;
-  line-height: 1.78;
+  font-size: 1.02rem;
+  line-height: 1.82;
 }
 
 .profil-features {
@@ -786,13 +789,14 @@ input {
 
 .profil-feat .text .t1 {
   color: var(--navy);
-  font-size: .9rem;
+  font-size: .98rem;
   font-weight: 600;
 }
 
 .profil-feat .text .t2 {
   color: var(--gray);
-  font-size: .82rem;
+  font-size: .9rem;
+  line-height: 1.6;
 }
 
 /* ============================================================
@@ -869,7 +873,7 @@ input {
 
 .stat-label {
   color: var(--gray);
-  font-size: .82rem;
+  font-size: .92rem;
   font-weight: 500;
 }
 
@@ -878,7 +882,7 @@ input {
   align-items: center;
   gap: 4px;
   color: #16a34a;
-  font-size: .75rem;
+  font-size: .82rem;
   font-weight: 600;
 }
 
@@ -939,7 +943,7 @@ input {
 
 .chart-title {
   color: var(--navy);
-  font-size: 1rem;
+  font-size: 1.08rem;
   font-weight: 700;
 }
 
@@ -1095,7 +1099,7 @@ input {
 
 .alat-unit {
   color: var(--teal);
-  font-size: .75rem;
+  font-size: .82rem;
   font-weight: 600;
   letter-spacing: .06em;
   text-transform: uppercase;
@@ -1103,7 +1107,7 @@ input {
 
 .alat-name {
   color: #374151;
-  font-size: .88rem;
+  font-size: .98rem;
   font-weight: 600;
 }
 
@@ -1195,7 +1199,7 @@ input {
   border-radius: 999px;
   background: rgba(255, 255, 255, .20);
   color: var(--white);
-  font-size: .7rem;
+  font-size: .78rem;
   font-weight: 800;
   backdrop-filter: blur(8px);
 }
@@ -1230,13 +1234,13 @@ input {
 }
 
 .peralatan-body {
-  padding: 20px;
+  padding: 24px;
 }
 
 .peralatan-brand {
   margin-bottom: 4px;
   color: var(--teal);
-  font-size: .72rem;
+  font-size: .8rem;
   font-weight: 600;
   letter-spacing: .06em;
   text-transform: uppercase;
@@ -1245,15 +1249,15 @@ input {
 .peralatan-name {
   margin-bottom: 8px;
   color: var(--navy);
-  font-size: 1rem;
+  font-size: 1.08rem;
   font-weight: 600;
 }
 
 .peralatan-desc {
   margin-bottom: 14px;
   color: var(--gray);
-  font-size: .82rem;
-  line-height: 1.58;
+  font-size: .9rem;
+  line-height: 1.68;
   hyphens: auto;
   text-align: justify;
   text-align-last: left;
@@ -1269,7 +1273,7 @@ input {
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  font-size: .78rem;
+  font-size: .86rem;
 }
 
 .spec-label {
@@ -1339,20 +1343,20 @@ input {
 
 .footer-logo-text .t1 {
   color: var(--teal);
-  font-size: .7rem;
+  font-size: .78rem;
   font-weight: 600;
   letter-spacing: .06em;
 }
 
 .footer-logo-text .t2 {
   color: var(--white);
-  font-size: .95rem;
+  font-size: 1.05rem;
   font-weight: 800;
 }
 
 .footer-about {
-  max-width: 300px;
-  font-size: .84rem;
+  max-width: 350px;
+  font-size: .92rem;
   line-height: 1.72;
 }
 
@@ -1384,7 +1388,7 @@ input {
 .footer-col h2 {
   margin-bottom: 16px;
   color: var(--white);
-  font-size: .9rem;
+  font-size: 1rem;
   font-weight: 800;
 }
 
@@ -1396,7 +1400,7 @@ input {
 
 .footer-col ul li a {
   color: rgba(255, 255, 255, .66);
-  font-size: .83rem;
+  font-size: .9rem;
   transition: color .2s ease;
 }
 
@@ -1409,7 +1413,7 @@ input {
   align-items: flex-start;
   gap: 10px;
   margin-bottom: 12px;
-  font-size: .83rem;
+  font-size: .9rem;
 }
 
 .footer-contact-item i {
@@ -1439,7 +1443,7 @@ input {
 
 .footer-bottom p {
   color: rgba(255, 255, 255, .52);
-  font-size: .8rem;
+  font-size: .84rem;
 }
 
 /* ============================================================
@@ -1451,7 +1455,7 @@ input {
   border-radius: var(--radius);
   background: rgba(184, 225, 242, .22);
   color: var(--gray);
-  font-size: .88rem;
+  font-size: .94rem;
   text-align: center;
 }
 
@@ -1511,8 +1515,12 @@ input {
 ============================================================ */
 @media (min-width: 2200px) {
   :root {
-    --container-w: 1680px;
+    --container-w: 1760px;
     --container-pad: 96px;
+  }
+
+  html {
+    font-size: 18px;
   }
 
   .hero-inner {
@@ -1522,7 +1530,7 @@ input {
 
   .hero h1,
   .hero-desc {
-    max-width: 640px;
+    max-width: 760px;
   }
 
   .hero-img-card {
@@ -1612,6 +1620,10 @@ input {
     --navbar-height: 68px;
   }
 
+  html {
+    font-size: 16px;
+  }
+
   body.menu-open {
     overflow: hidden;
   }
@@ -1644,7 +1656,7 @@ input {
   }
 
   .nav-brand-text .bot {
-    font-size: .52rem;
+    font-size: .6rem;
   }
 
   .mobile-menu {
@@ -1810,7 +1822,7 @@ input {
   .section-desc,
   .profil-copy,
   .hero-desc {
-    font-size: .88rem;
+    font-size: .94rem;
   }
 
   .hero-inner {
@@ -1851,11 +1863,11 @@ input {
 
   .hero-badge .text .t1,
   .hero-badge2 .t1 {
-    font-size: .62rem;
+    font-size: .68rem;
   }
 
   .hero-badge .text .t2 {
-    font-size: .76rem;
+    font-size: .82rem;
   }
 
   .hero-badge2 .t2 {

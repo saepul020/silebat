@@ -16,6 +16,7 @@
 <div class="form-card user-form-card master-data-form-card landing-equipment-form-card">
     <form method="post" enctype="multipart/form-data" class="pengguna-form master-data-form" data-master-data-form="true" data-landing-equipment-form="true" data-order-check-url="{% url 'landing:equipment_order_check' %}" data-current-id="{{ form.instance.pk|default:'' }}" novalidate>
         {% csrf_token %}
+        {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
 
         {% if form.non_field_errors %}
         <div class="form-global-errors">
@@ -169,7 +170,7 @@
 
         <div class="form-actions">
             <button type="submit" class="btn btn-primary">{{ submit_label }}</button>
-            <a href="{% url 'landing:equipment_list' %}" class="btn btn-secondary">Kembali</a>
+            <a href="{% if next_url %}{{ next_url }}{% else %}{% url 'landing:equipment_list' %}{% endif %}" class="btn btn-secondary">Kembali</a>
         </div>
     </form>
 </div>

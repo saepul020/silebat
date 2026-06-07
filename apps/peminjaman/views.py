@@ -1,18 +1,14 @@
 from decimal import Decimal, InvalidOperation
-from pathlib import Path
 
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
+from django.db.models import Q
 from django.db.models.functions import ExtractYear
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.units import mm
-from reportlab.lib.utils import ImageReader
-from reportlab.pdfgen import canvas
 
 from apps.operasional.models import (
     SurveiKegiatan,
@@ -59,6 +55,11 @@ from .models import (
     StepChoices,
     build_asal_peminjaman_maps,
     resolve_asal_peminjaman_label,
+)
+from .pdf_utils import (
+    render_berita_acara_pdf,
+    render_laporan_pdf,
+    render_pengajuan_pdf,
 )
 
 
@@ -108,6 +109,22 @@ BAHAN_CATEGORY_DISPLAY_ORDER = [
 BAHAN_CATEGORY_ORDER_INDEX = {
     category: index for index, category in enumerate(BAHAN_CATEGORY_DISPLAY_ORDER)
 }
+PENGAJUAN_LIST_SEARCH_FIELDS = (
+    "nomor_pengajuan",
+    "nama_peminjam",
+    "no_hp_peminjam",
+    "email_peminjam",
+    "nip_peminjam",
+    "layanan_kegiatan__jenis_layanan",
+    "layanan_kegiatan_lainnya",
+    "kegiatan_survei__jenis_survei",
+    "survei_lainnya",
+    "tim_kegiatan__nama_tim",
+    "instansi_tujuan__nama_instansi",
+    "instansi_tujuan_lainnya",
+    "current_step",
+    "return_current_step",
+)
 
 
 def _group_items_by_category(items, category_order_index=None):
@@ -188,6 +205,14 @@ def format_date_id(value):
     return (
         f"{value.day:02d} {MONTH_NAMES_ID.get(value.month, value.month)} {value.year}"
     )
+
+
+def format_pdf_date(value):
+    if not value:
+        return "-"
+    if hasattr(value, "hour"):
+        value = timezone.localtime(value).date() if timezone.is_aware(value) else value.date()
+    return format_date_id(value)
 
 
 def format_optional_numeric_display(value):
@@ -709,7 +734,11 @@ def index(request):
 @login_required
 def daftar_pengajuan(request):
     queryset = _get_pengajuan_list_queryset(request.user, is_report=False)
-    pagination_context = paginate_list(request, queryset)
+    pagination_context = paginate_list(
+        request,
+        queryset,
+        search_fields=PENGAJUAN_LIST_SEARCH_FIELDS,
+    )
     role_name = get_role_name(request.user)
 
     context = {
@@ -773,7 +802,11 @@ def laporan_peminjaman(request):
     report_year_options = _get_report_year_options(base_queryset)
     selected_report_year = _normalize_report_year_filter(request.GET.get("tahun"), report_year_options)
     queryset = _filter_report_queryset_by_year(base_queryset, selected_report_year)
-    pagination_context = paginate_list(request, queryset)
+    pagination_context = paginate_list(
+        request,
+        queryset,
+        search_fields=PENGAJUAN_LIST_SEARCH_FIELDS,
+    )
 
     context = {
         "items": pagination_context["items"],
@@ -1479,14 +1512,18 @@ def detail_laporan(request, pk):
 
 def _get_latest_return_teknisi_actor(obj):
     teknisi_entry = (
-        obj.timeline_entries.filter(
-            action__in=[
-                "Verifikasi pengembalian selesai dan diteruskan ke tahap berikutnya",
-                "Verifikasi pengembalian selesai dan diteruskan ke Kepala Laboratorium",
-                "Verifikasi pengembalian selesai dan pengembalian dinyatakan lengkap",
-                "Verifikasi pengembalian selesai dan pengembalian dinyatakan selesai",
-                "Verifikasi pengembalian selesai dan diteruskan ke user untuk konfirmasi",
-            ]
+        obj.timeline_entries.filter(stage="Pengembalian", actor__isnull=False)
+        .filter(
+            Q(action__startswith="Verifikasi pengembalian disetujui Teknisi Lab")
+            | Q(
+                action__in=[
+                    "Verifikasi pengembalian selesai dan diteruskan ke tahap berikutnya",
+                    "Verifikasi pengembalian selesai dan diteruskan ke Kepala Laboratorium",
+                    "Verifikasi pengembalian selesai dan pengembalian dinyatakan lengkap",
+                    "Verifikasi pengembalian selesai dan pengembalian dinyatakan selesai",
+                    "Verifikasi pengembalian selesai dan diteruskan ke user untuk konfirmasi",
+                ]
+            )
         )
         .select_related("actor")
         .order_by("-created_at", "-id")
@@ -1516,12 +1553,10 @@ def _build_berita_acara_sections(obj):
                 or "-",
                 "jenis": "Peralatan Survei Lapangan",
                 "jumlah": "1 unit",
-                "keterangan": item.note
-                or item.snapshot_kode_laboratorium
-                or item.snapshot_kode_aset_bmn
+                "kode_laboratorium": item.snapshot_kode_laboratorium
                 or getattr(item.barang, "kode_laboratorium", "")
-                or getattr(item.barang, "kode_aset_bmn", "")
                 or "-",
+                "catatan_pengembalian": item.note or "-",
             }
         )
 
@@ -1534,10 +1569,8 @@ def _build_berita_acara_sections(obj):
                     or "-",
                     "jenis": "Barang Penunjang Lapangan",
                     "jumlah": f"{item.qty_rusak} {item.snapshot_satuan or getattr(item.barang, 'satuan', '') or 'unit'}",
-                    "keterangan": item.note
-                    or item.snapshot_tipe_merek_barang
-                    or getattr(item.barang, "tipe_merek_barang", "")
-                    or "-",
+                    "kode_laboratorium": "-",
+                    "catatan_pengembalian": item.note or "-",
                 }
             )
         if item.qty_hilang > 0:
@@ -1548,10 +1581,8 @@ def _build_berita_acara_sections(obj):
                     or "-",
                     "jenis": "Barang Penunjang Lapangan",
                     "jumlah": f"{item.qty_hilang} {item.snapshot_satuan or getattr(item.barang, 'satuan', '') or 'unit'}",
-                    "keterangan": item.note
-                    or item.snapshot_tipe_merek_barang
-                    or getattr(item.barang, "tipe_merek_barang", "")
-                    or "-",
+                    "kode_laboratorium": "-",
+                    "catatan_pengembalian": item.note or "-",
                 }
             )
 
@@ -1566,12 +1597,10 @@ def _build_berita_acara_sections(obj):
                     or "-",
                     "jenis": "Peralatan Laboratorium",
                     "jumlah": f"{item.qty_rusak} {item.snapshot_satuan or getattr(item.barang, 'satuan', '') or 'unit'}",
-                    "keterangan": item.note
-                    or item.snapshot_kode_laboratorium
-                    or item.snapshot_kode_aset_bmn
+                    "kode_laboratorium": item.snapshot_kode_laboratorium
                     or getattr(item.barang, "kode_laboratorium", "")
-                    or getattr(item.barang, "kode_aset_bmn", "")
                     or "-",
+                    "catatan_pengembalian": item.note or "-",
                 }
             )
         if item.qty_hilang > 0:
@@ -1582,12 +1611,10 @@ def _build_berita_acara_sections(obj):
                     or "-",
                     "jenis": "Peralatan Laboratorium",
                     "jumlah": f"{item.qty_hilang} {item.snapshot_satuan or getattr(item.barang, 'satuan', '') or 'unit'}",
-                    "keterangan": item.note
-                    or item.snapshot_kode_laboratorium
-                    or item.snapshot_kode_aset_bmn
+                    "kode_laboratorium": item.snapshot_kode_laboratorium
                     or getattr(item.barang, "kode_laboratorium", "")
-                    or getattr(item.barang, "kode_aset_bmn", "")
                     or "-",
+                    "catatan_pengembalian": item.note or "-",
                 }
             )
 
@@ -1599,9 +1626,12 @@ def download_berita_acara_pdf(request, pk):
     obj = get_object_or_404(
         PeminjamanRequest.objects.select_related(
             "peminjam",
+            "layanan_kegiatan",
             "tim_kegiatan__ketua_tim",
+            "instansi_tujuan",
             "kepala_lab_by",
         ).prefetch_related(
+            "kegiatan_survei",
             "pengembalian_lab_items__barang",
             "pengembalian_penunjang_items__barang",
             "pengembalian_peralatan_laboratorium_items__barang",
@@ -1632,222 +1662,13 @@ def download_berita_acara_pdf(request, pk):
     response["Content-Disposition"] = (
         f'attachment; filename="berita-acara-{obj.nomor_pengajuan}.pdf"'
     )
-
-    pdf = canvas.Canvas(response, pagesize=A4)
-    width, height = A4
-    margin_x = 18 * mm
-    content_width = width - (2 * margin_x)
-    y = height - 18 * mm
-
-    def wrap_lines(text, *, font="Helvetica", size=10, max_width=None):
-        pdf.setFont(font, size)
-        max_width = max_width or content_width
-        words = str(text or "-").split()
-        if not words:
-            return ["-"]
-        lines = []
-        current = words[0]
-        for word in words[1:]:
-            trial = f"{current} {word}"
-            if pdf.stringWidth(trial, font, size) <= max_width:
-                current = trial
-            else:
-                lines.append(current)
-                current = word
-        lines.append(current)
-        return lines
-
-    def ensure_space(required=18 * mm):
-        nonlocal y
-        if y >= required:
-            return
-        pdf.showPage()
-        y = height - 18 * mm
-
-    def format_optional_numeric_display(value):
-        if value is None:
-            return "-"
-        if isinstance(value, str):
-            stripped = value.strip()
-            if not stripped:
-                return "-"
-            try:
-                numeric_value = Decimal(stripped)
-            except (InvalidOperation, ValueError):
-                return value
-            return "-" if numeric_value == 0 else value
-        if isinstance(value, (int, float, Decimal)):
-            return "-" if Decimal(str(value)) == 0 else value
-        return value
-
-    def draw_lines(lines, *, font="Helvetica", size=10, gap=4.8 * mm, indent=0):
-        nonlocal y
-        pdf.setFont(font, size)
-        for line_text in lines:
-            ensure_space()
-            pdf.drawString(margin_x + indent, y, line_text)
-            y -= gap
-
-    def draw_signature_block(x, y_top, title, user_obj):
-        pdf.setFont("Helvetica", 10)
-        pdf.drawString(x, y_top, title)
-        signature_y = y_top - 24 * mm
-        signature_path = None
-        if user_obj is not None:
-            try:
-                signature_path = (
-                    user_obj.safe_profile.ttd_digital.path
-                    if user_obj.safe_profile.ttd_digital
-                    else None
-                )
-            except Exception:
-                signature_path = None
-        if signature_path and Path(signature_path).exists():
-            try:
-                pdf.drawImage(
-                    ImageReader(signature_path),
-                    x,
-                    signature_y,
-                    width=38 * mm,
-                    height=18 * mm,
-                    preserveAspectRatio=True,
-                    mask="auto",
-                )
-            except Exception:
-                pass
-        pdf.line(x, y_top - 27 * mm, x + 52 * mm, y_top - 27 * mm)
-        pdf.setFont("Helvetica-Bold", 9)
-        pdf.drawString(
-            x, y_top - 31 * mm, (user_obj.get_full_name() if user_obj else "-")[:42]
-        )
-        pdf.setFont("Helvetica", 9)
-        nip = getattr(user_obj, "nip", "") if user_obj else ""
-        pdf.drawString(x, y_top - 35 * mm, f"NIP/NIK: {nip or '-'}")
-
-    pdf.setTitle(f"Berita Acara {obj.nomor_pengajuan}")
-    draw_lines(
-        ["BERITA ACARA PENGEMBALIAN BARANG RUSAK / HILANG"],
-        font="Helvetica-Bold",
-        size=13,
-        gap=6 * mm,
+    render_berita_acara_pdf(
+        response,
+        obj,
+        berita_sections,
+        format_pdf_date,
+        _get_latest_return_teknisi_actor(obj),
     )
-    draw_lines([f"Nomor Pengajuan: {obj.nomor_pengajuan}"], size=10)
-    draw_lines(
-        [
-            f"Tanggal Dokumen: {format_date_id(timezone.localdate(obj.return_completed_at or timezone.now()))}"
-        ],
-        size=10,
-    )
-    y -= 2 * mm
-
-    peminjam_lines = [
-        f"Nama: {obj.nama_peminjam}",
-        f"Nomor Telepon: {obj.no_hp_peminjam or '-'}",
-        f"Email: {obj.email_peminjam or '-'}",
-        f"Alamat: {obj.alamat_peminjam or '-'}",
-        f"NIP / NIK: {obj.nip_peminjam or '-'}",
-    ]
-    draw_lines(["A. Data Peminjam"], font="Helvetica-Bold", size=10, gap=5 * mm)
-    for item_line in peminjam_lines:
-        draw_lines(wrap_lines(item_line, size=10), size=10, indent=5 * mm)
-    y -= 1 * mm
-
-    survei_values = [item.jenis_survei for item in obj.kegiatan_survei.all()]
-    if obj.survei_lainnya:
-        survei_values.append(f"Lainnya: {obj.survei_lainnya}")
-    kegiatan_lines = [
-        f"Layanan Kegiatan: {obj.layanan_kegiatan_label}",
-        f"Kegiatan Survei: {', '.join(survei_values) if survei_values else '-'}",
-        f"Tim Kegiatan: {getattr(obj.tim_kegiatan, 'nama_tim', '-')}",
-        f"Instansi Tujuan: {getattr(obj.instansi_tujuan, 'nama_instansi', obj.instansi_tujuan_lainnya or '-')}",
-        f"Periode Peminjaman: {format_date_id(obj.tanggal_mulai)} s/d {format_date_id(obj.tanggal_selesai)}",
-        f"Total Hari: {obj.total_hari} hari",
-    ]
-    draw_lines(["B. Data Kegiatan"], font="Helvetica-Bold", size=10, gap=5 * mm)
-    for item_line in kegiatan_lines:
-        draw_lines(wrap_lines(item_line, size=10), size=10, indent=5 * mm)
-    y -= 1 * mm
-
-    draw_lines(["C. Daftar Barang Rusak"], font="Helvetica-Bold", size=10, gap=5 * mm)
-    if berita_sections["rusak"]:
-        for index, item in enumerate(berita_sections["rusak"], start=1):
-            lines = [
-                f"{index}. {item['nama']} ({item['jenis']})",
-                f"Jumlah: {item['jumlah']}",
-                f"Keterangan: {item['keterangan']}",
-            ]
-            for line_text in lines:
-                draw_lines(
-                    wrap_lines(line_text, size=10, max_width=content_width - (5 * mm)),
-                    size=10,
-                    indent=5 * mm,
-                )
-            y -= 1 * mm
-    else:
-        draw_lines(["-"], size=10, indent=5 * mm)
-        y -= 1 * mm
-
-    draw_lines(["D. Daftar Barang Hilang"], font="Helvetica-Bold", size=10, gap=5 * mm)
-    if berita_sections["hilang"]:
-        for index, item in enumerate(berita_sections["hilang"], start=1):
-            lines = [
-                f"{index}. {item['nama']} ({item['jenis']})",
-                f"Jumlah: {item['jumlah']}",
-                f"Keterangan: {item['keterangan']}",
-            ]
-            for line_text in lines:
-                draw_lines(
-                    wrap_lines(line_text, size=10, max_width=content_width - (5 * mm)),
-                    size=10,
-                    indent=5 * mm,
-                )
-            y -= 1 * mm
-    else:
-        draw_lines(["-"], size=10, indent=5 * mm)
-        y -= 1 * mm
-
-    draw_lines(["E. Keterangan"], font="Helvetica-Bold", size=10, gap=5 * mm)
-    keterangans = [
-        "Dokumen ini diterbitkan secara otomatis pada akhir proses pengembalian untuk mencatat barang dengan status rusak atau hilang.",
-        "Barang yang tercatat dikembalikan dalam kondisi baik atau ditransfer ke pengajuan lain tidak dimasukkan ke dalam berita acara ini.",
-    ]
-    for keterangan in keterangans:
-        draw_lines(
-            wrap_lines(f"• {keterangan}", size=10, max_width=content_width - (5 * mm)),
-            size=10,
-            indent=5 * mm,
-        )
-
-    ensure_space(80 * mm)
-    pdf.setFont("Helvetica", 10)
-    pdf.drawString(
-        width - 78 * mm,
-        y,
-        f"Bandung, {format_date_id(timezone.localdate(obj.return_completed_at or timezone.now()))}",
-    )
-    y -= 10 * mm
-
-    teknisi_user = _get_latest_return_teknisi_actor(obj)
-    draw_signature_block(margin_x, y, "Peminjam,", obj.peminjam)
-    draw_signature_block(width - 80 * mm, y, "Teknisi Laboratorium,", teknisi_user)
-    y -= 44 * mm
-
-    pdf.setFont("Helvetica-Bold", 10)
-    pdf.drawCentredString(width / 2, y, "Mengetahui,")
-    y -= 9 * mm
-
-    draw_signature_block(
-        margin_x, y, "Kepala Laboratorium,", obj.get_kepala_lab_signer()
-    )
-    draw_signature_block(
-        width - 80 * mm,
-        y,
-        "Ketua Tim Layanan Teknis,",
-        obj.get_return_pimpinan_signer(),
-    )
-
-    pdf.showPage()
-    pdf.save()
     return response
 
 
@@ -1856,7 +1677,9 @@ def download_laporan_pdf(request, pk):
     obj = get_object_or_404(
         PeminjamanRequest.objects.select_related(
             "peminjam",
+            "layanan_kegiatan",
             "tim_kegiatan__ketua_tim",
+            "instansi_tujuan",
             "teknisi_lab_by",
             "kepala_lab_by",
         ).prefetch_related(
@@ -1884,247 +1707,17 @@ def download_laporan_pdf(request, pk):
         )
 
     report = _get_report_snapshot(obj)
-    report_peminjam = report.get("peminjam", {})
-    report_kegiatan = report.get("kegiatan", {})
-    report_items = report.get("items", {})
-    report_pengukuran = report.get("pengukuran", []) or []
-
     response = HttpResponse(content_type="application/pdf")
     response["Content-Disposition"] = (
         f'attachment; filename="laporan-{obj.nomor_pengajuan}.pdf"'
     )
-
-    pdf = canvas.Canvas(response, pagesize=A4)
-    width, height = A4
-    margin_x = 18 * mm
-    content_width = width - (2 * margin_x)
-    y = height - 18 * mm
-
-    def wrap_lines(text, *, font="Helvetica", size=10, max_width=None):
-        pdf.setFont(font, size)
-        max_width = max_width or content_width
-        words = str(text or "-").split()
-        if not words:
-            return ["-"]
-        lines = []
-        current = words[0]
-        for word in words[1:]:
-            trial = f"{current} {word}"
-            if pdf.stringWidth(trial, font, size) <= max_width:
-                current = trial
-            else:
-                lines.append(current)
-                current = word
-        lines.append(current)
-        return lines
-
-    def ensure_space(required=18 * mm):
-        nonlocal y
-        if y >= required:
-            return
-        pdf.showPage()
-        y = height - 18 * mm
-
-    def draw_lines(lines, *, font="Helvetica", size=10, gap=4.8 * mm, indent=0):
-        nonlocal y
-        pdf.setFont(font, size)
-        for line_text in lines:
-            ensure_space()
-            pdf.drawString(margin_x + indent, y, line_text)
-            y -= gap
-
-    def draw_signature_block(x, y_top, title, user_obj):
-        pdf.setFont("Helvetica", 10)
-        pdf.drawString(x, y_top, title)
-        signature_y = y_top - 24 * mm
-        signature_path = None
-        if user_obj is not None:
-            try:
-                signature_path = (
-                    user_obj.safe_profile.ttd_digital.path
-                    if user_obj.safe_profile.ttd_digital
-                    else None
-                )
-            except Exception:
-                signature_path = None
-        if signature_path and Path(signature_path).exists():
-            try:
-                pdf.drawImage(
-                    ImageReader(signature_path),
-                    x,
-                    signature_y,
-                    width=38 * mm,
-                    height=18 * mm,
-                    preserveAspectRatio=True,
-                    mask="auto",
-                )
-            except Exception:
-                pass
-        pdf.line(x, y_top - 27 * mm, x + 52 * mm, y_top - 27 * mm)
-        pdf.setFont("Helvetica-Bold", 9)
-        pdf.drawString(
-            x, y_top - 31 * mm, (user_obj.get_full_name() if user_obj else "-")[:42]
-        )
-        pdf.setFont("Helvetica", 9)
-        nip = getattr(user_obj, "nip", "") if user_obj else ""
-        pdf.drawString(x, y_top - 35 * mm, f"NIP/NIK: {nip or '-'}")
-
-    def draw_item_section(title, entries):
-        nonlocal y
-        draw_lines([title], font="Helvetica-Bold", size=10, gap=5 * mm)
-        if not entries:
-            draw_lines(["-"], size=10, indent=5 * mm)
-            y -= 1 * mm
-            return
-        for index, entry_lines in enumerate(entries, start=1):
-            first_line = True
-            for line_text in entry_lines:
-                prefix = f"{index}. " if first_line else "    "
-                wrapped = wrap_lines(
-                    f"{prefix}{line_text}", size=10, max_width=content_width - (5 * mm)
-                )
-                draw_lines(wrapped, size=10, indent=5 * mm)
-                first_line = False
-            y -= 1 * mm
-
-    pdf.setTitle(f"Laporan {obj.nomor_pengajuan}")
-    draw_lines(
-        ["LAPORAN DETAIL PEMINJAMAN DAN PENGEMBALIAN"],
-        font="Helvetica-Bold",
-        size=13,
-        gap=6 * mm,
+    render_laporan_pdf(
+        response,
+        obj,
+        report,
+        format_pdf_date,
+        _get_latest_return_teknisi_actor(obj),
     )
-    draw_lines(
-        [f"Nomor Pengajuan: {report.get('nomor_pengajuan', obj.nomor_pengajuan)}"],
-        size=10,
-    )
-    draw_lines([f"Tanggal Peminjaman: {report.get('submitted_at', '-')}"], size=10)
-    draw_lines(
-        [f"Tanggal Pengembalian: {report.get('return_started_at', '-')}"], size=10
-    )
-    draw_lines(
-        [f"Pengembalian Selesai: {report.get('return_completed_at', '-')}"], size=10
-    )
-    y -= 2 * mm
-
-    draw_lines(["A. Data Peminjam"], font="Helvetica-Bold", size=10, gap=5 * mm)
-    for item_line in [
-        f"Nama: {report_peminjam.get('nama', '-')}",
-        f"Nomor Telepon: {report_peminjam.get('nomor_telepon', '-')}",
-        f"Email: {report_peminjam.get('email', '-')}",
-        f"NIP / NIK: {report_peminjam.get('nip', '-')}",
-        f"Alamat: {report_peminjam.get('alamat', '-')}",
-    ]:
-        draw_lines(wrap_lines(item_line, size=10), size=10, indent=5 * mm)
-    y -= 1 * mm
-
-    survei_values = report_kegiatan.get("kegiatan_survei", []) or []
-    draw_lines(["B. Data Kegiatan"], font="Helvetica-Bold", size=10, gap=5 * mm)
-    for item_line in [
-        f"Layanan Kegiatan: {report_kegiatan.get('layanan_kegiatan', '-')}",
-        f"Kegiatan Survei: {', '.join(survei_values) if survei_values else '-'}",
-        f"Tim Kegiatan: {report_kegiatan.get('tim_kegiatan', '-')}",
-        f"Instansi Tujuan: {report_kegiatan.get('instansi_tujuan', '-')}",
-        f"Mulai Tanggal: {report_kegiatan.get('mulai_tanggal', '-')}",
-        f"Selesai Tanggal: {report_kegiatan.get('selesai_tanggal', '-')}",
-        f"Total Hari: {report_kegiatan.get('total_hari', '-')} hari",
-    ]:
-        draw_lines(wrap_lines(item_line, size=10), size=10, indent=5 * mm)
-    y -= 1 * mm
-
-    draw_item_section(
-        "C. Data Peralatan Survei Lapangan",
-        [
-            [
-                f"{item.get('nama_barang', '-')} | {item.get('tipe_merek_barang', '-')} | {item.get('kode_laboratorium', '-')}",
-                f"Status Pengembalian: {item.get('status_pengembalian', '-')}",
-                f"Tujuan Transfer: {item.get('tujuan_transfer', '-')}",
-                f"Asal Peminjaman: {item.get('asal_peminjaman', '-')}",
-                f"Catatan Pengembalian: {item.get('catatan_pengembalian', '-')}",
-            ]
-            for item in report_items.get("lab", [])
-        ],
-    )
-    draw_item_section(
-        "D. Data Barang Penunjang Lapangan",
-        [
-            [
-                f"{item.get('nama_barang', '-')} | Volume Dipinjam: {item.get('volume_dipinjam', '-')} {item.get('satuan', '-')}",
-                f"Dikembalikan: {item.get('qty_dikembalikan', 0)} | Rusak: {item.get('qty_rusak', 0)} | Hilang: {item.get('qty_hilang', 0)} | Transfer: {item.get('qty_transfer', 0)}",
-                f"Tujuan Transfer: {item.get('tujuan_transfer', '-')}",
-                f"Asal Peminjaman: {item.get('asal_peminjaman', '-')}",
-                f"Catatan Pengembalian: {item.get('catatan_pengembalian', '-')}",
-            ]
-            for item in report_items.get("penunjang", [])
-        ],
-    )
-    draw_item_section(
-        "E. Data Bahan Operasional",
-        [
-            [
-                f"{item.get('nama_barang', '-')} | Volume Dipinjam: {item.get('volume_dipinjam', '-')} {item.get('satuan', '-')}",
-                f"Sisa: {item.get('qty_sisa', 0)} | Transfer: {item.get('qty_transfer', 0)}",
-                f"Tujuan Transfer: {item.get('tujuan_transfer', '-')}",
-                f"Asal Peminjaman: {item.get('asal_peminjaman', '-')}",
-                f"Catatan Pengembalian: {item.get('catatan_pengembalian', '-')}",
-            ]
-            for item in report_items.get("bahan", [])
-        ],
-    )
-    draw_item_section(
-        "F. Data Peralatan Laboratorium",
-        [
-            [
-                f"{item.get('nama_barang', '-')} | {item.get('tipe_merek_barang', '-')} | {item.get('kode_laboratorium', '-')}",
-                f"Volume Dipinjam: {item.get('volume_dipinjam', '-')} {item.get('satuan', '-')}",
-                f"Dikembalikan: {item.get('qty_dikembalikan', 0)} | Rusak: {item.get('qty_rusak', 0)} | Hilang: {item.get('qty_hilang', 0)} | Transfer: {item.get('qty_transfer', 0)}",
-                f"Tujuan Transfer: {item.get('tujuan_transfer', '-')}",
-                f"Asal Peminjaman: {item.get('asal_peminjaman', '-')}",
-                f"Catatan Pengembalian: {item.get('catatan_pengembalian', '-')}",
-            ]
-            for item in report_items.get("peralatan_lab", [])
-        ],
-    )
-    draw_item_section(
-        "G. Data Pengukuran",
-        [
-            [
-                f"{item.get('label', '-')} : {format_optional_numeric_display(item.get('display', '-'))}"
-            ]
-            for item in report_pengukuran
-        ],
-    )
-
-    ensure_space(80 * mm)
-    pdf.setFont("Helvetica", 10)
-    pdf.drawString(
-        width - 78 * mm,
-        y,
-        f"Bandung, {format_date_id(timezone.localdate(obj.return_completed_at or timezone.now()))}",
-    )
-    y -= 10 * mm
-
-    teknisi_user = _get_latest_return_teknisi_actor(obj)
-    draw_signature_block(margin_x, y, "Peminjam,", obj.peminjam)
-    draw_signature_block(width - 80 * mm, y, "Teknisi Laboratorium,", teknisi_user)
-    y -= 44 * mm
-
-    pdf.setFont("Helvetica-Bold", 10)
-    pdf.drawCentredString(width / 2, y, "Mengetahui,")
-    y -= 9 * mm
-
-    draw_signature_block(
-        margin_x, y, "Kepala Laboratorium,", obj.get_kepala_lab_signer()
-    )
-    draw_signature_block(
-        width - 80 * mm,
-        y,
-        "Ketua Tim Layanan Teknis,",
-        obj.get_return_pimpinan_signer(),
-    )
-
-    pdf.showPage()
-    pdf.save()
     return response
 
 
@@ -2133,7 +1726,9 @@ def download_pdf(request, pk):
     obj = get_object_or_404(
         PeminjamanRequest.objects.select_related(
             "peminjam",
+            "layanan_kegiatan",
             "tim_kegiatan__ketua_tim",
+            "instansi_tujuan",
             "teknisi_lab_by",
             "kepala_lab_by",
         ).prefetch_related(
@@ -2159,161 +1754,8 @@ def download_pdf(request, pk):
     response["Content-Disposition"] = (
         f'attachment; filename="{obj.nomor_pengajuan}.pdf"'
     )
-
-    pdf = canvas.Canvas(response, pagesize=A4)
-    width, height = A4
-    margin_x = 18 * mm
-    y = height - 18 * mm
-
-    def line(text, font="Helvetica", size=10, gap=5 * mm):
-        nonlocal y
-        pdf.setFont(font, size)
-        pdf.drawString(margin_x, y, text)
-        y -= gap
-
-    def multiline(title, values):
-        nonlocal y
-        pdf.setFont("Helvetica-Bold", 10)
-        pdf.drawString(margin_x, y, title)
-        y -= 5 * mm
-        pdf.setFont("Helvetica", 10)
-        for value in values:
-            pdf.drawString(margin_x + 5 * mm, y, f"• {value}")
-            y -= 4.5 * mm
-        y -= 2 * mm
-
-    def draw_signature_block(x, y_top, title, user_obj):
-        pdf.setFont("Helvetica", 10)
-        pdf.drawString(x, y_top, title)
-        signature_y = y_top - 24 * mm
-        signature_path = None
-        if user_obj is not None:
-            try:
-                signature_path = (
-                    user_obj.safe_profile.ttd_digital.path
-                    if user_obj.safe_profile.ttd_digital
-                    else None
-                )
-            except Exception:
-                signature_path = None
-        if signature_path and Path(signature_path).exists():
-            try:
-                pdf.drawImage(
-                    ImageReader(signature_path),
-                    x,
-                    signature_y,
-                    width=38 * mm,
-                    height=18 * mm,
-                    preserveAspectRatio=True,
-                    mask="auto",
-                )
-            except Exception:
-                pass
-        pdf.line(x, y_top - 27 * mm, x + 52 * mm, y_top - 27 * mm)
-        pdf.setFont("Helvetica-Bold", 9)
-        pdf.drawString(
-            x, y_top - 31 * mm, (user_obj.get_full_name() if user_obj else "-")[:42]
-        )
-        pdf.setFont("Helvetica", 9)
-        nip = getattr(user_obj, "nip", "") if user_obj else ""
-        pdf.drawString(x, y_top - 35 * mm, f"NIP/NIK: {nip or '-'}")
-
-    pdf.setTitle(obj.nomor_pengajuan)
-    line("FORMULIR PENGAJUAN PEMINJAMAN", font="Helvetica-Bold", size=13, gap=6 * mm)
-    line(f"Nomor Pengajuan: {obj.nomor_pengajuan}")
-    line(
-        f"Tanggal Pengajuan: {format_date_id(timezone.localtime(obj.submitted_at).date())}"
-    )
-    y -= 2 * mm
-
-    multiline(
-        "A. Data Peminjam",
-        [
-            f"Nama: {obj.nama_peminjam}",
-            f"Nomor Telepon: {obj.no_hp_peminjam or '-'}",
-            f"Email: {obj.email_peminjam or '-'}",
-            f"Alamat: {obj.alamat_peminjam or '-'}",
-        ],
-    )
-    survei_values = [item.jenis_survei for item in obj.kegiatan_survei.all()]
-    if obj.survei_lainnya:
-        survei_values.append(f"Lainnya: {obj.survei_lainnya}")
-    multiline(
-        "B. Data Kegiatan",
-        [
-            f"Layanan Kegiatan: {obj.layanan_kegiatan_label}",
-            f"Kegiatan Survei: {', '.join(survei_values) if survei_values else '-'}",
-            f"Tim Kegiatan Pelaksana: {getattr(obj.tim_kegiatan, 'nama_tim', '-')}",
-            f"Instansi Tujuan Kegiatan: {getattr(obj.instansi_tujuan, 'nama_instansi', obj.instansi_tujuan_lainnya or '-')}",
-            f"Waktu Kegiatan: {format_date_id(obj.tanggal_mulai)} s/d {format_date_id(obj.tanggal_selesai)}",
-            f"Total Hari: {obj.total_hari} hari",
-        ],
-    )
-    multiline(
-        "C. Data Peralatan Survei Lapangan yang Dipinjam",
-        [
-            f"{item.barang.nama_barang} | {item.barang.tipe_merek_barang} | {item.barang.kode_laboratorium}"
-            for item in obj.barang_laboratorium_items.all()
-        ]
-        or ["-"],
-    )
-    multiline(
-        "D. Data Barang Penunjang Lapangan yang Dipinjam",
-        [
-            f"{item.barang.nama_barang} | {item.barang.tipe_merek_barang} | Volume: {item.volume}"
-            for item in obj.barang_penunjang_items.all()
-        ]
-        or ["-"],
-    )
-    multiline(
-        "E. Data Bahan Operasional yang Dipinjam",
-        [
-            f"{item.bahan.nama_barang} | Volume: {item.volume} {item.bahan.satuan}"
-            for item in obj.bahan_operasional_items.all()
-        ]
-        or ["-"],
-    )
-    multiline(
-        "F. Data Peralatan Laboratorium yang Dipinjam",
-        [
-            f"{item.barang.nama_barang} | {item.barang.tipe_merek_barang} | {item.barang.kode_laboratorium} | Volume: {item.volume} {item.barang.satuan}"
-            for item in obj.peralatan_laboratorium_items.all()
-        ]
-        or ["-"],
-    )
-
-
-    if y < 90 * mm:
-        pdf.showPage()
-        y = height - 20 * mm
-
-    pdf.setFont("Helvetica", 10)
-    pdf.drawString(
-        width - 78 * mm,
-        y,
-        f"Bandung, {format_date_id(timezone.localtime(obj.submitted_at).date())}",
-    )
-    y -= 10 * mm
-
-    draw_signature_block(margin_x, y, "Peminjam,", obj.peminjam)
-    draw_signature_block(
-        width - 80 * mm, y, "Petugas Laboratorium,", obj.teknisi_lab_by
-    )
-    y -= 44 * mm
-
-    pdf.setFont("Helvetica-Bold", 10)
-    pdf.drawCentredString(width / 2, y, "Mengetahui,")
-    y -= 9 * mm
-
-    draw_signature_block(
-        margin_x, y, "Kepala Laboratorium,", obj.get_kepala_lab_signer()
-    )
-    ketua_tim = obj.get_pimpinan_signer()
     ketua_title = format_ketua_tim_title(
         obj.tim_kegiatan.nama_tim if obj.tim_kegiatan else ""
     )
-    draw_signature_block(width - 80 * mm, y, ketua_title[:45], ketua_tim)
-
-    pdf.showPage()
-    pdf.save()
+    render_pengajuan_pdf(response, obj, format_pdf_date, ketua_title)
     return response

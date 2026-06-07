@@ -69,6 +69,17 @@ RETURN_ACTION_CHOICES = {
         ("perbaiki", "Perbaiki"),
     ],
 }
+VERIFIKASI_LIST_SEARCH_FIELDS = (
+    "nomor_pengajuan",
+    "nama_peminjam",
+    "layanan_kegiatan__jenis_layanan",
+    "layanan_kegiatan_lainnya",
+    "tim_kegiatan__nama_tim",
+    "instansi_tujuan__nama_instansi",
+    "instansi_tujuan_lainnya",
+    "current_step",
+    "return_current_step",
+)
 
 RETURN_PIMPINAN_TEAM_NAME = TIM_LAYANAN_TEKNIS_NAME
 RETURN_PIMPINAN_LABEL = "Ketua Tim Layanan Teknis"
@@ -545,7 +556,11 @@ def _get_detail_context(obj, verification_mode):
 @login_required
 def index(request):
     queryset = _get_pending_queryset(request.user)
-    pagination_context = paginate_list(request, queryset)
+    pagination_context = paginate_list(
+        request,
+        queryset,
+        search_fields=VERIFIKASI_LIST_SEARCH_FIELDS,
+    )
     context = {
         "items": pagination_context["items"],
         "page_title": "Verifikasi Permintaan",

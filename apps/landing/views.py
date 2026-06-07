@@ -5,6 +5,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.templatetags.static import static
 
 from apps.core.list_pagination import paginate_list
+from apps.core.navigation import get_next_url, redirect_next
 from apps.core.permissions import is_super_admin, user_passes_access
 
 from .forms import LandingPeralatanCardForm
@@ -15,6 +16,15 @@ from .services import get_public_landing_context, invalidate_public_landing_cach
 landing_manage_required = user_passes_access(
     is_super_admin,
     'Pengaturan landing page hanya dapat diakses oleh Super Admin.',
+)
+EQUIPMENT_LIST_SEARCH_FIELDS = (
+    "kategori_barang",
+    "nama_barang",
+    "jenis_barang",
+    "merek_tipe_alat",
+    "fungsi_alat",
+    "spesifikasi_alat",
+    "ringkasan_alat",
 )
 
 
@@ -76,7 +86,11 @@ def equipment_order_check(request):
 @landing_manage_required
 def equipment_list(request):
     queryset = LandingPeralatanCard.objects.order_by("urutan", "nama_barang", "id")
-    pagination_context = paginate_list(request, queryset)
+    pagination_context = paginate_list(
+        request,
+        queryset,
+        search_fields=EQUIPMENT_LIST_SEARCH_FIELDS,
+    )
     context = {
         **pagination_context,
         "page_title": "Konten Peralatan Landing Page",
@@ -116,7 +130,7 @@ def equipment_update(request, pk):
         form.save()
         invalidate_public_landing_cache()
         messages.success(request, "Konten peralatan landing page berhasil diperbarui.")
-        return redirect("landing:equipment_list")
+        return redirect_next(request, "landing:equipment_list")
 
     return render(
         request,
@@ -126,6 +140,7 @@ def equipment_update(request, pk):
             "page_title": "Edit Konten Peralatan Landing Page",
             "page_subtitle": "Perbarui data peralatan yang tampil pada landing page public.",
             "submit_label": "Simpan Perubahan",
+            "next_url": get_next_url(request),
         },
     )
 

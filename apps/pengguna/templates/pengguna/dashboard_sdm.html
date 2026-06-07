@@ -107,6 +107,8 @@
         <a href="{% url 'pengguna:pelatihan_daftar' %}" class="btn btn-secondary">Lihat Data Pelatihan</a>
     </div>
 
+    {% include 'components/local_list_search.html' with search_placeholder='Cari pelatihan terbaru...' search_label='Cari pelatihan terbaru' %}
+
     <div class="table-scroll-area table-scroll--list" tabindex="0" aria-label="Scroll tabel pelatihan terbaru">
         <table class="table-data list-table--pengguna">
             <thead>

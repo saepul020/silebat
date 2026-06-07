@@ -17,6 +17,7 @@ from apps.core.import_utils import (
     string_cell as _string_cell,
 )
 from apps.core.permissions import ROLE_SUPER_ADMIN, get_role_name
+from apps.core.navigation import get_next_url, redirect_next
 
 from .forms import (
     DataKopDokumenForm,
@@ -29,6 +30,12 @@ from .models import DataKopDokumen, InstansiKlien, LayananKegiatan, SurveiKegiat
 
 
 FORM_TEMPLATE = "operasional/master_form.html"
+TIM_LIST_SEARCH_FIELDS = (
+    "nama_tim",
+    "ketua_tim__username",
+    "ketua_tim__first_name",
+    "ketua_tim__last_name",
+)
 IMPORT_INSTANSI_SESSION_KEY = "instansi_klien_import_validated_rows"
 IMPORT_INSTANSI_HEADERS = [
     "Nama Instansi",
@@ -339,12 +346,14 @@ def _render_form_page(
     template_name=FORM_TEMPLATE,
     extra_context=None,
 ):
+    next_url = get_next_url(request)
     context = {
         "form": form,
         "page_title": page_title,
         "page_subtitle": page_subtitle,
         "submit_label": submit_label,
         "cancel_url": cancel_url,
+        "next_url": next_url,
     }
     if extra_context:
         context.update(extra_context)
@@ -380,7 +389,7 @@ def _handle_form_page(
     if request.method == "POST" and form.is_valid():
         form.save()
         messages.success(request, success_message)
-        return redirect(redirect_to)
+        return redirect_next(request, redirect_to)
 
     return _render_form_page(
         request,
@@ -410,7 +419,7 @@ def index(request):
 @login_required
 def data_tim(request):
     queryset = TimKegiatan.objects.select_related("ketua_tim").order_by("nama_tim")
-    pagination_context = paginate_list(request, queryset)
+    pagination_context = paginate_list(request, queryset, search_fields=TIM_LIST_SEARCH_FIELDS)
     context = {
         "items": pagination_context["items"],
         "page_title": "Data Tim Kegiatan",
@@ -464,7 +473,7 @@ def hapus_tim(request, pk):
 @login_required
 def data_layanan(request):
     queryset = LayananKegiatan.objects.order_by("jenis_layanan")
-    pagination_context = paginate_list(request, queryset)
+    pagination_context = paginate_list(request, queryset, search_fields=("jenis_layanan",))
     context = {
         "items": pagination_context["items"],
         "page_title": "Data Layanan Kegiatan",
@@ -518,7 +527,7 @@ def hapus_layanan(request, pk):
 @login_required
 def data_survei(request):
     queryset = SurveiKegiatan.objects.order_by("jenis_survei")
-    pagination_context = paginate_list(request, queryset)
+    pagination_context = paginate_list(request, queryset, search_fields=("jenis_survei",))
     context = {
         "items": pagination_context["items"],
         "page_title": "Data Kegiatan Survei",
@@ -571,7 +580,11 @@ def hapus_survei(request, pk):
 
 def _render_data_instansi_list(request, import_context=None):
     queryset = InstansiKlien.objects.order_by("nama_instansi")
-    pagination_context = paginate_list(request, queryset)
+    pagination_context = paginate_list(
+        request,
+        queryset,
+        search_fields=("nama_instansi", "alamat_instansi", "organisasi"),
+    )
     context = {
         "items": pagination_context["items"],
         "page_title": "Data Instansi (Klien)",
@@ -631,7 +644,7 @@ def hapus_instansi(request, pk):
 @login_required
 def data_kop_dokumen(request):
     queryset = DataKopDokumen.objects.order_by("id")
-    pagination_context = paginate_list(request, queryset)
+    pagination_context = paginate_list(request, queryset, search_fields=("kop_dokumen",))
     items = pagination_context["items"]
     item = queryset.first()
     context = {

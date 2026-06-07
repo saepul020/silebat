@@ -4,6 +4,7 @@
 ======================================== */
 document.addEventListener('DOMContentLoaded', function () {
     [
+        initSuccessPopups,
         initReadonlyPasswordUnlock,
         initPasswordVisibilityToggle,
         initSelectPlaceholderState,
@@ -28,7 +29,9 @@ document.addEventListener('DOMContentLoaded', function () {
         initNotificationAnnouncementFormBehavior,
         initConfirmSubmitForms,
         initSortableListTables,
+        initLocalListSearch,
         initMasterShowEntriesControl,
+        initUnsavedFormGuard,
     ].forEach(function (initializer) {
         if (typeof initializer !== 'function') {
             return;
@@ -41,6 +44,36 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 });
+
+function normalizeSearchText(value) {
+    return String(value || '').trim().toLocaleLowerCase('id-ID').replace(/\s+/g, ' ');
+}
+
+function initSuccessPopups() {
+    const stack = document.querySelector('[data-success-popup-stack]');
+    const popups = stack?.querySelectorAll('[data-success-popup]');
+
+    if (!stack || !popups?.length) {
+        stack?.remove();
+        return;
+    }
+
+    function removePopup(popup) {
+        popup.remove();
+        if (!stack.querySelector('[data-success-popup]')) {
+            stack.remove();
+        }
+    }
+
+    popups.forEach(function (popup) {
+        window.setTimeout(function () {
+            popup.classList.add('is-hiding');
+            window.setTimeout(function () {
+                removePopup(popup);
+            }, 250);
+        }, 4000);
+    });
+}
 
 /* ========================================
    GLOBAL FORM
@@ -340,9 +373,9 @@ function bindDeleteModal(config) {
     const deleteForm = document.getElementById(config.formId);
     const primaryField = document.getElementById(config.primaryFieldId);
     const secondaryField = document.getElementById(config.secondaryFieldId);
-    const openButtons = document.querySelectorAll('.js-delete-btn[data-delete-modal="' + config.type + '"]');
+    const buttonSelector = '.js-delete-btn[data-delete-modal="' + config.type + '"]';
 
-    if (!modal || !deleteForm || !primaryField || !secondaryField || !openButtons.length) {
+    if (!modal || !deleteForm || !primaryField || !secondaryField) {
         return;
     }
 
@@ -362,10 +395,11 @@ function bindDeleteModal(config) {
         secondaryField.textContent = '-';
     }
 
-    openButtons.forEach(function (button) {
-        button.addEventListener('click', function () {
+    document.addEventListener('click', function (event) {
+        const button = event.target.closest?.(buttonSelector);
+        if (button) {
             openModal(button);
-        });
+        }
     });
 
     [modalBackdrop, modalClose, modalCancel].forEach(function (element) {
@@ -3073,6 +3107,13 @@ function initPengembalianFormBehavior() {
     });
 
     form.querySelectorAll('[data-return-main-row="true"]').forEach(function (row) {
+        const note = row.querySelector('.js-return-note');
+        if (note) {
+            note.addEventListener('input', function () {
+                clearReturnFieldErrors(note, ['note']);
+                syncReturnErrorRowVisibility(row);
+            });
+        }
         syncReturnErrorRowVisibility(row);
     });
 
@@ -3438,6 +3479,7 @@ function initPengembalianFormBehavior() {
                 getSelectedText(statusSelect, '-'),
                 statusSelect && statusSelect.value === 'transfer' ? getSelectedText(targetSelect, '-') : '-',
                 cells[12] ? cells[12].innerText.trim() : '-',
+                getReturnNote(row),
             ];
         });
     }
@@ -3465,6 +3507,11 @@ function initPengembalianFormBehavior() {
         return toggle && toggle.checked ? getSelectedText(targetSelect, '-') : '-';
     }
 
+    function getReturnNote(row) {
+        const input = row ? row.querySelector('.js-return-note') : null;
+        return getDisplayValue(input ? input.value : '-');
+    }
+
     function getPenunjangSummaryRows() {
         return Array.from(form.querySelectorAll('.js-penunjang-row')).map(function (row) {
             const cells = row.querySelectorAll('td');
@@ -3478,6 +3525,7 @@ function initPengembalianFormBehavior() {
                 getTransferQtyValue(row),
                 getTransferTargetText(row),
                 cells[10] ? cells[10].innerText.trim() : '-',
+                getReturnNote(row),
             ];
         });
     }
@@ -3496,6 +3544,7 @@ function initPengembalianFormBehavior() {
                 getTransferQtyValue(row),
                 getTransferTargetText(row),
                 cells[10] ? cells[10].innerText.trim() : '-',
+                getReturnNote(row),
             ];
         });
     }
@@ -3511,6 +3560,7 @@ function initPengembalianFormBehavior() {
                 getTransferQtyValue(row),
                 getTransferTargetText(row),
                 cells[6] ? cells[6].innerText.trim() : '-',
+                getReturnNote(row),
             ];
         });
     }
@@ -3533,10 +3583,10 @@ function initPengembalianFormBehavior() {
 
         if (summarySections) {
             let html = '';
-            html += buildSummaryTable('Data Peralatan Survei Lapangan', ['Nama Barang', 'Volume', 'Satuan', 'Status Pengembalian', 'Tujuan Transfer', 'Asal Peminjaman'], getLabSummaryRows());
-            html += buildSummaryTable('Data Barang Penunjang Lapangan', ['Nama Barang', 'Volume Dipinjam', 'Satuan', 'Dikembalikan', 'Rusak', 'Hilang', 'Transfer', 'Tujuan Transfer', 'Asal Peminjaman'], getPenunjangSummaryRows());
-            html += buildSummaryTable('Data Bahan Operasional', ['Nama Barang', 'Volume Dipinjam', 'Satuan', 'Dikembalikan', 'Transfer', 'Tujuan Transfer', 'Asal Peminjaman'], getBahanSummaryRows());
-            html += buildSummaryTable('Data Peralatan Laboratorium', ['Nama Barang', 'Volume Dipinjam', 'Satuan', 'Dikembalikan', 'Rusak', 'Hilang', 'Transfer', 'Tujuan Transfer', 'Asal Peminjaman'], getPeralatanLabSummaryRows());
+            html += buildSummaryTable('Data Peralatan Survei Lapangan', ['Nama Barang', 'Volume', 'Satuan', 'Status Pengembalian', 'Tujuan Transfer', 'Asal Peminjaman', 'Catatan Pengembalian'], getLabSummaryRows());
+            html += buildSummaryTable('Data Barang Penunjang Lapangan', ['Nama Barang', 'Volume Dipinjam', 'Satuan', 'Dikembalikan', 'Rusak', 'Hilang', 'Transfer', 'Tujuan Transfer', 'Asal Peminjaman', 'Catatan Pengembalian'], getPenunjangSummaryRows());
+            html += buildSummaryTable('Data Bahan Operasional', ['Nama Barang', 'Volume Dipinjam', 'Satuan', 'Dikembalikan', 'Transfer', 'Tujuan Transfer', 'Asal Peminjaman', 'Catatan Pengembalian'], getBahanSummaryRows());
+            html += buildSummaryTable('Data Peralatan Laboratorium', ['Nama Barang', 'Volume Dipinjam', 'Satuan', 'Dikembalikan', 'Rusak', 'Hilang', 'Transfer', 'Tujuan Transfer', 'Asal Peminjaman', 'Catatan Pengembalian'], getPeralatanLabSummaryRows());
             html += buildSummaryTable('Data Pengukuran Lapangan', ['Jenis Pengukuran', 'Jumlah Titik/Lintasan'], getPengukuranSummaryRows());
             if (!html) {
                 html = '<div class="card loan-summary-empty"><div class="empty-state">Belum ada data pengembalian yang dapat diringkas.</div></div>';
@@ -3571,6 +3621,9 @@ function initPengembalianFormBehavior() {
 
     if (confirmSummaryButton) {
         confirmSummaryButton.addEventListener('click', function () {
+            if (confirmSummaryButton.disabled) {
+                return;
+            }
             if (summaryConfirmedInput) {
                 summaryConfirmedInput.value = '1';
             }
@@ -3578,6 +3631,9 @@ function initPengembalianFormBehavior() {
             if (summaryStepActionInput && !String(summaryStepActionInput.value || '').trim()) {
                 summaryStepActionInput.value = 'ajukan_pengembalian';
             }
+            confirmSummaryButton.disabled = true;
+            confirmSummaryButton.setAttribute('aria-busy', 'true');
+            form.dispatchEvent(new CustomEvent('unsaved:submitted'));
             HTMLFormElement.prototype.submit.call(form);
         });
     }
@@ -3668,6 +3724,8 @@ function initPengembalianFormBehavior() {
             return row.querySelector('input[data-role="hilang"]') || row;
         case 'transfer_qty':
             return row.querySelector('input[data-role="transfer"]') || row.querySelector('.js-transfer-toggle') || row;
+        case 'note':
+            return row.querySelector('.js-return-note') || row;
         case 'validation':
             return row.querySelector('.js-total-indicator') || row;
         default:
@@ -3872,7 +3930,14 @@ function initPeminjamanFormBehavior() {
     const labItemRows = form.querySelectorAll('[data-lab-item-row]');
     const labCategoryRows = form.querySelectorAll('[data-lab-category-group]');
     const labFilterEmptyRow = form.querySelector('[data-lab-filter-empty]');
-    const inventoryToggleButtons = form.querySelectorAll('[data-inventory-toggle]');
+    const inventorySheet = form.querySelector('[data-inventory-sheet]');
+    const inventoryTabsWrap = form.querySelector('.inventory-sheet-tabs');
+    const inventoryTabs = Array.from(form.querySelectorAll('[data-inventory-tab]'));
+    const inventoryPanels = Array.from(form.querySelectorAll('[data-inventory-panel]'));
+    const inventorySearch = form.querySelector('[data-inventory-search]');
+    const inventorySearchClear = form.querySelector('[data-inventory-search-clear]');
+    const inventorySearchResult = form.querySelector('[data-inventory-search-result]');
+    const inventoryBacktop = form.querySelector('[data-inventory-backtop]');
     const alwaysVisibleLabCategories = new Set(['Pendukung Survei Lapangan']);
     const surveyToLabCategoryMap = {
         'borehole camera': ['Borehole Camera'],
@@ -4295,61 +4360,171 @@ function initPeminjamanFormBehavior() {
         if (labFilterEmptyRow) {
             labFilterEmptyRow.classList.toggle('is-hidden', visibleRowCount > 0);
         }
+
+        filterActiveInventory();
     }
 
-    function syncInventoryToggleButton(button, expanded) {
-        if (!button) {
+    function getActiveInventoryPanel() {
+        return inventoryPanels.find(function (panel) {
+            return !panel.hidden;
+        }) || null;
+    }
+
+    function filterActiveInventory() {
+        const panel = getActiveInventoryPanel();
+        if (!panel) {
             return;
         }
 
-        const icon = button.querySelector('i');
-        const textNode = button.querySelector('span');
-        const showText = button.dataset.showText || 'Tampilkan';
-        const hideText = button.dataset.hideText || 'Sembunyikan';
+        const term = normalizeSearchText(inventorySearch?.value);
+        const rows = Array.from(panel.querySelectorAll('[data-inventory-row]'));
+        const groups = Array.from(panel.querySelectorAll('[data-inventory-group]'));
+        const searchEmpty = panel.querySelector('[data-inventory-search-empty]');
+        let baseVisibleCount = 0;
+        let visibleCount = 0;
 
-        button.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+        rows.forEach(function (row) {
+            const baseVisible = !row.classList.contains('is-hidden');
+            const matches = !term || normalizeSearchText(row.textContent).includes(term);
+            row.classList.toggle('is-search-hidden', !matches);
+            if (baseVisible) {
+                baseVisibleCount += 1;
+                if (matches) {
+                    visibleCount += 1;
+                }
+            }
+        });
 
-        if (icon) {
-            icon.className = expanded ? 'bi bi-eye-slash' : 'bi bi-eye';
+        groups.forEach(function (group) {
+            let row = group.nextElementSibling;
+            let hasVisibleItem = false;
+            while (row && !row.matches('[data-inventory-group]')) {
+                if (row.matches('[data-inventory-row]')
+                    && !row.classList.contains('is-hidden')
+                    && !row.classList.contains('is-search-hidden')) {
+                    hasVisibleItem = true;
+                    break;
+                }
+                row = row.nextElementSibling;
+            }
+            group.classList.toggle('is-search-hidden', !hasVisibleItem);
+        });
+
+        if (searchEmpty) {
+            searchEmpty.classList.toggle('is-hidden', !term || baseVisibleCount === 0 || visibleCount > 0);
         }
-
-        if (textNode) {
-            textNode.textContent = expanded ? hideText : showText;
+        if (inventorySearchClear) {
+            inventorySearchClear.hidden = !term;
+        }
+        if (inventorySearchResult) {
+            inventorySearchResult.textContent = term
+                ? `${visibleCount} item ditemukan`
+                : `${baseVisibleCount} item tersedia`;
         }
     }
 
-    function initInventoryToggleSections() {
-        inventoryToggleButtons.forEach(function (button) {
-            const section = button.closest('[data-inventory-toggle-section]');
-            const contentId = button.getAttribute('aria-controls');
-            const content = contentId ? document.getElementById(contentId) : (section ? section.querySelector('[data-inventory-toggle-content]') : null);
+    function updateInventorySearchLabel(key) {
+        if (!inventorySearch) {
+            return;
+        }
+        const activeTab = inventoryTabs.find(function (tab) {
+            return tab.dataset.inventoryTab === key;
+        });
+        const label = String(activeTab?.textContent || 'item barang').trim();
+        inventorySearch.placeholder = `Cari ${label}...`;
+        inventorySearch.setAttribute('aria-label', `Cari item pada kategori ${label}`);
+    }
 
-            if (!content) {
-                return;
+    function updateInventoryBacktop() {
+        if (!inventorySheet || !inventoryTabsWrap || !inventoryBacktop) {
+            return;
+        }
+        const sheetRect = inventorySheet.getBoundingClientRect();
+        const tabsRect = inventoryTabsWrap.getBoundingClientRect();
+        const visible = tabsRect.bottom < 80 && sheetRect.bottom > 150;
+        inventoryBacktop.style.setProperty('--inventory-backtop-left', `${sheetRect.left + (sheetRect.width / 2)}px`);
+        inventoryBacktop.classList.toggle('is-visible', visible);
+    }
+
+    function activateInventoryTab(key, focusTab) {
+        inventoryTabs.forEach(function (tab) {
+            const active = tab.dataset.inventoryTab === key;
+            tab.classList.toggle('is-active', active);
+            tab.setAttribute('aria-selected', String(active));
+            tab.tabIndex = active ? 0 : -1;
+            if (active && focusTab) {
+                tab.focus();
             }
+        });
 
-            const initialExpanded = button.getAttribute('aria-expanded') !== 'false';
-            content.hidden = !initialExpanded;
+        inventoryPanels.forEach(function (panel) {
+            const active = panel.dataset.inventoryPanel === key;
+            panel.classList.toggle('is-active', active);
+            panel.hidden = !active;
+        });
 
-            if (section) {
-                section.classList.toggle('is-collapsed', !initialExpanded);
-            }
+        updateInventorySearchLabel(key);
+        filterActiveInventory();
+    }
 
-            syncInventoryToggleButton(button, initialExpanded);
+    function initInventorySheet() {
+        if (!inventoryTabs.length || !inventoryPanels.length) {
+            return;
+        }
 
-            button.addEventListener('click', function () {
-                const isExpanded = button.getAttribute('aria-expanded') === 'true';
-                const nextExpanded = !isExpanded;
+        const initialTab = inventoryTabs.find(function (tab) {
+            return tab.getAttribute('aria-selected') === 'true';
+        }) || inventoryTabs[0];
 
-                content.hidden = !nextExpanded;
+        activateInventoryTab(initialTab.dataset.inventoryTab, false);
 
-                if (section) {
-                    section.classList.toggle('is-collapsed', !nextExpanded);
+        inventoryTabs.forEach(function (tab, index) {
+            tab.addEventListener('click', function () {
+                activateInventoryTab(tab.dataset.inventoryTab, false);
+            });
+
+            tab.addEventListener('keydown', function (event) {
+                let nextIndex = null;
+                if (event.key === 'ArrowRight') {
+                    nextIndex = (index + 1) % inventoryTabs.length;
+                } else if (event.key === 'ArrowLeft') {
+                    nextIndex = (index - 1 + inventoryTabs.length) % inventoryTabs.length;
+                } else if (event.key === 'Home') {
+                    nextIndex = 0;
+                } else if (event.key === 'End') {
+                    nextIndex = inventoryTabs.length - 1;
                 }
 
-                syncInventoryToggleButton(button, nextExpanded);
+                if (nextIndex === null) {
+                    return;
+                }
+
+                event.preventDefault();
+                activateInventoryTab(inventoryTabs[nextIndex].dataset.inventoryTab, true);
             });
         });
+
+        inventorySearch?.addEventListener('input', filterActiveInventory);
+        inventorySearchClear?.addEventListener('click', function () {
+            inventorySearch.value = '';
+            filterActiveInventory();
+            inventorySearch.focus();
+        });
+        inventoryBacktop?.addEventListener('click', function () {
+            inventoryTabsWrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            const activeTab = inventoryTabs.find(function (tab) {
+                return tab.getAttribute('aria-selected') === 'true';
+            });
+            window.setTimeout(function () {
+                activeTab?.focus({ preventScroll: true });
+            }, 350);
+        });
+        window.addEventListener('scroll', updateInventoryBacktop, { passive: true });
+        window.addEventListener('resize', updateInventoryBacktop);
+        if (typeof ResizeObserver === 'function' && inventorySheet) {
+            new ResizeObserver(updateInventoryBacktop).observe(inventorySheet);
+        }
+        updateInventoryBacktop();
     }
 
     function validateTanggalRange() {
@@ -4899,7 +5074,7 @@ function initPeminjamanFormBehavior() {
     const inventorySelectionError = document.getElementById('inventorySelectionError');
     let isConfirmedSubmission = false;
 
-    initInventoryToggleSections();
+    initInventorySheet();
     syncLabInventoryBySurvey({ silent: true });
 
     function escapeHtml(value) {
@@ -5227,6 +5402,303 @@ function initPeminjamanFormBehavior() {
 }
 
 
+function initUnsavedFormGuard() {
+    const modal = document.getElementById('unsavedChangesModal');
+    const backdrop = document.getElementById('unsavedChangesModalBackdrop');
+    const closeButton = document.getElementById('unsavedChangesModalClose');
+    const cancelButton = document.getElementById('unsavedChangesModalCancel');
+    const confirmButton = document.getElementById('unsavedChangesModalConfirm');
+    const title = document.getElementById('unsavedChangesModalTitle');
+    const message = document.getElementById('unsavedChangesModalMessage');
+    const warning = document.getElementById('unsavedChangesModalWarning');
+    const editableSelector = 'input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="reset"]), select, textarea';
+
+    if (!modal) {
+        return;
+    }
+
+    const forms = Array.from(document.forms).filter(function (form) {
+        return String(form.method || '').toLowerCase() === 'post'
+            && !form.matches('[data-unsaved-ignore]')
+            && Boolean(form.querySelector(editableSelector));
+    });
+    if (!forms.length) {
+        return;
+    }
+
+    let pendingNav = null;
+    let leaving = false;
+    let historyGuarded = false;
+    const navType = window.performance.getEntriesByType?.('navigation')?.[0]?.type || '';
+    const states = forms.map(function (form, index) {
+        const identity = form.id || form.getAttribute('data-unsaved-key') || String(index);
+        const action = form.getAttribute('action') || window.location.pathname;
+        return {
+            form: form,
+            dirty: false,
+            key: `silebat:form-draft:${window.location.pathname}:${action}:${identity}`,
+        };
+    });
+
+    function getControls(form) {
+        return Array.from(form.elements).filter(function (control) {
+            return control.name
+                && !control.disabled
+                && control.name !== 'csrfmiddlewaretoken'
+                && !['button', 'file', 'hidden', 'password', 'reset', 'submit'].includes(control.type);
+        });
+    }
+
+    function saveDraft(state) {
+        const controls = getControls(state.form).map(function (control) {
+            return {
+                name: control.name,
+                type: control.type,
+                value: control.value,
+                checked: control.checked,
+            };
+        });
+        try {
+            window.sessionStorage.setItem(state.key, JSON.stringify({ controls: controls }));
+        } catch (error) {
+            console.warn('Draft form tidak dapat disimpan.', error);
+        }
+    }
+
+    function clearDraft(state) {
+        try {
+            window.sessionStorage.removeItem(state.key);
+        } catch (error) {
+            console.warn('Draft form tidak dapat dihapus.', error);
+        }
+    }
+
+    function clearAllDrafts() {
+        states.forEach(clearDraft);
+    }
+
+    function restoreDraft(state) {
+        if (navType !== 'reload') {
+            clearDraft(state);
+            return false;
+        }
+
+        let draft = null;
+        try {
+            draft = JSON.parse(window.sessionStorage.getItem(state.key) || 'null');
+        } catch (error) {
+            clearDraft(state);
+            return false;
+        }
+        if (!draft || !Array.isArray(draft.controls)) {
+            return false;
+        }
+
+        const controls = getControls(state.form);
+        draft.controls.forEach(function (item, index) {
+            const control = controls[index];
+            if (!control || control.name !== item.name || control.type !== item.type) {
+                return;
+            }
+            if (control.type === 'checkbox' || control.type === 'radio') {
+                control.checked = Boolean(item.checked);
+                return;
+            }
+            control.value = item.value;
+        });
+        controls.forEach(function (control) {
+            control.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+        state.dirty = true;
+        return true;
+    }
+
+    function hasDirtyForm() {
+        return states.some(function (state) {
+            return state.dirty;
+        });
+    }
+
+    function setModalMode(type) {
+        const restored = type === 'restored';
+        const reload = type === 'reload';
+        title.textContent = restored ? 'Input Dipulihkan Setelah Reload' : (reload ? 'Konfirmasi Reload Halaman' : 'Konfirmasi Tinggalkan Halaman');
+        message.textContent = restored
+            ? 'Halaman telah direload. Data input yang belum disubmit berhasil dipulihkan.'
+            : (reload
+                ? 'Data yang sudah diinput belum disubmit. Draft akan dipulihkan setelah halaman direload.'
+                : 'Data yang sudah diinput belum disimpan. Jika meninggalkan halaman, seluruh perubahan akan hilang.');
+        warning.textContent = restored
+            ? 'File dan kata sandi yang sebelumnya dipilih perlu diinput kembali.'
+            : (reload ? 'Apakah Anda yakin ingin mereload halaman ini?' : 'Apakah Anda yakin ingin meninggalkan halaman ini?');
+        cancelButton.textContent = restored ? 'Lanjutkan Input' : (reload ? 'Batalkan Reload' : 'Tetap di Halaman');
+        confirmButton.textContent = restored ? 'Hapus Draft' : (reload ? 'Ya, Reload' : 'Ya, Tinggalkan');
+    }
+
+    function openModal(nav) {
+        pendingNav = nav;
+        setModalMode(nav?.type);
+        modal.classList.add('show');
+        document.body.classList.add('modal-open');
+        cancelButton.focus();
+    }
+
+    function closeModal() {
+        modal.classList.remove('show');
+        document.body.classList.remove('modal-open');
+        pendingNav = null;
+    }
+
+    function restoreHistoryGuard() {
+        if (historyGuarded && !leaving) {
+            window.history.pushState({ unsavedFormGuard: true }, '', window.location.href);
+        }
+    }
+
+    function markDirty(state) {
+        state.dirty = true;
+        saveDraft(state);
+        if (!historyGuarded) {
+            window.history.pushState({ unsavedFormGuard: true }, '', window.location.href);
+            historyGuarded = true;
+        }
+    }
+
+    let restored = false;
+    states.forEach(function (state) {
+        restored = restoreDraft(state) || restored;
+    });
+    if (restored) {
+        window.history.pushState({ unsavedFormGuard: true }, '', window.location.href);
+        historyGuarded = true;
+        openModal({ type: 'restored' });
+    }
+
+    states.forEach(function (state) {
+        state.form.addEventListener('input', function (event) {
+            if (event.target.closest('[data-unsaved-ignore-field]')) {
+                return;
+            }
+            markDirty(state);
+        });
+        state.form.addEventListener('change', function (event) {
+            if (event.target.closest('[data-unsaved-ignore-field]')) {
+                return;
+            }
+            markDirty(state);
+        });
+        state.form.addEventListener('submit', function (event) {
+            queueMicrotask(function () {
+                if (event.defaultPrevented) {
+                    return;
+                }
+                states.forEach(function (item) {
+                    item.dirty = false;
+                });
+                clearAllDrafts();
+                leaving = true;
+            });
+        });
+        state.form.addEventListener('unsaved:reset', function () {
+            state.dirty = false;
+            clearDraft(state);
+        });
+        state.form.addEventListener('unsaved:submitted', function () {
+            states.forEach(function (item) {
+                item.dirty = false;
+            });
+            clearAllDrafts();
+            leaving = true;
+        });
+    });
+
+    document.addEventListener('click', function (event) {
+        if (!hasDirtyForm() || leaving || event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) {
+            return;
+        }
+        const link = event.target.closest('a[href]');
+        if (!link || link.hasAttribute('download') || link.target === '_blank') {
+            return;
+        }
+        const url = new URL(link.href, window.location.href);
+        const sameDocument = url.pathname === window.location.pathname
+            && url.search === window.location.search
+            && url.hash !== window.location.hash;
+        if (!['http:', 'https:'].includes(url.protocol) || sameDocument || url.href === window.location.href) {
+            return;
+        }
+        event.preventDefault();
+        openModal({ type: 'link', url: url.href });
+    });
+
+    window.addEventListener('popstate', function () {
+        if (hasDirtyForm() && !leaving) {
+            openModal({ type: 'back' });
+        }
+    });
+
+    window.addEventListener('beforeunload', function (event) {
+        if (!hasDirtyForm() || leaving) {
+            return;
+        }
+        event.preventDefault();
+        event.returnValue = '';
+    });
+
+    [backdrop, closeButton, cancelButton].forEach(function (element) {
+        element.addEventListener('click', function () {
+            if (pendingNav?.type === 'back') {
+                restoreHistoryGuard();
+            }
+            closeModal();
+        });
+    });
+
+    confirmButton.addEventListener('click', function () {
+        const nav = pendingNav;
+        if (nav?.type === 'restored') {
+            clearAllDrafts();
+            leaving = true;
+            closeModal();
+            window.location.reload();
+            return;
+        }
+
+        leaving = true;
+        closeModal();
+        if (nav?.type === 'back') {
+            clearAllDrafts();
+            window.history.back();
+            return;
+        }
+        if (nav?.type === 'reload') {
+            window.location.reload();
+            return;
+        }
+        if (nav?.url) {
+            clearAllDrafts();
+            window.location.assign(nav.url);
+        }
+    });
+
+    document.addEventListener('keydown', function (event) {
+        const reloadShortcut = event.key === 'F5'
+            || ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'r');
+        if (reloadShortcut && hasDirtyForm() && !leaving) {
+            event.preventDefault();
+            openModal({ type: 'reload' });
+            return;
+        }
+        if (event.key !== 'Escape' || !modal.classList.contains('show')) {
+            return;
+        }
+        if (pendingNav?.type === 'back') {
+            restoreHistoryGuard();
+        }
+        closeModal();
+    });
+}
+
 function initConfirmSubmitForms() {
     const forms = document.querySelectorAll('[data-confirm-submit]');
 
@@ -5242,8 +5714,9 @@ function initConfirmSubmitForms() {
 
 
 
-function initSortableListTables() {
-    const tables = document.querySelectorAll('.table-scroll--list .table-data');
+function initSortableListTables(root = document) {
+    const selector = root.matches?.('.table-scroll--list') ? '.table-data' : '.table-scroll--list .table-data';
+    const tables = root.querySelectorAll(selector);
 
     if (!tables.length) {
         return;
@@ -5509,6 +5982,58 @@ function initSortableListTables() {
     });
 }
 
+function initLocalListSearch() {
+    const controls = document.querySelectorAll('[data-local-list-search]');
+
+    controls.forEach(function (control) {
+        const panel = control.closest('.table-panel');
+        const table = panel?.querySelector('.table-scroll--list .table-data');
+        const tbody = table?.tBodies[0];
+        const input = control.querySelector('[data-local-list-search-input]');
+        const clearButton = control.querySelector('[data-local-list-search-clear]');
+        const result = control.querySelector('[data-local-list-search-result]');
+
+        if (!table || !tbody || !input || !clearButton || !result) {
+            return;
+        }
+
+        const rows = Array.from(tbody.rows).filter(function (row) {
+            return !row.querySelector('.empty-state');
+        });
+        const columnCount = table.tHead?.rows[0]?.cells.length || 1;
+        const emptyRow = document.createElement('tr');
+        emptyRow.className = 'is-list-search-empty';
+        emptyRow.hidden = true;
+        emptyRow.innerHTML = `<td colspan="${columnCount}"><div class="empty-state">Data yang dicari tidak ditemukan.</div></td>`;
+        tbody.appendChild(emptyRow);
+
+        function filterRows() {
+            const term = normalizeSearchText(input.value);
+            let visibleCount = 0;
+
+            rows.forEach(function (row) {
+                const matches = !term || normalizeSearchText(row.textContent).includes(term);
+                row.classList.toggle('is-list-search-hidden', !matches);
+                visibleCount += matches ? 1 : 0;
+            });
+
+            clearButton.hidden = !term;
+            emptyRow.hidden = !term || visibleCount > 0 || rows.length === 0;
+            result.textContent = term
+                ? `${visibleCount} data ditemukan`
+                : `${rows.length} data tersedia`;
+        }
+
+        input.addEventListener('input', filterRows);
+        clearButton.addEventListener('click', function () {
+            input.value = '';
+            filterRows();
+            input.focus();
+        });
+        filterRows();
+    });
+}
+
 
 /* ========================================
    IMPORT EXCEL MODAL (GLOBAL)
@@ -5667,6 +6192,7 @@ function initBarangLaboratoriumImportModal() {
 
         function cancelAndCloseModal() {
             resetImportModalState({ clearFile: true });
+            form?.dispatchEvent(new CustomEvent('unsaved:reset'));
             requestCancelValidation();
             closeModal();
         }
@@ -5772,6 +6298,7 @@ function initBarangLaboratoriumImportModal() {
                         if (payload.ok && payload.saved) {
                             renderFeedback('success', 'Simpan data berhasil.', payload.message || 'Data berhasil diimport.', []);
                             resetImportModalState({ clearFile: true, clearFeedback: false });
+                            form.dispatchEvent(new CustomEvent('unsaved:submitted'));
                             window.setTimeout(function () {
                                 window.location.href = payload.redirect_url || window.location.href;
                             }, 700);
@@ -6442,10 +6969,137 @@ function initMasterShowEntriesControl() {
 
     forms.forEach(function (form) {
         const selects = form.querySelectorAll('.js-show-entries-select, .js-master-filter-select');
+        const search = form.querySelector('[data-master-search]');
+        const searchClear = form.querySelector('[data-master-search-clear]');
         const pageInput = form.querySelector('input[name="page"]');
+        let lastSearch = normalizeSearchText(search?.value);
+        let searchTimer = null;
+        let searchRequest = null;
+        let composing = false;
 
-        if (!selects.length) {
-            return;
+        function submitForm() {
+            if (pageInput) {
+                pageInput.value = '1';
+            }
+
+            if (typeof form.requestSubmit === 'function') {
+                form.requestSubmit();
+            } else {
+                form.submit();
+            }
+        }
+
+        function getListRegion(root, targetForm) {
+            const panel = targetForm.closest('.table-panel');
+            const scope = panel || root;
+
+            return {
+                info: targetForm.closest('.master-list-controls')?.querySelector('.master-entries-info') || null,
+                pagination: scope.querySelector('.master-pagination-bar'),
+                result: scope.querySelector('.table-scroll--list') || scope.querySelector('.notif-list-card'),
+            };
+        }
+
+        function getSearchUrl() {
+            const url = new URL(form.action || window.location.href, window.location.href);
+            url.search = '';
+
+            new FormData(form).forEach(function (value, key) {
+                url.searchParams.append(key, value);
+            });
+
+            return url;
+        }
+
+        async function updateSearchResult() {
+            const value = normalizeSearchText(search?.value);
+            if (!search || value === lastSearch) {
+                return;
+            }
+
+            if (pageInput) {
+                pageInput.value = '1';
+            }
+
+            searchRequest?.abort();
+            const request = new AbortController();
+            searchRequest = request;
+
+            const currentRegion = getListRegion(document, form);
+            if (!currentRegion.result) {
+                submitForm();
+                return;
+            }
+
+            const url = getSearchUrl();
+            const start = search.selectionStart ?? search.value.length;
+            const end = search.selectionEnd ?? start;
+            currentRegion.result.setAttribute('aria-busy', 'true');
+
+            try {
+                const response = await fetch(url, {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    signal: request.signal,
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Pencarian gagal dimuat (${response.status}).`);
+                }
+
+                const remoteDoc = new DOMParser().parseFromString(await response.text(), 'text/html');
+                const remoteForm = remoteDoc.querySelector('[data-master-entries-form="true"]');
+                if (!remoteForm) {
+                    throw new Error('Form pencarian tidak ditemukan pada respons.');
+                }
+
+                const remoteRegion = getListRegion(remoteDoc, remoteForm);
+                if (!remoteRegion.result) {
+                    throw new Error('Hasil pencarian tidak ditemukan pada respons.');
+                }
+
+                const nextResult = document.importNode(remoteRegion.result, true);
+                currentRegion.result.replaceWith(nextResult);
+
+                if (currentRegion.pagination && remoteRegion.pagination) {
+                    currentRegion.pagination.replaceWith(document.importNode(remoteRegion.pagination, true));
+                } else if (currentRegion.pagination) {
+                    currentRegion.pagination.remove();
+                } else if (remoteRegion.pagination) {
+                    nextResult.insertAdjacentElement('afterend', document.importNode(remoteRegion.pagination, true));
+                }
+
+                if (currentRegion.info && remoteRegion.info) {
+                    currentRegion.info.innerHTML = remoteRegion.info.innerHTML;
+                }
+
+                lastSearch = value;
+                window.history.replaceState(window.history.state, '', url);
+                initSortableListTables(nextResult);
+                if (document.activeElement === search) {
+                    search.setSelectionRange(start, end);
+                }
+            } catch (error) {
+                if (error.name !== 'AbortError') {
+                    console.error(error);
+                }
+            } finally {
+                if (searchRequest === request) {
+                    searchRequest = null;
+                    getListRegion(document, form).result?.removeAttribute('aria-busy');
+                }
+            }
+        }
+
+        function scheduleSearch() {
+            window.clearTimeout(searchTimer);
+            searchRequest?.abort();
+            if (composing) {
+                return;
+            }
+
+            searchTimer = window.setTimeout(updateSearchResult, 350);
         }
 
         selects.forEach(function (select) {
@@ -6454,16 +7108,43 @@ function initMasterShowEntriesControl() {
                     return;
                 }
 
-                if (pageInput) {
-                    pageInput.value = '1';
-                }
-
-                if (typeof form.requestSubmit === 'function') {
-                    form.requestSubmit();
-                } else {
-                    form.submit();
-                }
+                submitForm();
             });
+        });
+
+        search?.addEventListener('compositionstart', function () {
+            composing = true;
+        });
+
+        search?.addEventListener('compositionend', function () {
+            composing = false;
+            scheduleSearch();
+        });
+
+        search?.addEventListener('input', function () {
+            const value = normalizeSearchText(search.value);
+            if (searchClear) {
+                searchClear.hidden = !value;
+            }
+            scheduleSearch();
+        });
+
+        search?.addEventListener('keydown', function (event) {
+            if (event.key !== 'Enter') {
+                return;
+            }
+
+            event.preventDefault();
+            window.clearTimeout(searchTimer);
+            updateSearchResult();
+        });
+
+        searchClear?.addEventListener('click', function () {
+            window.clearTimeout(searchTimer);
+            search.value = '';
+            searchClear.hidden = true;
+            search.focus();
+            updateSearchResult();
         });
     });
 }

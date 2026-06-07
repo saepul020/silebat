@@ -1,0 +1,17 @@
+<div class="master-list-controls master-list-controls--local" data-local-list-search>
+    <div class="master-list-search list-search-box">
+        <i class="bi bi-search" aria-hidden="true"></i>
+        <input
+            type="search"
+            placeholder="{{ search_placeholder|default:'Cari data...' }}"
+            aria-label="{{ search_label|default:'Cari data' }}"
+            autocomplete="off"
+            maxlength="100"
+            data-local-list-search-input
+        >
+        <button type="button" class="master-list-search-clear list-search-clear" data-local-list-search-clear aria-label="Hapus pencarian" title="Hapus pencarian" hidden>
+            <i class="bi bi-x-lg" aria-hidden="true"></i>
+        </button>
+    </div>
+    <p class="master-entries-info" data-local-list-search-result aria-live="polite"></p>
+</div>

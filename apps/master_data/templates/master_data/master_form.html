@@ -12,6 +12,7 @@
 <div class="form-card user-form-card master-data-form-card">
     <form method="post" enctype="multipart/form-data" class="pengguna-form master-data-form" data-master-data-form="true" novalidate>
         {% csrf_token %}
+        {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
 
         {% if form.non_field_errors %}
         <div class="form-global-errors">
@@ -185,7 +186,9 @@
 
         <div class="form-actions">
             <button type="submit" class="btn btn-primary">{{ submit_label }}</button>
-            {% if cancel_url_kwargs %}
+            {% if next_url %}
+                <a href="{{ next_url }}" class="btn btn-secondary">Kembali</a>
+            {% elif cancel_url_kwargs %}
                 <a href="{% url cancel_url cancel_url_kwargs.pk %}" class="btn btn-secondary">Kembali</a>
             {% else %}
                 <a href="{% url cancel_url %}" class="btn btn-secondary">Kembali</a>
