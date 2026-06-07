@@ -250,7 +250,7 @@
                 </div>
 
                 <div
-                    class="upload-card {% if form_profile.ttd_digital.errors %}has-error{% endif %}"
+                    class="upload-card upload-card--signature {% if form_profile.ttd_digital.errors %}has-error{% endif %}"
                     data-upload-control
                     data-upload-mode="replace-only"
                     data-hidden-input-id="{{ form_profile.hapus_ttd_digital.id_for_label }}"
@@ -262,7 +262,6 @@
 
                     <div class="upload-card__head">
                         <label for="{{ form_profile.ttd_digital.id_for_label }}">{{ form_profile.ttd_digital.label }}</label>
-                        <span class="upload-card__hint">Auto crop 1:1</span>
                     </div>
 
                     <div class="upload-preview-stack">

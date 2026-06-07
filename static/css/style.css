@@ -1324,6 +1324,25 @@ textarea {
     object-position: center;
 }
 
+.upload-card--signature .upload-preview-card:not(.is-empty),
+.upload-card--signature .upload-preview-card:not(.is-empty) .upload-preview-card__body,
+.upload-card--signature .upload-preview-card:not(.is-empty) .upload-preview-frame {
+    height: auto;
+    min-height: 0;
+    max-height: none;
+}
+
+.upload-card--signature .upload-preview-card:not(.is-empty) .upload-preview-frame {
+    background: transparent;
+}
+
+.upload-card--signature .upload-preview-frame img {
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: 250px;
+}
+
 input[type="hidden"] {
     display: none !important;
 }

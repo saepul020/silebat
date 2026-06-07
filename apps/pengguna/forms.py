@@ -867,9 +867,7 @@ class UserProfileForm(forms.ModelForm):
             if old_ttd_digital and getattr(old_ttd_digital, "name", ""):
                 files_to_delete.append(old_ttd_digital)
         elif new_ttd_digital:
-            profile.ttd_digital = self._crop_square_image(
-                new_ttd_digital, filename_prefix="ttd_digital"
-            )
+            profile.ttd_digital = new_ttd_digital
             if old_ttd_digital and getattr(old_ttd_digital, "name", ""):
                 files_to_delete.append(old_ttd_digital)
         elif persisted_profile is not None:
