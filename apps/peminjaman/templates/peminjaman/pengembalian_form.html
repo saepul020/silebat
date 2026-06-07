@@ -197,7 +197,7 @@
                             <td data-label="Asal Peminjaman" class="cell-wrap">{{ row.asal_peminjaman_label|default:row.borrowed.asal_peminjaman_label|default:'Laboratorium' }}</td>
                             <td data-label="Catatan Pengembalian" class="return-note-col">
                                 <div class="return-field-group {% if row.field_errors.note %}has-error{% endif %}" data-return-field-group="true" data-error-key="note">
-                                    <textarea name="lab_note_{{ row.borrowed.barang_id }}" class="input-control return-item-note js-return-note" rows="2" maxlength="{{ return_item_note_max_length }}" placeholder="Opsional" {% if not editable_item_form %}disabled{% endif %}>{{ row.note }}</textarea>
+                                    <input type="text" name="lab_note_{{ row.borrowed.barang_id }}" value="{{ row.note }}" class="input-control return-item-note js-return-note" maxlength="{{ return_item_note_max_length }}" placeholder="Opsional" autocomplete="off" {% if not editable_item_form %}disabled{% endif %}>
                                 </div>
                             </td>
                         </tr>
@@ -320,7 +320,7 @@
                             <td data-label="Asal Peminjaman" class="cell-wrap">{{ row.borrowed.asal_peminjaman_label|default:'Laboratorium' }}</td>
                             <td data-label="Catatan Pengembalian" class="return-note-col">
                                 <div class="return-field-group {% if row.field_errors.note %}has-error{% endif %}" data-return-field-group="true" data-error-key="note">
-                                    <textarea name="penunjang_note_{{ row.borrowed.barang_id }}" class="input-control return-item-note js-return-note" rows="2" maxlength="{{ return_item_note_max_length }}" placeholder="Opsional" {% if not editable_item_form %}disabled{% endif %}>{{ row.note }}</textarea>
+                                    <input type="text" name="penunjang_note_{{ row.borrowed.barang_id }}" value="{{ row.note }}" class="input-control return-item-note js-return-note" maxlength="{{ return_item_note_max_length }}" placeholder="Opsional" autocomplete="off" {% if not editable_item_form %}disabled{% endif %}>
                                 </div>
                             </td>
                             <td data-label="Validasi">
@@ -423,7 +423,7 @@
                             <td data-label="Asal Peminjaman" class="cell-wrap">{{ row.borrowed.asal_peminjaman_label|default:'Laboratorium' }}</td>
                             <td data-label="Catatan Pengembalian" class="return-note-col">
                                 <div class="return-field-group {% if row.field_errors.note %}has-error{% endif %}" data-return-field-group="true" data-error-key="note">
-                                    <textarea name="bahan_note_{{ row.borrowed.bahan_id }}" class="input-control return-item-note js-return-note" rows="2" maxlength="{{ return_item_note_max_length }}" placeholder="Opsional" {% if not editable_item_form %}disabled{% endif %}>{{ row.note }}</textarea>
+                                    <input type="text" name="bahan_note_{{ row.borrowed.bahan_id }}" value="{{ row.note }}" class="input-control return-item-note js-return-note" maxlength="{{ return_item_note_max_length }}" placeholder="Opsional" autocomplete="off" {% if not editable_item_form %}disabled{% endif %}>
                                 </div>
                             </td>
                             <td data-label="Validasi">
@@ -547,7 +547,7 @@
                             <td data-label="Asal Peminjaman" class="cell-wrap">{{ row.borrowed.asal_peminjaman_label|default:'Laboratorium' }}</td>
                             <td data-label="Catatan Pengembalian" class="return-note-col">
                                 <div class="return-field-group {% if row.field_errors.note %}has-error{% endif %}" data-return-field-group="true" data-error-key="note">
-                                    <textarea name="peralatan_lab_note_{{ row.borrowed.barang_id }}" class="input-control return-item-note js-return-note" rows="2" maxlength="{{ return_item_note_max_length }}" placeholder="Opsional" {% if not editable_item_form %}disabled{% endif %}>{{ row.note }}</textarea>
+                                    <input type="text" name="peralatan_lab_note_{{ row.borrowed.barang_id }}" value="{{ row.note }}" class="input-control return-item-note js-return-note" maxlength="{{ return_item_note_max_length }}" placeholder="Opsional" autocomplete="off" {% if not editable_item_form %}disabled{% endif %}>
                                 </div>
                             </td>
                             <td data-label="Validasi">

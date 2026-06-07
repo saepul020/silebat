@@ -7131,13 +7131,6 @@ select.return-status-select option:disabled {
 .peminjaman-form .return-item-note {
     width: 100%;
     min-width: 200px;
-    min-height: 62px;
-    resize: vertical;
-    line-height: 1.35;
-}
-
-.peminjaman-form .return-item-note:disabled {
-    resize: none;
 }
 
 /* =========================

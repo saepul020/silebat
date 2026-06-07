@@ -147,6 +147,7 @@
                         <th>Status Pengembalian</th>
                         <th>Tujuan Transfer</th>
                         <th>Asal Peminjaman</th>
+                        <th>Catatan Pengembalian</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -165,6 +166,7 @@
                         <td data-label="Status Pengembalian">{{ row.item.get_status_display }}</td>
                         <td data-label="Tujuan Transfer">{% if row.item.transfer_target %}{{ row.item.transfer_target.nomor_pengajuan }} - {{ row.item.transfer_target.nama_peminjam }}{% else %}-{% endif %}</td>
                         <td data-label="Asal Peminjaman" class="cell-wrap">{{ row.asal_peminjaman_label|default:'Laboratorium' }}</td>
+                        <td data-label="Catatan Pengembalian" class="cell-wrap">{{ row.item.note|default:'-' }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -193,6 +195,7 @@
                         <th>Transfer</th>
                         <th>Tujuan Transfer</th>
                         <th>Asal Peminjaman</th>
+                        <th>Catatan Pengembalian</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -209,6 +212,7 @@
                         <td data-label="Transfer">{{ row.item.qty_transfer|dash_if_zero }}</td>
                         <td data-label="Tujuan Transfer">{% if row.item.transfer_target %}{{ row.item.transfer_target.nomor_pengajuan }} - {{ row.item.transfer_target.nama_peminjam }}{% else %}-{% endif %}</td>
                         <td data-label="Asal Peminjaman" class="cell-wrap">{{ row.asal_peminjaman_label|default:'Laboratorium' }}</td>
+                        <td data-label="Catatan Pengembalian" class="cell-wrap">{{ row.item.note|default:'-' }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -234,6 +238,7 @@
                         <th>Transfer</th>
                         <th>Tujuan Transfer</th>
                         <th>Asal Peminjaman</th>
+                        <th>Catatan Pengembalian</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -246,6 +251,7 @@
                         <td data-label="Transfer">{{ row.item.qty_transfer|dash_if_zero }}</td>
                         <td data-label="Tujuan Transfer">{% if row.item.transfer_target %}{{ row.item.transfer_target.nomor_pengajuan }} - {{ row.item.transfer_target.nama_peminjam }}{% else %}-{% endif %}</td>
                         <td data-label="Asal Peminjaman" class="cell-wrap">{{ row.asal_peminjaman_label|default:'Laboratorium' }}</td>
+                        <td data-label="Catatan Pengembalian" class="cell-wrap">{{ row.item.note|default:'-' }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -274,6 +280,7 @@
                         <th>Transfer</th>
                         <th>Tujuan Transfer</th>
                         <th>Asal Peminjaman</th>
+                        <th>Catatan Pengembalian</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -290,6 +297,7 @@
                         <td data-label="Transfer">{{ row.item.qty_transfer|dash_if_zero }}</td>
                         <td data-label="Tujuan Transfer">{% if row.item.transfer_target %}{{ row.item.transfer_target.nomor_pengajuan }} - {{ row.item.transfer_target.nama_peminjam }}{% else %}-{% endif %}</td>
                         <td data-label="Asal Peminjaman" class="cell-wrap">{{ row.asal_peminjaman_label|default:'Laboratorium' }}</td>
+                        <td data-label="Catatan Pengembalian" class="cell-wrap">{{ row.item.note|default:'-' }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -551,4 +559,3 @@
     </div>
 </div>
 {% endblock %}
-

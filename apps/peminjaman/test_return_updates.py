@@ -3,18 +3,20 @@ from pathlib import Path
 
 from django.conf import settings
 from django.test import TestCase
+from django.urls import reverse
 
 from apps.master_data.models import (
     BarangLaboratorium,
     StatusBarangChoices,
 )
-from apps.pengguna.models import User
+from apps.pengguna.models import Role, User
 
 from .models import (
     PeminjamanBarangLaboratorium,
     PeminjamanRequest,
     PengembalianBarangLaboratorium,
     ReturnItemStatusChoices,
+    ReturnStepChoices,
     StepChoices,
 )
 from .pengembalian_views import (
@@ -87,6 +89,7 @@ class ReturnUpdateTests(TestCase):
         )
 
     def test_item_note_length_is_validated_on_server(self):
+        self.assertEqual(RETURN_ITEM_NOTE_MAX_LENGTH, 100)
         parsed = _parse_pengembalian_data(
             self.obj,
             {
@@ -100,6 +103,42 @@ class ReturnUpdateTests(TestCase):
         fields = _classify_row_field_errors("lab", {}, messages)
         self.assertIn("note", fields)
         self.assertIn(str(RETURN_ITEM_NOTE_MAX_LENGTH), fields["note"][0])
+
+    def test_return_item_note_uses_single_line_input(self):
+        role, _ = Role.objects.get_or_create(nama="User")
+        self.user.safe_profile.role = role
+        self.user.safe_profile.save(update_fields=["role"])
+        self.client.force_login(self.user)
+
+        response = self.client.get(reverse("peminjaman:pengembalian", args=[self.obj.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, f'name="lab_note_{self.barang.pk}"')
+        self.assertContains(response, 'type="text"')
+        self.assertContains(response, 'maxlength="100"')
+        self.assertNotContains(response, f'<textarea name="lab_note_{self.barang.pk}"')
+
+    def test_return_item_note_is_shown_on_verification_detail(self):
+        note = "Kabel daya perlu diganti."
+        PengembalianBarangLaboratorium.objects.create(
+            pengajuan=self.obj,
+            barang=self.barang,
+            status=ReturnItemStatusChoices.RUSAK,
+            note=note,
+        )
+        self.obj.return_current_step = ReturnStepChoices.TEKNISI_VERIFICATION
+        self.obj.save(update_fields=["return_current_step", "updated_at"])
+        role, _ = Role.objects.get_or_create(nama="Teknisi Lab")
+        self.teknisi.safe_profile.role = role
+        self.teknisi.safe_profile.save(update_fields=["role"])
+        self.client.force_login(self.teknisi)
+
+        response = self.client.get(reverse("verifikasi:detail", args=[self.obj.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Detail Verifikasi Pengembalian")
+        self.assertContains(response, "Catatan Pengembalian")
+        self.assertContains(response, note)
 
     def test_latest_return_teknisi_uses_current_verification_action(self):
         self.obj.add_timeline(

@@ -38,7 +38,7 @@ from .models import (
 RETURN_APPROVAL_OPTIONS = [("setujui", "Setuju"), ("perbaiki", "Perbaiki")]
 RETURN_PIMPINAN_TEAM_NAME = TIM_LAYANAN_TEKNIS_NAME
 RETURN_PIMPINAN_LABEL = "Ketua Tim Layanan Teknis"
-RETURN_ITEM_NOTE_MAX_LENGTH = 1000
+RETURN_ITEM_NOTE_MAX_LENGTH = 100
 
 
 def _can_edit_return_end_date(user, obj):
