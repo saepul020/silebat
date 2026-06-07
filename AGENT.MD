@@ -70,7 +70,10 @@ Helper akses terpusat berada di `apps/core/permissions.py`. Gunakan helper ini s
 
 Pola akses yang harus dijaga:
 
-- Master Data: `Super Admin`, `Admin Lab`, `Teknisi Lab`
+- Master Data baca: `Super Admin`, `Admin Lab`, `Teknisi Lab`, `Kepala Lab`, `Pimpinan`
+- Master Data kelola: `Super Admin`, `Admin Lab`, `Teknisi Lab`
+- Import Master Data: `Super Admin`
+- Export Master Data: `Super Admin`, `Admin Lab`, `Teknisi Lab`, `Pimpinan`
 - Operasional: `Super Admin`
 - Pengguna/Data User: `Super Admin`
 - Peminjaman/Permintaan: role verifikasi yang terdaftar

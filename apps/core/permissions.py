@@ -11,6 +11,8 @@ ROLE_KEPALA_LAB = "Kepala Lab"
 ROLE_PIMPINAN = "Pimpinan"
 
 FULL_LAB_ACCESS_ROLES = {ROLE_SUPER_ADMIN, ROLE_ADMIN_LAB, ROLE_TEKNISI_LAB}
+MASTER_DATA_VIEW_ROLES = FULL_LAB_ACCESS_ROLES | {ROLE_KEPALA_LAB, ROLE_PIMPINAN}
+MASTER_DATA_EXPORT_ROLES = FULL_LAB_ACCESS_ROLES | {ROLE_PIMPINAN}
 VERIFICATION_ROLES = {
     ROLE_SUPER_ADMIN,
     ROLE_USER,
@@ -39,7 +41,19 @@ def is_super_admin(user):
 
 
 def can_access_master_data(user):
+    return get_role_name(user) in MASTER_DATA_VIEW_ROLES
+
+
+def can_manage_master_data(user):
     return get_role_name(user) in FULL_LAB_ACCESS_ROLES
+
+
+def can_import_master_data(user):
+    return is_super_admin(user)
+
+
+def can_export_master_data(user):
+    return get_role_name(user) in MASTER_DATA_EXPORT_ROLES
 
 
 def can_access_operasional(user):
@@ -136,7 +150,10 @@ def build_role_access(user):
         "show_laporan": role_name in REPORT_VERIFICATION_ROLES,
         "show_laporan_all_items": role_name in REPORT_VERIFICATION_ROLES - {ROLE_USER},
         "show_laporan_peminjaman_only": role_name == ROLE_USER,
-        "show_master_data": role_name in FULL_LAB_ACCESS_ROLES,
+        "show_master_data": role_name in MASTER_DATA_VIEW_ROLES,
+        "can_manage_master_data": role_name in FULL_LAB_ACCESS_ROLES,
+        "can_import_master_data": role_name == ROLE_SUPER_ADMIN,
+        "can_export_master_data": role_name in MASTER_DATA_EXPORT_ROLES,
         "show_operasional": role_name == ROLE_SUPER_ADMIN,
         "show_pengguna": is_authenticated,
         "show_pengguna_menu": is_authenticated,

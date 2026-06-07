@@ -1,0 +1,1898 @@
+[
+{
+  "model": "pengguna.role",
+  "pk": 5,
+  "fields": {
+    "nama": "Pimpinan",
+    "deskripsi": "Dashboard, Verifikasi, Laporan, Dashboard SDM, Data Pelatihan, serta detail dan edit profil milik sendiri.",
+    "is_active": true
+  }
+},
+{
+  "model": "pengguna.role",
+  "pk": 6,
+  "fields": {
+    "nama": "User",
+    "deskripsi": "Dashboard, Permintaan Peminjaman, Laporan Peminjaman, Dashboard SDM, Data Pelatihan, serta detail dan edit profil milik sendiri.",
+    "is_active": true
+  }
+},
+{
+  "model": "pengguna.role",
+  "pk": 7,
+  "fields": {
+    "nama": "Admin Lab",
+    "deskripsi": "Semua app kecuali Data Pengguna. Tetap dapat membuka Dashboard SDM, Data Pelatihan, serta detail dan edit profil milik sendiri.",
+    "is_active": true
+  }
+},
+{
+  "model": "pengguna.role",
+  "pk": 8,
+  "fields": {
+    "nama": "Teknisi Lab",
+    "deskripsi": "Semua app kecuali Data Pengguna. Tetap dapat membuka Dashboard SDM, Data Pelatihan, serta detail dan edit profil milik sendiri.",
+    "is_active": true
+  }
+},
+{
+  "model": "pengguna.role",
+  "pk": 9,
+  "fields": {
+    "nama": "Kepala Lab",
+    "deskripsi": "Dashboard, Verifikasi, Laporan, Dashboard SDM, Data Pelatihan, serta detail dan edit profil milik sendiri.",
+    "is_active": true
+  }
+},
+{
+  "model": "pengguna.role",
+  "pk": 10,
+  "fields": {
+    "nama": "Super Admin",
+    "deskripsi": "Semua akses tanpa pengecualian.",
+    "is_active": true
+  }
+},
+{
+  "model": "pengguna.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$IEuWpx9c0Q5HioxUdJT4ZC$ho20dTVSW4ApCKWMCykE/itS54VOs7g8N0Dp3R9hyzo=",
+    "last_login": "2026-06-05T07:38:45.071Z",
+    "is_superuser": true,
+    "username": "superadmin",
+    "first_name": "Super Admin",
+    "last_name": "",
+    "email": "superadmin@gmail.com",
+    "is_staff": true,
+    "is_active": true,
+    "date_joined": "2026-03-30T07:01:41.876Z",
+    "nip": null,
+    "no_hp": null,
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "pengguna.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$JyryIcmekPga3d0jzYJcSe$v6l+dtRI+uCpG0gXkVyyo7NcGiC8xZ1EBuSnIdbGq7I=",
+    "last_login": "2026-05-12T04:10:51.296Z",
+    "is_superuser": false,
+    "username": "arif_rahmat",
+    "first_name": "Arif Rahmat Mulyana, S.Si., M.Eng.Sc.",
+    "last_name": "",
+    "email": "arif.mulyana@pu.go.id",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-03-31T02:14:44.121Z",
+    "nip": "197605012005021002",
+    "no_hp": "087824838002",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "pengguna.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$6gx5RIma8YTX2jGrbWqUUt$P+twBSnhgdBTB182gCSHoEEhnfaSjlgp/PEZH2rt8Fo=",
+    "last_login": "2026-05-06T03:34:25.257Z",
+    "is_superuser": false,
+    "username": "yan_adhitya",
+    "first_name": "Yan Adhitya Wesda Wardhana, S.T., M.P.S.D.A.",
+    "last_name": "",
+    "email": "yan.adhitya@pu.go.id",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-03-31T12:49:27.707Z",
+    "nip": "3471081601840001",
+    "no_hp": "08562564190",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "pengguna.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$Rak3CSFhYElvhZqeeCgi0y$An4gpvtKhzGmAFMTDA6dlyCoqh9XZLaST1lTYzWbyuA=",
+    "last_login": "2026-04-13T22:34:37.345Z",
+    "is_superuser": false,
+    "username": "tita_puspita",
+    "first_name": "Tita Rahma Puspita, S.T., M.Eng.",
+    "last_name": "",
+    "email": "tita.rahma@pu.go.id",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-04-01T02:30:50.192Z",
+    "nip": "198704032010122003",
+    "no_hp": "081322386910",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "pengguna.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$1f3YUpca3XaegCVplsf7pI$9pMBfmb/3UA8AioGs420s2csVMOahtsgg4j/h0N5/5A=",
+    "last_login": "2026-05-02T09:43:35.731Z",
+    "is_superuser": false,
+    "username": "ridwan_budi",
+    "first_name": "Ridwan Budi Raharjo, S.T., M.P.S.D.A.",
+    "last_name": "",
+    "email": "ridwan.budi@pu.go.id",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-04-01T02:43:30.142Z",
+    "nip": "198612062010121003",
+    "no_hp": "0817335909",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "pengguna.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$j8sJTxOh2YbMsPInHBw6jp$b5gjTrdaUfSvZZ0+KEOCcY6An3DSJtJjGyU/OVPE4h0=",
+    "last_login": "2026-04-03T02:59:06.862Z",
+    "is_superuser": false,
+    "username": "dian_anugerah",
+    "first_name": "Dian Anugerah Dewi, S.Sos.",
+    "last_name": "",
+    "email": "dian.dewi@pu.go.id",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-04-01T02:46:41.262Z",
+    "nip": "197904062008012016",
+    "no_hp": "082216449459",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "pengguna.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$9c30vopBsZyCcKSzlCabjX$+Y2HQmkh9dG33Q9NsezMorQoEbmArLUivoVfwo8xE0E=",
+    "last_login": "2026-05-06T03:17:58.779Z",
+    "is_superuser": false,
+    "username": "gavin_ilham",
+    "first_name": "Gavin Ilham Fayhiru, S.T.",
+    "last_name": "",
+    "email": "gavin.ilham@gmail.com",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-04-03T03:23:38.006Z",
+    "nip": "3674051612010001",
+    "no_hp": "082113092015",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "pengguna.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$7kPxH04wSybe5MSbmW3LAs$jmvQgp+3HFB5yU+/6Gm7io4qZe6xdVnFyd6e9YhKirg=",
+    "last_login": "2026-05-12T04:07:14.532Z",
+    "is_superuser": false,
+    "username": "suyadi",
+    "first_name": "Suyadi",
+    "last_name": "",
+    "email": "yadidull12@gmail.com",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-04-03T03:24:38.888Z",
+    "nip": "3301030811810003",
+    "no_hp": "082115414498",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "pengguna.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$Xv6ABLQPnMElSavOuHfcbp$dzzQxa3muT3lI2geGwFhAS6ooBnMMfp9xQndcay3Xic=",
+    "last_login": "2026-05-06T03:20:18.104Z",
+    "is_superuser": false,
+    "username": "dipta_alfian",
+    "first_name": "Dipta Alfian Rinaldi, S.T.",
+    "last_name": "",
+    "email": "diptaalfian75@gmail.com",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-04-03T03:26:03.524Z",
+    "nip": "3505221603960001",
+    "no_hp": "085736324864",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "pengguna.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$aR75GFmYMfbIh8oMgooja9$O+Sb7q06lAq9xNrG8VB/PGRas0DmRaq13pjovua3tLw=",
+    "last_login": "2026-05-01T13:55:20.170Z",
+    "is_superuser": false,
+    "username": "saepul_rohman",
+    "first_name": "Saepul Rohman",
+    "last_name": "",
+    "email": "saepul.rohman020@gmail.com",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-04-04T15:29:01.566Z",
+    "nip": "3207152004000008",
+    "no_hp": "083807122599",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "pengguna.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$lAWDBgv78WUN7dsqSOD7Db$b16opCy4egEHyCXCJF8ux7cU0BVK0jsM5ENjU0t5Y98=",
+    "last_login": "2026-05-08T01:56:43.877Z",
+    "is_superuser": false,
+    "username": "novaldy_agnial",
+    "first_name": "Novaldy Agnial Fikri, S.T.",
+    "last_name": "",
+    "email": "novaldy.fikri@pu.go.id",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-05-01T23:37:20.453Z",
+    "nip": "199511042020121003",
+    "no_hp": "081717442266",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "pengguna.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$y93BnUjKqjfsrIwJ0ljMSK$mJBTCrgxHX4cCgrYh96CeyS+AvWIwV2CtZNKDFA5TUQ=",
+    "last_login": null,
+    "is_superuser": false,
+    "username": "abimanyu",
+    "first_name": "Abimanyu, S.T.",
+    "last_name": "",
+    "email": "abimanyu@pu.go.id",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-05-07T23:52:04.824Z",
+    "nip": "197102242014121002",
+    "no_hp": "087823229530",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "pengguna.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$sFLIC4cZLGs70U2zXK0Zwy$m0K3xOVAkbi1c3saFeobzy3dOkJoBBzDoFPOK9WCbBE=",
+    "last_login": null,
+    "is_superuser": false,
+    "username": "adelia_untari",
+    "first_name": "Adelia Untari, S.T., MPSDA",
+    "last_name": "",
+    "email": "adelia.untari@pu.go.id",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-05-07T23:52:05.842Z",
+    "nip": "198510072008122001",
+    "no_hp": "081809123909",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "pengguna.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$0kI40wdru48jv4ef0t19Sd$Oxgge9Ah7O3wUOfe7biZRfn2w1sm+xcNPbm2SPpO4Us=",
+    "last_login": null,
+    "is_superuser": false,
+    "username": "aji_soko",
+    "first_name": "Aji Soko Pringgondani, S. T.",
+    "last_name": "",
+    "email": "aji.soko.pringgondani@pu.go.id",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-05-07T23:52:06.833Z",
+    "nip": "199904272025061019",
+    "no_hp": "081384114209",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "pengguna.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$n1hln8i9viQ0YIRyc37J3g$G/TYBKWzvNr1wl+S/FaghzJWEHUSgyFdywtWLjgKF7c=",
+    "last_login": null,
+    "is_superuser": false,
+    "username": "andre_putra",
+    "first_name": "Andre Putra Arifin, M.T.",
+    "last_name": "",
+    "email": "andreputraarifin@pu.go.id",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-05-07T23:52:07.851Z",
+    "nip": "198809252018021001",
+    "no_hp": "628137982653",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "pengguna.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$Lxj8Wdz1Ax9q82OEOyEZVM$MewHR3cP4Dg0Um4e+khuJsFcdNGZIJNqNEOmmURAcu0=",
+    "last_login": "2026-05-12T04:06:55.799Z",
+    "is_superuser": false,
+    "username": "arief_setiawan",
+    "first_name": "Arief Setiawan, S.Kom.",
+    "last_name": "",
+    "email": "arief.setiawan@pu.go.id",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-05-07T23:52:08.831Z",
+    "nip": "199309152025061003",
+    "no_hp": "081218422428",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "pengguna.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$ldSR7KW3ltWx3mXCF8huNZ$NBavz/UxwVURVCjOTOBaYU/kWYv8pccIkctZK+RuurM=",
+    "last_login": null,
+    "is_superuser": false,
+    "username": "assyifa_fauziah",
+    "first_name": "Assyifa Fauziah Nanda Putri, S.M.",
+    "last_name": "",
+    "email": "assyifa.fauziah@pu.go.id",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-05-07T23:52:09.840Z",
+    "nip": "199807292020122002",
+    "no_hp": "082219136623",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "pengguna.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$5hQP9czLdtNq1OoTG3Rivu$FaAcd/qCp15zu5IZWIqEnCOaaZc9SbZMukiW1N7ZQSU=",
+    "last_login": null,
+    "is_superuser": false,
+    "username": "jossi_erwindy",
+    "first_name": "Dr. Jossi Erwindy, S.T., M.T.",
+    "last_name": "",
+    "email": "jossierwindy@pu.go.id",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-05-07T23:52:10.850Z",
+    "nip": "197503042001122002",
+    "no_hp": "0818829369",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "pengguna.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$VhENoW44tJyk4RaMJDAQez$4zIu+NQiC3DOZSA2sqFkn/VDLoiAPPXajsQ4Py180tQ=",
+    "last_login": null,
+    "is_superuser": false,
+    "username": "erniwati",
+    "first_name": "Erniwati, S.T.P., M.Si.",
+    "last_name": "",
+    "email": "erniwati@pu.go.id",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-05-07T23:52:11.852Z",
+    "nip": "196812241992032004",
+    "no_hp": "085159974729",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "pengguna.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$72kB7t6rPxaUlwsXEuqbr4$C0byBg7LtDltr8AgoqOXFxzMGvQX14+lPk9+j5fSD7U=",
+    "last_login": null,
+    "is_superuser": false,
+    "username": "eros_rosnani",
+    "first_name": "Eros Rosnani, S.AB.",
+    "last_name": "",
+    "email": "rosnani@pu.go.id",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-05-07T23:52:12.906Z",
+    "nip": "196908181992032005",
+    "no_hp": "081321297440",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "pengguna.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$zZPzuVw5ecxQyiwLAcwwRb$tK0ZvioPRATjadkBbd+48aLeXh8w2+Ebpt56Y9jxQeI=",
+    "last_login": null,
+    "is_superuser": false,
+    "username": "galih_rakasiwi",
+    "first_name": "Galih Rakasiwi Kusumandaru, S.T",
+    "last_name": "",
+    "email": "galih.rakasiwi.kusumandaru@pu.go.id",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-05-07T23:52:13.925Z",
+    "nip": "199410202025061008",
+    "no_hp": "081228921058",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "pengguna.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$gQOUTY5fiDh4pTw9bytE55$JkX8h/XdF/NaouA4oMCHXVhERFvz5LL25OMeidJRG0Y=",
+    "last_login": null,
+    "is_superuser": false,
+    "username": "ginar_sukma",
+    "first_name": "Ginar Sukma Pratami, S.T.",
+    "last_name": "",
+    "email": "ginarsukma1996@pu.go.id",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-05-07T23:52:14.942Z",
+    "nip": "199607142020122002",
+    "no_hp": "085720799597",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "pengguna.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$TUDm5cTwQuwKFD4HLKuqAW$FBKrgMnR+WR0ijGeCh1rixFvfs4LyrgCZW75ZTNXtDw=",
+    "last_login": null,
+    "is_superuser": false,
+    "username": "isyraq_zakir",
+    "first_name": "Isyraq Zakir, S.T.",
+    "last_name": "",
+    "email": "isyraqzakir@pu.go.id",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-05-07T23:52:15.948Z",
+    "nip": "199508152022031011",
+    "no_hp": "081241403801",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "pengguna.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$1RJMWl2QUlHKclTCnFGd9X$SDCi6XcTJkINxYuRf2tts2XyyeoH3APvj+cC8LBiDEY=",
+    "last_login": null,
+    "is_superuser": false,
+    "username": "lira_adiyani",
+    "first_name": "Lira Adiyani, S.Si., M.Si., M.P.H.",
+    "last_name": "",
+    "email": "lira.adiyani@pu.go.id",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-05-07T23:52:16.945Z",
+    "nip": "198612292010122002",
+    "no_hp": "081322281599",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "pengguna.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$hkfH8nWtdViS3635BbWSJ8$3uabVRY+pHKsri6wW708uGhjVeOwX8/CD/xykxFSGAo=",
+    "last_login": null,
+    "is_superuser": false,
+    "username": "rifqi_putra",
+    "first_name": "Muhammad Rifqi Putra Nanda, S.H",
+    "last_name": "",
+    "email": "rifqi.putra.nanda@pu.go.id",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-05-07T23:52:17.973Z",
+    "nip": "199703132025061010",
+    "no_hp": "087881847117",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "pengguna.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$uBAGTdaJYe9tWMtfGrM6th$Q+Ye8wLO/FjEUkiRn6HaeQp1kiSQRiHYyJvvrNu/ceA=",
+    "last_login": null,
+    "is_superuser": false,
+    "username": "neli_anisa",
+    "first_name": "Neli Anisa, S.I.Kom.",
+    "last_name": "",
+    "email": "neli.anisa@pu.go.id",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-05-07T23:52:18.992Z",
+    "nip": "199808292025062007",
+    "no_hp": "082126686246",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "pengguna.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$jsREHeJjJUmZkHt9Hydcbs$a2RcdAKVcVSzeZw+wOuFoj/L25kjZAW+KKWFEoElP/Y=",
+    "last_login": null,
+    "is_superuser": false,
+    "username": "nira_yunita",
+    "first_name": "Nira Yunita Permata Rahibi, S.T., M.T.",
+    "last_name": "",
+    "email": "yunita.permata.rahibi@pu.go.id",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-05-07T23:52:19.926Z",
+    "nip": "199506122025062008",
+    "no_hp": "088296436083",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "pengguna.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$6ArkCvcmlgOYqrGC7RDo76$ZdGeG8d0visaQa63csVU5ljIrfIiauQ1fE6xExIqg/Y=",
+    "last_login": null,
+    "is_superuser": false,
+    "username": "perdhani_suchi",
+    "first_name": "Perdhani Asmoro Suchi, A.Md.T.",
+    "last_name": "",
+    "email": "perdhaniasuchi@pu.go.id",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-05-07T23:52:20.947Z",
+    "nip": "199706232020122005",
+    "no_hp": "081312765097",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "pengguna.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$oxOJeJQAsuuXFv7wSlz55Q$avhmwNFaODUls6faPQVQ+3SDHsAXgLsmEKR9spFQlKo=",
+    "last_login": null,
+    "is_superuser": false,
+    "username": "rian_azhar",
+    "first_name": "Rian Mohammad Azhar Sukandar, S.T., M.P.S.D.A.",
+    "last_name": "",
+    "email": "rian.mohammad@pu.go.id",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-05-07T23:52:21.934Z",
+    "nip": "197811232014121003",
+    "no_hp": "082198592764",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "pengguna.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$BkKbqioHhCseTrDVYplyD9$lorBHpIMMl4uG2diWuYR1Qm62Jfh/4YLHNvu3+qOQKE=",
+    "last_login": null,
+    "is_superuser": false,
+    "username": "riefandy_setiadi",
+    "first_name": "Riefandy Setiadi, S.T.",
+    "last_name": "",
+    "email": "riefandysetiadi@pu.go.id",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-05-07T23:52:22.970Z",
+    "nip": "199403182022031005",
+    "no_hp": "081221874593",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "pengguna.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$hDQ6TXTHlP0mDpduGBpOVK$CAvUA3YXgn5oUvBRRHMsaM7hMP0VCc78J9HvHjZ8j1Y=",
+    "last_login": null,
+    "is_superuser": false,
+    "username": "riza_nurul",
+    "first_name": "Riza Null Haqim, A.Md",
+    "last_name": "",
+    "email": "riza.null.haqim@pu.go.id",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-05-07T23:52:23.994Z",
+    "nip": "199312242025061005",
+    "no_hp": "087887555613",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "pengguna.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$bV3X4R87FlrIa1rIFfCwfM$Qj45RHY4Af3et2gmXqYRdtf1Nidfm889MjWBdEnlix8=",
+    "last_login": null,
+    "is_superuser": false,
+    "username": "sergio_omar",
+    "first_name": "Sergio Omar Sansini, S.I.P.",
+    "last_name": "",
+    "email": "sergio.omar.sansini@pu.go.id",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-05-07T23:52:25Z",
+    "nip": "199803212025061003",
+    "no_hp": "085810922443",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "pengguna.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$UUQMH6qJbupC0ebEiwg8aV$03Y7R9b/f11HgM6VxfMZWJbVlOGvRF/06O5LJ9G4EcQ=",
+    "last_login": null,
+    "is_superuser": false,
+    "username": "shinta_rahmadiar",
+    "first_name": "Shinta Rahmadiar, S.T.",
+    "last_name": "",
+    "email": "shinta.rahmadiar@pu.go.id",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-05-07T23:52:26.016Z",
+    "nip": "199708122020122011",
+    "no_hp": "081222300276",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "pengguna.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$L1BKEEzeRi1QQgcccs3l5n$9u+FnxUjLM2fUesJCLg4YM+sQF6vA6jaj6S+5BI4zwU=",
+    "last_login": null,
+    "is_superuser": false,
+    "username": "wulan_seizarwati",
+    "first_name": "Wulan Seizarwati, S.Si, MT",
+    "last_name": "",
+    "email": "wulan.seizarwati@pu.go.id",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-05-07T23:52:27.015Z",
+    "nip": "198710112010122003",
+    "no_hp": "082121318856",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "pengguna.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$ul5RMd7Rdi8hYkrZshMmL5$Nz3uTHLZceCLPE+Unqrtw45per5bGQacegcENHYpwuw=",
+    "last_login": null,
+    "is_superuser": false,
+    "username": "andika_rizki",
+    "first_name": "Andika Rizki Pratama, S.E.",
+    "last_name": "",
+    "email": "andika.rizki.pratama@pu.go.id",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-05-07T23:52:27.994Z",
+    "nip": "198804052025211055",
+    "no_hp": "087717595402",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "pengguna.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$ZhXwktVmbktWNQ66XaXbOM$UwAze9kkhSQZpEocz4mKC0ZlUyro1iymxoRdqc9w/r4=",
+    "last_login": null,
+    "is_superuser": false,
+    "username": "astri_suciani",
+    "first_name": "Astri Suciani",
+    "last_name": "",
+    "email": "astri.suciani@pu.go.id",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-05-07T23:52:28.971Z",
+    "nip": "199408252025212042",
+    "no_hp": "085795726699",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "pengguna.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$3SvUqB6lI4vOS0U3D0657C$vtSmxaIqhTJmeU08DP3VQtiWSsjSHQSpxfJUfoDln7A=",
+    "last_login": null,
+    "is_superuser": false,
+    "username": "budi_sugiarto",
+    "first_name": "Budi Sugiarto",
+    "last_name": "",
+    "email": "budi.sugiarto@pu.go.id",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-05-07T23:52:29.965Z",
+    "nip": "198101192025211026",
+    "no_hp": "082118448135",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "pengguna.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$RZU2OVK7luALXeOXPHhlxL$zV/7IyudWzR/5DrcddxFdIJcGCYxtgNFcH2ymQFpisg=",
+    "last_login": null,
+    "is_superuser": false,
+    "username": "cecep_dadan",
+    "first_name": "Cecep Dadan",
+    "last_name": "",
+    "email": "dadancecepdadan27@gmail.com",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-05-07T23:52:30.969Z",
+    "nip": "198001242025211017",
+    "no_hp": "083829319221",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "pengguna.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$GY5ku5xobqLh6Mt0zwSVzO$rjOsJDDnfzuT7Zmi+2tZkwxxNqOGA1WVvxxbUicLrU4=",
+    "last_login": null,
+    "is_superuser": false,
+    "username": "charles_paiki",
+    "first_name": "Charles Hanock Haniel Paiki, S.T.",
+    "last_name": "",
+    "email": "charleshanock@pu.go.id",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-05-07T23:52:31.967Z",
+    "nip": "198809102024211002",
+    "no_hp": "082157696910",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "pengguna.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$rcdaLs77L9ZJ1fxL9NnTt3$0QODYs02urDpY8i589QjbqWUhdFECwy9rbougLjA1RE=",
+    "last_login": "2026-05-08T01:56:05.462Z",
+    "is_superuser": false,
+    "username": "deni",
+    "first_name": "Deni, S.T.",
+    "last_name": "",
+    "email": "denist@pu.go.id",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-05-07T23:52:32.992Z",
+    "nip": "197507202024211001",
+    "no_hp": "08156014492",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "pengguna.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$IkZ1EM7BLT2pB1PyvRdF5M$so7+kUE58125V/17PLpTEGjX5UUVPk0r8671Z6xl1aI=",
+    "last_login": null,
+    "is_superuser": false,
+    "username": "dindin_budiarto",
+    "first_name": "Dindin Budiarto",
+    "last_name": "",
+    "email": "dindin.budiarto@pu.go.id",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-05-07T23:52:33.988Z",
+    "nip": "197411082025211011",
+    "no_hp": "085795552880",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "pengguna.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$Uft4pZG8tfXL1Y5BPitX2Y$QGkAAAy8uFncULO2lwr7kmG66Ef/hm8KJfwXYWY7/2c=",
+    "last_login": null,
+    "is_superuser": false,
+    "username": "harry_fajar",
+    "first_name": "Harry Fajar Nuari, S.A.B.",
+    "last_name": "",
+    "email": "hry.fjr@pu.go.id",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-05-07T23:52:34.974Z",
+    "nip": "198901262025211031",
+    "no_hp": "08112107111",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "pengguna.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$CQAcXRcwFBrsCk7eT8Y3LY$8lapttw+d6oAjahkaDT/XRaFtesSvL8p0I2/fB2T59I=",
+    "last_login": null,
+    "is_superuser": false,
+    "username": "iman_rohman",
+    "first_name": "Iman Rohman, S.T.",
+    "last_name": "",
+    "email": "iman.rohman@pu.go.id",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-05-07T23:52:35.952Z",
+    "nip": "198012012024211002",
+    "no_hp": "081221239989",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "pengguna.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$hFcboHacsemOWrAxUShXjC$rRQW/XriceKCuWXmVTGbvrp4RBYWT39zW08mw5GCRvg=",
+    "last_login": null,
+    "is_superuser": false,
+    "username": "muhsonati_syahidah",
+    "first_name": "Muhsonati Syahidah, S.Si., M.T.",
+    "last_name": "",
+    "email": "muhshonati.syahidah@pu.go.id",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-05-07T23:52:36.947Z",
+    "nip": "198911022025212079",
+    "no_hp": "082116751998",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "pengguna.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$VfK3vfkE0NBFFvvRlfkuCw$iO43HFAuXU818fVS+ySf68Ce3EvFBch/vfg1Hy2By8c=",
+    "last_login": null,
+    "is_superuser": false,
+    "username": "pipit_rohani",
+    "first_name": "Pipit Rohani",
+    "last_name": "",
+    "email": "pipit.rohani@pu.go.id",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-05-07T23:52:37.947Z",
+    "nip": "198408272025212030",
+    "no_hp": "083822994418",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "pengguna.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$LjsPOvkz0OclcRg1uNhbR1$9UZjyRDV/AOcdo0KZ9FSI0CbTyHFHDPPrmm6TlfSnXw=",
+    "last_login": null,
+    "is_superuser": false,
+    "username": "rachmat_hidayatullah",
+    "first_name": "Rachmat Hidayatullah, S.IP",
+    "last_name": "",
+    "email": "rachmat.hidayatullah@pu.go.id",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-05-07T23:52:38.953Z",
+    "nip": "198412132025211035",
+    "no_hp": "081320456798",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "pengguna.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$TSSgWNXiz2iVcoRyR03XBg$tRZBimZ1IzHqSxnj50bh926+azRZIz3A8xJ1U9kD0q8=",
+    "last_login": null,
+    "is_superuser": false,
+    "username": "yopi_yunius",
+    "first_name": "Yopi Yunius Depriyanto, S.A.P.",
+    "last_name": "",
+    "email": "yopi.yunius@pu.go.id",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-05-07T23:52:39.957Z",
+    "nip": "197406232025211010",
+    "no_hp": "082115051405",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "pengguna.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$R7tUIKxhlP3aQFGoloC8hq$ToDDXh3/WQJWKdAu8HGVONMEAbOU3qDkqTxTxEX+jTI=",
+    "last_login": null,
+    "is_superuser": false,
+    "username": "yudi_khardiman",
+    "first_name": "Yudi Khardiman, S.T.",
+    "last_name": "",
+    "email": "yudi.khardiman@pu.go.id",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-05-07T23:52:40.976Z",
+    "nip": "198505152025211067",
+    "no_hp": "081394466629",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "pengguna.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$OQrZNAwFz6p26MFVazy753$5CPUUNXr/DwN0U3wfXJNbhsTyg69l+ii1IfWNBx9VYk=",
+    "last_login": null,
+    "is_superuser": false,
+    "username": "fajar_tawakal",
+    "first_name": "Fajar Muhamad Tawakal, S.T.",
+    "last_name": "",
+    "email": "fajar@gmail.com",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-05-07T23:52:41.964Z",
+    "nip": "3204050806940005",
+    "no_hp": "081221276229",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "pengguna.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$ouf92EQggD2iYqV7iUjBf0$RolRBPMKly+bLyeOQzDOX7Tym0hiPQn8IdvPp9Exm7g=",
+    "last_login": null,
+    "is_superuser": false,
+    "username": "haidar_harfi",
+    "first_name": "Haidar Harfi Hadhiansah, S.Kom.",
+    "last_name": "",
+    "email": "haidarharfi552@gmail.com",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-05-07T23:52:42.998Z",
+    "nip": "3574040210970002",
+    "no_hp": "085745404180",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "pengguna.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$r4l2TH0u9NsKfSqVNBz9F0$Hd7zIxw/AwtfrLd/d63EFmEd9S0kCDYRDuQhQyLU7EA=",
+    "last_login": null,
+    "is_superuser": false,
+    "username": "ghulam_ahmad",
+    "first_name": "Maulana Ghulam Ahmad, S.T.",
+    "last_name": "",
+    "email": "ghulam@gmail.com",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-05-07T23:52:43.984Z",
+    "nip": "3216200810960002",
+    "no_hp": "081319889710",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "pengguna.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$FAzfOmUnZif8CpnF3K7vzx$HD3bOu9JCmZP7fGNByYBGcqfHPs30zJqNZpOTzIa51E=",
+    "last_login": null,
+    "is_superuser": false,
+    "username": "m_winniardli",
+    "first_name": "Muhammad Winniardli, S.T., M.Sc.",
+    "last_name": "",
+    "email": "winni@gmail.com",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-05-07T23:52:44.986Z",
+    "nip": "3276050101910003",
+    "no_hp": "081222787931",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "pengguna.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$0lLtB6L7HjiZvODWXYTdg8$MEvE6HZZTPIJZWd8IjxrT/IJPquj9NOO75Ucm8EizSQ=",
+    "last_login": null,
+    "is_superuser": false,
+    "username": "zaidan_fikri",
+    "first_name": "Muhammad Zaidan Fikri, S.Tr.Kom.",
+    "last_name": "",
+    "email": "zaidanfikri11@gmail.com",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-05-07T23:52:45.984Z",
+    "nip": "3515181106010004",
+    "no_hp": "085646449670",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "pengguna.userprofile",
+  "pk": 1,
+  "fields": {
+    "user": [
+      "superadmin"
+    ],
+    "role": 10,
+    "foto_profil": "",
+    "ttd_digital": "",
+    "jabatan": "Super Admin",
+    "nama_tim": null,
+    "alamat": ""
+  }
+},
+{
+  "model": "pengguna.userprofile",
+  "pk": 2,
+  "fields": {
+    "user": [
+      "arif_rahmat"
+    ],
+    "role": 9,
+    "foto_profil": "profile/foto_profil.png",
+    "ttd_digital": "ttd_digital/ttd_digital.jpg",
+    "jabatan": "Pengelola Sumber Daya Air Ahli Muda",
+    "nama_tim": 1,
+    "alamat": "Jl. Lapangan Timur No. 4, RT 002/ RW 001, Cikole, Lembang, Bandung Barat Jawa Barat"
+  }
+},
+{
+  "model": "pengguna.userprofile",
+  "pk": 3,
+  "fields": {
+    "user": [
+      "yan_adhitya"
+    ],
+    "role": 5,
+    "foto_profil": "",
+    "ttd_digital": "",
+    "jabatan": "Pengelola Sumber Daya Air Ahli Muda",
+    "nama_tim": 1,
+    "alamat": "Komplek Pasir Jati Blok G2/155 Rt. 009 Rw. 015 Kel. Jati Endah Kec. Cilengkrang Kab. Bandung"
+  }
+},
+{
+  "model": "pengguna.userprofile",
+  "pk": 4,
+  "fields": {
+    "user": [
+      "tita_puspita"
+    ],
+    "role": 5,
+    "foto_profil": "",
+    "ttd_digital": "",
+    "jabatan": "Pengelola Sumber Daya Air Ahli Muda",
+    "nama_tim": 2,
+    "alamat": "Jl. Pawon III No. 5 RT/RW: 004/008, Melong, Cimahi Selatan, Kota Cimahi"
+  }
+},
+{
+  "model": "pengguna.userprofile",
+  "pk": 5,
+  "fields": {
+    "user": [
+      "ridwan_budi"
+    ],
+    "role": 5,
+    "foto_profil": "",
+    "ttd_digital": "",
+    "jabatan": "Pengelola Sumber Daya Air Ahli Muda",
+    "nama_tim": 4,
+    "alamat": "JL. Baseball No. 8, Arcamanik, Kota Bandung - 40293"
+  }
+},
+{
+  "model": "pengguna.userprofile",
+  "pk": 6,
+  "fields": {
+    "user": [
+      "dian_anugerah"
+    ],
+    "role": 5,
+    "foto_profil": "",
+    "ttd_digital": "",
+    "jabatan": "Kepala Subbagian Umum dan Tata Usaha",
+    "nama_tim": 3,
+    "alamat": ""
+  }
+},
+{
+  "model": "pengguna.userprofile",
+  "pk": 7,
+  "fields": {
+    "user": [
+      "gavin_ilham"
+    ],
+    "role": 7,
+    "foto_profil": "",
+    "ttd_digital": "",
+    "jabatan": "Konsultan Individu",
+    "nama_tim": 1,
+    "alamat": "Jl. Kutilang I/21, Blok M6, Ciputat Timur, Tangerang Selatan"
+  }
+},
+{
+  "model": "pengguna.userprofile",
+  "pk": 8,
+  "fields": {
+    "user": [
+      "suyadi"
+    ],
+    "role": 8,
+    "foto_profil": "",
+    "ttd_digital": "",
+    "jabatan": "Konsultan Individu",
+    "nama_tim": 1,
+    "alamat": "Jl. Penatusan RT/RW 001/002, Adirejawetan, Adipala, Kabupaten Cilacap"
+  }
+},
+{
+  "model": "pengguna.userprofile",
+  "pk": 9,
+  "fields": {
+    "user": [
+      "dipta_alfian"
+    ],
+    "role": 6,
+    "foto_profil": "",
+    "ttd_digital": "",
+    "jabatan": "Konsultan Individu",
+    "nama_tim": 1,
+    "alamat": "Dusun Jeruk RT/RW 004/004, Mandesan, Selopuro, Kabupaten Blitar"
+  }
+},
+{
+  "model": "pengguna.userprofile",
+  "pk": 11,
+  "fields": {
+    "user": [
+      "saepul_rohman"
+    ],
+    "role": 8,
+    "foto_profil": "",
+    "ttd_digital": "",
+    "jabatan": "Konsultan Individu",
+    "nama_tim": 1,
+    "alamat": "Dusun Jabaru RT/RW 004/010, Karangpari, Rancah, Kabupaten Ciamis"
+  }
+},
+{
+  "model": "pengguna.userprofile",
+  "pk": 12,
+  "fields": {
+    "user": [
+      "novaldy_agnial"
+    ],
+    "role": 6,
+    "foto_profil": "",
+    "ttd_digital": "",
+    "jabatan": "Pengelola Sumber Daya Air Ahli Pertama",
+    "nama_tim": 1,
+    "alamat": ""
+  }
+},
+{
+  "model": "pengguna.userprofile",
+  "pk": 15,
+  "fields": {
+    "user": [
+      "abimanyu"
+    ],
+    "role": 6,
+    "foto_profil": "",
+    "ttd_digital": "",
+    "jabatan": "Pengelola Sumber Daya Air Ahli Muda",
+    "nama_tim": 2,
+    "alamat": "Jl. Suryalaya Timur IV No. 6, RT 06 RW 04, Kel. Cijagra, Kec. Lengkong, Bandung 40265"
+  }
+},
+{
+  "model": "pengguna.userprofile",
+  "pk": 16,
+  "fields": {
+    "user": [
+      "adelia_untari"
+    ],
+    "role": 6,
+    "foto_profil": "",
+    "ttd_digital": "",
+    "jabatan": "Penyusun Rencana Kegiatan dan Anggaran",
+    "nama_tim": 4,
+    "alamat": "Jl. Sukajadi Gang Babakan No. 16A, RT 002 RW 005, Kel. Gegerkalong, Kec. Sukasari, Bandung"
+  }
+},
+{
+  "model": "pengguna.userprofile",
+  "pk": 17,
+  "fields": {
+    "user": [
+      "aji_soko"
+    ],
+    "role": 6,
+    "foto_profil": "",
+    "ttd_digital": "",
+    "jabatan": "Pengelola Sumber Daya Air Ahli Pertama",
+    "nama_tim": 2,
+    "alamat": null
+  }
+},
+{
+  "model": "pengguna.userprofile",
+  "pk": 18,
+  "fields": {
+    "user": [
+      "andre_putra"
+    ],
+    "role": 6,
+    "foto_profil": "",
+    "ttd_digital": "",
+    "jabatan": "Pengelola Sumber Daya Air Ahli Muda",
+    "nama_tim": 2,
+    "alamat": "Bawah Buluah No. 34"
+  }
+},
+{
+  "model": "pengguna.userprofile",
+  "pk": 19,
+  "fields": {
+    "user": [
+      "arief_setiawan"
+    ],
+    "role": 6,
+    "foto_profil": "",
+    "ttd_digital": "",
+    "jabatan": "Pranata Komputer Ahli Pertama",
+    "nama_tim": 3,
+    "alamat": "Pondok Ungu Permai Blok BB3 No. 10"
+  }
+},
+{
+  "model": "pengguna.userprofile",
+  "pk": 20,
+  "fields": {
+    "user": [
+      "assyifa_fauziah"
+    ],
+    "role": 6,
+    "foto_profil": "",
+    "ttd_digital": "",
+    "jabatan": "Analis Sumber Daya Manusia Aparatur Ahli Pertama",
+    "nama_tim": 3,
+    "alamat": null
+  }
+},
+{
+  "model": "pengguna.userprofile",
+  "pk": 21,
+  "fields": {
+    "user": [
+      "jossi_erwindy"
+    ],
+    "role": 6,
+    "foto_profil": "",
+    "ttd_digital": "",
+    "jabatan": "Kepala Balai Air Tanah",
+    "nama_tim": 3,
+    "alamat": null
+  }
+},
+{
+  "model": "pengguna.userprofile",
+  "pk": 22,
+  "fields": {
+    "user": [
+      "erniwati"
+    ],
+    "role": 6,
+    "foto_profil": "",
+    "ttd_digital": "",
+    "jabatan": "Pengelola Sumber Daya Air Ahli Muda",
+    "nama_tim": 1,
+    "alamat": null
+  }
+},
+{
+  "model": "pengguna.userprofile",
+  "pk": 23,
+  "fields": {
+    "user": [
+      "eros_rosnani"
+    ],
+    "role": 6,
+    "foto_profil": "",
+    "ttd_digital": "",
+    "jabatan": "Analis Sumber Daya Manusia Aparatur",
+    "nama_tim": 3,
+    "alamat": null
+  }
+},
+{
+  "model": "pengguna.userprofile",
+  "pk": 24,
+  "fields": {
+    "user": [
+      "galih_rakasiwi"
+    ],
+    "role": 6,
+    "foto_profil": "",
+    "ttd_digital": "",
+    "jabatan": "Perencana Ahli Pertama",
+    "nama_tim": 2,
+    "alamat": null
+  }
+},
+{
+  "model": "pengguna.userprofile",
+  "pk": 25,
+  "fields": {
+    "user": [
+      "ginar_sukma"
+    ],
+    "role": 6,
+    "foto_profil": "",
+    "ttd_digital": "",
+    "jabatan": "Pengelola Sumber Daya Air Ahli Pertama",
+    "nama_tim": 4,
+    "alamat": null
+  }
+},
+{
+  "model": "pengguna.userprofile",
+  "pk": 26,
+  "fields": {
+    "user": [
+      "isyraq_zakir"
+    ],
+    "role": 6,
+    "foto_profil": "",
+    "ttd_digital": "",
+    "jabatan": "Pengelola Sumber Daya Air Ahli Pertama",
+    "nama_tim": 1,
+    "alamat": null
+  }
+},
+{
+  "model": "pengguna.userprofile",
+  "pk": 27,
+  "fields": {
+    "user": [
+      "lira_adiyani"
+    ],
+    "role": 6,
+    "foto_profil": "",
+    "ttd_digital": "",
+    "jabatan": "Karyasiswa Master dan Doktoral",
+    "nama_tim": 1,
+    "alamat": null
+  }
+},
+{
+  "model": "pengguna.userprofile",
+  "pk": 28,
+  "fields": {
+    "user": [
+      "rifqi_putra"
+    ],
+    "role": 6,
+    "foto_profil": "",
+    "ttd_digital": "",
+    "jabatan": "Analis Pengelolaan Keuangan APBN Ahli Pertama",
+    "nama_tim": 4,
+    "alamat": null
+  }
+},
+{
+  "model": "pengguna.userprofile",
+  "pk": 29,
+  "fields": {
+    "user": [
+      "neli_anisa"
+    ],
+    "role": 6,
+    "foto_profil": "",
+    "ttd_digital": "",
+    "jabatan": "Pranata Hubungan Masyarakat Ahli Pertama",
+    "nama_tim": 3,
+    "alamat": null
+  }
+},
+{
+  "model": "pengguna.userprofile",
+  "pk": 30,
+  "fields": {
+    "user": [
+      "nira_yunita"
+    ],
+    "role": 6,
+    "foto_profil": "",
+    "ttd_digital": "",
+    "jabatan": "Pengelola Sumber Daya Air Ahli Pertama",
+    "nama_tim": 2,
+    "alamat": null
+  }
+},
+{
+  "model": "pengguna.userprofile",
+  "pk": 31,
+  "fields": {
+    "user": [
+      "perdhani_suchi"
+    ],
+    "role": 6,
+    "foto_profil": "",
+    "ttd_digital": "",
+    "jabatan": "Penata Laksana Sumber Daya Air Terampil",
+    "nama_tim": 2,
+    "alamat": "Bukit Permata F-2 No. 36, RT/RW 003/022, Bandung Barat Jawa Barat 40552"
+  }
+},
+{
+  "model": "pengguna.userprofile",
+  "pk": 32,
+  "fields": {
+    "user": [
+      "rian_azhar"
+    ],
+    "role": 6,
+    "foto_profil": "",
+    "ttd_digital": "",
+    "jabatan": "Pengelola Sumber Daya Air Ahli Muda",
+    "nama_tim": 2,
+    "alamat": "Jl. Galaxy Raya No. 98, RT 004 RW 007, Kelurahan/Desa Sekejati, Kecamatan Buah Batu"
+  }
+},
+{
+  "model": "pengguna.userprofile",
+  "pk": 33,
+  "fields": {
+    "user": [
+      "riefandy_setiadi"
+    ],
+    "role": 6,
+    "foto_profil": "",
+    "ttd_digital": "",
+    "jabatan": "Pengelola Sumber Daya Air Ahli Pertama",
+    "nama_tim": 1,
+    "alamat": "Jl. H. Tanu No. 08, RT/RW 003/007, Kecamatan Cicendo, Kelurahan Sukaraja, Bandung 40175"
+  }
+},
+{
+  "model": "pengguna.userprofile",
+  "pk": 34,
+  "fields": {
+    "user": [
+      "riza_nurul"
+    ],
+    "role": 8,
+    "foto_profil": "",
+    "ttd_digital": "",
+    "jabatan": "Penata Laksana Sumber Daya Air Terampil",
+    "nama_tim": 1,
+    "alamat": null
+  }
+},
+{
+  "model": "pengguna.userprofile",
+  "pk": 35,
+  "fields": {
+    "user": [
+      "sergio_omar"
+    ],
+    "role": 6,
+    "foto_profil": "",
+    "ttd_digital": "",
+    "jabatan": "Analis Sumber Daya Manusia Aparatur Ahli Pertama",
+    "nama_tim": 3,
+    "alamat": null
+  }
+},
+{
+  "model": "pengguna.userprofile",
+  "pk": 36,
+  "fields": {
+    "user": [
+      "shinta_rahmadiar"
+    ],
+    "role": 6,
+    "foto_profil": "",
+    "ttd_digital": "",
+    "jabatan": "Pengelola Sumber Daya Air Ahli Pertama",
+    "nama_tim": 2,
+    "alamat": "Komplek IPDN Blok E.32, RT/RW 001/007, Desa Cibeusi, Kecamatan Jatinangor"
+  }
+},
+{
+  "model": "pengguna.userprofile",
+  "pk": 37,
+  "fields": {
+    "user": [
+      "wulan_seizarwati"
+    ],
+    "role": 6,
+    "foto_profil": "",
+    "ttd_digital": "",
+    "jabatan": "Analis Pengelolaan Sumber Daya Air",
+    "nama_tim": 2,
+    "alamat": "Jl. Pamengpeuk 3 No. 11, RT 003 RW 004, Kel. Antapani Wetan, Kec. Antapani, Bandung 40291"
+  }
+},
+{
+  "model": "pengguna.userprofile",
+  "pk": 38,
+  "fields": {
+    "user": [
+      "andika_rizki"
+    ],
+    "role": 6,
+    "foto_profil": "",
+    "ttd_digital": "",
+    "jabatan": "Arsiparis Ahli Pertama",
+    "nama_tim": 4,
+    "alamat": "Komplek Pasir Jati IV A No. 129, RT 03/RW 05, Kel. Jatiendah, Kec. Cilengkrang"
+  }
+},
+{
+  "model": "pengguna.userprofile",
+  "pk": 39,
+  "fields": {
+    "user": [
+      "astri_suciani"
+    ],
+    "role": 6,
+    "foto_profil": "",
+    "ttd_digital": "",
+    "jabatan": "Pengadministrasi Perkantoran",
+    "nama_tim": 3,
+    "alamat": "Komplek Cibolerang Indah Blok B No. 44-a, Kel. Margahayu Utara, Kec. Babakan Ciparay"
+  }
+},
+{
+  "model": "pengguna.userprofile",
+  "pk": 40,
+  "fields": {
+    "user": [
+      "budi_sugiarto"
+    ],
+    "role": 6,
+    "foto_profil": "",
+    "ttd_digital": "",
+    "jabatan": "Pengadministrasi Perkantoran",
+    "nama_tim": 1,
+    "alamat": "Jl. Cihanjuang Babut Tengah No. 135, Kelurahan Cibabat, Kecamatan Cimahi Utara"
+  }
+},
+{
+  "model": "pengguna.userprofile",
+  "pk": 41,
+  "fields": {
+    "user": [
+      "cecep_dadan"
+    ],
+    "role": 6,
+    "foto_profil": "",
+    "ttd_digital": "",
+    "jabatan": "Pengelola Umum Operasional",
+    "nama_tim": 3,
+    "alamat": "Jl. Pasirkaliki Reuma, RT/RW 05/19, No. 45"
+  }
+},
+{
+  "model": "pengguna.userprofile",
+  "pk": 42,
+  "fields": {
+    "user": [
+      "charles_paiki"
+    ],
+    "role": 6,
+    "foto_profil": "",
+    "ttd_digital": "",
+    "jabatan": "Pengelola Sumber Daya Air Ahli Pertama",
+    "nama_tim": 2,
+    "alamat": null
+  }
+},
+{
+  "model": "pengguna.userprofile",
+  "pk": 43,
+  "fields": {
+    "user": [
+      "deni"
+    ],
+    "role": 6,
+    "foto_profil": "",
+    "ttd_digital": "",
+    "jabatan": "Pengelola Sumber Daya Air Ahli Pertama",
+    "nama_tim": 1,
+    "alamat": null
+  }
+},
+{
+  "model": "pengguna.userprofile",
+  "pk": 44,
+  "fields": {
+    "user": [
+      "dindin_budiarto"
+    ],
+    "role": 6,
+    "foto_profil": "",
+    "ttd_digital": "",
+    "jabatan": "Pengadministrasi Perkantoran",
+    "nama_tim": 3,
+    "alamat": "Komplek Taman Cimekar Kav. 58 No. 46"
+  }
+},
+{
+  "model": "pengguna.userprofile",
+  "pk": 45,
+  "fields": {
+    "user": [
+      "harry_fajar"
+    ],
+    "role": 6,
+    "foto_profil": "",
+    "ttd_digital": "",
+    "jabatan": "Pranata Hubungan Masyarakat Ahli Pertama",
+    "nama_tim": 3,
+    "alamat": "Komplek Griya Mandala Permai Blok O15, Desa Mandalamekar, Kecamatan Cimenyan, Kabupaten Bandung"
+  }
+},
+{
+  "model": "pengguna.userprofile",
+  "pk": 46,
+  "fields": {
+    "user": [
+      "iman_rohman"
+    ],
+    "role": 6,
+    "foto_profil": "",
+    "ttd_digital": "",
+    "jabatan": "Pengelola Sumber Daya Air Ahli Pertama",
+    "nama_tim": 1,
+    "alamat": null
+  }
+},
+{
+  "model": "pengguna.userprofile",
+  "pk": 47,
+  "fields": {
+    "user": [
+      "muhsonati_syahidah"
+    ],
+    "role": 6,
+    "foto_profil": "",
+    "ttd_digital": "",
+    "jabatan": "Penata Pengelolaan Sumber Daya Air",
+    "nama_tim": 2,
+    "alamat": "Komplek Puri Cipageran Indah I Blok D-5"
+  }
+},
+{
+  "model": "pengguna.userprofile",
+  "pk": 48,
+  "fields": {
+    "user": [
+      "pipit_rohani"
+    ],
+    "role": 6,
+    "foto_profil": "",
+    "ttd_digital": "",
+    "jabatan": "Pengadministrasi Perkantoran",
+    "nama_tim": 4,
+    "alamat": null
+  }
+},
+{
+  "model": "pengguna.userprofile",
+  "pk": 49,
+  "fields": {
+    "user": [
+      "rachmat_hidayatullah"
+    ],
+    "role": 8,
+    "foto_profil": "",
+    "ttd_digital": "",
+    "jabatan": "Perencana Ahli Pertama",
+    "nama_tim": 3,
+    "alamat": "Jl. Terusan Kopo Blk 321 No. 5, RT 01 RW 04, Kel. Margahayu Selatan, Kec. Margahayu"
+  }
+},
+{
+  "model": "pengguna.userprofile",
+  "pk": 50,
+  "fields": {
+    "user": [
+      "yopi_yunius"
+    ],
+    "role": 6,
+    "foto_profil": "",
+    "ttd_digital": "",
+    "jabatan": "Arsiparis Ahli Pertama",
+    "nama_tim": 3,
+    "alamat": "Jl. Pasirkaliki Barat No. 24, RT 010 RW 015, Kelurahan Sadang Serang, Kecamatan Coblong"
+  }
+},
+{
+  "model": "pengguna.userprofile",
+  "pk": 51,
+  "fields": {
+    "user": [
+      "yudi_khardiman"
+    ],
+    "role": 6,
+    "foto_profil": "",
+    "ttd_digital": "",
+    "jabatan": "Pengelola Sumber Daya Air Ahli Pertama",
+    "nama_tim": 1,
+    "alamat": "Perumahan Bumi Ciborerang Indah Blok D No. 29, Sangkanhurip, Kec. Katapang, Kabupaten Bandung"
+  }
+},
+{
+  "model": "pengguna.userprofile",
+  "pk": 52,
+  "fields": {
+    "user": [
+      "fajar_tawakal"
+    ],
+    "role": 8,
+    "foto_profil": "",
+    "ttd_digital": "",
+    "jabatan": "Konsultan Individu",
+    "nama_tim": 1,
+    "alamat": "Cibiru Indah 1 No. 14 Blk, RT/RW 001/016, Cibiru Wetan, Cileunyi, Kabupaten Bandung"
+  }
+},
+{
+  "model": "pengguna.userprofile",
+  "pk": 53,
+  "fields": {
+    "user": [
+      "haidar_harfi"
+    ],
+    "role": 6,
+    "foto_profil": "",
+    "ttd_digital": "",
+    "jabatan": "Konsultan Individu",
+    "nama_tim": 2,
+    "alamat": "Jl. Abdul Hamid Gg. 1, RT/RW 003/004, Kanigaran, Kebonsari Kulon, Kota Probolinggo"
+  }
+},
+{
+  "model": "pengguna.userprofile",
+  "pk": 54,
+  "fields": {
+    "user": [
+      "ghulam_ahmad"
+    ],
+    "role": 6,
+    "foto_profil": "",
+    "ttd_digital": "",
+    "jabatan": "Konsultan Individu",
+    "nama_tim": 1,
+    "alamat": "Jl. Panda V.A No. 18, Cikarang Pusat, Kabupaten Bekasi"
+  }
+},
+{
+  "model": "pengguna.userprofile",
+  "pk": 55,
+  "fields": {
+    "user": [
+      "m_winniardli"
+    ],
+    "role": 6,
+    "foto_profil": "",
+    "ttd_digital": "",
+    "jabatan": "Konsultan Individu",
+    "nama_tim": 1,
+    "alamat": "Pondok Sukmajaya Permai Blok A3 No. 3, Sukmajaya, Sukmajaya, Kota Depok"
+  }
+},
+{
+  "model": "pengguna.userprofile",
+  "pk": 56,
+  "fields": {
+    "user": [
+      "zaidan_fikri"
+    ],
+    "role": 6,
+    "foto_profil": "",
+    "ttd_digital": "",
+    "jabatan": "Konsultan Individu",
+    "nama_tim": 2,
+    "alamat": "Jl. Brigjend Katamso No. 88, Kepuhkiriman, Waru, Sidoarjo"
+  }
+},
+{
+  "model": "pengguna.pelatihan",
+  "pk": 2,
+  "fields": {
+    "user": [
+      "suyadi"
+    ],
+    "tipe_pelatihan": "Pelatihan Internal",
+    "jenis_pelatihan": "Non-Laboratorium",
+    "nama_pelatihan": "K3 Laboratorium",
+    "tanggal_mulai": "2026-05-05",
+    "tanggal_selesai": "2026-05-05",
+    "lokasi_pelatihan": "Bandung - Bintek SDA",
+    "uraian_pelatihan": "Pelaksanaan pelatihan K3 untuk Laboratorium",
+    "file_sertifikat": "pengguna/pelatihan/sertifikat/WhatsApp_Image_2026-04-29_at_06.32.49.jpeg",
+    "file_materi": "pengguna/pelatihan/materi/Invoice_-_Riefandy_Setiadi__Yan_Adhitya_Wesda_Wardhana_10-11_Mar_2026.pdf",
+    "created_at": "2026-05-05T14:19:44.342Z",
+    "updated_at": "2026-05-05T14:21:44.877Z"
+  }
+},
+{
+  "model": "pengguna.pelatihan",
+  "pk": 3,
+  "fields": {
+    "user": [
+      "suyadi"
+    ],
+    "tipe_pelatihan": "Pelatihan Eksternal",
+    "jenis_pelatihan": "Laboratorium",
+    "nama_pelatihan": "Neque impedit praesentium",
+    "tanggal_mulai": "2026-05-05",
+    "tanggal_selesai": "2026-05-05",
+    "lokasi_pelatihan": "Error consectetur ame",
+    "uraian_pelatihan": "Vel vero eiusmod non",
+    "file_sertifikat": "",
+    "file_materi": "",
+    "created_at": "2026-05-05T14:20:51.450Z",
+    "updated_at": "2026-05-05T14:20:51.450Z"
+  }
+}
+]

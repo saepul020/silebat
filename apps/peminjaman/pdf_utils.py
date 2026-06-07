@@ -963,8 +963,8 @@ def render_berita_acara_pdf(target, obj, sections, format_date, teknisi):
         ),
         _dokumen_rows(
             obj.nomor_pengajuan,
-            "Tanggal Dokumen",
-            format_date(obj.return_completed_at),
+            "Tanggal Peminjaman",
+            format_date(obj.submitted_at),
             format_date(obj.return_started_at),
             format_date(obj.return_completed_at),
         ),

@@ -13,15 +13,19 @@
     <div class="table-toolbar">
         <h3 class="table-title">Daftar Barang Penunjang Lapangan</h3>
         <div class="table-toolbar-actions">
-            {% if role_access.is_super_admin %}
+            {% if role_access.can_export_master_data %}
                 <a href="{% url 'master_data:export_barang_penunjang' %}" class="btn btn-secondary">
                     <i class="bi bi-download"></i>&nbsp;Export Data
                 </a>
+            {% endif %}
+            {% if role_access.can_import_master_data %}
                 <button type="button" class="btn btn-secondary js-import-data-btn" data-import-target="#barangPenunjangImportModal">
                     <i class="bi bi-file-earmark-spreadsheet"></i>&nbsp;Import Data
                 </button>
             {% endif %}
+            {% if role_access.can_manage_master_data %}
             <a href="{% url 'master_data:tambah_barang_penunjang' %}" class="btn btn-primary"><i class="bi bi-plus-circle"></i>&nbsp;Tambah Barang</a>
+            {% endif %}
         </div>
     </div>
 
@@ -65,10 +69,12 @@
                             <a href="{{ item.get_public_detail_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" title="Buka Detail Public">
                                 <i class="bi bi-box-arrow-up-right"></i>
                             </a>
+                            {% if role_access.can_manage_master_data %}
                             <a href="{% url 'master_data:edit_barang_penunjang' item.pk %}?next={{ request.get_full_path|urlencode }}" class="btn btn-warning btn-sm"><i class="bi bi-pencil-square"></i></a>
                             <button type="button" class="btn btn-danger btn-sm js-delete-btn" data-delete-modal="master" data-delete-url="{% url 'master_data:hapus_barang_penunjang' item.pk %}" data-item-name="{{ item.nama_barang|display_dash }}" data-item-meta="{{ item.kategori_barang|default:'-' }}">
                                 <i class="bi bi-trash3-fill"></i>
                             </button>
+                            {% endif %}
                         </div>
                     </td>
                 </tr>
@@ -84,12 +90,13 @@
     {% include 'components/master_pagination.html' %}
 </div>
 
-{% if role_access.is_super_admin %}
+{% if role_access.can_import_master_data %}
     {% url 'master_data:import_barang_penunjang' as import_action_url %}
     {% url 'master_data:download_format_import_barang_penunjang' as import_download_url %}
     {% include 'components/import_excel_modal.html' with import_context=import_context import_modal_id='barangPenunjangImportModal' import_file_id='barangPenunjangImportFile' import_title='Import Data Barang Penunjang Lapangan' import_action_url=import_action_url import_download_url=import_download_url import_help_text='Gunakan file .xlsx maksimal 7 MB. Nama barang duplikat akan ditolak.' %}
 {% endif %}
 
+{% if role_access.can_manage_master_data %}
 <div class="delete-modal" id="masterDeleteModal">
     <div class="delete-modal-backdrop" id="masterDeleteModalBackdrop"></div>
 
@@ -120,5 +127,6 @@
         </div>
     </div>
 </div>
+{% endif %}
 
 {% endblock %}

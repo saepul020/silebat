@@ -110,7 +110,9 @@
     </div>
 
     <div class="detail-card-action detail-card-actions">
+        {% if role_access.can_manage_master_data %}
         <a href="{% url edit_url_name obj.pk %}" class="btn btn-primary">{{ edit_label }}</a>
+        {% endif %}
         <a href="{% url back_url_name %}" class="btn btn-secondary">Kembali</a>
     </div>
 </div>

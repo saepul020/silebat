@@ -1,5 +1,6 @@
 from io import BytesIO
 from types import SimpleNamespace
+from unittest.mock import patch
 
 from django.test import SimpleTestCase
 from reportlab.lib import colors
@@ -24,6 +25,7 @@ from apps.peminjaman.pdf_utils import (
     _dokumen_rows,
     _peminjam_rows,
     data_table,
+    render_berita_acara_pdf,
     signature_block,
     title_block,
 )
@@ -194,3 +196,65 @@ class PdfLayoutTests(SimpleTestCase):
         )[0]
         _PdfDoc(output, "Uji Nama Tanda Tangan", has_kop=False).build([block])
         self.assertTrue(output.getvalue().startswith(b"%PDF"))
+
+    def test_berita_acara_uses_borrow_and_completed_dates(self):
+        submitted = object()
+        return_started = object()
+        return_completed = object()
+        obj = SimpleNamespace(
+            kegiatan_survei=SimpleNamespace(all=lambda: []),
+            survei_lainnya="",
+            nama_peminjam="Pengguna",
+            nip_peminjam="123",
+            no_hp_peminjam="0812",
+            email_peminjam="user@example.com",
+            alamat_peminjam="Bandung",
+            nomor_pengajuan="PJM-001",
+            submitted_at=submitted,
+            return_started_at=return_started,
+            return_completed_at=return_completed,
+            layanan_kegiatan_label="-",
+            tim_kegiatan=None,
+            instansi_tujuan=None,
+            instansi_tujuan_lainnya="",
+            tanggal_mulai=None,
+            tanggal_selesai=None,
+            total_hari=1,
+            peminjam=None,
+            get_kepala_lab_signer=lambda: None,
+            get_return_pimpinan_signer=lambda: None,
+        )
+        formatted = {
+            submitted: "01 Maret 2026",
+            return_started: "12 Maret 2026",
+            return_completed: "13 Maret 2026",
+            None: "-",
+        }
+
+        with (
+            patch("apps.peminjaman.pdf_utils.title_block", return_value=[]) as title_mock,
+            patch("apps.peminjaman.pdf_utils.section", return_value=None),
+            patch("apps.peminjaman.pdf_utils.info_table", return_value=None),
+            patch("apps.peminjaman.pdf_utils._append_table"),
+            patch("apps.peminjaman.pdf_utils.signature_block", return_value=[]) as sign_mock,
+            patch("apps.peminjaman.pdf_utils.build_pdf"),
+        ):
+            render_berita_acara_pdf(
+                BytesIO(),
+                obj,
+                {"rusak": [], "hilang": []},
+                formatted.get,
+                None,
+            )
+
+        document_rows = title_mock.call_args.args[2]
+        self.assertEqual(
+            document_rows,
+            [
+                ("Nomor Pengajuan", "PJM-001"),
+                ("Tanggal Peminjaman", "01 Maret 2026"),
+                ("Tanggal Pengembalian", "12 Maret 2026"),
+                ("Pengembalian Selesai", "13 Maret 2026"),
+            ],
+        )
+        self.assertEqual(sign_mock.call_args.args[0], "Bandung, 13 Maret 2026")

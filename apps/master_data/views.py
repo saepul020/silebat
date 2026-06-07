@@ -4,7 +4,6 @@ from io import BytesIO
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 
-from apps.core.permissions import ROLE_SUPER_ADMIN, get_role_name
 from apps.core.navigation import get_next_url, redirect_next
 from apps.core.list_pagination import paginate_list
 from apps.core.excel_utils import build_excel_response
@@ -671,9 +670,6 @@ def data_barang_laboratorium(request):
 
 @login_required
 def export_barang_laboratorium(request):
-    if not _is_super_admin_user(request.user):
-        return _deny_import_access(request)
-
     headers = [
         "Nama Barang",
         "Status Barang",
@@ -724,15 +720,6 @@ def export_barang_laboratorium(request):
             _public_detail_export_url(request, obj),
         ],
     )
-
-
-def _is_super_admin_user(user):
-    return get_role_name(user) == ROLE_SUPER_ADMIN
-
-
-def _deny_import_access(request):
-    messages.error(request, 'Fitur import data peralatan survei lapangan hanya dapat diakses oleh Super Admin.')
-    return redirect('master_data:data_barang_laboratorium')
 
 
 def _year_cell(value):
@@ -853,11 +840,6 @@ IMPORT_PERALATAN_LABORATORIUM_REQUIRED_HEADERS = [
     "Tahun Perolehan",
     "Lokasi Barang",
 ]
-
-
-def _deny_import_access_to(request, redirect_to, label):
-    messages.error(request, f'Fitur import {label} hanya dapat diakses oleh Super Admin.')
-    return redirect(redirect_to)
 
 
 def _load_import_worksheet(file_obj, headers, required_headers):
@@ -1553,9 +1535,6 @@ def _validate_barang_laboratorium_import(file_obj):
 
 @login_required
 def import_barang_laboratorium(request):
-    if not _is_super_admin_user(request.user):
-        return _deny_import_access(request)
-
     return _handle_import_post(
         request,
         session_key=IMPORT_BARANG_LAB_SESSION_KEY,
@@ -1576,9 +1555,6 @@ def import_barang_laboratorium(request):
 
 @login_required
 def download_format_import_barang_laboratorium(request):
-    if not _is_super_admin_user(request.user):
-        return _deny_import_access(request)
-
     status_values = [value for value, _label in StatusBarangChoices.choices]
     satuan_values = [value for value, _label in SatuanAsetChoices.choices]
     kondisi_values = [value for value, _label in KondisiBarangChoices.choices]
@@ -1620,9 +1596,6 @@ def download_format_import_barang_laboratorium(request):
 
 @login_required
 def import_barang_penunjang(request):
-    if not _is_super_admin_user(request.user):
-        return _deny_import_access_to(request, 'master_data:data_barang_penunjang', 'data barang penunjang lapangan')
-
     return _handle_import_post(
         request,
         session_key=IMPORT_BARANG_PENUNJANG_SESSION_KEY,
@@ -1640,9 +1613,6 @@ def import_barang_penunjang(request):
 
 @login_required
 def download_format_import_barang_penunjang(request):
-    if not _is_super_admin_user(request.user):
-        return _deny_import_access_to(request, 'master_data:data_barang_penunjang', 'data barang penunjang lapangan')
-
     kategori_values = [value for value, _label in KategoriBarangPenunjangChoices.choices]
     satuan_values = [value for value, _label in SatuanAsetChoices.choices]
     return _download_import_template(
@@ -1670,9 +1640,6 @@ def download_format_import_barang_penunjang(request):
 
 @login_required
 def import_bahan_operasional(request):
-    if not _is_super_admin_user(request.user):
-        return _deny_import_access_to(request, 'master_data:data_bahan_operasional', 'data bahan operasional')
-
     return _handle_import_post(
         request,
         session_key=IMPORT_BAHAN_OPERASIONAL_SESSION_KEY,
@@ -1690,9 +1657,6 @@ def import_bahan_operasional(request):
 
 @login_required
 def download_format_import_bahan_operasional(request):
-    if not _is_super_admin_user(request.user):
-        return _deny_import_access_to(request, 'master_data:data_bahan_operasional', 'data bahan operasional')
-
     kategori_values = [value for value, _label in KategoriBahanOperasionalChoices.choices]
     satuan_values = [value for value, _label in SatuanBahanChoices.choices]
     return _download_import_template(
@@ -1719,9 +1683,6 @@ def download_format_import_bahan_operasional(request):
 
 @login_required
 def import_fasilitas_ruangan(request):
-    if not _is_super_admin_user(request.user):
-        return _deny_import_access_to(request, 'master_data:data_fasilitas_ruangan', 'data sarana prasarana ruangan')
-
     return _handle_import_post(
         request,
         session_key=IMPORT_FASILITAS_RUANGAN_SESSION_KEY,
@@ -1738,9 +1699,6 @@ def import_fasilitas_ruangan(request):
 
 @login_required
 def download_format_import_fasilitas_ruangan(request):
-    if not _is_super_admin_user(request.user):
-        return _deny_import_access_to(request, 'master_data:data_fasilitas_ruangan', 'data sarana prasarana ruangan')
-
     status_values = [value for value, _label in StatusBarangChoices.choices]
     satuan_values = [value for value, _label in SatuanAsetChoices.choices]
     kategori_values = [value for value, _label in KategoriSaranaPrasaranaChoices.choices]
@@ -1785,9 +1743,6 @@ def download_format_import_fasilitas_ruangan(request):
 
 @login_required
 def export_barang_penunjang(request):
-    if not _is_super_admin_user(request.user):
-        return _deny_import_access_to(request, 'master_data:data_barang_penunjang', 'data barang penunjang lapangan')
-
     headers = [
         "Nama Barang",
         "Tipe / Merek Barang",
@@ -1826,9 +1781,6 @@ def export_barang_penunjang(request):
 
 @login_required
 def export_bahan_operasional(request):
-    if not _is_super_admin_user(request.user):
-        return _deny_import_access_to(request, 'master_data:data_bahan_operasional', 'data bahan operasional')
-
     headers = [
         "Nama Barang",
         "Kategori Barang",
@@ -1859,9 +1811,6 @@ def export_bahan_operasional(request):
 
 @login_required
 def export_fasilitas_ruangan(request):
-    if not _is_super_admin_user(request.user):
-        return _deny_import_access_to(request, 'master_data:data_fasilitas_ruangan', 'data sarana prasarana ruangan')
-
     headers = [
         "Nama Barang",
         "Status Barang",
@@ -1920,9 +1869,6 @@ def export_fasilitas_ruangan(request):
 
 @login_required
 def export_peralatan_laboratorium(request):
-    if not _is_super_admin_user(request.user):
-        return _deny_import_access_to(request, 'master_data:data_peralatan_laboratorium', 'data peralatan laboratorium')
-
     headers = [
         "Nama Barang",
         "Status Barang",
@@ -2611,9 +2557,6 @@ def hapus_peralatan_laboratorium(request, pk):
 
 @login_required
 def import_peralatan_laboratorium(request):
-    if not _is_super_admin_user(request.user):
-        return _deny_import_access_to(request, 'master_data:data_peralatan_laboratorium', 'data peralatan laboratorium')
-
     return _handle_import_post(
         request,
         session_key=IMPORT_PERALATAN_LABORATORIUM_SESSION_KEY,
@@ -2634,9 +2577,6 @@ def import_peralatan_laboratorium(request):
 
 @login_required
 def download_format_import_peralatan_laboratorium(request):
-    if not _is_super_admin_user(request.user):
-        return _deny_import_access_to(request, 'master_data:data_peralatan_laboratorium', 'data peralatan laboratorium')
-
     status_values = [value for value, _label in StatusBarangChoices.choices]
     satuan_values = [value for value, _label in SatuanAsetChoices.choices]
     kondisi_values = [value for value, _label in KondisiBarangChoices.choices]

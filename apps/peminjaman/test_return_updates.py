@@ -88,6 +88,15 @@ class ReturnUpdateTests(TestCase):
             "Kondisi lengkap dan bersih.",
         )
 
+    def test_apply_return_inventory_records_completion_time(self):
+        self.assertIsNone(self.obj.return_completed_at)
+
+        self.obj.apply_pengembalian_inventory()
+        self.obj.refresh_from_db()
+
+        self.assertTrue(self.obj.return_inventory_applied)
+        self.assertIsNotNone(self.obj.return_completed_at)
+
     def test_item_note_length_is_validated_on_server(self):
         self.assertEqual(RETURN_ITEM_NOTE_MAX_LENGTH, 100)
         parsed = _parse_pengembalian_data(

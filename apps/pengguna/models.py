@@ -25,8 +25,8 @@ ROLE_DESCRIPTIONS = {
     "User": "Dashboard, Permintaan Peminjaman, Laporan Peminjaman, Dashboard SDM, Data Pelatihan, serta detail dan edit profil milik sendiri.",
     "Admin Lab": "Semua app kecuali Data Pengguna. Tetap dapat membuka Dashboard SDM, Data Pelatihan, serta detail dan edit profil milik sendiri.",
     "Teknisi Lab": "Semua app kecuali Data Pengguna. Tetap dapat membuka Dashboard SDM, Data Pelatihan, serta detail dan edit profil milik sendiri.",
-    "Kepala Lab": "Dashboard, Verifikasi, Laporan, Dashboard SDM, Data Pelatihan, serta detail dan edit profil milik sendiri.",
-    "Pimpinan": "Dashboard, Verifikasi, Laporan, Dashboard SDM, Data Pelatihan, serta detail dan edit profil milik sendiri.",
+    "Kepala Lab": "Dashboard, Verifikasi, Laporan, Data Master baca-saja, Dashboard SDM, Data Pelatihan, serta detail dan edit profil milik sendiri.",
+    "Pimpinan": "Dashboard, Verifikasi, Laporan, Data Master baca-saja dan export, Dashboard SDM, Data Pelatihan, serta detail dan edit profil milik sendiri.",
 }
 
 
