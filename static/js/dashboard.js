@@ -101,6 +101,10 @@ const zeroValueDashPlugin = {
         ctx.font = '600 ' + getChartFontSize(11, 10, 9) + 'px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
 
         datasets.forEach(function (dataset, datasetIndex) {
+            if (dataset.showZeroDash === false) {
+                return;
+            }
+
             const meta = chart.getDatasetMeta(datasetIndex);
             if (!meta || meta.hidden) {
                 return;
@@ -136,6 +140,7 @@ function initDashboardCharts() {
     initApprovedPeminjamanChart();
     initSurveiKegiatanChart();
     initInstansiTujuanChart();
+    initInventoryCharts();
     initSdmCharts();
 }
 
@@ -223,7 +228,7 @@ function createBaseBarOptions(maxValue) {
             },
             resize: {
                 animation: {
-                    duration: 280,
+                    duration: 0,
                 },
             },
         },
@@ -576,7 +581,11 @@ function buildSingleSeriesChartData(source, selectedYear, idKey, datasetLabel, c
     };
 }
 
-function upsertBarChart(currentChart, canvas, labels, datasets, options) {
+function normalizeChartUpdateMode(updateMode) {
+    return typeof updateMode === 'string' ? updateMode : undefined;
+}
+
+function upsertBarChart(currentChart, canvas, labels, datasets, options, updateMode) {
     if (!currentChart) {
         return new Chart(canvas, {
             type: 'bar',
@@ -591,8 +600,14 @@ function upsertBarChart(currentChart, canvas, labels, datasets, options) {
     currentChart.data.labels = labels;
     currentChart.data.datasets = datasets;
     currentChart.options = options;
-    currentChart.update();
+    currentChart.update(normalizeChartUpdateMode(updateMode));
     return currentChart;
+}
+
+function bindDashboardChartResize(renderChart) {
+    window.addEventListener('resize', debounce(function () {
+        renderChart('none');
+    }, 180));
 }
 
 function updateScrollableChartWidth(holder, labelCount, minPixelsPerLabel) {
@@ -636,7 +651,7 @@ function initTimKegiatanChart() {
 
     let chartInstance = null;
 
-    function renderChart() {
+    function renderChart(updateMode) {
         const chartData = buildMonthlyGroupedChartData(
             source,
             normalizeDashboardYearFilter(yearFilter.value),
@@ -654,12 +669,12 @@ function initTimKegiatanChart() {
             },
         };
 
-        chartInstance = upsertBarChart(chartInstance, canvas, chartData.labels, chartData.datasets, options);
+        chartInstance = upsertBarChart(chartInstance, canvas, chartData.labels, chartData.datasets, options, updateMode);
     }
 
     yearFilter.addEventListener('change', renderChart);
     monthFilter.addEventListener('change', renderChart);
-    window.addEventListener('resize', debounce(renderChart, 180));
+    bindDashboardChartResize(renderChart);
     renderChart();
 }
 
@@ -674,7 +689,7 @@ function initLayananKegiatanChart() {
 
     let chartInstance = null;
 
-    function renderChart() {
+    function renderChart(updateMode) {
         const chartData = buildSingleSeriesChartData(
             source,
             normalizeDashboardYearFilter(yearFilter.value),
@@ -683,16 +698,16 @@ function initLayananKegiatanChart() {
             'standard',
         );
         const options = createSingleSeriesChartOptions(chartData.maxValue, 18, isMobileViewport() ? 55 : 42);
-        chartInstance = upsertBarChart(chartInstance, canvas, chartData.labels, chartData.datasets, options);
+        chartInstance = upsertBarChart(chartInstance, canvas, chartData.labels, chartData.datasets, options, updateMode);
     }
 
     yearFilter.addEventListener('change', renderChart);
-    window.addEventListener('resize', debounce(renderChart, 180));
+    bindDashboardChartResize(renderChart);
     renderChart();
 }
 
 
-function getSdmPalette(index) {
+function getChartPalette(index) {
     const palette = [
         { background: 'rgba(16, 62, 111, 0.82)', border: 'rgba(16, 62, 111, 1)' },
         { background: 'rgba(100, 205, 209, 0.82)', border: 'rgba(100, 205, 209, 1)' },
@@ -739,7 +754,7 @@ function buildSdmData(source, selectedYear) {
     };
 }
 
-function updateSdmEmptyState(key, hasData) {
+function updateChartEmptyState(key, hasData) {
     const emptyState = document.querySelector('[data-chart-empty="' + key + '"]');
     if (!emptyState) {
         return;
@@ -751,7 +766,7 @@ function updateSdmEmptyState(key, hasData) {
 function buildSdmBarData(source, selectedYear) {
     const chartData = buildSdmData(source, selectedYear);
     const colors = chartData.labels.map(function (_, index) {
-        return getSdmPalette(index);
+        return getChartPalette(index);
     });
 
     return {
@@ -778,7 +793,7 @@ function buildSdmBarData(source, selectedYear) {
 function buildSdmPieData(source, selectedYear) {
     const chartData = buildSdmData(source, selectedYear);
     const colors = chartData.labels.map(function (_, index) {
-        return getSdmPalette(index);
+        return getChartPalette(index);
     });
 
     return {
@@ -850,7 +865,7 @@ function initSdmTipeChart() {
 
     let chartInstance = null;
 
-    function renderChart() {
+    function renderChart(updateMode) {
         const chartData = buildSdmBarData(source, normalizeDashboardYearFilter(yearFilter.value));
         const options = createBaseBarOptions(chartData.maxValue);
         options.plugins.legend.display = false;
@@ -863,12 +878,12 @@ function initSdmTipeChart() {
         options.scales.x.ticks.callback = function (value) {
             return wrapChartLabel(this.getLabelForValue(value), isMobileViewport() ? 12 : 18, 2);
         };
-        updateSdmEmptyState('sdm-tipe', chartData.hasData);
-        chartInstance = upsertBarChart(chartInstance, canvas, chartData.labels, chartData.datasets, options);
+        updateChartEmptyState('sdm-tipe', chartData.hasData);
+        chartInstance = upsertBarChart(chartInstance, canvas, chartData.labels, chartData.datasets, options, updateMode);
     }
 
     yearFilter.addEventListener('change', renderChart);
-    window.addEventListener('resize', debounce(renderChart, 180));
+    bindDashboardChartResize(renderChart);
     renderChart();
 }
 
@@ -883,9 +898,9 @@ function initSdmJenisChart() {
 
     let chartInstance = null;
 
-    function renderChart() {
+    function renderChart(updateMode) {
         const chartData = buildSdmPieData(source, normalizeDashboardYearFilter(yearFilter.value));
-        updateSdmEmptyState('sdm-jenis', chartData.hasData);
+        updateChartEmptyState('sdm-jenis', chartData.hasData);
 
         if (!chartInstance) {
             chartInstance = new Chart(canvas, {
@@ -902,11 +917,11 @@ function initSdmJenisChart() {
         chartInstance.data.labels = chartData.labels;
         chartInstance.data.datasets = chartData.datasets;
         chartInstance.options = createSdmPieOptions();
-        chartInstance.update();
+        chartInstance.update(normalizeChartUpdateMode(updateMode));
     }
 
     yearFilter.addEventListener('change', renderChart);
-    window.addEventListener('resize', debounce(renderChart, 180));
+    bindDashboardChartResize(renderChart);
     renderChart();
 }
 
@@ -998,7 +1013,7 @@ function initPengukuranLapanganChart() {
 
     let chartInstance = null;
 
-    function renderChart() {
+    function renderChart(updateMode) {
         const chartData = buildMonthlyGroupedChartData(
             source,
             normalizeDashboardYearFilter(yearFilter.value),
@@ -1016,12 +1031,12 @@ function initPengukuranLapanganChart() {
             },
         };
 
-        chartInstance = upsertBarChart(chartInstance, canvas, chartData.labels, chartData.datasets, options);
+        chartInstance = upsertBarChart(chartInstance, canvas, chartData.labels, chartData.datasets, options, updateMode);
     }
 
     yearFilter.addEventListener('change', renderChart);
     monthFilter.addEventListener('change', renderChart);
-    window.addEventListener('resize', debounce(renderChart, 180));
+    bindDashboardChartResize(renderChart);
     renderChart();
 }
 
@@ -1037,7 +1052,7 @@ function initApprovedPeminjamanChart() {
 
     let chartInstance = null;
 
-    function renderChart() {
+    function renderChart(updateMode) {
         const chartData = buildMonthlySingleSeriesChartData(
             source,
             normalizeDashboardYearFilter(yearFilter.value),
@@ -1052,11 +1067,11 @@ function initApprovedPeminjamanChart() {
             },
         };
 
-        chartInstance = upsertBarChart(chartInstance, canvas, chartData.labels, chartData.datasets, options);
+        chartInstance = upsertBarChart(chartInstance, canvas, chartData.labels, chartData.datasets, options, updateMode);
     }
 
     yearFilter.addEventListener('change', renderChart);
-    window.addEventListener('resize', debounce(renderChart, 180));
+    bindDashboardChartResize(renderChart);
     renderChart();
 }
 
@@ -1073,7 +1088,7 @@ function initSurveiKegiatanChart() {
 
     let chartInstance = null;
 
-    function renderChart() {
+    function renderChart(updateMode) {
         const chartData = buildSingleSeriesChartData(
             source,
             normalizeDashboardYearFilter(yearFilter.value),
@@ -1083,11 +1098,11 @@ function initSurveiKegiatanChart() {
         );
         updateScrollableChartWidth(holder, chartData.labels.length, isSmallMobileViewport() ? 54 : (isMobileViewport() ? 62 : 132));
         const options = createSingleSeriesChartOptions(chartData.maxValue, isMobileViewport() ? 13 : 18, isMobileViewport() ? 52 : 42);
-        chartInstance = upsertBarChart(chartInstance, canvas, chartData.labels, chartData.datasets, options);
+        chartInstance = upsertBarChart(chartInstance, canvas, chartData.labels, chartData.datasets, options, updateMode);
     }
 
     yearFilter.addEventListener('change', renderChart);
-    window.addEventListener('resize', debounce(renderChart, 180));
+    bindDashboardChartResize(renderChart);
     renderChart();
 }
 
@@ -1103,7 +1118,7 @@ function initInstansiTujuanChart() {
 
     let chartInstance = null;
 
-    function renderChart() {
+    function renderChart(updateMode) {
         const chartData = buildSingleSeriesChartData(
             source,
             normalizeDashboardYearFilter(yearFilter.value),
@@ -1113,12 +1128,167 @@ function initInstansiTujuanChart() {
         );
         updateScrollableChartWidth(holder, chartData.labels.length, isSmallMobileViewport() ? 56 : (isMobileViewport() ? 66 : 136));
         const options = createSingleSeriesChartOptions(chartData.maxValue, isMobileViewport() ? 12 : 18, isMobileViewport() ? 58 : 46);
-        chartInstance = upsertBarChart(chartInstance, canvas, chartData.labels, chartData.datasets, options);
+        chartInstance = upsertBarChart(chartInstance, canvas, chartData.labels, chartData.datasets, options, updateMode);
     }
 
     yearFilter.addEventListener('change', renderChart);
-    window.addEventListener('resize', debounce(renderChart, 180));
+    bindDashboardChartResize(renderChart);
     renderChart();
+}
+
+function getInventoryItems(source) {
+    return Array.isArray(source?.items) ? source.items : [];
+}
+
+function createInventoryChartOptions(maxValue, units, stacked) {
+    const options = createBaseBarOptions(maxValue);
+    options.scales.x.stacked = stacked;
+    options.scales.y.stacked = stacked;
+    options.scales.x.ticks.maxRotation = isMobileViewport() ? 52 : 42;
+    options.scales.x.ticks.minRotation = isMobileViewport() ? 52 : 42;
+    options.scales.x.ticks.align = 'center';
+    options.scales.x.ticks.callback = function (value) {
+        return wrapChartLabel(this.getLabelForValue(value), isMobileViewport() ? 13 : 18, 2);
+    };
+    options.plugins.tooltip.callbacks = {
+        label: function (context) {
+            const numericValue = Number(context.raw || 0);
+            const unit = units[context.dataIndex] ? ' ' + units[context.dataIndex] : '';
+            return context.dataset.label + ': ' + numericValue + unit;
+        },
+    };
+    return options;
+}
+
+function buildBahanChartData(source) {
+    const items = getInventoryItems(source);
+    const colors = items.map(function (_, index) {
+        return getChartPalette(index);
+    });
+    const data = items.map(function (item) {
+        return Number(item.stock || 0);
+    });
+    const barSizing = getSingleBarSizing(true);
+
+    return {
+        labels: items.map(function (item) { return item.label; }),
+        units: items.map(function (item) { return item.unit || ''; }),
+        datasets: [
+            {
+                label: 'Stok',
+                data: data,
+                backgroundColor: colors.map(function (color) { return color.background; }),
+                borderColor: colors.map(function (color) { return color.border; }),
+                borderWidth: 1,
+                borderRadius: 8,
+                borderSkipped: false,
+                categoryPercentage: barSizing.categoryPercentage,
+                barPercentage: barSizing.barPercentage,
+                maxBarThickness: barSizing.maxBarThickness,
+            },
+        ],
+        maxValue: Math.max.apply(null, data.concat([0])),
+        hasData: items.length > 0,
+    };
+}
+
+function buildPenunjangChartData(source) {
+    const items = getInventoryItems(source);
+    const rusak = items.map(function (item) {
+        return Number(item.rusak || 0);
+    });
+    const baik = items.map(function (item) {
+        return Number(item.baik || 0);
+    });
+    const totals = items.map(function (_, index) {
+        return rusak[index] + baik[index];
+    });
+    const barSizing = getSingleBarSizing(true);
+    const commonDataset = {
+        stack: 'condition',
+        borderWidth: 1,
+        borderRadius: 7,
+        borderSkipped: false,
+        categoryPercentage: barSizing.categoryPercentage,
+        barPercentage: barSizing.barPercentage,
+        maxBarThickness: barSizing.maxBarThickness,
+        showZeroDash: false,
+    };
+
+    return {
+        labels: items.map(function (item) { return item.label; }),
+        units: items.map(function (item) { return item.unit || ''; }),
+        datasets: [
+            {
+                ...commonDataset,
+                label: 'Rusak',
+                data: rusak,
+                backgroundColor: 'rgba(220, 53, 69, 0.78)',
+                borderColor: 'rgba(220, 53, 69, 1)',
+            },
+            {
+                ...commonDataset,
+                label: 'Baik',
+                data: baik,
+                backgroundColor: 'rgba(100, 205, 209, 0.86)',
+                borderColor: 'rgba(16, 62, 111, 0.82)',
+            },
+        ],
+        maxValue: Math.max.apply(null, totals.concat([0])),
+        hasData: items.length > 0,
+    };
+}
+
+function initBahanOperasionalChart() {
+    const canvas = document.getElementById('bahanOperasionalChart');
+    const source = readDashboardChartData('bahan-chart-data');
+    const holder = document.querySelector('[data-chart-holder="bahan"]');
+
+    if (!canvas || !source || !holder) {
+        return;
+    }
+
+    let chartInstance = null;
+
+    function renderChart(updateMode) {
+        const chartData = buildBahanChartData(source);
+        updateScrollableChartWidth(holder, chartData.labels.length, isMobileViewport() ? 72 : 118);
+        updateChartEmptyState('bahan', chartData.hasData);
+        const options = createInventoryChartOptions(chartData.maxValue, chartData.units, false);
+        options.plugins.legend.display = false;
+        chartInstance = upsertBarChart(chartInstance, canvas, chartData.labels, chartData.datasets, options, updateMode);
+    }
+
+    bindDashboardChartResize(renderChart);
+    renderChart();
+}
+
+function initBarangPenunjangChart() {
+    const canvas = document.getElementById('barangPenunjangChart');
+    const source = readDashboardChartData('penunjang-chart-data');
+    const holder = document.querySelector('[data-chart-holder="penunjang"]');
+
+    if (!canvas || !source || !holder) {
+        return;
+    }
+
+    let chartInstance = null;
+
+    function renderChart(updateMode) {
+        const chartData = buildPenunjangChartData(source);
+        updateScrollableChartWidth(holder, chartData.labels.length, isMobileViewport() ? 72 : 118);
+        updateChartEmptyState('penunjang', chartData.hasData);
+        const options = createInventoryChartOptions(chartData.maxValue, chartData.units, true);
+        chartInstance = upsertBarChart(chartInstance, canvas, chartData.labels, chartData.datasets, options, updateMode);
+    }
+
+    bindDashboardChartResize(renderChart);
+    renderChart();
+}
+
+function initInventoryCharts() {
+    initBahanOperasionalChart();
+    initBarangPenunjangChart();
 }
 
 function debounce(callback, delay) {

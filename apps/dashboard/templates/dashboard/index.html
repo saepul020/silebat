@@ -4,7 +4,7 @@
 {% block title %}Dashboard{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/style_dashboard.css' %}?v=20260505-dashboard-items-v2">
+<link rel="stylesheet" href="{% static 'css/style_dashboard.css' %}?v=20260609-inventory-height-v2">
 {% endblock %}
 
 {% block content %}
@@ -458,15 +458,73 @@
 </section>
 
 
+{% if role_access.show_master_data %}
+<section class="card dashboard-chart-card dashboard-chart-card--full dashboard-chart-card--inventory">
+    <div class="dashboard-chart-card__header">
+        <div class="dashboard-chart-card__top">
+            <h3 class="card-title">Data Bahan Operasional</h3>
+            <div class="chart-download">
+                <button type="button" class="chart-download__toggle" aria-label="Download chart Data Bahan Operasional" aria-expanded="false" data-chart-menu-toggle>
+                    <i class="bi bi-three-dots-vertical"></i>
+                </button>
+                <div class="chart-download__menu" data-chart-menu>
+                    <button type="button" data-chart-download="jpg" data-chart-target="bahanOperasionalChart" data-chart-title="Data Bahan Operasional"><i class="bi bi-filetype-jpg" aria-hidden="true"></i><span>Download JPG</span></button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="dashboard-chart-area chart-area--scroll" data-chart-wrapper="bahan">
+        <div class="dashboard-chart-scroll" data-chart-scroll="bahan">
+            <div class="dashboard-chart-canvas-holder" data-chart-holder="bahan">
+                <canvas id="bahanOperasionalChart" aria-label="Grafik stok bahan operasional"></canvas>
+            </div>
+        </div>
+        <div class="dashboard-chart-empty is-hidden" data-chart-empty="bahan">
+            Belum ada data bahan operasional.
+        </div>
+    </div>
+</section>
+
+<section class="card dashboard-chart-card dashboard-chart-card--full dashboard-chart-card--inventory">
+    <div class="dashboard-chart-card__header">
+        <div class="dashboard-chart-card__top">
+            <h3 class="card-title">Data Barang Penunjang Lapangan</h3>
+            <div class="chart-download">
+                <button type="button" class="chart-download__toggle" aria-label="Download chart Data Barang Penunjang Lapangan" aria-expanded="false" data-chart-menu-toggle>
+                    <i class="bi bi-three-dots-vertical"></i>
+                </button>
+                <div class="chart-download__menu" data-chart-menu>
+                    <button type="button" data-chart-download="jpg" data-chart-target="barangPenunjangChart" data-chart-title="Data Barang Penunjang Lapangan"><i class="bi bi-filetype-jpg" aria-hidden="true"></i><span>Download JPG</span></button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="dashboard-chart-area chart-area--scroll" data-chart-wrapper="penunjang">
+        <div class="dashboard-chart-scroll" data-chart-scroll="penunjang">
+            <div class="dashboard-chart-canvas-holder" data-chart-holder="penunjang">
+                <canvas id="barangPenunjangChart" aria-label="Grafik kondisi barang penunjang lapangan"></canvas>
+            </div>
+        </div>
+        <div class="dashboard-chart-empty is-hidden" data-chart-empty="penunjang">
+            Belum ada data barang penunjang lapangan.
+        </div>
+    </div>
+</section>
+{% endif %}
+
 {{ tim_chart|json_script:"tim-chart-data" }}
 {{ layanan_chart|json_script:"layanan-chart-data" }}
 {{ pengukuran_chart|json_script:"pengukuran-chart-data" }}
 {{ approved_peminjaman_chart|json_script:"approved-peminjaman-chart-data" }}
 {{ survei_chart|json_script:"survei-chart-data" }}
 {{ instansi_chart|json_script:"instansi-chart-data" }}
+{% if role_access.show_master_data %}
+{{ bahan_chart|json_script:"bahan-chart-data" }}
+{{ penunjang_chart|json_script:"penunjang-chart-data" }}
+{% endif %}
 {% endblock %}
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
-<script src="{% static 'js/dashboard.js' %}?v=20260508-appr-year" defer></script>
+<script src="{% static 'js/dashboard.js' %}?v=20260609-inventory-charts-v1" defer></script>
 {% endblock %}

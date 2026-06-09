@@ -15,7 +15,7 @@ from .models import LandingPeralatanCard
 
 logger = logging.getLogger(__name__)
 
-LANDING_CONTEXT_CACHE_KEY = "public_landing_context_v6"
+LANDING_CONTEXT_CACHE_KEY = "public_landing_context_v7"
 LANDING_CONTEXT_CACHE_TIMEOUT = 60
 LANDING_FALLBACK_CACHE_TIMEOUT = 10
 
@@ -196,6 +196,7 @@ def get_inventory_category_cards():
 def get_equipment_cards():
     cards = (
         LandingPeralatanCard.objects.filter(is_active=True)
+        .prefetch_related("fotos")
         .only(
             "kategori_barang",
             "nama_barang",
@@ -204,7 +205,6 @@ def get_equipment_cards():
             "fungsi_alat",
             "spesifikasi_alat",
             "ringkasan_alat",
-            "foto_barang",
             "urutan",
         )
         .order_by("urutan", "nama_barang", "id")
@@ -218,7 +218,7 @@ def get_equipment_cards():
             "fungsi_alat": card.fungsi_alat or "-",
             "spesifikasi_alat": card.spesifikasi_alat or "-",
             "ringkasan_alat": card.ringkasan_alat or "-",
-            "foto_url": card.foto_barang.url if card.foto_barang else "",
+            "foto_urls": [photo.foto.url for photo in card.fotos.all() if photo.foto],
         }
         for card in cards
     ]

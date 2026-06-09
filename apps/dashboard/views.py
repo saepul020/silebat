@@ -7,7 +7,8 @@ from django.shortcuts import render
 from django.template.loader import render_to_string
 from django.utils import timezone
 
-from apps.core.permissions import get_role_name
+from apps.core.permissions import can_access_master_data, get_role_name
+from apps.master_data.models import BahanOperasional, BarangPenunjangOperasional
 from apps.operasional.models import InstansiKlien, LayananKegiatan, SurveiKegiatan, TimKegiatan
 from apps.peminjaman.constants import PENGUKURAN_FIELD_CONFIG
 from apps.peminjaman.models import PeminjamanRequest, ReturnStepChoices, StepChoices
@@ -170,6 +171,48 @@ def get_dashboard_greeting_period(current_time):
     if 15 <= hour < 18:
         return "Sore"
     return "Malam"
+
+
+def build_inventory_chart_context():
+    bahan_rows = BahanOperasional.objects.order_by("nama_barang").values(
+        "id",
+        "nama_barang",
+        "volume",
+        "satuan",
+    )
+    penunjang_rows = BarangPenunjangOperasional.objects.order_by("nama_barang").values(
+        "id",
+        "nama_barang",
+        "volume",
+        "volume_rusak",
+        "satuan",
+    )
+
+    return {
+        "bahan_chart": {
+            "items": [
+                {
+                    "id": row["id"],
+                    "label": row["nama_barang"],
+                    "stock": int(row["volume"] or 0),
+                    "unit": row["satuan"],
+                }
+                for row in bahan_rows
+            ],
+        },
+        "penunjang_chart": {
+            "items": [
+                {
+                    "id": row["id"],
+                    "label": row["nama_barang"],
+                    "baik": int(row["volume"] or 0),
+                    "rusak": int(row["volume_rusak"] or 0),
+                    "unit": row["satuan"],
+                }
+                for row in penunjang_rows
+            ],
+        },
+    }
 
 
 def build_dashboard_context(request=None, active_limit=None):
@@ -556,7 +599,10 @@ def build_dashboard_context(request=None, active_limit=None):
 
 @login_required
 def index(request):
-    return render(request, "dashboard/index.html", build_dashboard_context(request))
+    context = build_dashboard_context(request)
+    if can_access_master_data(request.user):
+        context.update(build_inventory_chart_context())
+    return render(request, "dashboard/index.html", context)
 
 
 def display(request, portal_slug):

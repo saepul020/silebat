@@ -85,7 +85,9 @@ def equipment_order_check(request):
 @login_required
 @landing_manage_required
 def equipment_list(request):
-    queryset = LandingPeralatanCard.objects.order_by("urutan", "nama_barang", "id")
+    queryset = LandingPeralatanCard.objects.prefetch_related("fotos").order_by(
+        "urutan", "nama_barang", "id"
+    )
     pagination_context = paginate_list(
         request,
         queryset,
@@ -124,7 +126,7 @@ def equipment_create(request):
 @login_required
 @landing_manage_required
 def equipment_update(request, pk):
-    card = get_object_or_404(LandingPeralatanCard, pk=pk)
+    card = get_object_or_404(LandingPeralatanCard.objects.prefetch_related("fotos"), pk=pk)
     form = LandingPeralatanCardForm(request.POST or None, request.FILES or None, instance=card)
     if request.method == "POST" and form.is_valid():
         form.save()

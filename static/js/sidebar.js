@@ -72,7 +72,7 @@ function initSidebarToggle() {
         syncMenuToggle();
     }
 
-    function setDesktopState(isHidden, persist) {
+    function setDesktopState(isHidden, persist, notifyChange) {
         desktopHidden = isHidden;
         document.body.classList.toggle('sidebar-hidden', isHidden);
         sidebar.setAttribute('aria-hidden', String(isHidden));
@@ -80,7 +80,9 @@ function initSidebarToggle() {
             saveDesktopState(isHidden);
         }
         syncMenuToggle();
-        notifyLayoutChange();
+        if (notifyChange) {
+            notifyLayoutChange();
+        }
     }
 
     function syncViewportState() {
@@ -91,7 +93,7 @@ function initSidebarToggle() {
             return;
         }
 
-        setDesktopState(desktopHidden, false);
+        setDesktopState(desktopHidden, false, false);
     }
 
     menuToggle.addEventListener('click', function (event) {
@@ -101,7 +103,7 @@ function initSidebarToggle() {
             return;
         }
 
-        setDesktopState(!desktopHidden, true);
+        setDesktopState(!desktopHidden, true, true);
     });
 
     document.addEventListener('click', function (event) {

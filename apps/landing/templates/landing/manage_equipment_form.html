@@ -4,7 +4,7 @@
 {% block title %}{{ page_title }}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/landing_manage.css' %}?v=20260503-public-landing-manage-v4">
+<link rel="stylesheet" href="{% static 'css/landing_manage.css' %}?v=20260608-gallery-picker-v2">
 {% endblock %}
 
 {% block content %}
@@ -83,60 +83,47 @@
 
                 <div class="master-upload-stack landing-upload-stack">
                     <div
-                        class="upload-card {% if form.foto_barang.errors %}has-error{% endif %}"
-                        data-upload-control
-                        data-upload-mode="replace-only"
-                        data-hidden-input-id="{{ form.hapus_foto_barang.id_for_label }}"
-                        data-hidden-input-name="{{ form.hapus_foto_barang.html_name }}"
-                        data-existing-url="{% if form.instance and form.instance.foto_barang %}{{ form.instance.foto_barang.url }}{% endif %}"
-                        data-file-label="Foto barang"
+                        class="upload-card landing-gallery-upload {% if form.foto_barang.errors or form.hapus_foto_ids.errors %}has-error{% endif %}"
+                        data-gallery-upload
+                        data-gallery-max="5"
                     >
-                        {{ form.hapus_foto_barang }}
-
                         <div class="upload-card__head">
-                            <label for="{{ form.foto_barang.id_for_label }}">{{ form.foto_barang.label }}</label>
+                            <label for="{{ form.foto_barang.id_for_label }}">Foto Barang</label>
+                            <span class="landing-gallery-limit">Maksimal 5 foto, masing-masing 7 MB</span>
                         </div>
 
-                        <div class="upload-preview-stack">
-                            <div class="upload-preview-section {% if not form.instance or not form.instance.foto_barang %}is-hidden{% endif %}" data-stored-preview-section>
-                                <div class="upload-preview-section__label">Foto Barang Saat Ini:</div>
-                                <div class="upload-preview-card upload-preview-card--master {% if form.instance and form.instance.foto_barang %}{% else %}is-empty{% endif %}" data-stored-preview-card>
-                                    <div class="upload-preview-card__empty">Belum ada file tersimpan</div>
-                                    <div class="upload-preview-card__body">
-                                        <div class="upload-preview-frame upload-preview-frame--master">
-                                            <img alt="Foto Barang Tersimpan" data-stored-preview-image {% if form.instance and form.instance.foto_barang %}src="{{ form.instance.foto_barang.url }}"{% endif %}>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                        <div class="landing-gallery-picker">
+                            {{ form.foto_barang }}
+                            <label for="{{ form.foto_barang.id_for_label }}" class="landing-gallery-trigger" data-gallery-trigger>
+                                <span class="landing-gallery-trigger__icon"><i class="bi bi-images"></i></span>
+                                <span data-gallery-status>{{ form.existing_photos|length }}/5 foto dipilih &middot; Tambah foto</span>
+                            </label>
+                        </div>
+                        <p class="input-error-text" data-gallery-error hidden></p>
+                        {% for error in form.foto_barang.errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
+                        {% for error in form.hapus_foto_ids.errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
 
-                            <div class="upload-input-wrap upload-input-wrap--inline upload-input-wrap--file-proxy" data-inline-file-proxy>
-                                <div class="upload-input-wrap__field">
-                                    {{ form.foto_barang }}
-                                    <label for="{{ form.foto_barang.id_for_label }}" class="file-input-proxy">
-                                        <span class="file-input-proxy__button" aria-hidden="true"><i class="bi bi-image"></i></span>
-                                        <span class="file-input-proxy__text is-placeholder" data-inline-file-text>Pilih file</span>
-                                    </label>
-                                </div>
-                                <div class="upload-file-state upload-file-state--inline is-hidden" data-file-state data-inline-file-state>
-                                    <button type="button" class="upload-file-state__action upload-file-state__action--icon" data-file-state-action data-inline-file-clear data-mode="clear-selected" title="Batalkan Upload" aria-label="Batalkan Upload">
-                                        <i class="bi bi-x-lg"></i>
-                                    </button>
-                                </div>
+                        <div class="landing-gallery-strip" data-gallery-strip>
+                            {% for photo in form.existing_photos %}
+                            <div class="landing-gallery-thumb" data-gallery-existing-item>
+                                <img src="{{ photo.foto.url }}" alt="Foto {{ form.instance.nama_barang }} {{ forloop.counter }}">
+                                <label class="landing-gallery-remove" title="Hapus foto" aria-label="Hapus foto {{ forloop.counter }}">
+                                    <input
+                                        type="checkbox"
+                                        name="{{ form.hapus_foto_ids.html_name }}"
+                                        value="{{ photo.pk }}"
+                                        {% if photo.pk|stringformat:"s" in form.deleted_photo_ids %}checked{% endif %}
+                                        data-gallery-remove
+                                    >
+                                    <span><i class="bi bi-x-lg"></i></span>
+                                </label>
+                                <span class="landing-gallery-name">{{ photo.foto.name }}</span>
                             </div>
-                            <p class="input-error-text" data-inline-file-error-node hidden></p>
-                            {% for error in form.foto_barang.errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
-
-                            <div class="upload-preview-section" data-selected-preview-section>
-                                <div class="upload-preview-section__label">Foto Barang Baru:</div>
-                                <div class="upload-preview-card upload-preview-card--master is-empty" data-selected-preview-card>
-                                    <div class="upload-preview-card__empty">Belum ada gambar baru dipilih</div>
-                                    <div class="upload-preview-card__body">
-                                        <div class="upload-preview-frame upload-preview-frame--master">
-                                            <img alt="Preview Upload Foto Barang Baru" data-selected-preview-image>
-                                        </div>
-                                    </div>
-                                </div>
+                            {% endfor %}
+                            <div class="landing-gallery-new" data-gallery-new></div>
+                            <div class="landing-gallery-empty" data-gallery-empty>
+                                <i class="bi bi-images"></i>
+                                <span>Belum ada foto dipilih</span>
                             </div>
                         </div>
                     </div>
@@ -178,5 +165,5 @@
 
 
 {% block extra_js %}
-<script src="{% static 'js/landing_manage.js' %}?v=20260503-public-landing-manage-v1" defer></script>
+<script src="{% static 'js/landing_manage.js' %}?v=20260608-gallery-picker-v2" defer></script>
 {% endblock %}

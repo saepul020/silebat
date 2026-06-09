@@ -4,7 +4,154 @@
 ======================================== */
 document.addEventListener('DOMContentLoaded', function () {
     initLandingEquipmentOrderValidation();
+    initLandingEquipmentGalleryUpload();
 });
+
+function initLandingEquipmentGalleryUpload() {
+    const control = document.querySelector('[data-gallery-upload]');
+    if (!control) {
+        return;
+    }
+
+    const input = control.querySelector('[data-gallery-input]');
+    const removeInputs = Array.from(control.querySelectorAll('[data-gallery-remove]'));
+    const preview = control.querySelector('[data-gallery-new]');
+    const empty = control.querySelector('[data-gallery-empty]');
+    const trigger = control.querySelector('[data-gallery-trigger]');
+    const status = control.querySelector('[data-gallery-status]');
+    const error = control.querySelector('[data-gallery-error]');
+    const form = control.closest('form');
+    const maxFiles = Number(control.getAttribute('data-gallery-max') || 5);
+    const maxSize = 7 * 1024 * 1024;
+    const allowed = ['jpg', 'jpeg', 'png'];
+    let selectedFiles = [];
+    let previewUrls = [];
+
+    if (!input || !preview || !empty || !trigger || !status || !error || !form) {
+        return;
+    }
+
+    function activeExistingCount() {
+        return removeInputs.filter(function (item) { return !item.checked; }).length;
+    }
+
+    function clearPreviewUrls() {
+        previewUrls.forEach(URL.revokeObjectURL);
+        previewUrls = [];
+    }
+
+    function showError(message) {
+        error.textContent = '*' + message;
+        error.hidden = false;
+        control.classList.add('has-error');
+    }
+
+    function clearError() {
+        error.textContent = '';
+        error.hidden = true;
+        control.classList.remove('has-error');
+    }
+
+    function selectedCount() {
+        return activeExistingCount() + selectedFiles.length;
+    }
+
+    function syncInput() {
+        const transfer = new DataTransfer();
+        selectedFiles.forEach(function (file) {
+            transfer.items.add(file);
+        });
+        input.files = transfer.files;
+    }
+
+    function updateState() {
+        const count = selectedCount();
+        const isFull = count >= maxFiles;
+        status.textContent = count + '/' + maxFiles + ' foto dipilih' + (isFull ? ' \u00b7 Batas maksimal tercapai' : ' \u00b7 Tambah foto lagi');
+        trigger.classList.toggle('is-full', isFull);
+        trigger.setAttribute('aria-disabled', String(isFull));
+        empty.hidden = count > 0;
+    }
+
+    function validateFiles(files) {
+        if (activeExistingCount() + selectedFiles.length + files.length > maxFiles) {
+            return 'Total foto maksimal ' + maxFiles + '. Hapus foto lama atau kurangi foto baru.';
+        }
+        for (const file of files) {
+            const extension = String(file.name || '').split('.').pop().toLowerCase();
+            if (!allowed.includes(extension)) {
+                return 'Foto Barang hanya boleh berupa file JPG, JPEG, atau PNG.';
+            }
+            if (file.size > maxSize) {
+                return 'Ukuran setiap Foto Barang maksimal 7 MB.';
+            }
+        }
+        return '';
+    }
+
+    function renderSelection() {
+        clearPreviewUrls();
+        preview.replaceChildren();
+        selectedFiles.forEach(function (file, index) {
+            const url = URL.createObjectURL(file);
+            const item = document.createElement('div');
+            const image = document.createElement('img');
+            const remove = document.createElement('button');
+            const label = document.createElement('span');
+            previewUrls.push(url);
+            item.className = 'landing-gallery-thumb';
+            image.src = url;
+            image.alt = 'Preview foto baru ' + (index + 1);
+            remove.type = 'button';
+            remove.className = 'landing-gallery-remove';
+            remove.setAttribute('aria-label', 'Hapus ' + file.name);
+            remove.title = 'Hapus foto';
+            remove.innerHTML = '<i class="bi bi-x-lg"></i>';
+            remove.addEventListener('click', function () {
+                selectedFiles.splice(index, 1);
+                syncInput();
+                clearError();
+                renderSelection();
+            });
+            label.className = 'landing-gallery-name';
+            label.textContent = file.name;
+            item.append(image, remove, label);
+            preview.appendChild(item);
+        });
+        updateState();
+    }
+
+    function addSelection() {
+        const files = Array.from(input.files || []);
+        const message = validateFiles(files);
+        if (message) {
+            syncInput();
+            showError(message);
+            return;
+        }
+        selectedFiles.push(...files);
+        syncInput();
+        clearError();
+        renderSelection();
+    }
+
+    input.addEventListener('change', addSelection);
+    removeInputs.forEach(function (checkbox) {
+        checkbox.addEventListener('change', function () {
+            clearError();
+            updateState();
+        });
+    });
+    form.addEventListener('submit', function (event) {
+        const message = validateFiles([]);
+        if (message) {
+            event.preventDefault();
+            showError(message);
+            control.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    });
+    renderSelection();
+}
 
 function initLandingEquipmentOrderValidation() {
     const form = document.querySelector('[data-landing-equipment-form="true"]');

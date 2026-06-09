@@ -30,7 +30,7 @@
   <link rel="stylesheet" href="{% static 'css/landing_critical.css' %}?v=20260606-typography-v1">
   <link rel="stylesheet" href="{% static 'css/landing_fonts.css' %}?v=20260606-v1">
   <link rel="stylesheet" href="{% static 'vendor/bootstrap-icons/bootstrap-icons.min.css' %}?v=1.11.3">
-  <link rel="stylesheet" href="{% static 'css/landing_page.css' %}?v=20260606-typography-v1">
+  <link rel="stylesheet" href="{% static 'css/landing_page.css' %}?v=20260608-equipment-nav-v2">
   <link rel="stylesheet" href="{% static 'css/chatbot.css' %}?v=20260604-avatar-img-v1">
 </head>
 <body>
@@ -345,9 +345,20 @@
     <div class="peralatan-grid">
       {% for item in equipment_cards %}
       <div class="peralatan-card">
-        <div class="peralatan-img {% if item.foto_url %}peralatan-img--photo{% endif %}">
-          {% if item.foto_url %}
-            <img src="{{ item.foto_url }}" alt="Foto {{ item.nama_barang }}" class="peralatan-photo" loading="lazy" decoding="async" fetchpriority="low">
+        <div class="peralatan-img {% if item.foto_urls %}peralatan-img--photo{% endif %}" {% if item.foto_urls %}data-equipment-gallery data-gallery-title="{{ item.nama_barang }}"{% endif %}>
+          {% if item.foto_urls %}
+            <button type="button" class="equipment-gallery-open" data-gallery-open aria-label="Buka galeri foto {{ item.nama_barang }}">
+              {% for foto_url in item.foto_urls %}
+              <img src="{{ foto_url }}" alt="Foto {{ item.nama_barang }} {{ forloop.counter }}" class="peralatan-photo equipment-gallery-slide {% if forloop.first %}is-active{% endif %}" data-gallery-slide loading="lazy" decoding="async" fetchpriority="low">
+              {% endfor %}
+            </button>
+            {% if item.foto_urls|length > 1 %}
+            <button type="button" class="equipment-gallery-nav equipment-gallery-nav--prev" data-gallery-prev aria-label="Foto sebelumnya"></button>
+            <button type="button" class="equipment-gallery-nav equipment-gallery-nav--next" data-gallery-next aria-label="Foto berikutnya"></button>
+            <div class="equipment-gallery-dots" aria-hidden="true">
+              {% for foto_url in item.foto_urls %}<span class="{% if forloop.first %}is-active{% endif %}" data-gallery-dot></span>{% endfor %}
+            </div>
+            {% endif %}
           {% else %}
             <i class="bi bi-box-seam-fill"></i>
           {% endif %}
@@ -371,6 +382,20 @@
   </div>
 </section>
 </main>
+
+<div class="equipment-lightbox" data-equipment-lightbox aria-hidden="true">
+  <div class="equipment-lightbox__backdrop" data-lightbox-close></div>
+  <div class="equipment-lightbox__dialog" role="dialog" aria-modal="true" aria-label="Galeri foto peralatan">
+    <button type="button" class="equipment-lightbox__close" data-lightbox-close aria-label="Tutup galeri"><i class="bi bi-x-lg"></i></button>
+    <button type="button" class="equipment-lightbox__nav equipment-lightbox__nav--prev" data-lightbox-prev aria-label="Foto sebelumnya"><i class="bi bi-chevron-left"></i></button>
+    <img alt="" data-lightbox-image>
+    <button type="button" class="equipment-lightbox__nav equipment-lightbox__nav--next" data-lightbox-next aria-label="Foto berikutnya"><i class="bi bi-chevron-right"></i></button>
+    <div class="equipment-lightbox__meta">
+      <strong data-lightbox-title></strong>
+      <span data-lightbox-counter></span>
+    </div>
+  </div>
+</div>
 
 <!-- === FOOTER === -->
 <footer class="footer" id="kontak">
@@ -481,7 +506,7 @@
 
 {{ landing_stats|json_script:"landing-stats-data" }}
 {{ landing_charts|json_script:"landing-chart-data" }}
-<script src="{% static 'js/landing_page.js' %}?v=20260606-typography-v1" defer></script>
+<script src="{% static 'js/landing_page.js' %}?v=20260608-equipment-gallery-v1" defer></script>
 <script src="{% static 'js/chatbot.js' %}?v=20260604-head-close-v1" defer></script>
 </body>
 </html>

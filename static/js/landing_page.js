@@ -8,7 +8,114 @@ document.addEventListener('DOMContentLoaded', function () {
     initScrollReveal();
     initLandingCounters();
     initChartsWhenVisible();
+    initEquipmentGalleries();
 });
+
+function initEquipmentGalleries() {
+    const galleries = Array.from(document.querySelectorAll('[data-equipment-gallery]'));
+    const lightbox = document.querySelector('[data-equipment-lightbox]');
+    if (!galleries.length || !lightbox) {
+        return;
+    }
+
+    const lightboxImage = lightbox.querySelector('[data-lightbox-image]');
+    const lightboxTitle = lightbox.querySelector('[data-lightbox-title]');
+    const lightboxCounter = lightbox.querySelector('[data-lightbox-counter]');
+    const lightboxPrev = lightbox.querySelector('[data-lightbox-prev]');
+    const lightboxNext = lightbox.querySelector('[data-lightbox-next]');
+    let lightboxItems = [];
+    let lightboxIndex = 0;
+
+    function normalizeIndex(index, total) {
+        return (index + total) % total;
+    }
+
+    function renderLightbox() {
+        if (!lightboxItems.length) {
+            return;
+        }
+        const item = lightboxItems[lightboxIndex];
+        lightboxImage.src = item.src;
+        lightboxImage.alt = item.alt;
+        lightboxCounter.textContent = (lightboxIndex + 1) + ' / ' + lightboxItems.length;
+        const showNav = lightboxItems.length > 1;
+        lightboxPrev.hidden = !showNav;
+        lightboxNext.hidden = !showNav;
+    }
+
+    function openLightbox(gallery, index) {
+        lightboxItems = Array.from(gallery.querySelectorAll('[data-gallery-slide]')).map(function (image) {
+            return { src: image.currentSrc || image.src, alt: image.alt };
+        });
+        lightboxIndex = normalizeIndex(index, lightboxItems.length);
+        lightboxTitle.textContent = gallery.getAttribute('data-gallery-title') || 'Galeri Peralatan';
+        renderLightbox();
+        lightbox.classList.add('is-open');
+        lightbox.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('equipment-lightbox-open');
+        lightbox.querySelector('[data-lightbox-close]:not(.equipment-lightbox__backdrop)')?.focus();
+    }
+
+    function closeLightbox() {
+        lightbox.classList.remove('is-open');
+        lightbox.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('equipment-lightbox-open');
+        lightboxImage.removeAttribute('src');
+        lightboxItems = [];
+    }
+
+    function moveLightbox(step) {
+        if (lightboxItems.length < 2) {
+            return;
+        }
+        lightboxIndex = normalizeIndex(lightboxIndex + step, lightboxItems.length);
+        renderLightbox();
+    }
+
+    galleries.forEach(function (gallery) {
+        const slides = Array.from(gallery.querySelectorAll('[data-gallery-slide]'));
+        const dots = Array.from(gallery.querySelectorAll('[data-gallery-dot]'));
+        let index = 0;
+
+        function show(nextIndex) {
+            index = normalizeIndex(nextIndex, slides.length);
+            slides.forEach(function (slide, slideIndex) {
+                slide.classList.toggle('is-active', slideIndex === index);
+            });
+            dots.forEach(function (dot, dotIndex) {
+                dot.classList.toggle('is-active', dotIndex === index);
+            });
+        }
+
+        gallery.querySelector('[data-gallery-prev]')?.addEventListener('click', function () {
+            show(index - 1);
+        });
+        gallery.querySelector('[data-gallery-next]')?.addEventListener('click', function () {
+            show(index + 1);
+        });
+        gallery.querySelector('[data-gallery-open]')?.addEventListener('click', function () {
+            openLightbox(gallery, index);
+        });
+    });
+
+    lightbox.querySelectorAll('[data-lightbox-close]').forEach(function (button) {
+        button.addEventListener('click', closeLightbox);
+    });
+    lightboxPrev.addEventListener('click', function () { moveLightbox(-1); });
+    lightboxNext.addEventListener('click', function () { moveLightbox(1); });
+    document.addEventListener('keydown', function (event) {
+        if (!lightbox.classList.contains('is-open')) {
+            return;
+        }
+        if (event.key === 'Escape') {
+            closeLightbox();
+        } else if (event.key === 'ArrowLeft') {
+            moveLightbox(-1);
+        } else if (event.key === 'ArrowRight') {
+            moveLightbox(1);
+        }
+    });
+}
 
 function readLandingJson(scriptId, fallbackValue) {
     const script = document.getElementById(scriptId);

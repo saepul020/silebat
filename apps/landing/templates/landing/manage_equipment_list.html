@@ -4,7 +4,7 @@
 {% block title %}{{ page_title }}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/landing_manage.css' %}?v=20260503-public-landing-manage-v3">
+<link rel="stylesheet" href="{% static 'css/landing_manage.css' %}?v=20260608-gallery-picker-v2">
 {% endblock %}
 
 {% block content %}
@@ -48,11 +48,16 @@
                 <tr>
                     <td>{{ start_index|add:forloop.counter0 }}</td>
                     <td class="cell-wrap">
-                        {% if item.foto_barang %}
-                            <img src="{{ item.foto_barang.url }}" alt="Foto {{ item.nama_barang }}" class="landing-list-photo">
+                        {% with first_photo=item.fotos.all|first photo_count=item.fotos.all|length %}
+                        {% if first_photo %}
+                            <span class="landing-list-photo-wrap">
+                                <img src="{{ first_photo.foto.url }}" alt="Foto {{ item.nama_barang }}" class="landing-list-photo">
+                                <small>{{ photo_count }} foto</small>
+                            </span>
                         {% else %}
                             <span class="landing-list-photo landing-list-photo--empty"><i class="bi bi-image"></i></span>
                         {% endif %}
+                        {% endwith %}
                     </td>
                     <td class="cell-wrap">{{ item.get_kategori_barang_display|display_dash }}</td>
                     <td class="cell-wrap">

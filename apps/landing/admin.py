@@ -1,6 +1,13 @@
 from django.contrib import admin
 
-from .models import LandingPeralatanCard
+from .models import LandingPeralatanCard, LandingPeralatanFoto
+
+
+class LandingPeralatanFotoInline(admin.TabularInline):
+    model = LandingPeralatanFoto
+    extra = 0
+    max_num = 5
+    validate_max = True
 
 
 @admin.register(LandingPeralatanCard)
@@ -16,3 +23,4 @@ class LandingPeralatanCardAdmin(admin.ModelAdmin):
         "spesifikasi_alat",
     )
     ordering = ("urutan", "nama_barang")
+    inlines = (LandingPeralatanFotoInline,)
