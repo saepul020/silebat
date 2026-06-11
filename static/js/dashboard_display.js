@@ -183,11 +183,11 @@ function initTvCharts() {
     Chart.register(tvZeroDashPlugin);
     window.tvChartInstances = [
         createTvApprovedChart(),
-        createTvCategoryChart('tvLayananChart', 'layanan-chart-data', 'layananId', 'Total Peminjaman', 12, 45, true),
+        createTvCategoryChart('tvLayananChart', 'data-layanan', 'layananId', 'Total Peminjaman', 12, 45, true),
         createTvPengukuranChart(),
-        createTvGroupedChart('tvTimChart', 'tim-chart-data', 'timId', 'teams', true),
-        createTvCategoryChart('tvSurveiChart', 'survei-chart-data', 'surveiId', 'Total Peminjaman', 10, 50, true),
-        createTvCategoryChart('tvInstansiChart', 'instansi-chart-data', 'instansiId', 'Total Peminjaman', 10, 50),
+        createTvGroupedChart('tvTimChart', 'data-tim', 'timId', 'teams', true),
+        createTvCategoryChart('tvSurveiChart', 'data-survei', 'surveiId', 'Total Peminjaman', 10, 50, true),
+        createTvCategoryChart('tvInstansiChart', 'data-instansi', 'instansiId', 'Total Peminjaman', 10, 50),
     ].filter(Boolean);
 }
 
@@ -375,7 +375,7 @@ function buildTvBarDataset(label, data, backgroundColor, borderColor, isGrouped,
 }
 
 function createTvApprovedChart() {
-    const source = readTvData('approved-peminjaman-chart-data');
+    const source = readTvData('data-pinjam');
     if (!source) {
         return null;
     }
@@ -410,7 +410,7 @@ function createTvApprovedChart() {
 
 
 function createTvPengukuranChart() {
-    const source = readTvData('pengukuran-chart-data');
+    const source = readTvData('data-ukur');
     if (!source) {
         return null;
     }

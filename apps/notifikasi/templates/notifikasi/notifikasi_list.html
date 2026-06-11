@@ -35,7 +35,7 @@
     <a href="{% url 'notifikasi:index' %}?status=sudah-dibaca" class="notif-filter-link {% if filter_status == 'sudah-dibaca' %}active{% endif %}">Sudah Dibaca</a>
 </div>
 
-{% include 'components/master_entries_control.html' %}
+{% include 'components/entry_control.html' %}
 
 <div class="notif-list-card">
     {% for item in items %}
@@ -64,5 +64,5 @@
     {% endfor %}
 </div>
 
-{% include 'components/master_pagination.html' %}
+{% include 'components/pagination.html' %}
 {% endblock %}

@@ -23,6 +23,7 @@ EQUIPMENT_LIST_SEARCH_FIELDS = (
     "jenis_barang",
     "merek_tipe_alat",
     "fungsi_alat",
+    "metode_pengukuran",
     "spesifikasi_alat",
     "ringkasan_alat",
 )
@@ -32,7 +33,7 @@ def public_home(request):
     context = {
         **get_public_landing_context(),
         "canonical_url": request.build_absolute_uri(request.path),
-        "social_image_url": request.build_absolute_uri(static("assets/img/foto-kegiatan-gl-desktop.webp")),
+        "social_image_url": request.build_absolute_uri(static("assets/img/kegiatan-desktop.webp")),
     }
     return render(request, "landing/index.html", context)
 
@@ -98,7 +99,7 @@ def equipment_list(request):
         "page_title": "Konten Peralatan Landing Page",
         "page_subtitle": "Kelola informasi peralatan laboratorium yang ditampilkan pada halaman landing page public.",
     }
-    return render(request, "landing/manage_equipment_list.html", context)
+    return render(request, "landing/peralatan_list.html", context)
 
 
 @login_required
@@ -113,7 +114,7 @@ def equipment_create(request):
 
     return render(
         request,
-        "landing/manage_equipment_form.html",
+        "landing/peralatan_form.html",
         {
             "form": form,
             "page_title": "Tambah Konten Peralatan Landing Page",
@@ -136,7 +137,7 @@ def equipment_update(request, pk):
 
     return render(
         request,
-        "landing/manage_equipment_form.html",
+        "landing/peralatan_form.html",
         {
             "form": form,
             "page_title": "Edit Konten Peralatan Landing Page",

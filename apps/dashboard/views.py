@@ -620,7 +620,7 @@ def display_active_data(request, portal_slug):
 
     active_peminjaman = get_active_peminjaman_queryset()[:8]
     html = render_to_string(
-        "dashboard/partials/display_active_rows.html",
+        "dashboard/partials/active_rows.html",
         {"active_peminjaman": active_peminjaman},
         request=request,
     )

@@ -24,6 +24,24 @@ Konfigurasi penting:
 - Bahasa: `id-id`
 - Login URL: `/login/`
 - Redirect login: `/dashboard/`
+- Static sumber: `static/`
+- Static hasil deploy: `staticfiles/`
+
+## Baseline Audit Terakhir
+
+Audit penamaan terakhir sudah menyeragamkan 40+ nama template, CSS, JS, aset, template tag, dan management command dengan nama singkat maksimal dua kata inti. Istilah teknis yang umum dipakai di frontend/backend digunakan apa adanya, sedangkan istilah domain SILEBAT tetap memakai bahasa Indonesia.
+
+Baseline yang harus dijaga:
+
+- Template domain memakai nama Indonesia ringkas, misalnya `instansi_list.html`, `pengajuan_detail.html`, dan `pengembalian_form.html`.
+- CSS/JS layout memakai istilah teknis ringkas, misalnya `base.css`, `sidebar.css`, `sidebar.js`, `navbar.css`, dan `navbar.js`.
+- Command QR memakai istilah teknis ringkas, misalnya `refresh_qr`.
+- Helper pengembalian duplikatif sudah digabung menjadi `get_step_pengembalian`.
+- Konstanta import sudah disingkat menjadi pola seperti `HEADER_IMPOR_PERALATAN` dan `HEADER_WAJIB_PERALATAN`.
+- Selector dashboard sudah disingkat dan mengikuti BEM, misalnya `dashboard-chart`, `dashboard-chart__area`, dan `item-modal__trigger`.
+- Model database, migration, permission, dan konfigurasi server-side tidak diubah pada audit penamaan karena tidak diperlukan.
+
+Perubahan berikutnya wajib menjaga baseline ini. Jangan membuat alias lama tanpa kebutuhan jelas, dan jangan menyisakan referensi ke nama lama setelah rename.
 
 ## Struktur Aplikasi
 
@@ -40,7 +58,30 @@ Modul Django utama:
 - `apps.landing`: landing publik dan pengelolaan kartu peralatan.
 - `apps.chatbot`: endpoint balasan chatbot sederhana.
 
-Template global berada di `templates/`. Template app berada di `apps/<app>/templates/`. Asset frontend berada di `static/css/`, `static/js/`, dan `static/assets/`.
+Template global berada di `templates/`. Template app berada di `apps/<app>/templates/`. Asset frontend sumber berada di `static/css/`, `static/js/`, dan `static/assets/`.
+
+## Static dan Media
+
+Pahami perbedaan folder static agar tidak salah edit:
+
+- `static/` adalah sumber asli CSS, JS, gambar, font, dan aset frontend project. Semua perubahan frontend dilakukan di folder ini.
+- `staticfiles/` adalah output `python manage.py collectstatic` untuk production/Docker/Nginx. Jangan edit manual file di folder ini.
+- `media/` adalah file upload runtime dari user atau data aplikasi. Jangan hapus file media yang masih direferensikan record database.
+
+Workflow benar:
+
+```bash
+# ubah file sumber di static/
+python manage.py collectstatic --noinput
+```
+
+Jika perlu membersihkan output static lama:
+
+```bash
+python manage.py collectstatic --clear --noinput
+```
+
+Dalam Docker production, Nginx melayani URL `/static/` dari `staticfiles/`. Karena itu perubahan di `static/` harus diikuti `collectstatic` sebelum deploy/rebuild production.
 
 ## Aturan Wajib Saat Mengubah Kode
 
@@ -50,10 +91,65 @@ Template global berada di `templates/`. Template app berada di `apps/<app>/templ
 4. Pastikan semua query, views, models, forms, templates, CSS, dan JS yang terdampak ikut disesuaikan secara teliti.
 5. Jangan hapus kode yang masih dibutuhkan fitur lain.
 6. Hindari identifier yang terlalu panjang. Gunakan nama class, model, id, variabel, function, selector CSS, dan identifier JS/backend yang singkat, jelas, konsisten, dan mudah dipahami.
-7. Jangan mengandalkan frontend untuk validasi, pembatasan akses, role permission, approval, upload file, perubahan status, atau logic penting. Semua aturan wajib diamankan di server-side.
-8. Jangan menyimpan secret baru di repo. Gunakan `.env` atau environment variable.
-9. Jangan menyentuh file backup, media arsip, atau file untracked kecuali diminta eksplisit.
-10. Jika file yang akan diubah sudah memiliki perubahan user, pahami dulu lalu lanjutkan tanpa merevert perubahan tersebut.
+7. Utamakan istilah teknis yang sudah lazim untuk UI/frontend/backend seperti `sidebar`, `navbar`, `pagination`, `modal`, `landing`, `dashboard`, dan `refresh`. Jika konteksnya domain SILEBAT dan tidak ada istilah teknis yang lebih tepat, gunakan bahasa Indonesia.
+8. Jangan mengandalkan frontend untuk validasi, pembatasan akses, role permission, approval, upload file, perubahan status, atau logic penting. Semua aturan wajib diamankan di server-side.
+9. Jangan menyimpan secret baru di repo. Gunakan `.env` atau environment variable.
+10. Jangan menyentuh file backup, media arsip, atau file untracked kecuali diminta eksplisit.
+11. Jika file yang akan diubah sudah memiliki perubahan user, pahami dulu lalu lanjutkan tanpa merevert perubahan tersebut.
+
+## Aturan Penamaan
+
+Gunakan penamaan singkat, jelas, konsisten, dan selaras dengan baseline audit terakhir. Prioritas penamaan: istilah teknis umum lebih dulu, lalu bahasa Indonesia untuk domain aplikasi.
+
+### File Template
+
+- Gunakan `snake_case`.
+- Maksimal dua kata inti sebelum ekstensi.
+- Gunakan pola konteks + jenis halaman bila perlu: `pengajuan_list.html`, `pengajuan_detail.html`, `pengembalian_form.html`, `instansi_list.html`.
+- Gunakan istilah teknis untuk konteks UI/framework seperti `active_rows.html` bila lebih tepat. Gunakan bahasa Indonesia untuk konteks domain seperti `pengajuan`, `pengembalian`, `instansi`, `bahan`, dan `peralatan`.
+- Jika rename template, update semua referensi di `render(...)`, include, extends, tests, dan dokumentasi terkait.
+
+### CSS, JS, Asset, Template Tag, dan Command
+
+- Gunakan istilah teknis untuk file internal project bila tersedia: `sidebar.css`, `navbar.js`, `landing_page.css`, `dashboard_display.js`, `import_modal.html`, `pagination.html`, dan `refresh_qr`.
+- Gunakan `snake_case` untuk nama file Python, command, template tag, dan asset internal.
+- Gunakan `kebab-case` untuk file CSS/JS jika pola existing pada area tersebut sudah memakai kebab-case. Jangan mencampur gaya dalam folder yang sama tanpa alasan.
+- Jangan rename file vendor atau library pihak ketiga di `static/vendor/`.
+- Setelah rename static asset, update `{% static %}`, import JS, link CSS, test, dan referensi Docker/collectstatic bila terdampak.
+
+### Backend Python
+
+- Gunakan `snake_case` untuk function, method, variable, dan konstanta module.
+- Gunakan `PascalCase` untuk class/model/form sesuai standar Python/Django.
+- Nama model boleh tetap istilah domain yang sudah mapan. Jangan rename model/database hanya demi kosmetik karena akan memicu migration dan risiko data.
+- Konstanta gunakan huruf besar dan ringkas, misalnya `HEADER_IMPOR_PERALATAN`.
+- Helper umum harus ditempatkan di module existing yang relevan. Hindari helper baru yang menggandakan fungsi lama.
+
+### CSS dan JS Selector
+
+- Class CSS wajib mengikuti pola BEM yang ringkas:
+  - Block: `dashboard-chart`
+  - Element: `dashboard-chart__area`
+  - Modifier: `dashboard-chart--kosong`
+- Gunakan `kebab-case` untuk class dan id frontend.
+- Id hanya dipakai jika memang perlu target unik untuk JS atau anchor.
+- Jika mengubah class/id yang dipakai JS, update semua selector JS terkait.
+- Jangan membuat selector terlalu spesifik atau terlalu panjang.
+- Jangan menyisakan selector lama yang sudah tidak dipakai setelah markup diganti.
+
+### Prinsip Rename Aman
+
+Sebelum rename:
+
+- Cari semua referensi dengan `rg "nama_lama"`.
+- Pastikan nama baru tidak konflik dengan file, class, id, route, command, atau template lain.
+- Periksa dampak ke view, form, template, CSS, JS, tests, import/export, PDF, dan dokumentasi.
+
+Setelah rename:
+
+- Jalankan ulang pencarian nama lama.
+- Hapus alias, wrapper, selector, include, atau helper lama jika sudah tidak dipakai.
+- Jangan hapus kode yang masih dipakai fitur lain.
 
 ## Permission dan Role
 
@@ -122,6 +218,7 @@ Saat mengubah model:
 - Pertimbangkan data existing dan buat data migration jika perlu.
 - Jaga snapshot laporan/peminjaman agar tidak rusak oleh perubahan master data.
 - Pastikan relasi `on_delete`, `related_name`, dan ordering konsisten dengan pola existing.
+- Jangan rename model, field database, atau migration hanya demi penyeragaman nama kosmetik.
 
 Saat mengubah query:
 
@@ -136,6 +233,7 @@ Area ini sensitif. Saat mengubah logic:
 - Periksa `apps/peminjaman/models.py`, `apps/peminjaman/views.py`, `apps/peminjaman/pengembalian_views.py`, dan `apps/verifikasi/views.py`.
 - Jaga konsistensi status pengajuan, step verifikasi, timeline, notifikasi, laporan, PDF, dan snapshot item.
 - Validasi stok/volume di backend.
+- Gunakan helper `get_step_pengembalian` untuk alur pengembalian. Jangan membuat helper paralel dengan logic sama.
 - Jangan membuat transisi status ganda atau jalur approval paralel tanpa kebutuhan jelas.
 - Jika menambah status baru, update model choices, views, templates, notifikasi, laporan, export, dan CSS/JS indikator status.
 
@@ -148,6 +246,7 @@ Saat mengubah master data:
 - Periksa `apps/master_data/models.py`, `apps/master_data/views.py`, `apps/master_data/forms.py`, `apps/master_data/qr_utils.py`, dan `apps/master_data/signals.py`.
 - Pastikan token QR tetap unik.
 - Gunakan helper generate QR existing.
+- Gunakan command QR teknis yang sudah ada, misalnya `refresh_qr`.
 - Jika field aset berubah, update form, list template, detail template, public detail, import/export, PDF/laporan terkait, dan snapshot peminjaman bila terdampak.
 - Jangan menghapus file foto/dokumen yang masih direferensikan record lain.
 
@@ -166,18 +265,25 @@ Saat mengubah approval, pengajuan, pengembalian, atau role:
 
 Asset frontend project dipisah per area:
 
-- CSS global/layout: `static/css/style.css`, `style_sidebar.css`, `style_navbar.css`
+- CSS global/layout: `static/css/base.css`, `sidebar.css`, `navbar.css`
 - JS global/layout: `static/js/apps.js`, `sidebar.js`, `navbar.js`
 - Halaman/domain tertentu memakai file CSS/JS masing-masing.
 
 Saat mengubah template:
 
 - Cek file CSS dan JS yang terkait.
+- Terapkan BEM untuk class baru atau class yang disentuh.
 - Jangan membuat selector terlalu panjang.
 - Jangan menambah logic JS yang menggandakan validasi penting backend.
 - Pastikan tampilan desktop dan mobile tetap rapi.
 - Jika mengubah id/class yang dipakai JS, update semua selector terkait.
 - Jangan menyisakan markup tersembunyi lama yang sudah diganti logic baru.
+
+Saat mengubah asset:
+
+- Edit sumber di `static/`, bukan `staticfiles/`.
+- Jalankan `collectstatic` bila perubahan perlu diuji di Docker/production.
+- Jangan commit output `staticfiles/` jika memang diabaikan `.gitignore`.
 
 ## Deployment dan Environment
 
@@ -186,6 +292,7 @@ Docker:
 - `Dockerfile` memakai Python 3.12 slim.
 - `docker-compose.yml` menjalankan web, PostgreSQL, dan Nginx.
 - `entrypoint.sh` menunggu PostgreSQL, menjalankan `migrate`, lalu `collectstatic`.
+- Nginx production melayani `/static/` dari `staticfiles/`.
 
 Environment penting:
 
@@ -217,7 +324,15 @@ Untuk Docker:
 docker compose up --build
 ```
 
-Jika perubahan hanya dokumentasi, minimal cek file yang dibuat dan jelaskan bahwa pengecekan Django tidak wajib karena tidak ada kode runtime yang berubah.
+Untuk audit rename dan referensi lama:
+
+```bash
+rg "nama_lama"
+rg "nama_baru"
+python manage.py collectstatic --clear --noinput
+```
+
+Jika perubahan hanya dokumentasi, minimal cek file yang dibuat, struktur Markdown, dan jelaskan bahwa pengecekan Django tidak wajib karena tidak ada kode runtime yang berubah.
 
 ## Audit Lanjutan Setelah Perubahan
 
@@ -229,6 +344,8 @@ Setelah implementasi, lakukan audit ini sebelum final:
 - Cek model, form, view, template, CSS, dan JS terkait.
 - Cek permission dan validasi server-side.
 - Cek import/export, upload, status, approval, notifikasi, dan file cleanup bila relevan.
+- Untuk rename, pastikan tidak ada referensi nama lama yang tertinggal.
+- Untuk static, pastikan perubahan dilakukan di `static/`, lalu regenerate `staticfiles/` jika diperlukan.
 - Jalankan pengecekan syntax/error yang sesuai.
 - Jangan hapus kode yang masih dipakai fitur lain.
 

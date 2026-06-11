@@ -1,0 +1,22 @@
+<div class="card pemeliharaan-timeline">
+    <div class="pemeliharaan-section-head">
+        <div>
+            <h2>Riwayat Verifikasi</h2>
+            <p>Jejak proses pengajuan pemeliharaan.</p>
+        </div>
+    </div>
+    <div class="timeline-list">
+        {% for item in obj.timeline_entries.all %}
+        <div class="timeline-item">
+            <div class="timeline-point"></div>
+            <div class="timeline-content">
+                <strong>{{ item.action }}</strong>
+                <p>{{ item.stage }} &middot; {{ item.created_at|date:'d M Y H:i' }}{% if item.actor %} &middot; {{ item.actor.get_full_name|default:item.actor.username }}{% endif %}</p>
+                {% if item.note %}<div class="card-soft">{{ item.note }}</div>{% endif %}
+            </div>
+        </div>
+        {% empty %}
+        <div class="empty-state">Belum ada riwayat verifikasi.</div>
+        {% endfor %}
+    </div>
+</div>

@@ -4,7 +4,7 @@
 {% block title %}Dashboard SDM{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/style_dashboard.css' %}?v=20260505-sdm-v6">
+<link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=20260505-sdm-v6">
 {% endblock %}
 
 {% block content %}
@@ -40,9 +40,9 @@
 </div>
 
 <div class="sdm-charts">
-    <section class="card dashboard-chart-card sdm-chart">
-        <div class="dashboard-chart-card__header">
-            <div class="dashboard-chart-card__top">
+    <section class="card dashboard-chart sdm-chart">
+        <div class="dashboard-chart__header">
+            <div class="dashboard-chart__top">
                 <h3 class="card-title">Rekap Tipe Pelatihan</h3>
                 <div class="chart-download">
                     <button type="button" class="chart-download__toggle" aria-label="Download chart Rekap Tipe Pelatihan" aria-expanded="false" data-chart-menu-toggle>
@@ -53,8 +53,8 @@
                     </div>
                 </div>
             </div>
-            <div class="dashboard-chart-filters">
-                <div class="dashboard-filter">
+            <div class="dashboard-chart__filters">
+                <div class="chart-filter">
                     <select id="sdmTipeYear" aria-label="Filter tahun tipe pelatihan" title="Filter tahun">
                         <option value="all">All</option>
                         {% for year in sdm_tipe_chart.availableYears %}
@@ -64,15 +64,15 @@
                 </div>
             </div>
         </div>
-        <div class="dashboard-chart-area" data-chart-wrapper="sdm-tipe">
+        <div class="dashboard-chart__area" data-chart-wrapper="sdm-tipe">
             <canvas id="sdmTipeChart" aria-label="Grafik Rekap Tipe Pelatihan"></canvas>
-            <div class="dashboard-chart-empty is-hidden" data-chart-empty="sdm-tipe">-</div>
+            <div class="dashboard-chart__empty is-hidden" data-chart-empty="sdm-tipe">-</div>
         </div>
     </section>
 
-    <section class="card dashboard-chart-card sdm-chart">
-        <div class="dashboard-chart-card__header">
-            <div class="dashboard-chart-card__top">
+    <section class="card dashboard-chart sdm-chart">
+        <div class="dashboard-chart__header">
+            <div class="dashboard-chart__top">
                 <h3 class="card-title">Rekap Jenis Pelatihan</h3>
                 <div class="chart-download">
                     <button type="button" class="chart-download__toggle" aria-label="Download chart Rekap Jenis Pelatihan" aria-expanded="false" data-chart-menu-toggle>
@@ -83,8 +83,8 @@
                     </div>
                 </div>
             </div>
-            <div class="dashboard-chart-filters">
-                <div class="dashboard-filter">
+            <div class="dashboard-chart__filters">
+                <div class="chart-filter">
                     <select id="sdmJenisYear" aria-label="Filter tahun jenis pelatihan" title="Filter tahun">
                         <option value="all">All</option>
                         {% for year in sdm_jenis_chart.availableYears %}
@@ -94,9 +94,9 @@
                 </div>
             </div>
         </div>
-        <div class="dashboard-chart-area" data-chart-wrapper="sdm-jenis">
+        <div class="dashboard-chart__area" data-chart-wrapper="sdm-jenis">
             <canvas id="sdmJenisChart" aria-label="Grafik Rekap Jenis Pelatihan"></canvas>
-            <div class="dashboard-chart-empty is-hidden" data-chart-empty="sdm-jenis">-</div>
+            <div class="dashboard-chart__empty is-hidden" data-chart-empty="sdm-jenis">-</div>
         </div>
     </section>
 </div>
@@ -107,7 +107,7 @@
         <a href="{% url 'pengguna:pelatihan_daftar' %}" class="btn btn-secondary">Lihat Data Pelatihan</a>
     </div>
 
-    {% include 'components/local_list_search.html' with search_placeholder='Cari pelatihan terbaru...' search_label='Cari pelatihan terbaru' %}
+    {% include 'components/local_search.html' with search_placeholder='Cari pelatihan terbaru...' search_label='Cari pelatihan terbaru' %}
 
     <div class="table-scroll-area table-scroll--list" tabindex="0" aria-label="Scroll tabel pelatihan terbaru">
         <table class="table-data list-table--pengguna">

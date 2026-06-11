@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
-{% load master_data_tags %}
+{% load master_tags %}
 
-{% block title %}Data Peralatan Laboratorium{% endblock %}
+{% block title %}Data Sarana Prasarana Ruangan{% endblock %}
 
 {% block content %}
 <div class="page-header">
@@ -11,33 +11,34 @@
 
 <div class="table-wrapper table-panel">
     <div class="table-toolbar">
-        <h3 class="table-title">Daftar Peralatan Laboratorium</h3>
+        <h3 class="table-title">Daftar Sarana Prasarana Ruangan</h3>
         <div class="table-toolbar-actions">
             {% if role_access.can_export_master_data %}
-                <a href="{% url 'master_data:export_peralatan_laboratorium' %}" class="btn btn-secondary">
+                <a href="{% url 'master_data:export_fasilitas_ruangan' %}" class="btn btn-secondary">
                     <i class="bi bi-download"></i>&nbsp;Export Data
                 </a>
             {% endif %}
             {% if role_access.can_import_master_data %}
-                <button type="button" class="btn btn-secondary js-import-data-btn" data-import-target="#peralatanLaboratoriumImportModal">
+                <button type="button" class="btn btn-secondary js-import-data-btn" data-import-target="#fasilitasRuanganImportModal">
                     <i class="bi bi-file-earmark-spreadsheet"></i>&nbsp;Import Data
                 </button>
             {% endif %}
             {% if role_access.can_manage_master_data %}
-            <a href="{% url 'master_data:tambah_peralatan_laboratorium' %}" class="btn btn-primary"><i class="bi bi-plus-circle"></i>&nbsp;Tambah Barang</a>
+            <a href="{% url 'master_data:tambah_fasilitas_ruangan' %}" class="btn btn-primary"><i class="bi bi-plus-circle"></i>&nbsp;Tambah Barang</a>
             {% endif %}
         </div>
     </div>
 
-    {% include 'components/master_entries_control.html' %}
+    {% include 'components/entry_control.html' %}
 
-    <div class="table-scroll-area table-scroll--list" tabindex="0" aria-label="Scroll tabel data peralatan laboratorium">
+    <div class="table-scroll-area table-scroll--list" tabindex="0" aria-label="Scroll tabel data sarana prasarana ruangan">
         <table class="table-data list-table--master-wide">
             <thead>
                 <tr>
                     <th class="cell-wrap">Nama Barang</th>
                     <th>Status</th>
                     <th>Kode Laboratorium</th>
+                    <th class="cell-wrap">Kategori Barang</th>
                     <th>Volume Baik</th>
                     <th>Volume Rusak</th>
                     <th>Total Volume</th>
@@ -56,6 +57,7 @@
                     </td>
                     <td>{{ item.status_barang|display_dash }}</td>
                     <td>{{ item.kode_laboratorium|display_dash }}</td>
+                    <td class="cell-wrap">{{ item.kategori_barang|display_dash }}</td>
                     <td>{{ item.volume_baik|display_dash }}</td>
                     <td>{{ item.volume_rusak|display_dash }}</td>
                     <td>{{ item.total_volume|display_dash }}</td>
@@ -72,32 +74,31 @@
                             <a href="{{ item.get_public_detail_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" title="Buka Detail Public">
                                 <i class="bi bi-box-arrow-up-right"></i>
                             </a>
-                            <a href="{% url 'master_data:detail_peralatan_laboratorium' item.pk %}" class="btn btn-secondary btn-sm"><i class="bi bi-eye-fill"></i></a>
+                            <a href="{% url 'master_data:detail_fasilitas_ruangan' item.pk %}" class="btn btn-secondary btn-sm"><i class="bi bi-eye-fill"></i></a>
                             {% if role_access.can_manage_master_data %}
-                            <a href="{% url 'master_data:edit_peralatan_laboratorium' item.pk %}?next={{ request.get_full_path|urlencode }}" class="btn btn-warning btn-sm"><i class="bi bi-pencil-square"></i></a>
-                            <button type="button" class="btn btn-danger btn-sm js-delete-btn" data-delete-modal="master" data-delete-url="{% url 'master_data:hapus_peralatan_laboratorium' item.pk %}" data-item-name="{{ item.nama_barang|display_dash }}" data-item-meta="{{ item.kode_laboratorium|default:'-' }}">
-                                <i class="bi bi-trash3-fill"></i>
-                            </button>
+                            <a href="{% url 'master_data:edit_fasilitas_ruangan' item.pk %}?next={{ request.get_full_path|urlencode }}" class="btn btn-warning btn-sm"><i class="bi bi-pencil-square"></i></a>
+                            {% url 'master_data:hapus_fasilitas_ruangan' item.pk as delete_url %}
+                            {% include 'master_data/delete_button.html' with delete_url=delete_url item_meta=item.kode_laboratorium|default:'-' %}
                             {% endif %}
                         </div>
                     </td>
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="10"><div class="empty-state">Belum ada data peralatan laboratorium.</div></td>
+                    <td colspan="11"><div class="empty-state">Belum ada data sarana prasarana ruangan.</div></td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
 
-    {% include 'components/master_pagination.html' %}
+    {% include 'components/pagination.html' %}
 </div>
 
 {% if role_access.can_import_master_data %}
-    {% url 'master_data:import_peralatan_laboratorium' as import_action_url %}
-    {% url 'master_data:download_format_import_peralatan_laboratorium' as import_download_url %}
-    {% include 'components/import_excel_modal.html' with import_context=import_context import_modal_id='peralatanLaboratoriumImportModal' import_file_id='peralatanLaboratoriumImportFile' import_title='Import Data Peralatan Laboratorium' import_action_url=import_action_url import_download_url=import_download_url import_help_text='Gunakan file .xlsx maksimal 7 MB. Data duplikat pada Kode Aset BMN dan Kode Laboratorium akan ditolak.' %}
+    {% url 'master_data:import_fasilitas_ruangan' as import_action_url %}
+    {% url 'master_data:download_format_import_fasilitas_ruangan' as import_download_url %}
+    {% include 'components/import_modal.html' with import_context=import_context import_modal_id='fasilitasRuanganImportModal' import_file_id='fasilitasRuanganImportFile' import_title='Import Data Sarana Prasarana Ruangan' import_action_url=import_action_url import_download_url=import_download_url import_help_text='Gunakan file .xlsx maksimal 7 MB. Data duplikat pada Kode Aset BMN dan Kode Laboratorium akan ditolak.' %}
 {% endif %}
 
 {% if role_access.can_manage_master_data %}

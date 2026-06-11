@@ -4,7 +4,7 @@
 {% block title %}Dashboard{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/style_dashboard.css' %}?v=20260609-inventory-height-v2">
+<link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=20260609-inventory-height-v2">
 {% endblock %}
 
 {% block content %}
@@ -43,7 +43,7 @@
         <h3 class="table-title">Data Kegiatan Aktif</h3>
     </div>
 
-    {% include 'components/local_list_search.html' with search_placeholder='Cari kegiatan aktif...' search_label='Cari kegiatan aktif' %}
+    {% include 'components/local_search.html' with search_placeholder='Cari kegiatan aktif...' search_label='Cari kegiatan aktif' %}
 
     <div class="table-scroll-area table-scroll--list" tabindex="0" aria-label="Scroll tabel data kegiatan aktif">
         <table class="table-data list-table--peminjaman">
@@ -81,7 +81,7 @@
                         {% endif %}
                     </td>
                     <td class="cell-action">
-                        <button type="button" class="btn btn-secondary btn-sm dashboard-item-detail-btn" data-active-item-modal-open="activeItemsModal{{ item.pk }}" title="Detail barang {{ item.nomor_pengajuan }}">
+                        <button type="button" class="btn btn-secondary btn-sm item-modal__trigger" data-item-open="itemModal{{ item.pk }}" title="Detail barang {{ item.nomor_pengajuan }}">
                             <i class="bi bi-eye-fill" aria-hidden="true"></i>
                             <span>Detail</span>
                         </button>
@@ -98,18 +98,18 @@
 </div>
 
 {% for item in active_peminjaman %}
-<div class="delete-modal dashboard-item-modal" id="activeItemsModal{{ item.pk }}">
-    <div class="delete-modal-backdrop" data-active-item-modal-close></div>
-    <div class="delete-modal-card loan-summary-modal dashboard-item-modal__card" role="dialog" aria-modal="true" aria-labelledby="activeItemsModalTitle{{ item.pk }}">
+<div class="delete-modal item-modal" id="itemModal{{ item.pk }}">
+    <div class="delete-modal-backdrop" data-item-close></div>
+    <div class="delete-modal-card loan-summary-modal item-modal__card" role="dialog" aria-modal="true" aria-labelledby="itemModalTitle{{ item.pk }}">
         <div class="delete-modal-header">
             <div>
-                <h3 id="activeItemsModalTitle{{ item.pk }}">Detail Barang Dipinjam</h3>
+                <h3 id="itemModalTitle{{ item.pk }}">Detail Barang Dipinjam</h3>
                 <p>{{ item.nomor_pengajuan }} - {{ item.nama_peminjam }}</p>
             </div>
-            <button type="button" class="delete-modal-close" data-active-item-modal-close aria-label="Tutup">&times;</button>
+            <button type="button" class="delete-modal-close" data-item-close aria-label="Tutup">&times;</button>
         </div>
 
-        <div class="delete-modal-body loan-summary-body dashboard-item-modal__body">
+        <div class="delete-modal-body loan-summary-body item-modal__body">
             {% with lab_items=item.barang_laboratorium_items.all penunjang_items=item.barang_penunjang_items.all bahan_items=item.bahan_operasional_items.all peralatan_lab_items=item.peralatan_laboratorium_items.all %}
                 {% if lab_items or penunjang_items or bahan_items or peralatan_lab_items %}
                     {% if lab_items %}
@@ -227,31 +227,31 @@
             {% endwith %}
         </div>
 
-        <div class="delete-modal-actions dashboard-item-modal__actions">
-            <button type="button" class="btn btn-secondary" data-active-item-modal-close>Tutup</button>
+        <div class="delete-modal-actions item-modal__actions">
+            <button type="button" class="btn btn-secondary" data-item-close>Tutup</button>
         </div>
     </div>
 </div>
 {% endfor %}
 
 
-<div class="dashboard-chart-grid">
-    <section class="card dashboard-chart-card dashboard-chart-card--wide">
-        <div class="dashboard-chart-card__header">
-            <div class="dashboard-chart-card__top">
+<div class="dashboard-grid">
+    <section class="card dashboard-chart dashboard-chart--wide">
+        <div class="dashboard-chart__header">
+            <div class="dashboard-chart__top">
             <h3 class="card-title">Rekap Peminjaman</h3>
             <div class="chart-download">
                 <button type="button" class="chart-download__toggle" aria-label="Download chart Rekap Peminjaman" aria-expanded="false" data-chart-menu-toggle>
                     <i class="bi bi-three-dots-vertical"></i>
                 </button>
                 <div class="chart-download__menu" data-chart-menu>
-                    <button type="button" data-chart-download="jpg" data-chart-target="approvedPeminjamanChart" data-chart-title="Rekap Peminjaman"><i class="bi bi-filetype-jpg" aria-hidden="true"></i><span>Download JPG</span></button>
+                    <button type="button" data-chart-download="jpg" data-chart-target="grafikPinjam" data-chart-title="Rekap Peminjaman"><i class="bi bi-filetype-jpg" aria-hidden="true"></i><span>Download JPG</span></button>
                 </div>
             </div>
         </div>
-            <div class="dashboard-chart-filters dashboard-chart-filters--tim">
-                <div class="dashboard-filter">
-                    <select id="approvedPeminjamanChartYearFilter" aria-label="Filter tahun rekap peminjaman" title="Filter tahun">
+            <div class="dashboard-chart__filters dashboard-chart__filters--tim">
+                <div class="chart-filter">
+                    <select id="tahunPinjam" aria-label="Filter tahun rekap peminjaman" title="Filter tahun">
                         <option value="all">All</option>
                         {% for year in approved_peminjaman_chart.availableYears %}
                             <option value="{{ year }}" {% if year == approved_peminjaman_chart.defaultYear %}selected{% endif %}>{{ year }}</option>
@@ -260,30 +260,30 @@
                 </div>
             </div>
         </div>
-        <div class="dashboard-chart-area" data-chart-wrapper="approved-peminjaman">
-            <canvas id="approvedPeminjamanChart" aria-label="Grafik Rekap Peminjaman"></canvas>
-            <div class="dashboard-chart-empty is-hidden" data-chart-empty="approved-peminjaman">
+        <div class="dashboard-chart__area" data-chart-wrapper="approved-peminjaman">
+            <canvas id="grafikPinjam" aria-label="Grafik Rekap Peminjaman"></canvas>
+            <div class="dashboard-chart__empty is-hidden" data-chart-empty="approved-peminjaman">
                 -
             </div>
         </div>
     </section>
 
-    <section class="card dashboard-chart-card">
-        <div class="dashboard-chart-card__header">
-            <div class="dashboard-chart-card__top">
+    <section class="card dashboard-chart">
+        <div class="dashboard-chart__header">
+            <div class="dashboard-chart__top">
             <h3 class="card-title">Rekap Layanan Kegiatan</h3>
             <div class="chart-download">
                 <button type="button" class="chart-download__toggle" aria-label="Download chart Rekap Layanan Kegiatan" aria-expanded="false" data-chart-menu-toggle>
                     <i class="bi bi-three-dots-vertical"></i>
                 </button>
                 <div class="chart-download__menu" data-chart-menu>
-                    <button type="button" data-chart-download="jpg" data-chart-target="layananKegiatanChart" data-chart-title="Rekap Layanan Kegiatan"><i class="bi bi-filetype-jpg" aria-hidden="true"></i><span>Download JPG</span></button>
+                    <button type="button" data-chart-download="jpg" data-chart-target="grafikLayanan" data-chart-title="Rekap Layanan Kegiatan"><i class="bi bi-filetype-jpg" aria-hidden="true"></i><span>Download JPG</span></button>
                 </div>
             </div>
         </div>
-            <div class="dashboard-chart-filters">
-                <div class="dashboard-filter">
-                    <select id="layananChartYearFilter" aria-label="Filter tahun layanan kegiatan" title="Filter tahun">
+            <div class="dashboard-chart__filters">
+                <div class="chart-filter">
+                    <select id="tahunLayanan" aria-label="Filter tahun layanan kegiatan" title="Filter tahun">
                         <option value="all">All</option>
                         {% for year in layanan_chart.availableYears %}
                             <option value="{{ year }}" {% if year == layanan_chart.defaultYear %}selected{% endif %}>{{ year }}</option>
@@ -292,40 +292,40 @@
                 </div>
             </div>
         </div>
-        <div class="dashboard-chart-area" data-chart-wrapper="layanan">
-            <canvas id="layananKegiatanChart" aria-label="Grafik Layanan Kegiatan"></canvas>
-            <div class="dashboard-chart-empty is-hidden" data-chart-empty="layanan">
+        <div class="dashboard-chart__area" data-chart-wrapper="layanan">
+            <canvas id="grafikLayanan" aria-label="Grafik Layanan Kegiatan"></canvas>
+            <div class="dashboard-chart__empty is-hidden" data-chart-empty="layanan">
                 -
             </div>
         </div>
     </section>
 </div>
 
-<div class="dashboard-chart-grid dashboard-chart-grid--balanced">
-    <section class="card dashboard-chart-card dashboard-chart-card--wide">
-        <div class="dashboard-chart-card__header">
-            <div class="dashboard-chart-card__top">
+<div class="dashboard-grid dashboard-grid--balanced">
+    <section class="card dashboard-chart dashboard-chart--wide">
+        <div class="dashboard-chart__header">
+            <div class="dashboard-chart__top">
             <h3 class="card-title">Rekap Data Pengukuran Lapangan</h3>
             <div class="chart-download">
                 <button type="button" class="chart-download__toggle" aria-label="Download chart Rekap Data Pengukuran Lapangan" aria-expanded="false" data-chart-menu-toggle>
                     <i class="bi bi-three-dots-vertical"></i>
                 </button>
                 <div class="chart-download__menu" data-chart-menu>
-                    <button type="button" data-chart-download="jpg" data-chart-target="pengukuranLapanganChart" data-chart-title="Rekap Data Pengukuran Lapangan"><i class="bi bi-filetype-jpg" aria-hidden="true"></i><span>Download JPG</span></button>
+                    <button type="button" data-chart-download="jpg" data-chart-target="grafikUkur" data-chart-title="Rekap Data Pengukuran Lapangan"><i class="bi bi-filetype-jpg" aria-hidden="true"></i><span>Download JPG</span></button>
                 </div>
             </div>
         </div>
-            <div class="dashboard-chart-filters dashboard-chart-filters--tim">
-                <div class="dashboard-filter">
-                    <select id="pengukuranChartYearFilter" aria-label="Filter tahun data pengukuran lapangan" title="Filter tahun">
+            <div class="dashboard-chart__filters dashboard-chart__filters--tim">
+                <div class="chart-filter">
+                    <select id="tahunUkur" aria-label="Filter tahun data pengukuran lapangan" title="Filter tahun">
                         <option value="all">All</option>
                         {% for year in pengukuran_chart.availableYears %}
                             <option value="{{ year }}" {% if year == pengukuran_chart.defaultYear %}selected{% endif %}>{{ year }}</option>
                         {% endfor %}
                     </select>
                 </div>
-                <div class="dashboard-filter dashboard-filter--mode">
-                    <select id="pengukuranChartMonthFilter" aria-label="Filter mode/bulan data pengukuran lapangan" title="Filter mode data">
+                <div class="chart-filter chart-filter--mode">
+                    <select id="bulanUkur" aria-label="Filter mode/bulan data pengukuran lapangan" title="Filter mode data">
                         <option value="all_months">All Bulan</option>
                         <option value="accumulated">Akumulasi</option>
                         {% for month in month_choices %}
@@ -335,38 +335,38 @@
                 </div>
             </div>
         </div>
-        <div class="dashboard-chart-area" data-chart-wrapper="pengukuran">
-            <canvas id="pengukuranLapanganChart" aria-label="Grafik Rekap Data Pengukuran Lapangan"></canvas>
-            <div class="dashboard-chart-empty is-hidden" data-chart-empty="pengukuran">
+        <div class="dashboard-chart__area" data-chart-wrapper="pengukuran">
+            <canvas id="grafikUkur" aria-label="Grafik Rekap Data Pengukuran Lapangan"></canvas>
+            <div class="dashboard-chart__empty is-hidden" data-chart-empty="pengukuran">
                 -
             </div>
         </div>
     </section>
 
-    <section class="card dashboard-chart-card dashboard-chart-card--wide">
-        <div class="dashboard-chart-card__header">
-            <div class="dashboard-chart-card__top">
+    <section class="card dashboard-chart dashboard-chart--wide">
+        <div class="dashboard-chart__header">
+            <div class="dashboard-chart__top">
             <h3 class="card-title">Rekap Tim Kegiatan</h3>
             <div class="chart-download">
                 <button type="button" class="chart-download__toggle" aria-label="Download chart Rekap Tim Kegiatan" aria-expanded="false" data-chart-menu-toggle>
                     <i class="bi bi-three-dots-vertical"></i>
                 </button>
                 <div class="chart-download__menu" data-chart-menu>
-                    <button type="button" data-chart-download="jpg" data-chart-target="timKegiatanChart" data-chart-title="Rekap Tim Kegiatan"><i class="bi bi-filetype-jpg" aria-hidden="true"></i><span>Download JPG</span></button>
+                    <button type="button" data-chart-download="jpg" data-chart-target="grafikTim" data-chart-title="Rekap Tim Kegiatan"><i class="bi bi-filetype-jpg" aria-hidden="true"></i><span>Download JPG</span></button>
                 </div>
             </div>
         </div>
-            <div class="dashboard-chart-filters dashboard-chart-filters--tim">
-                <div class="dashboard-filter">
-                    <select id="timChartYearFilter" aria-label="Filter tahun tim kegiatan" title="Filter tahun">
+            <div class="dashboard-chart__filters dashboard-chart__filters--tim">
+                <div class="chart-filter">
+                    <select id="tahunTim" aria-label="Filter tahun tim kegiatan" title="Filter tahun">
                         <option value="all">All</option>
                         {% for year in tim_chart.availableYears %}
                             <option value="{{ year }}" {% if year == tim_chart.defaultYear %}selected{% endif %}>{{ year }}</option>
                         {% endfor %}
                     </select>
                 </div>
-                <div class="dashboard-filter dashboard-filter--mode">
-                    <select id="timChartMonthFilter" aria-label="Filter mode/bulan tim kegiatan" title="Filter mode data">
+                <div class="chart-filter chart-filter--mode">
+                    <select id="bulanTim" aria-label="Filter mode/bulan tim kegiatan" title="Filter mode data">
                         <option value="all_months">All Bulan</option>
                         <option value="accumulated">Akumulasi</option>
                         {% for month in month_choices %}
@@ -376,31 +376,31 @@
                 </div>
             </div>
         </div>
-        <div class="dashboard-chart-area" data-chart-wrapper="tim">
-            <canvas id="timKegiatanChart" aria-label="Grafik Tim Kegiatan per Bulan"></canvas>
-            <div class="dashboard-chart-empty is-hidden" data-chart-empty="tim">
+        <div class="dashboard-chart__area" data-chart-wrapper="tim">
+            <canvas id="grafikTim" aria-label="Grafik Tim Kegiatan per Bulan"></canvas>
+            <div class="dashboard-chart__empty is-hidden" data-chart-empty="tim">
                 -
             </div>
         </div>
     </section>
 </div>
 
-<section class="card dashboard-chart-card dashboard-chart-card--full">
-    <div class="dashboard-chart-card__header">
-        <div class="dashboard-chart-card__top">
+<section class="card dashboard-chart dashboard-chart--full">
+    <div class="dashboard-chart__header">
+        <div class="dashboard-chart__top">
             <h3 class="card-title">Rekap Kegiatan Survei</h3>
             <div class="chart-download">
                 <button type="button" class="chart-download__toggle" aria-label="Download chart Rekap Kegiatan Survei" aria-expanded="false" data-chart-menu-toggle>
                     <i class="bi bi-three-dots-vertical"></i>
                 </button>
                 <div class="chart-download__menu" data-chart-menu>
-                    <button type="button" data-chart-download="jpg" data-chart-target="surveiKegiatanChart" data-chart-title="Rekap Kegiatan Survei"><i class="bi bi-filetype-jpg" aria-hidden="true"></i><span>Download JPG</span></button>
+                    <button type="button" data-chart-download="jpg" data-chart-target="grafikSurvei" data-chart-title="Rekap Kegiatan Survei"><i class="bi bi-filetype-jpg" aria-hidden="true"></i><span>Download JPG</span></button>
                 </div>
             </div>
         </div>
-        <div class="dashboard-chart-filters">
-            <div class="dashboard-filter">
-                <select id="surveiChartYearFilter" aria-label="Filter tahun kegiatan survei" title="Filter tahun">
+        <div class="dashboard-chart__filters">
+            <div class="chart-filter">
+                <select id="tahunSurvei" aria-label="Filter tahun kegiatan survei" title="Filter tahun">
                     <option value="all">All</option>
                     {% for year in survei_chart.availableYears %}
                         <option value="{{ year }}" {% if year == survei_chart.defaultYear %}selected{% endif %}>{{ year }}</option>
@@ -409,34 +409,34 @@
             </div>
         </div>
     </div>
-    <div class="dashboard-chart-area chart-area--scroll" data-chart-wrapper="survei">
-        <div class="dashboard-chart-scroll" data-chart-scroll="survei">
-            <div class="dashboard-chart-canvas-holder" data-chart-holder="survei">
-                <canvas id="surveiKegiatanChart" aria-label="Grafik Kegiatan Survei"></canvas>
+    <div class="dashboard-chart__area chart-area--scroll" data-chart-wrapper="survei">
+        <div class="dashboard-chart__scroll" data-chart-scroll="survei">
+            <div class="dashboard-chart__holder" data-chart-holder="survei">
+                <canvas id="grafikSurvei" aria-label="Grafik Kegiatan Survei"></canvas>
             </div>
         </div>
-        <div class="dashboard-chart-empty is-hidden" data-chart-empty="survei">
+        <div class="dashboard-chart__empty is-hidden" data-chart-empty="survei">
             -
         </div>
     </div>
 </section>
 
-<section class="card dashboard-chart-card dashboard-chart-card--full">
-    <div class="dashboard-chart-card__header">
-        <div class="dashboard-chart-card__top">
+<section class="card dashboard-chart dashboard-chart--full">
+    <div class="dashboard-chart__header">
+        <div class="dashboard-chart__top">
             <h3 class="card-title">Instansi Tujuan Kegiatan</h3>
             <div class="chart-download">
                 <button type="button" class="chart-download__toggle" aria-label="Download chart Instansi Tujuan Kegiatan" aria-expanded="false" data-chart-menu-toggle>
                     <i class="bi bi-three-dots-vertical"></i>
                 </button>
                 <div class="chart-download__menu" data-chart-menu>
-                    <button type="button" data-chart-download="jpg" data-chart-target="instansiTujuanKegiatanChart" data-chart-title="Instansi Tujuan Kegiatan"><i class="bi bi-filetype-jpg" aria-hidden="true"></i><span>Download JPG</span></button>
+                    <button type="button" data-chart-download="jpg" data-chart-target="grafikInstansi" data-chart-title="Instansi Tujuan Kegiatan"><i class="bi bi-filetype-jpg" aria-hidden="true"></i><span>Download JPG</span></button>
                 </div>
             </div>
         </div>
-        <div class="dashboard-chart-filters">
-            <div class="dashboard-filter">
-                <select id="instansiChartYearFilter" aria-label="Filter tahun instansi tujuan kegiatan" title="Filter tahun">
+        <div class="dashboard-chart__filters">
+            <div class="chart-filter">
+                <select id="tahunInstansi" aria-label="Filter tahun instansi tujuan kegiatan" title="Filter tahun">
                     <option value="all">All</option>
                     {% for year in instansi_chart.availableYears %}
                         <option value="{{ year }}" {% if year == instansi_chart.defaultYear %}selected{% endif %}>{{ year }}</option>
@@ -445,13 +445,13 @@
             </div>
         </div>
     </div>
-    <div class="dashboard-chart-area chart-area--scroll" data-chart-wrapper="instansi">
-        <div class="dashboard-chart-scroll" data-chart-scroll="instansi">
-            <div class="dashboard-chart-canvas-holder" data-chart-holder="instansi">
-                <canvas id="instansiTujuanKegiatanChart" aria-label="Grafik Instansi Tujuan Kegiatan"></canvas>
+    <div class="dashboard-chart__area chart-area--scroll" data-chart-wrapper="instansi">
+        <div class="dashboard-chart__scroll" data-chart-scroll="instansi">
+            <div class="dashboard-chart__holder" data-chart-holder="instansi">
+                <canvas id="grafikInstansi" aria-label="Grafik Instansi Tujuan Kegiatan"></canvas>
             </div>
         </div>
-        <div class="dashboard-chart-empty is-hidden" data-chart-empty="instansi">
+        <div class="dashboard-chart__empty is-hidden" data-chart-empty="instansi">
             -
         </div>
     </div>
@@ -459,72 +459,72 @@
 
 
 {% if role_access.show_master_data %}
-<section class="card dashboard-chart-card dashboard-chart-card--full dashboard-chart-card--inventory">
-    <div class="dashboard-chart-card__header">
-        <div class="dashboard-chart-card__top">
+<section class="card dashboard-chart dashboard-chart--full dashboard-chart--inventory">
+    <div class="dashboard-chart__header">
+        <div class="dashboard-chart__top">
             <h3 class="card-title">Data Bahan Operasional</h3>
             <div class="chart-download">
                 <button type="button" class="chart-download__toggle" aria-label="Download chart Data Bahan Operasional" aria-expanded="false" data-chart-menu-toggle>
                     <i class="bi bi-three-dots-vertical"></i>
                 </button>
                 <div class="chart-download__menu" data-chart-menu>
-                    <button type="button" data-chart-download="jpg" data-chart-target="bahanOperasionalChart" data-chart-title="Data Bahan Operasional"><i class="bi bi-filetype-jpg" aria-hidden="true"></i><span>Download JPG</span></button>
+                    <button type="button" data-chart-download="jpg" data-chart-target="grafikBahan" data-chart-title="Data Bahan Operasional"><i class="bi bi-filetype-jpg" aria-hidden="true"></i><span>Download JPG</span></button>
                 </div>
             </div>
         </div>
     </div>
-    <div class="dashboard-chart-area chart-area--scroll" data-chart-wrapper="bahan">
-        <div class="dashboard-chart-scroll" data-chart-scroll="bahan">
-            <div class="dashboard-chart-canvas-holder" data-chart-holder="bahan">
-                <canvas id="bahanOperasionalChart" aria-label="Grafik stok bahan operasional"></canvas>
+    <div class="dashboard-chart__area chart-area--scroll" data-chart-wrapper="bahan">
+        <div class="dashboard-chart__scroll" data-chart-scroll="bahan">
+            <div class="dashboard-chart__holder" data-chart-holder="bahan">
+                <canvas id="grafikBahan" aria-label="Grafik stok bahan operasional"></canvas>
             </div>
         </div>
-        <div class="dashboard-chart-empty is-hidden" data-chart-empty="bahan">
+        <div class="dashboard-chart__empty is-hidden" data-chart-empty="bahan">
             Belum ada data bahan operasional.
         </div>
     </div>
 </section>
 
-<section class="card dashboard-chart-card dashboard-chart-card--full dashboard-chart-card--inventory">
-    <div class="dashboard-chart-card__header">
-        <div class="dashboard-chart-card__top">
+<section class="card dashboard-chart dashboard-chart--full dashboard-chart--inventory">
+    <div class="dashboard-chart__header">
+        <div class="dashboard-chart__top">
             <h3 class="card-title">Data Barang Penunjang Lapangan</h3>
             <div class="chart-download">
                 <button type="button" class="chart-download__toggle" aria-label="Download chart Data Barang Penunjang Lapangan" aria-expanded="false" data-chart-menu-toggle>
                     <i class="bi bi-three-dots-vertical"></i>
                 </button>
                 <div class="chart-download__menu" data-chart-menu>
-                    <button type="button" data-chart-download="jpg" data-chart-target="barangPenunjangChart" data-chart-title="Data Barang Penunjang Lapangan"><i class="bi bi-filetype-jpg" aria-hidden="true"></i><span>Download JPG</span></button>
+                    <button type="button" data-chart-download="jpg" data-chart-target="grafikPenunjang" data-chart-title="Data Barang Penunjang Lapangan"><i class="bi bi-filetype-jpg" aria-hidden="true"></i><span>Download JPG</span></button>
                 </div>
             </div>
         </div>
     </div>
-    <div class="dashboard-chart-area chart-area--scroll" data-chart-wrapper="penunjang">
-        <div class="dashboard-chart-scroll" data-chart-scroll="penunjang">
-            <div class="dashboard-chart-canvas-holder" data-chart-holder="penunjang">
-                <canvas id="barangPenunjangChart" aria-label="Grafik kondisi barang penunjang lapangan"></canvas>
+    <div class="dashboard-chart__area chart-area--scroll" data-chart-wrapper="penunjang">
+        <div class="dashboard-chart__scroll" data-chart-scroll="penunjang">
+            <div class="dashboard-chart__holder" data-chart-holder="penunjang">
+                <canvas id="grafikPenunjang" aria-label="Grafik kondisi barang penunjang lapangan"></canvas>
             </div>
         </div>
-        <div class="dashboard-chart-empty is-hidden" data-chart-empty="penunjang">
+        <div class="dashboard-chart__empty is-hidden" data-chart-empty="penunjang">
             Belum ada data barang penunjang lapangan.
         </div>
     </div>
 </section>
 {% endif %}
 
-{{ tim_chart|json_script:"tim-chart-data" }}
-{{ layanan_chart|json_script:"layanan-chart-data" }}
-{{ pengukuran_chart|json_script:"pengukuran-chart-data" }}
-{{ approved_peminjaman_chart|json_script:"approved-peminjaman-chart-data" }}
-{{ survei_chart|json_script:"survei-chart-data" }}
-{{ instansi_chart|json_script:"instansi-chart-data" }}
+{{ tim_chart|json_script:"data-tim" }}
+{{ layanan_chart|json_script:"data-layanan" }}
+{{ pengukuran_chart|json_script:"data-ukur" }}
+{{ approved_peminjaman_chart|json_script:"data-pinjam" }}
+{{ survei_chart|json_script:"data-survei" }}
+{{ instansi_chart|json_script:"data-instansi" }}
 {% if role_access.show_master_data %}
-{{ bahan_chart|json_script:"bahan-chart-data" }}
-{{ penunjang_chart|json_script:"penunjang-chart-data" }}
+{{ bahan_chart|json_script:"data-bahan" }}
+{{ penunjang_chart|json_script:"data-penunjang" }}
 {% endif %}
 {% endblock %}
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
-<script src="{% static 'js/dashboard.js' %}?v=20260609-inventory-charts-v1" defer></script>
+<script src="{% static 'js/dashboard.js' %}?v=20260609-penunjang-square-v2" defer></script>
 {% endblock %}

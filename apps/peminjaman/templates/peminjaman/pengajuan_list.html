@@ -30,7 +30,7 @@
         </div>
     </div>
 
-    {% include 'components/master_entries_control.html' %}
+    {% include 'components/entry_control.html' %}
 
     <div class="table-scroll-area table-scroll--list" tabindex="0" aria-label="Scroll tabel daftar pengajuan">
         <table class="table-data list-table--peminjaman">
@@ -114,7 +114,7 @@
         </table>
     </div>
 
-    {% include 'components/master_pagination.html' %}
+    {% include 'components/pagination.html' %}
 </div>
 
 {% if can_delete %}
@@ -155,6 +155,6 @@
 {% if is_report and role_access.is_super_admin %}
     {% url 'peminjaman:import_riwayat_peminjaman' as import_action_url %}
     {% url 'peminjaman:download_format_import_riwayat_peminjaman' as import_download_url %}
-    {% include 'components/import_excel_modal.html' with import_context=import_context import_modal_id='riwayatPeminjamanImportModal' import_file_id='riwayatPeminjamanImportFile' import_title='Import Riwayat Peminjaman' import_subtitle='Import data historis yang langsung masuk ke Laporan Peminjaman tanpa mengubah stok master data aktif.' import_action_url=import_action_url import_download_url=import_download_url import_help_text='Gunakan file .xlsx maksimal 7 MB. Nomor pengajuan duplikat akan ditolak. Data hasil import langsung berstatus Pengembalian Selesai.' %}
+    {% include 'components/import_modal.html' with import_context=import_context import_modal_id='riwayatPeminjamanImportModal' import_file_id='riwayatPeminjamanImportFile' import_title='Import Riwayat Peminjaman' import_subtitle='Import data historis yang langsung masuk ke Laporan Peminjaman tanpa mengubah stok master data aktif.' import_action_url=import_action_url import_download_url=import_download_url import_help_text='Gunakan file .xlsx maksimal 7 MB. Nomor pengajuan duplikat akan ditolak. Data hasil import langsung berstatus Pengembalian Selesai.' %}
 {% endif %}
 {% endblock %}

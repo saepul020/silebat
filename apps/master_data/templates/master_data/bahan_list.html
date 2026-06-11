@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
-{% load master_data_tags %}
+{% load master_tags %}
 
-{% block title %}Data Sarana Prasarana Ruangan{% endblock %}
+{% block title %}Data Bahan Operasional{% endblock %}
 
 {% block content %}
 <div class="page-header">
@@ -11,59 +11,48 @@
 
 <div class="table-wrapper table-panel">
     <div class="table-toolbar">
-        <h3 class="table-title">Daftar Sarana Prasarana Ruangan</h3>
+        <h3 class="table-title">Daftar Bahan Operasional</h3>
         <div class="table-toolbar-actions">
             {% if role_access.can_export_master_data %}
-                <a href="{% url 'master_data:export_fasilitas_ruangan' %}" class="btn btn-secondary">
+                <a href="{% url 'master_data:export_bahan_operasional' %}" class="btn btn-secondary">
                     <i class="bi bi-download"></i>&nbsp;Export Data
                 </a>
             {% endif %}
             {% if role_access.can_import_master_data %}
-                <button type="button" class="btn btn-secondary js-import-data-btn" data-import-target="#fasilitasRuanganImportModal">
+                <button type="button" class="btn btn-secondary js-import-data-btn" data-import-target="#bahanOperasionalImportModal">
                     <i class="bi bi-file-earmark-spreadsheet"></i>&nbsp;Import Data
                 </button>
             {% endif %}
             {% if role_access.can_manage_master_data %}
-            <a href="{% url 'master_data:tambah_fasilitas_ruangan' %}" class="btn btn-primary"><i class="bi bi-plus-circle"></i>&nbsp;Tambah Barang</a>
+            <a href="{% url 'master_data:tambah_bahan_operasional' %}" class="btn btn-primary"><i class="bi bi-plus-circle"></i>&nbsp;Tambah Bahan</a>
             {% endif %}
         </div>
     </div>
 
-    {% include 'components/master_entries_control.html' %}
+    {% include 'components/entry_control.html' %}
 
-    <div class="table-scroll-area table-scroll--list" tabindex="0" aria-label="Scroll tabel data sarana prasarana ruangan">
-        <table class="table-data list-table--master-wide">
+    <div class="table-scroll-area table-scroll--list" tabindex="0" aria-label="Scroll tabel data bahan operasional">
+        <table class="table-data list-table--master-medium">
             <thead>
                 <tr>
                     <th class="cell-wrap">Nama Barang</th>
-                    <th>Status</th>
-                    <th>Kode Laboratorium</th>
                     <th class="cell-wrap">Kategori Barang</th>
-                    <th>Volume Baik</th>
-                    <th>Volume Rusak</th>
-                    <th>Total Volume</th>
-                    <th>Kondisi</th>
+                    <th>Stok</th>
+                    <th>Satuan</th>
+                    <th>Stok Minimum</th>
                     <th class="cell-status">Ketersediaan</th>
-                    <th class="cell-wrap">Lokasi</th>
                     <th class="cell-action">Aksi</th>
                 </tr>
             </thead>
             <tbody>
                 {% for item in items %}
                 <tr>
-                    <td class="cell-wrap">
-                        <strong>{{ item.nama_barang|display_dash }}</strong><br>
-                        <small>{{ item.tipe_merek_barang|display_dash }}</small>
-                    </td>
-                    <td>{{ item.status_barang|display_dash }}</td>
-                    <td>{{ item.kode_laboratorium|display_dash }}</td>
+                    <td class="cell-wrap">{{ item.nama_barang|display_dash }}</td>
                     <td class="cell-wrap">{{ item.kategori_barang|display_dash }}</td>
-                    <td>{{ item.volume_baik|display_dash }}</td>
-                    <td>{{ item.volume_rusak|display_dash }}</td>
-                    <td>{{ item.total_volume|display_dash }}</td>
-                    <td>{% if item.status_barang == 'BMN' %}{{ item.kondisi_barang|display_dash }}{% else %}-{% endif %}</td>
+                    <td>{{ item.volume|display_dash }}</td>
+                    <td>{{ item.satuan|display_dash }}</td>
+                    <td>{{ item.stok_minimum|display_dash }}</td>
                     <td class="cell-status"><span class="status-badge {{ item.status_badge_class }}">{{ item.ketersediaan }}</span></td>
-                    <td class="cell-wrap">{{ item.lokasi_barang|display_dash }}</td>
                     <td class="cell-action">
                         <div class="table-action-group">
                             {% if item.qr_code %}
@@ -74,32 +63,30 @@
                             <a href="{{ item.get_public_detail_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" title="Buka Detail Public">
                                 <i class="bi bi-box-arrow-up-right"></i>
                             </a>
-                            <a href="{% url 'master_data:detail_fasilitas_ruangan' item.pk %}" class="btn btn-secondary btn-sm"><i class="bi bi-eye-fill"></i></a>
                             {% if role_access.can_manage_master_data %}
-                            <a href="{% url 'master_data:edit_fasilitas_ruangan' item.pk %}?next={{ request.get_full_path|urlencode }}" class="btn btn-warning btn-sm"><i class="bi bi-pencil-square"></i></a>
-                            <button type="button" class="btn btn-danger btn-sm js-delete-btn" data-delete-modal="master" data-delete-url="{% url 'master_data:hapus_fasilitas_ruangan' item.pk %}" data-item-name="{{ item.nama_barang|display_dash }}" data-item-meta="{{ item.kode_laboratorium|default:'-' }}">
-                                <i class="bi bi-trash3-fill"></i>
-                            </button>
+                            <a href="{% url 'master_data:edit_bahan_operasional' item.pk %}?next={{ request.get_full_path|urlencode }}" class="btn btn-warning btn-sm"><i class="bi bi-pencil-square"></i></a>
+                            {% url 'master_data:hapus_bahan_operasional' item.pk as delete_url %}
+                            {% include 'master_data/delete_button.html' with delete_url=delete_url item_meta=item.kategori_barang|default:'-' %}
                             {% endif %}
                         </div>
                     </td>
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="11"><div class="empty-state">Belum ada data sarana prasarana ruangan.</div></td>
+                    <td colspan="7"><div class="empty-state">Belum ada data bahan operasional.</div></td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
 
-    {% include 'components/master_pagination.html' %}
+    {% include 'components/pagination.html' %}
 </div>
 
 {% if role_access.can_import_master_data %}
-    {% url 'master_data:import_fasilitas_ruangan' as import_action_url %}
-    {% url 'master_data:download_format_import_fasilitas_ruangan' as import_download_url %}
-    {% include 'components/import_excel_modal.html' with import_context=import_context import_modal_id='fasilitasRuanganImportModal' import_file_id='fasilitasRuanganImportFile' import_title='Import Data Sarana Prasarana Ruangan' import_action_url=import_action_url import_download_url=import_download_url import_help_text='Gunakan file .xlsx maksimal 7 MB. Data duplikat pada Kode Aset BMN dan Kode Laboratorium akan ditolak.' %}
+    {% url 'master_data:import_bahan_operasional' as import_action_url %}
+    {% url 'master_data:download_format_import_bahan_operasional' as import_download_url %}
+    {% include 'components/import_modal.html' with import_context=import_context import_modal_id='bahanOperasionalImportModal' import_file_id='bahanOperasionalImportFile' import_title='Import Data Bahan Operasional' import_action_url=import_action_url import_download_url=import_download_url import_help_text='Gunakan file .xlsx maksimal 7 MB. Nama barang duplikat akan ditolak.' %}
 {% endif %}
 
 {% if role_access.can_manage_master_data %}

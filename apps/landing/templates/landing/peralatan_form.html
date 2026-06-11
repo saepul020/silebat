@@ -4,7 +4,7 @@
 {% block title %}{{ page_title }}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/landing_manage.css' %}?v=20260608-gallery-picker-v2">
+<link rel="stylesheet" href="{% static 'css/landing_manage.css' %}?v=20260610-spec-input-v1">
 {% endblock %}
 
 {% block content %}
@@ -66,9 +66,48 @@
                         {{ form.fungsi_alat }}
                         {% for error in form.fungsi_alat.errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
                     </div>
-                    <div class="form-group form-group-full {% if form.spesifikasi_alat.errors %}has-error{% endif %}">
-                        <label for="{{ form.spesifikasi_alat.id_for_label }}">{{ form.spesifikasi_alat.label }}</label>
-                        {{ form.spesifikasi_alat }}
+                    <div class="form-group {% if form.metode_pengukuran.errors %}has-error{% endif %}">
+                        <label for="{{ form.metode_pengukuran.id_for_label }}">{{ form.metode_pengukuran.label }}</label>
+                        {{ form.metode_pengukuran }}
+                        <p class="input-help-text input-help-text--tight">Kosongkan inputan ini jika tidak perlu.</p>
+                        {% for error in form.metode_pengukuran.errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
+                    </div>
+                </div>
+
+                <div class="form-row master-form-row master-form-row--1">
+                    <div
+                        class="form-group form-group-full landing-spec {% if form.spesifikasi_alat.errors %}has-error{% endif %}"
+                        data-landing-spec
+                        data-spec-field="{{ form.spesifikasi_alat.html_name }}"
+                        data-spec-max="{{ form.spec_max_length }}"
+                        data-spec-min="{{ form.spec_min_rows }}"
+                    >
+                        <label id="{{ form.spesifikasi_alat.id_for_label }}_label">{{ form.spesifikasi_alat.label }}</label>
+                        <div class="landing-spec__list" data-spec-list>
+                            {% for value in form.spec_rows %}
+                            <div class="landing-spec__row" data-spec-row>
+                                <input
+                                    type="text"
+                                    name="{{ form.spesifikasi_alat.html_name }}"
+                                    id="{{ form.spesifikasi_alat.id_for_label }}_{{ forloop.counter0 }}"
+                                    value="{{ value }}"
+                                    class="form-control"
+                                    maxlength="{{ form.spec_max_length }}"
+                                    placeholder="Spesifikasi {{ forloop.counter }}"
+                                    autocomplete="off"
+                                    aria-labelledby="{{ form.spesifikasi_alat.id_for_label }}_label"
+                                    data-spec-input
+                                >
+                                <button type="button" class="landing-spec__remove" data-spec-remove title="Hapus spesifikasi" aria-label="Hapus spesifikasi">
+                                    <i class="bi bi-trash" aria-hidden="true"></i>
+                                </button>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <button type="button" class="btn btn-secondary landing-spec__add" data-spec-add>
+                            <i class="bi bi-plus-circle"></i>
+                            <span>Tambah Spesifikasi</span>
+                        </button>
                         {% for error in form.spesifikasi_alat.errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
                     </div>
                 </div>
@@ -165,5 +204,5 @@
 
 
 {% block extra_js %}
-<script src="{% static 'js/landing_manage.js' %}?v=20260608-gallery-picker-v2" defer></script>
+<script src="{% static 'js/landing_manage.js' %}?v=20260610-spec-input-v1" defer></script>
 {% endblock %}

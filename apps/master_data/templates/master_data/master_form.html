@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load master_data_tags %}
+{% load master_tags %}
 
 {% block title %}{{ page_title }}{% endblock %}
 
@@ -166,6 +166,49 @@
                                 {% for field_name in row %}
                                     {% with field=form|get_item:field_name %}
                                         {% if field %}
+                                        {% if field_name == 'komponen_pemeliharaan' %}
+                                        <div
+                                            class="form-group form-group-full komponen-rutin {% if field.errors %}has-error{% endif %}"
+                                            data-komponen
+                                            data-komponen-field="{{ field.html_name }}"
+                                            data-komponen-id="{{ field.id_for_label }}"
+                                            data-komponen-max="{{ form.komponen_max_length }}"
+                                            data-komponen-min="{{ form.komponen_min_rows }}"
+                                        >
+                                            <label id="{{ field.id_for_label }}_label">{{ field.label }}</label>
+                                            <div class="komponen-rutin__list" data-komponen-list>
+                                                {% for value in form.komponen_rows %}
+                                                <div class="komponen-rutin__row" data-komponen-row {% if value in form.komponen_locked_values %}data-komponen-locked="true"{% endif %}>
+                                                    <input
+                                                        type="text"
+                                                        name="{{ field.html_name }}"
+                                                        id="{{ field.id_for_label }}_{{ forloop.counter0 }}"
+                                                        value="{{ value }}"
+                                                        class="form-control"
+                                                        maxlength="{{ form.komponen_max_length }}"
+                                                        placeholder="Komponen {{ forloop.counter }}"
+                                                        autocomplete="off"
+                                                        aria-labelledby="{{ field.id_for_label }}_label"
+                                                        data-status-dependent="true"
+                                                        data-komponen-input
+                                                        {% if value in form.komponen_locked_values %}readonly aria-readonly="true" title="Komponen sedang digunakan pada pengajuan pemeliharaan aktif"{% endif %}
+                                                    >
+                                                    <button type="button" class="komponen-rutin__remove {% if value in form.komponen_locked_values %}komponen-rutin__remove--locked{% endif %}" data-komponen-remove title="{% if value in form.komponen_locked_values %}Komponen sedang digunakan pada pengajuan pemeliharaan aktif{% else %}Hapus komponen{% endif %}" aria-label="Hapus komponen" {% if value in form.komponen_locked_values %}disabled{% endif %}>
+                                                        <i class="bi bi-trash komponen-rutin__trash" aria-hidden="true"></i>
+                                                        <i class="bi bi-x-circle-fill komponen-rutin__blocked" aria-hidden="true"></i>
+                                                    </button>
+                                                </div>
+                                                {% endfor %}
+                                            </div>
+                                            <button type="button" class="btn btn-secondary komponen-rutin__add" data-komponen-add>
+                                                <i class="bi bi-plus-circle"></i>
+                                                <span>Tambah Komponen</span>
+                                            </button>
+                                            {% for error in field.errors %}
+                                                <p class="input-error-text">*{{ error }}</p>
+                                            {% endfor %}
+                                        </div>
+                                        {% else %}
                                         <div class="form-group {% if field.errors %}has-error{% endif %} {% if field_name == 'catatan' or row|length == 1 %}form-group-full{% endif %} {% if field_name == 'kode_aset_bmn' and form.status_barang.value|default:'' != 'BMN' %}is-hidden{% endif %}" {% if field_name == 'kode_aset_bmn' %}data-bmn-code-wrapper="true"{% endif %}>
                                             <label for="{{ field.id_for_label }}">{{ field.label }}</label>
                                             {{ field }}
@@ -173,6 +216,7 @@
                                                 <p class="input-error-text">*{{ error }}</p>
                                             {% endfor %}
                                         </div>
+                                        {% endif %}
                                         {% endif %}
                                     {% endwith %}
                                 {% endfor %}

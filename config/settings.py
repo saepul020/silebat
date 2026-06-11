@@ -95,6 +95,7 @@ INSTALLED_APPS = [
     "apps.operasional.apps.OperasionalConfig",
     "apps.master_data.apps.MasterDataConfig",
     "apps.peminjaman.apps.PeminjamanConfig",
+    "apps.pemeliharaan.apps.PemeliharaanConfig",
     "apps.verifikasi.apps.VerifikasiConfig",
     "apps.notifikasi.apps.NotifikasiConfig",
     "apps.pengguna.apps.PenggunaConfig",

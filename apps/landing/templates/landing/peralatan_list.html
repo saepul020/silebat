@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load static master_data_tags %}
+{% load static master_tags %}
 
 {% block title %}{{ page_title }}{% endblock %}
 
@@ -26,7 +26,7 @@
         </div>
     </div>
 
-    {% include 'components/master_entries_control.html' %}
+    {% include 'components/entry_control.html' %}
 
     <div class="table-scroll-area table-scroll--list" tabindex="0" aria-label="Scroll tabel konten peralatan landing page">
         <table class="table-data list-table--landing-equipment">
@@ -94,7 +94,7 @@
         </table>
     </div>
 
-    {% include 'components/master_pagination.html' %}
+    {% include 'components/pagination.html' %}
 </div>
 
 <div class="delete-modal" id="masterDeleteModal">

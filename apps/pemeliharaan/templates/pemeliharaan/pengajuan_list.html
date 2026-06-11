@@ -1,0 +1,112 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/pemeliharaan.css' %}?v=20260610-maintenance-list-v4">
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{{ page_title }}</h1>
+    <p>{{ page_subtitle }}</p>
+</div>
+
+<div class="table-wrapper table-panel pemeliharaan-panel">
+    <div class="table-toolbar">
+        <div class="table-toolbar-actions">
+            <a href="{% url 'pemeliharaan:tambah' %}" class="btn btn-primary"><i class="bi bi-plus-circle"></i>&nbsp;Tambah Pengajuan</a>
+        </div>
+    </div>
+
+    {% include 'components/entry_control.html' %}
+
+    <div class="table-scroll-area table-scroll--list" tabindex="0" aria-label="Scroll tabel pengajuan pemeliharaan">
+        <table class="table-data list-table--pemeliharaan">
+            <thead>
+                <tr>
+                    <th>No</th>
+                    <th>Nomor</th>
+                    <th>Alat</th>
+                    <th>Tanggal Pemeriksaan</th>
+                    <th>Pemohon</th>
+                    <th>Kondisi</th>
+                    <th>Proses</th>
+                    <th>Aksi</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for obj in items %}
+                <tr>
+                    <td>{{ start_index|add:forloop.counter0 }}</td>
+                    <td>{{ obj.nomor_pengajuan|default:'-' }}</td>
+                    <td>
+                        <div class="table-title-cell">
+                            <strong>{{ obj.snapshot_nama_barang|default:'-' }}</strong>
+                            <span>{{ obj.snapshot_kode_laboratorium|default:'-' }} - {{ obj.snapshot_tipe_merek_barang|default:'-' }}</span>
+                        </div>
+                    </td>
+                    <td>{{ obj.tanggal_pemeriksaan|date:'d M Y H:i' }}</td>
+                    <td>{{ obj.pemohon.nama_lengkap|default:obj.pemohon.username }}</td>
+                    <td>
+                        {% if obj.perlu_perbaikan %}
+                            <span class="badge badge-warning">Perlu Perbaikan</span>
+                        {% else %}
+                            <span class="badge badge-success">Baik</span>
+                        {% endif %}
+                    </td>
+                    <td class="cell-status">
+                        <span class="status-badge {{ obj.status_badge_class }}">{{ obj.status_label }}</span>
+                    </td>
+                    <td class="cell-action">
+                        <div class="table-action-group">
+                            {% if obj.can_kirim %}
+                            <button
+                                type="button"
+                                class="btn btn-primary btn-sm"
+                                title="Kirim pengajuan"
+                                data-maint-send-button
+                                data-send-url="{% url 'pemeliharaan:kirim' obj.pk %}"
+                                data-send-number="{{ obj.nomor_pengajuan|default:'-' }}"
+                            >
+                                <i class="bi bi-send-fill"></i>
+                            </button>
+                            {% else %}
+                            <button type="button" class="btn btn-secondary btn-sm" title="Pengajuan sudah masuk proses verifikasi" disabled>
+                                <i class="bi bi-send-fill"></i>
+                            </button>
+                            {% endif %}
+                            {% if obj.can_edit %}
+                            <a href="{% url 'pemeliharaan:edit' obj.pk %}" class="btn btn-warning btn-sm" title="Edit pengajuan"><i class="bi bi-pencil-square"></i></a>
+                            {% else %}
+                            <button type="button" class="btn btn-secondary btn-sm" title="Pengajuan tidak dapat diedit pada tahap ini" disabled><i class="bi bi-pencil-square"></i></button>
+                            {% endif %}
+                            <a href="{% url 'pemeliharaan:detail' obj.pk %}" class="btn btn-secondary btn-sm"><i class="bi bi-eye-fill"></i></a>
+                            {% if can_delete_pengajuan %}
+                            <form method="post" action="{% url 'pemeliharaan:hapus' obj.pk %}">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Hapus pengajuan pemeliharaan ini?')"><i class="bi bi-trash3-fill"></i></button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8"><div class="empty-state">Belum ada pengajuan pemeliharaan.</div></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% include 'components/pagination.html' %}
+</div>
+
+{% include 'pemeliharaan/kirim_modal.html' %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/pemeliharaan.js' %}?v=20260610-maintenance-list-v4" defer></script>
+{% endblock %}

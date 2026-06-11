@@ -14,7 +14,7 @@
         <a href="{% url 'operasional:tambah_survei' %}" class="btn btn-primary"><i class="bi bi-plus-circle"></i>&nbsp;Tambah Survei</a>
     </div>
 
-    {% include 'components/master_entries_control.html' %}
+    {% include 'components/entry_control.html' %}
 
     <div class="table-scroll-area table-scroll--list" tabindex="0" aria-label="Scroll tabel data kegiatan survei">
         <table class="table-data list-table--operasional-simple">
@@ -54,7 +54,7 @@
         </table>
     </div>
 
-    {% include 'components/master_pagination.html' %}
+    {% include 'components/pagination.html' %}
 </div>
 
 <div class="delete-modal" id="operasionalDeleteModal">

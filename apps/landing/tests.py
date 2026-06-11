@@ -55,7 +55,7 @@ class LandingSeoRouteTests(SimpleTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, '<meta name="description"')
         self.assertContains(response, '<link rel="canonical" href="http://testserver/"')
-        self.assertContains(response, "foto-kegiatan-gl-mobile.webp")
+        self.assertContains(response, "kegiatan-mobile.webp")
         self.assertContains(response, 'fetchpriority="high"')
         self.assertContains(response, "vendor/chartjs/chart.umd.min.js")
         self.assertNotContains(response, "fonts.googleapis.com")
@@ -103,6 +103,20 @@ class LandingEquipmentGalleryTests(TestCase):
         self.assertTrue(
             all(photo.foto.storage.exists(photo.foto.name) for photo in card.fotos.all())
         )
+
+    def test_form_saves_spec_points_and_optional_method(self):
+        form = LandingPeralatanCardForm(
+            card_form_data(
+                metode_pengukuran="Geolistrik",
+                spesifikasi_alat=["Kabel elektroda", "Receiver multi kanal"],
+            )
+        )
+
+        self.assertTrue(form.is_valid(), form.errors)
+        card = form.save()
+
+        self.assertEqual(card.metode_pengukuran, "Geolistrik")
+        self.assertEqual(card.spesifikasi_alat, "Kabel elektroda\nReceiver multi kanal")
 
     def test_form_rejects_more_than_five_photos(self):
         files = MultiValueDict(
@@ -233,6 +247,31 @@ class LandingEquipmentGalleryTests(TestCase):
         self.assertContains(response, "data-equipment-gallery", count=1)
         self.assertContains(response, "data-gallery-slide", count=2)
         self.assertContains(response, "data-equipment-lightbox", count=1)
+
+    def test_public_landing_renders_equipment_card_fields(self):
+        LandingPeralatanCard.objects.create(
+            kategori_barang=KategoriBarangLaboratoriumChoices.GEOLISTRIK,
+            nama_barang="Resistivity Meter",
+            jenis_barang="Geolistrik",
+            merek_tipe_alat="AGI SuperSting R8",
+            fungsi_alat="Survei resistivitas",
+            metode_pengukuran="Electrical Resistivity Tomography",
+            spesifikasi_alat="Kabel elektroda\nReceiver multi kanal",
+            ringkasan_alat="Unit geolistrik untuk pemetaan bawah permukaan.",
+            urutan=1,
+        )
+
+        response = self.client.get(reverse("landing:home"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '<div class="peralatan-name">AGI SuperSting R8</div>', html=True)
+        self.assertContains(response, '<div class="peralatan-brand">Resistivity Meter</div>', html=True)
+        self.assertContains(response, 'data-equipment-filter')
+        self.assertContains(response, 'data-default-category="Geolistrik"')
+        self.assertContains(response, 'data-equipment-category="Geolistrik"')
+        self.assertContains(response, "Electrical Resistivity Tomography")
+        self.assertContains(response, '<span>Kabel elektroda</span>', html=True)
+        self.assertContains(response, '<span>Receiver multi kanal</span>', html=True)
 
     def test_super_admin_edit_page_uses_multiple_gallery_input(self):
         role, _ = Role.objects.get_or_create(nama="Super Admin")

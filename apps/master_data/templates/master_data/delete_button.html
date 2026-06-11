@@ -1,0 +1,12 @@
+{% load master_tags %}
+
+{% if item.delete_block_message %}
+<button type="button" class="btn btn-danger btn-sm master-delete-lock" disabled title="{{ item.delete_block_message }}" aria-label="Data tidak dapat dihapus">
+    <i class="bi bi-trash3-fill master-delete-lock__trash" aria-hidden="true"></i>
+    <i class="bi bi-x-circle-fill master-delete-lock__blocked" aria-hidden="true"></i>
+</button>
+{% else %}
+<button type="button" class="btn btn-danger btn-sm js-delete-btn" data-delete-modal="master" data-delete-url="{{ delete_url }}" data-item-name="{{ item.nama_barang|display_dash }}" data-item-meta="{{ item_meta }}">
+    <i class="bi bi-trash3-fill"></i>
+</button>
+{% endif %}

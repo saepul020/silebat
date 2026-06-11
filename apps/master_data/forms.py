@@ -15,10 +15,56 @@ from .models import (
     FasilitasRuangan,
     PeralatanLaboratorium,
     KategoriBarangLaboratoriumChoices,
+    KOMPONEN_MAX_LENGTH,
     KetersediaanChoices,
     KondisiBarangChoices,
     StatusBarangChoices,
 )
+
+
+KOMPONEN_MIN_ROWS = 1
+
+
+def _iter_komponen(values):
+    if values in (None, ""):
+        return []
+
+    if isinstance(values, str):
+        normalized_text = (
+            values.replace("\r\n", "\n")
+            .replace("\r", "\n")
+            .replace(";", "\n")
+            .replace("|", "\n")
+        )
+        return normalized_text.split("\n")
+
+    if isinstance(values, (list, tuple)):
+        return values
+
+    return [values]
+
+
+def validate_komponen(values):
+    components = []
+    errors = []
+
+    for index, raw_value in enumerate(_iter_komponen(values), start=1):
+        text = str(raw_value or "").strip()
+        if not text:
+            continue
+        if len(text) > KOMPONEN_MAX_LENGTH:
+            errors.append(
+                "Komponen Pemeliharaan Rutin nomor "
+                f"{index} maksimal {KOMPONEN_MAX_LENGTH} karakter."
+            )
+        components.append(text)
+
+    return components, errors
+
+
+def normalize_komponen(values):
+    components, _errors = validate_komponen(values)
+    return components
 
 
 class BaseMasterDataForm(forms.ModelForm):
@@ -467,9 +513,18 @@ class AssetBaseForm(BaseMasterDataForm):
 
 
 class BarangLaboratoriumForm(AssetBaseForm):
+    komponen_pemeliharaan = forms.CharField(
+        label="Komponen Pemeliharaan Rutin",
+        required=False,
+        widget=forms.HiddenInput(),
+    )
+
     class Meta(AssetBaseForm.Meta):
         model = BarangLaboratorium
-        fields = AssetBaseForm.Meta.fields + ["kategori_barang"]
+        fields = AssetBaseForm.Meta.fields + [
+            "kategori_barang",
+            "komponen_pemeliharaan",
+        ]
         labels = {
             "status_barang": "Status Barang",
             "nama_barang": "Nama Barang",
@@ -486,6 +541,7 @@ class BarangLaboratoriumForm(AssetBaseForm):
             "foto_barang": "Foto Barang",
             "ik_alat": "IK Alat (PDF)",
             "catatan": "Catatan",
+            "komponen_pemeliharaan": "Komponen Pemeliharaan Rutin",
         }
 
     def __init__(self, *args, **kwargs):
@@ -500,6 +556,72 @@ class BarangLaboratoriumForm(AssetBaseForm):
             ("", "Pilih kategori barang"),
             *KategoriBarangLaboratoriumChoices.choices,
         ]
+        self.fields["komponen_pemeliharaan"].widget.attrs.update(
+            {
+                "data-status-dependent": "true",
+                "maxlength": str(KOMPONEN_MAX_LENGTH),
+            }
+        )
+
+    @property
+    def komponen_max_length(self):
+        return KOMPONEN_MAX_LENGTH
+
+    @property
+    def komponen_min_rows(self):
+        return KOMPONEN_MIN_ROWS
+
+    @property
+    def komponen_locked_values(self):
+        if not getattr(self.instance, "pk", None):
+            return set()
+        try:
+            from apps.pemeliharaan.models import (
+                ACTIVE_PEMELIHARAAN_STEPS,
+                PemeliharaanItem,
+            )
+        except Exception:
+            return set()
+        return set(
+            PemeliharaanItem.objects.filter(
+                pengajuan__alat=self.instance,
+                pengajuan__current_step__in=ACTIVE_PEMELIHARAAN_STEPS,
+            ).values_list("komponen", flat=True)
+        )
+
+    def _get_komponen_values(self):
+        field_name = self.add_prefix("komponen_pemeliharaan")
+        if self.is_bound:
+            return list(self.data.getlist(field_name))
+
+        initial_value = self.initial.get("komponen_pemeliharaan")
+        if initial_value is None:
+            initial_value = getattr(self.instance, "komponen_pemeliharaan", [])
+        return normalize_komponen(initial_value)
+
+    @property
+    def komponen_rows(self):
+        values = [str(value or "") for value in self._get_komponen_values()]
+        row_count = max(KOMPONEN_MIN_ROWS, len(values))
+        return values + [""] * (row_count - len(values))
+
+    def clean_komponen_pemeliharaan(self):
+        values = (
+            self.data.getlist(self.add_prefix("komponen_pemeliharaan"))
+            if self.is_bound
+            else self.cleaned_data.get("komponen_pemeliharaan")
+        )
+        components, errors = validate_komponen(values)
+        if errors:
+            raise forms.ValidationError(errors)
+        locked_values = self.komponen_locked_values
+        removed_values = sorted(locked_values - set(components))
+        if removed_values:
+            raise forms.ValidationError(
+                "Komponen yang sedang digunakan pada pengajuan pemeliharaan aktif "
+                f"tidak boleh dihapus: {', '.join(removed_values)}."
+            )
+        return components
 
 
 class VolumeBaikAssetFormMixin:

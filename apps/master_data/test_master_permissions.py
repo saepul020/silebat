@@ -5,7 +5,7 @@ from django.urls import reverse
 
 from apps.pengguna.models import Role, User
 
-from .models import (
+from apps.master_data.models import (
     BahanOperasional,
     BarangLaboratorium,
     KategoriBarangLaboratoriumChoices,

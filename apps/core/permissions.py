@@ -68,6 +68,10 @@ def can_access_peminjaman_app(user):
     return get_role_name(user) in VERIFICATION_ROLES
 
 
+def can_access_pemeliharaan_app(user):
+    return get_role_name(user) in VERIFICATION_ROLES
+
+
 def can_access_verifikasi_app(user):
     return get_role_name(user) in VERIFICATION_ROLES
 
@@ -125,6 +129,12 @@ def app_access_required(app_name):
             'Anda tidak memiliki akses ke app "Permintaan".',
         )
 
+    if app_name == "pemeliharaan":
+        return user_passes_access(
+            can_access_pemeliharaan_app,
+            'Anda tidak memiliki akses ke app "Pemeliharaan".',
+        )
+
     if app_name == "verifikasi":
         return user_passes_access(
             can_access_verifikasi_app,
@@ -146,6 +156,7 @@ def build_role_access(user):
         "show_permintaan": role_name in VERIFICATION_ROLES,
         "show_permintaan_all_items": role_name in FULL_LAB_ACCESS_ROLES,
         "show_permintaan_peminjaman_only": role_name == ROLE_USER,
+        "show_pemeliharaan": role_name in VERIFICATION_ROLES,
         "show_verifikasi": role_name in VERIFICATION_ROLES,
         "show_laporan": role_name in REPORT_VERIFICATION_ROLES,
         "show_laporan_all_items": role_name in REPORT_VERIFICATION_ROLES - {ROLE_USER},

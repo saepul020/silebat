@@ -94,8 +94,8 @@ class DashboardInventoryChartTests(TestCase):
         response = self.client.get(reverse("dashboard:index"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'id="bahanOperasionalChart"')
-        self.assertContains(response, 'id="barangPenunjangChart"')
+        self.assertContains(response, 'id="grafikBahan"')
+        self.assertContains(response, 'id="grafikPenunjang"')
         self.assertEqual(response.context["bahan_chart"]["items"][0]["label"], "Alpha Bahan")
         self.assertEqual(response.context["penunjang_chart"]["items"][0]["rusak"], 3)
 
@@ -107,5 +107,5 @@ class DashboardInventoryChartTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertNotIn("bahan_chart", response.context)
         self.assertNotIn("penunjang_chart", response.context)
-        self.assertNotContains(response, 'id="bahanOperasionalChart"')
-        self.assertNotContains(response, 'id="barangPenunjangChart"')
+        self.assertNotContains(response, 'id="grafikBahan"')
+        self.assertNotContains(response, 'id="grafikPenunjang"')

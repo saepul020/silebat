@@ -1,10 +1,16 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
-from apps.core.list_pagination import paginate_list
+from apps.core.list_pagination import (
+    LIST_ENTRY_OPTIONS,
+    LIST_SEARCH_MAX_LENGTH,
+    normalize_entries,
+    normalize_search,
+)
 from apps.core.permissions import (
     ROLE_ADMIN_LAB,
     ROLE_KEPALA_LAB,
@@ -25,6 +31,12 @@ from apps.peminjaman.models import (
     StepChoices,
     build_asal_peminjaman_maps,
     resolve_asal_peminjaman_label,
+)
+from apps.pemeliharaan.models import (
+    JenisFotoPemeliharaanChoices,
+    KeputusanPemeliharaanChoices,
+    PemeliharaanPengajuan,
+    StepPemeliharaanChoices,
 )
 
 
@@ -142,6 +154,26 @@ ACTION_META = {
         "note_placeholder": "Tulis catatan Ketidaksesuaian",
         "note_help_text": "",
     },
+    "kembalikan": {
+        "button_class": "btn-warning",
+        "submit_class": "btn-warning",
+        "requires_note": True,
+        "modal_title": "Input Catatan Pengembalian",
+        "modal_submit_label": "Kirim Pengembalian",
+        "note_label": "Catatan Pengembalian:",
+        "note_placeholder": "Tulis alasan pengajuan dikembalikan.",
+    },
+}
+
+PEMELIHARAAN_ACTION_CHOICES = {
+    StepPemeliharaanChoices.KEPALA_LAB: [
+        ("kembalikan", "Tidak Setuju"),
+        ("setujui", "Setujui"),
+    ],
+    StepPemeliharaanChoices.PIMPINAN: [
+        ("kembalikan", "Tidak Setuju"),
+        ("setujui", "Setujui"),
+    ],
 }
 
 def _is_return_verification(obj):
@@ -281,6 +313,127 @@ def _get_pending_queryset(user):
         return qs.filter(pengajuan_filter | pengembalian_filter).distinct()
     return qs.none()
 
+
+def _get_pending_pemeliharaan_queryset(user):
+    role_name = get_role_name(user)
+    qs = PemeliharaanPengajuan.objects.select_related("pemohon", "alat").prefetch_related(
+        "items"
+    )
+    if role_name == ROLE_SUPER_ADMIN:
+        return qs.filter(
+            current_step__in=[
+                StepPemeliharaanChoices.KEPALA_LAB,
+                StepPemeliharaanChoices.PIMPINAN,
+            ]
+        )
+    if role_name == ROLE_KEPALA_LAB:
+        return qs.filter(current_step=StepPemeliharaanChoices.KEPALA_LAB)
+    if role_name == ROLE_PIMPINAN:
+        return qs.filter(current_step=StepPemeliharaanChoices.PIMPINAN)
+    return qs.none()
+
+
+def _get_mixed_sort_value(item):
+    value = getattr(item, "submitted_at", None) or getattr(item, "updated_at", None)
+    return value or timezone.now()
+
+
+def _maintenance_search_text(item):
+    return " ".join(
+        [
+            item.nomor_pengajuan or "",
+            item.nama_pemohon or "",
+            item.alat_label or "",
+            item.status_label or "",
+            item.kondisi_ringkas or "",
+        ]
+    )
+
+
+def _paginate_verifikasi_items(request, peminjaman_qs, pemeliharaan_qs):
+    selected_entries = normalize_entries(request.GET.get("entries"))
+    search_query = normalize_search(request.GET.get("q"))
+
+    if search_query:
+        peminjaman_filter = Q()
+        for field in VERIFIKASI_LIST_SEARCH_FIELDS:
+            peminjaman_filter |= Q(**{f"{field}__icontains": search_query})
+        peminjaman_items = list(peminjaman_qs.filter(peminjaman_filter).distinct())
+        pemeliharaan_items = [
+            item
+            for item in pemeliharaan_qs
+            if search_query.casefold() in _maintenance_search_text(item).casefold()
+        ]
+    else:
+        peminjaman_items = list(peminjaman_qs)
+        pemeliharaan_items = list(pemeliharaan_qs)
+
+    items = sorted(
+        [*peminjaman_items, *pemeliharaan_items],
+        key=_get_mixed_sort_value,
+        reverse=True,
+    )
+    total_count = len(items)
+
+    query_params = request.GET.copy()
+    query_params.pop("entries", None)
+    query_params.pop("page", None)
+    if search_query:
+        query_params["q"] = search_query
+    else:
+        query_params.pop("q", None)
+    base_query = query_params.urlencode()
+
+    context = {
+        "selected_entries": selected_entries,
+        "has_entries_filter": bool(request.GET.get("entries")),
+        "entry_options": LIST_ENTRY_OPTIONS,
+        "search_param": "q",
+        "search_query": search_query,
+        "search_max_length": LIST_SEARCH_MAX_LENGTH,
+        "has_search": bool(search_query),
+        "list_filter_params": [],
+        "total_count": total_count,
+        "start_index": 0,
+        "end_index": 0,
+        "page_obj": None,
+        "is_paginated": False,
+        "page_range": [],
+        "show_all_entries": False,
+        "pagination_base_query": f"{base_query}&" if base_query else "",
+    }
+
+    if selected_entries == "all":
+        context.update(
+            {
+                "items": items,
+                "start_index": 1 if total_count else 0,
+                "end_index": total_count,
+                "show_all_entries": True,
+            }
+        )
+        return context
+
+    paginator = Paginator(items, int(selected_entries))
+    page_obj = paginator.get_page(request.GET.get("page", 1))
+    page_range = paginator.get_elided_page_range(
+        page_obj.number,
+        on_each_side=1,
+        on_ends=1,
+    )
+    context.update(
+        {
+            "items": page_obj.object_list,
+            "page_obj": page_obj,
+            "is_paginated": page_obj.has_other_pages(),
+            "page_range": page_range,
+            "start_index": page_obj.start_index() if total_count else 0,
+            "end_index": page_obj.end_index() if total_count else 0,
+        }
+    )
+    return context
+
+
 def _user_can_act(user, obj):
     role_name = get_role_name(user)
     if role_name == ROLE_SUPER_ADMIN:
@@ -315,6 +468,17 @@ def _user_can_act(user, obj):
         return role_name == ROLE_KEPALA_LAB
     if obj.current_step == StepChoices.PIMPINAN:
         return _is_related_pimpinan(user, obj)
+    return False
+
+
+def _user_can_act_pemeliharaan(user, obj):
+    role_name = get_role_name(user)
+    if role_name == ROLE_SUPER_ADMIN:
+        return obj.current_step in PEMELIHARAAN_ACTION_CHOICES
+    if obj.current_step == StepPemeliharaanChoices.KEPALA_LAB:
+        return role_name == ROLE_KEPALA_LAB
+    if obj.current_step == StepPemeliharaanChoices.PIMPINAN:
+        return role_name == ROLE_PIMPINAN
     return False
 
 def _action_requires_note(aksi):
@@ -555,11 +719,10 @@ def _get_detail_context(obj, verification_mode):
 
 @login_required
 def index(request):
-    queryset = _get_pending_queryset(request.user)
-    pagination_context = paginate_list(
+    pagination_context = _paginate_verifikasi_items(
         request,
-        queryset,
-        search_fields=VERIFIKASI_LIST_SEARCH_FIELDS,
+        _get_pending_queryset(request.user),
+        _get_pending_pemeliharaan_queryset(request.user),
     )
     context = {
         "items": pagination_context["items"],
@@ -679,6 +842,101 @@ def detail(request, pk):
         },
     )
 
+
+def _get_pemeliharaan_detail_context(obj):
+    items = []
+    pemeriksaan_fotos = []
+    for item in obj.items.all():
+        fotos = list(item.fotos.all())
+        pemeriksaan_fotos.extend(
+            foto for foto in fotos if foto.jenis == JenisFotoPemeliharaanChoices.PEMERIKSAAN
+        )
+        item.foto_perbaikan = [
+            foto for foto in fotos if foto.jenis == JenisFotoPemeliharaanChoices.PERBAIKAN
+        ]
+        item.foto_kerusakan = [
+            foto for foto in fotos if foto.jenis == JenisFotoPemeliharaanChoices.KERUSAKAN
+        ]
+        items.append(item)
+
+    return {
+        "items": items,
+        "pemeriksaan_fotos": pemeriksaan_fotos,
+        "page_title": "Detail Verifikasi Pemeliharaan",
+        "page_subtitle": "Verifikasi pengajuan pemeliharaan peralatan survei lapangan.",
+        "timeline_title": "Riwayat Verifikasi",
+    }
+
+
+@login_required
+def detail_pemeliharaan(request, pk):
+    obj = get_object_or_404(
+        PemeliharaanPengajuan.objects.select_related("pemohon", "alat").prefetch_related(
+            "items__fotos",
+            "timeline_entries__actor",
+        ),
+        pk=pk,
+    )
+
+    if not _user_can_act_pemeliharaan(request.user, obj):
+        return deny_access(
+            request,
+            "Anda tidak memiliki giliran verifikasi untuk pengajuan pemeliharaan ini.",
+        )
+
+    action_choices = PEMELIHARAAN_ACTION_CHOICES.get(obj.current_step, [])
+    action_buttons = [
+        button for button in _build_action_buttons(action_choices) if button
+    ]
+    selected_action = ""
+    catatan_value = ""
+    open_action_modal = False
+
+    if request.method == "POST":
+        form = VerifikasiAksiForm(request.POST, action_choices=action_choices)
+        selected_action = (request.POST.get("aksi") or "").strip()
+        catatan_value = (request.POST.get("catatan") or "").strip()
+        if form.is_valid():
+            aksi = form.cleaned_data["aksi"]
+            catatan = (form.cleaned_data.get("catatan") or "").strip()
+            if _action_requires_note(aksi) and not catatan:
+                error_label = ACTION_META.get(aksi, {}).get(
+                    "note_label", "Catatan / Alasan"
+                )
+                form.add_error("catatan", f"*{error_label.replace(':', '').strip()} wajib diisi.")
+                open_action_modal = True
+                selected_action = aksi
+            else:
+                _process_pemeliharaan_action(request, obj, aksi, catatan)
+                return redirect("verifikasi:index")
+        elif _action_requires_note(selected_action):
+            open_action_modal = True
+    else:
+        form = VerifikasiAksiForm(action_choices=action_choices)
+
+    active_action = _get_action_config(selected_action, action_choices)
+
+    return render(
+        request,
+        "verifikasi/verifikasi_detail.html",
+        {
+            "obj": obj,
+            "form": form,
+            "action_buttons": action_buttons,
+            "active_action": active_action,
+            "selected_action": selected_action,
+            "catatan_value": catatan_value,
+            "open_action_modal": open_action_modal,
+            "verification_mode": "pemeliharaan",
+            "can_delete_pengajuan": False,
+            "show_return_process_link": False,
+            "can_edit_pengajuan": False,
+            "can_edit_pengembalian": False,
+            **_get_pemeliharaan_detail_context(obj),
+        },
+    )
+
+
 def _reject_peminjaman(request, obj, status_field, stage, timeline_action, user, catatan):
     setattr(obj, status_field, DecisionChoices.REJECTED)
     obj.current_step = StepChoices.REJECTED
@@ -687,13 +945,107 @@ def _reject_peminjaman(request, obj, status_field, stage, timeline_action, user,
     obj.add_timeline(stage, timeline_action, user, catatan)
     messages.success(request, "Pengajuan berhasil ditolak.")
 
+
+def _process_pemeliharaan_action(request, obj, aksi, catatan):
+    now = timezone.now()
+    user = request.user
+
+    if obj.current_step == StepPemeliharaanChoices.KEPALA_LAB:
+        obj.kepala_lab_by = user
+        obj.kepala_lab_at = now
+        obj.kepala_lab_note = catatan
+        if aksi == "setujui":
+            obj.kepala_lab_status = KeputusanPemeliharaanChoices.APPROVED
+            if obj.perlu_pimpinan:
+                obj.current_step = StepPemeliharaanChoices.PIMPINAN
+                obj.add_timeline(
+                    "Kepala Lab",
+                    "Pengajuan pemeliharaan disetujui Kepala Lab dan diteruskan ke Pimpinan",
+                    user,
+                    catatan,
+                )
+                messages.success(
+                    request,
+                    "Pengajuan pemeliharaan disetujui dan diteruskan ke Pimpinan.",
+                )
+            else:
+                obj.current_step = StepPemeliharaanChoices.SELESAI
+                obj.add_timeline(
+                    "Kepala Lab",
+                    "Pengajuan pemeliharaan disetujui Kepala Lab dan dinyatakan selesai",
+                    user,
+                    catatan,
+                )
+                messages.success(
+                    request,
+                    "Pengajuan pemeliharaan disetujui dan proses selesai.",
+                )
+        elif aksi == "kembalikan":
+            obj.kepala_lab_status = KeputusanPemeliharaanChoices.REVISION
+            obj.current_step = StepPemeliharaanChoices.DIKEMBALIKAN
+            obj.add_timeline(
+                "Kepala Lab",
+                "Pengajuan pemeliharaan dikembalikan oleh Kepala Lab",
+                user,
+                catatan,
+            )
+            messages.success(
+                request,
+                "Pengajuan pemeliharaan dikembalikan ke pemohon.",
+            )
+        else:
+            messages.error(request, "Aksi verifikasi pemeliharaan tidak valid.")
+            return
+        obj.save()
+        if obj.current_step == StepPemeliharaanChoices.SELESAI:
+            obj.pulihkan_kondisi_alat_jika_selesai()
+        return
+
+    if obj.current_step == StepPemeliharaanChoices.PIMPINAN:
+        obj.pimpinan_by = user
+        obj.pimpinan_at = now
+        obj.pimpinan_note = catatan
+        if aksi == "setujui":
+            obj.pimpinan_status = KeputusanPemeliharaanChoices.APPROVED
+            obj.current_step = StepPemeliharaanChoices.SELESAI
+            obj.add_timeline(
+                "Pimpinan",
+                "Pengajuan pemeliharaan disetujui Pimpinan dan dinyatakan selesai",
+                user,
+                catatan,
+            )
+            messages.success(
+                request,
+                "Pengajuan pemeliharaan disetujui Pimpinan dan proses selesai.",
+            )
+        elif aksi == "kembalikan":
+            obj.pimpinan_status = KeputusanPemeliharaanChoices.REVISION
+            obj.current_step = StepPemeliharaanChoices.DIKEMBALIKAN
+            obj.add_timeline(
+                "Pimpinan",
+                "Pengajuan pemeliharaan dikembalikan oleh Pimpinan",
+                user,
+                catatan,
+            )
+            messages.success(
+                request,
+                "Pengajuan pemeliharaan dikembalikan ke pemohon.",
+            )
+        else:
+            messages.error(request, "Aksi verifikasi pemeliharaan tidak valid.")
+            return
+        obj.save()
+        if obj.current_step == StepPemeliharaanChoices.SELESAI:
+            obj.pulihkan_kondisi_alat_jika_selesai()
+        return
+
 def _process_action(request, obj, aksi, catatan, verification_mode="pengajuan"):
     now = timezone.now()
     user = request.user
 
     if verification_mode == "pengembalian":
         if obj.return_current_step == ReturnStepChoices.TEKNISI_VERIFICATION:
-            next_step = obj.get_next_pengembalian_step_after_teknisi_verification()
+            next_step = obj.get_step_pengembalian()
             obj.return_current_step = next_step
             obj.save(update_fields=["return_current_step", "updated_at"])
             if next_step == ReturnStepChoices.COMPLETED:
@@ -726,7 +1078,7 @@ def _process_action(request, obj, aksi, catatan, verification_mode="pengajuan"):
             obj.return_user_verification_note = catatan
             if aksi == "sesuai":
                 obj.return_user_verification_status = DecisionChoices.APPROVED
-                next_step = obj.get_next_pengembalian_step_after_user_verification()
+                next_step = obj.get_step_pengembalian()
                 obj.return_current_step = next_step
                 obj.save(
                     update_fields=[

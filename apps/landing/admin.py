@@ -20,6 +20,7 @@ class LandingPeralatanCardAdmin(admin.ModelAdmin):
         "jenis_barang",
         "merek_tipe_alat",
         "fungsi_alat",
+        "metode_pengukuran",
         "spesifikasi_alat",
     )
     ordering = ("urutan", "nama_barang")

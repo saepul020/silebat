@@ -20,6 +20,7 @@ document.addEventListener('DOMContentLoaded', function () {
         initUploadPreviewControls,
         initInlineFileProxyControls,
         initMasterDataFormBehavior,
+        initKomponenRutin,
         initMasterDataFormValidation,
         initOperasionalFormValidation,
         initPenggunaCreateFormValidation,
@@ -1917,7 +1918,6 @@ function initMasterDataFormBehavior() {
         return;
     }
 
-    const dependentFields = [];
     const alwaysDisabledFieldIds = new Set([
         'id_total_volume_info',
         'id_ketersediaan_info',
@@ -1925,19 +1925,25 @@ function initMasterDataFormBehavior() {
         'id_tanggal_perbaikan_info'
     ]);
 
-    statusDependentGroups.forEach(function (group) {
-        const interactiveFields = group.querySelectorAll('input, select, textarea, button');
+    function getDependentFields() {
+        const fields = [];
 
-        interactiveFields.forEach(function (field) {
-            if (field.type === 'hidden') {
-                return;
-            }
+        statusDependentGroups.forEach(function (group) {
+            const interactiveFields = group.querySelectorAll('input, select, textarea, button');
 
-            if (!dependentFields.includes(field)) {
-                dependentFields.push(field);
-            }
+            interactiveFields.forEach(function (field) {
+                if (field.type === 'hidden') {
+                    return;
+                }
+
+                if (!fields.includes(field)) {
+                    fields.push(field);
+                }
+            });
         });
-    });
+
+        return fields;
+    }
 
     function hasStatusValue() {
         return Boolean(statusField && (statusField.value || '').trim());
@@ -1972,7 +1978,7 @@ function initMasterDataFormBehavior() {
             group.setAttribute('aria-disabled', unlocked ? 'false' : 'true');
         });
 
-        dependentFields.forEach(function (field) {
+        getDependentFields().forEach(function (field) {
             const shouldStayDisabled = alwaysDisabledFieldIds.has(field.id) || field.getAttribute('data-volume-locked') === 'true';
             setFieldDisabledState(field, !unlocked || shouldStayDisabled);
         });
@@ -2297,6 +2303,133 @@ function initMasterDataFormBehavior() {
     if (stokMinimumField) {
         stokMinimumField.addEventListener('input', syncKetersediaanPreview);
     }
+}
+
+function initKomponenRutin() {
+    const groups = document.querySelectorAll('[data-komponen]');
+
+    if (!groups.length) {
+        return;
+    }
+
+    groups.forEach(function (group) {
+        const list = group.querySelector('[data-komponen-list]');
+        const addButton = group.querySelector('[data-komponen-add]');
+        const fieldName = group.getAttribute('data-komponen-field') || 'komponen_pemeliharaan';
+        const fieldId = group.getAttribute('data-komponen-id') || 'id_komponen_pemeliharaan';
+        const maxLength = Number(group.getAttribute('data-komponen-max') || 100);
+        const minRows = Math.max(Number(group.getAttribute('data-komponen-min') || 1), 1);
+        const labelId = fieldId + '_label';
+
+        if (!list || !addButton) {
+            return;
+        }
+
+        function createRemoveButton() {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'komponen-rutin__remove';
+            button.setAttribute('data-komponen-remove', 'true');
+            button.setAttribute('title', 'Hapus komponen');
+            button.setAttribute('aria-label', 'Hapus komponen');
+
+            const icon = document.createElement('i');
+            icon.className = 'bi bi-trash';
+            button.appendChild(icon);
+
+            return button;
+        }
+
+        function createRow(value) {
+            const row = document.createElement('div');
+            row.className = 'komponen-rutin__row';
+            row.setAttribute('data-komponen-row', 'true');
+
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.name = fieldName;
+            input.value = value || '';
+            input.className = 'form-control';
+            input.maxLength = maxLength;
+            input.autocomplete = 'off';
+            input.setAttribute('aria-labelledby', labelId);
+            input.setAttribute('data-status-dependent', 'true');
+            input.setAttribute('data-komponen-input', 'true');
+
+            row.appendChild(input);
+            row.appendChild(createRemoveButton());
+            return row;
+        }
+
+        function getRows() {
+            return Array.from(list.querySelectorAll('[data-komponen-row]'));
+        }
+
+        function syncRows() {
+            const rows = getRows();
+
+            rows.forEach(function (row, index) {
+                const input = row.querySelector('[data-komponen-input]');
+                const removeButton = row.querySelector('[data-komponen-remove]');
+
+                if (input) {
+                    input.name = fieldName;
+                    input.id = fieldId + '_' + index;
+                    input.placeholder = 'Komponen ' + (index + 1);
+                    input.maxLength = maxLength;
+                    input.setAttribute('aria-labelledby', labelId);
+                }
+
+                if (removeButton) {
+                    removeButton.disabled = row.dataset.komponenLocked === 'true' || rows.length <= minRows;
+                }
+            });
+        }
+
+        while (getRows().length < minRows) {
+            list.appendChild(createRow(''));
+        }
+
+        syncRows();
+
+        addButton.addEventListener('click', function () {
+            const row = createRow('');
+            list.appendChild(row);
+            syncRows();
+            row.querySelector('[data-komponen-input]')?.focus();
+        });
+
+        list.addEventListener('click', function (event) {
+            const removeButton = event.target.closest('[data-komponen-remove]');
+
+            if (!removeButton || !list.contains(removeButton)) {
+                return;
+            }
+
+            const rows = getRows();
+            const row = removeButton.closest('[data-komponen-row]');
+
+            if (!row) {
+                return;
+            }
+
+            if (row.dataset.komponenLocked === 'true') {
+                return;
+            }
+
+            if (rows.length <= minRows) {
+                const input = row.querySelector('[data-komponen-input]');
+                if (input) {
+                    input.value = '';
+                    input.focus();
+                }
+                return;
+            }
+
+            row.remove();
+            syncRows();
+        });
+    });
 }
 
 function initMasterDataFormValidation() {

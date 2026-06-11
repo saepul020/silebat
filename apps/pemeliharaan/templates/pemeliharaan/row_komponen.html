@@ -1,0 +1,26 @@
+<section class="pemeliharaan-komponen" data-komponen-row data-index="{{ row.index }}">
+    <div class="pemeliharaan-komponen__head">
+        <h2>{{ row.komponen }}</h2>
+        <span>Komponen Pemeriksaan</span>
+    </div>
+    <input type="hidden" name="komponen_{{ row.index }}" value="{{ row.komponen }}">
+
+    {% if row.errors %}
+    <div class="form-global-errors pemeliharaan-komponen__errors">
+        {% for error in row.errors %}
+            <p class="input-error-text">*{{ error }}</p>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="form-row master-form-row master-form-row--1">
+        <div class="form-group">
+            <label for="id_kondisi_{{ row.index }}">Kondisi Pemeliharaan</label>
+            <select name="kondisi_{{ row.index }}" id="id_kondisi_{{ row.index }}" class="form-control" data-kondisi-field data-preserve-placeholder="true" autocomplete="off" required>
+                <option value="">Pilih kondisi pemeliharaan</option>
+                <option value="Baik" {% if row.kondisi == 'Baik' %}selected{% endif %}>Baik</option>
+                <option value="Perlu Perbaikan" {% if row.kondisi == 'Perlu Perbaikan' %}selected{% endif %}>Perlu Perbaikan</option>
+            </select>
+        </div>
+    </div>
+</section>

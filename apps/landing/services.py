@@ -15,9 +15,10 @@ from .models import LandingPeralatanCard
 
 logger = logging.getLogger(__name__)
 
-LANDING_CONTEXT_CACHE_KEY = "public_landing_context_v7"
+LANDING_CONTEXT_CACHE_KEY = "public_landing_context_v9"
 LANDING_CONTEXT_CACHE_TIMEOUT = 60
 LANDING_FALLBACK_CACHE_TIMEOUT = 10
+DEFAULT_EQUIPMENT_CATEGORY = KategoriBarangLaboratoriumChoices.GEOLISTRIK
 
 LANDING_PALETTE = [
     "#103e6f",
@@ -82,6 +83,8 @@ def get_empty_public_landing_context():
         },
         "inventory_cards": [],
         "equipment_cards": [],
+        "equipment_filters": [],
+        "default_equipment_filter": DEFAULT_EQUIPMENT_CATEGORY,
         "landing_data_unavailable": True,
     }
 
@@ -193,6 +196,18 @@ def get_inventory_category_cards():
     ]
 
 
+def split_spec_points(value):
+    text = str(value or "").replace(";", "\n")
+    return [item.strip() for item in text.splitlines() if item.strip()]
+
+
+def get_equipment_filters():
+    return [
+        {"value": value, "label": label}
+        for value, label in KategoriBarangLaboratoriumChoices.choices
+    ]
+
+
 def get_equipment_cards():
     cards = (
         LandingPeralatanCard.objects.filter(is_active=True)
@@ -203,6 +218,7 @@ def get_equipment_cards():
             "jenis_barang",
             "merek_tipe_alat",
             "fungsi_alat",
+            "metode_pengukuran",
             "spesifikasi_alat",
             "ringkasan_alat",
             "urutan",
@@ -211,12 +227,14 @@ def get_equipment_cards():
     )
     return [
         {
+            "kategori_barang": card.kategori_barang or "",
             "kategori_barang_label": card.get_kategori_barang_display() or "Peralatan",
             "nama_barang": card.nama_barang or "-",
             "jenis_barang": card.jenis_barang or "-",
             "merek_tipe_alat": card.merek_tipe_alat or "-",
             "fungsi_alat": card.fungsi_alat or "-",
-            "spesifikasi_alat": card.spesifikasi_alat or "-",
+            "metode_pengukuran": card.metode_pengukuran or "",
+            "spesifikasi_items": split_spec_points(card.spesifikasi_alat),
             "ringkasan_alat": card.ringkasan_alat or "-",
             "foto_urls": [photo.foto.url for photo in card.fotos.all() if photo.foto],
         }
@@ -242,6 +260,8 @@ def build_public_landing_context():
         },
         "inventory_cards": get_inventory_category_cards(),
         "equipment_cards": get_equipment_cards(),
+        "equipment_filters": get_equipment_filters(),
+        "default_equipment_filter": DEFAULT_EQUIPMENT_CATEGORY,
     }
 
 

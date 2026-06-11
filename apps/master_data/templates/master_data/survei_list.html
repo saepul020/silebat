@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load master_data_tags %}
+{% load master_tags %}
 
 {% block title %}Data Peralatan Survei Lapangan{% endblock %}
 
@@ -29,7 +29,7 @@
         </div>
     </div>
 
-    {% include 'components/master_entries_control.html' %}
+    {% include 'components/entry_control.html' %}
 
     <div class="table-scroll-area table-scroll--list" tabindex="0" aria-label="Scroll tabel data peralatan survei lapangan">
         <table class="table-data list-table--master-wide">
@@ -73,9 +73,8 @@
                             <a href="{% url 'master_data:detail_barang_laboratorium' item.pk %}" class="btn btn-secondary btn-sm"><i class="bi bi-eye-fill"></i></a>
                             {% if role_access.can_manage_master_data %}
                             <a href="{% url 'master_data:edit_barang_laboratorium' item.pk %}?next={{ request.get_full_path|urlencode }}" class="btn btn-warning btn-sm"><i class="bi bi-pencil-square"></i></a>
-                            <button type="button" class="btn btn-danger btn-sm js-delete-btn" data-delete-modal="master" data-delete-url="{% url 'master_data:hapus_barang_laboratorium' item.pk %}" data-item-name="{{ item.nama_barang|display_dash }}" data-item-meta="{{ item.kode_laboratorium|default:'-' }}">
-                                <i class="bi bi-trash3-fill"></i>
-                            </button>
+                            {% url 'master_data:hapus_barang_laboratorium' item.pk as delete_url %}
+                            {% include 'master_data/delete_button.html' with delete_url=delete_url item_meta=item.kode_laboratorium|default:'-' %}
                             {% endif %}
                         </div>
                     </td>
@@ -89,13 +88,13 @@
         </table>
     </div>
 
-    {% include 'components/master_pagination.html' %}
+    {% include 'components/pagination.html' %}
 </div>
 
 {% if role_access.can_import_master_data %}
     {% url 'master_data:import_barang_laboratorium' as import_action_url %}
     {% url 'master_data:download_format_import_barang_laboratorium' as import_download_url %}
-    {% include 'components/import_excel_modal.html' with import_context=import_context import_modal_id='barangLabImportModal' import_file_id='barangLabImportFile' import_title='Import Data Peralatan Survei Lapangan' import_action_url=import_action_url import_download_url=import_download_url import_help_text='Gunakan file .xlsx maksimal 7 MB. Data duplikat pada Kode Aset BMN dan Kode Laboratorium akan ditolak.' %}
+    {% include 'components/import_modal.html' with import_context=import_context import_modal_id='barangLabImportModal' import_file_id='barangLabImportFile' import_title='Import Data Peralatan Survei Lapangan' import_action_url=import_action_url import_download_url=import_download_url import_help_text='Gunakan file .xlsx maksimal 7 MB. Data duplikat pada Kode Aset BMN dan Kode Laboratorium akan ditolak.' %}
 {% endif %}
 
 {% if role_access.can_manage_master_data %}

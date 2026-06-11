@@ -1,0 +1,137 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/landing_manage.css' %}?v=20260610-maintenance-upload-v1">
+<link rel="stylesheet" href="{% static 'css/pemeliharaan.css' %}?v=20260610-maintenance-form-v3">
+{% endblock %}
+
+{% block content %}
+{{ alat_components|json_script:"pemeliharaan-components-data" }}
+
+<div class="page-header">
+    <h1>{{ page_title }}</h1>
+    <p>{{ page_subtitle }}</p>
+</div>
+
+<div class="form-card user-form-card master-data-form-card pemeliharaan-form-card">
+    <form method="post" enctype="multipart/form-data" class="pengguna-form master-data-form" data-pemeliharaan-form="true" autocomplete="off" novalidate>
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+        <div class="form-global-errors">
+            {% for error in form.non_field_errors %}
+                <p class="input-error-text">*{{ error }}</p>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <fieldset>
+            <legend>Pilih Alat</legend>
+            <div class="master-fieldset-stack">
+                <div class="form-row master-form-row master-form-row--1">
+                    <div class="form-group {% if form.pilih_alat.errors %}has-error{% endif %}">
+                        <label for="{{ form.pilih_alat.id_for_label }}">{{ form.pilih_alat.label }}</label>
+                        {{ form.pilih_alat }}
+                        {% for error in form.pilih_alat.errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
+                    </div>
+                </div>
+            </div>
+        </fieldset>
+
+        <fieldset data-check-fieldset {% if not form.component_rows %}hidden{% endif %}>
+            <legend>Pemeriksaan</legend>
+            <div class="master-fieldset-stack">
+                <div class="form-row master-form-row master-form-row--1">
+                    <div class="form-group">
+                        <label for="{{ form.tanggal_pemeriksaan.id_for_label }}">{{ form.tanggal_pemeriksaan.label }}</label>
+                        {{ form.tanggal_pemeriksaan }}
+                    </div>
+                </div>
+
+                <div class="pemeliharaan-empty" data-pemeliharaan-empty {% if form.component_rows %}hidden{% endif %}>
+                    <i class="bi bi-tools"></i>
+                    <span>Pilih alat untuk menampilkan komponen pemeriksaan.</span>
+                </div>
+
+                <div class="pemeliharaan-komponen-list" data-komponen-list>
+                    {% for row in form.component_rows %}
+                        {% include 'pemeliharaan/row_komponen.html' with row=row tanggal_pemeriksaan_display=tanggal_pemeriksaan_display %}
+                    {% endfor %}
+                </div>
+
+                <div class="master-upload-stack landing-upload-stack">
+                    <div class="upload-card landing-gallery-upload {% if form.dokumentasi_pemeriksaan.errors %}has-error{% endif %}" data-maint-gallery data-gallery-max="3" data-gallery-label="Dokumentasi Pemeriksaan">
+                        <div class="upload-card__head">
+                            <label for="id_dokumentasi_pemeriksaan">Dokumentasi Pemeriksaan</label>
+                            <span class="landing-gallery-limit">Maksimal 3 foto, masing-masing 7 MB</span>
+                        </div>
+                        <div class="landing-gallery-picker">
+                            <input type="file" name="dokumentasi_pemeriksaan" id="id_dokumentasi_pemeriksaan" class="landing-gallery-input" accept=".jpg,.jpeg,.png" multiple data-gallery-input>
+                            <label for="id_dokumentasi_pemeriksaan" class="landing-gallery-trigger" data-gallery-trigger>
+                                <span class="landing-gallery-trigger__icon"><i class="bi bi-images"></i></span>
+                                <span data-gallery-status>0/3 foto dipilih &middot; Tambah foto</span>
+                            </label>
+                        </div>
+                        <p class="input-error-text" data-gallery-error hidden></p>
+                        {% for error in form.dokumentasi_pemeriksaan.errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
+                        <div class="landing-gallery-strip" data-gallery-strip>
+                            <div class="landing-gallery-new" data-gallery-new></div>
+                            <div class="landing-gallery-empty" data-gallery-empty>
+                                <i class="bi bi-images"></i>
+                                <span>Belum ada foto dipilih</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </fieldset>
+
+        <fieldset data-repair-fieldset {% if not form.has_repair_rows %}hidden{% endif %}>
+            <legend>Perbaikan</legend>
+            <div class="master-fieldset-stack">
+                <div class="pemeliharaan-repair-empty" data-repair-empty {% if form.has_repair_rows %}hidden{% endif %}>
+                    <i class="bi bi-wrench-adjustable"></i>
+                    <span>Pilih kondisi Perlu Perbaikan untuk menampilkan input perbaikan.</span>
+                </div>
+                <div class="pemeliharaan-repair-list" data-repair-list>
+                    {% for row in form.component_rows %}
+                        {% if row.kondisi == 'Perlu Perbaikan' %}
+                            {% include 'pemeliharaan/row_perbaikan.html' with row=row tanggal_pemeriksaan_display=tanggal_pemeriksaan_display %}
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+        </fieldset>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">{{ submit_label }}</button>
+            <a href="{% url 'pemeliharaan:list' %}" class="btn btn-secondary">Kembali</a>
+        </div>
+    </form>
+</div>
+
+<div class="delete-modal" id="alatChangeModal">
+    <div class="delete-modal-backdrop" id="alatChangeModalBackdrop"></div>
+    <div class="delete-modal-card" role="dialog" aria-modal="true" aria-labelledby="alatChangeModalTitle">
+        <div class="delete-modal-header">
+            <h3 id="alatChangeModalTitle">Konfirmasi Ganti Alat</h3>
+            <button type="button" class="delete-modal-close" id="alatChangeModalClose" aria-label="Tutup">&times;</button>
+        </div>
+        <div class="delete-modal-body">
+            <p>Data pemeriksaan dan perbaikan yang sudah diinput akan hilang jika alat diganti.</p>
+            <p class="delete-warning-text">Lanjutkan mengganti alat?</p>
+        </div>
+        <div class="delete-modal-actions">
+            <button type="button" class="btn btn-secondary" id="alatChangeModalCancel">Batal</button>
+            <button type="button" class="btn btn-danger" id="alatChangeModalConfirm">Ya, Ganti Alat</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/pemeliharaan.js' %}?v=20260610-maintenance-form-v3" defer></script>
+{% endblock %}

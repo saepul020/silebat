@@ -31,6 +31,8 @@ from .forms import (
     BarangPenunjangOperasionalForm,
     FasilitasRuanganForm,
     PeralatanLaboratoriumForm,
+    normalize_komponen,
+    validate_komponen,
 )
 from .models import (
     BahanOperasional,
@@ -66,6 +68,7 @@ IMPORT_BARANG_LAB_HEADERS = [
     "Tanggal Pemeliharaan",
     "Tanggal Perbaikan",
     "Catatan",
+    "Komponen Pemeliharaan Rutin",
 ]
 IMPORT_BARANG_LAB_REQUIRED_HEADERS = [
     "Status Barang",
@@ -162,6 +165,7 @@ BARANG_LAB_FIELD_GROUPS = [
         [["tanggal_pemeliharaan_info", "tanggal_perbaikan_info"]],
     ),
     ("Catatan", [["catatan"]]),
+    ("Komponen Pemeliharaan Rutin", [["komponen_pemeliharaan"]]),
 ]
 
 PENUNJANG_FIELD_GROUPS = [
@@ -233,6 +237,15 @@ def _display_value(value, default="-"):
     if value in (None, "", []):
         return default
     return value
+
+
+def _komponen_list(value):
+    return normalize_komponen(value)
+
+
+def _display_komponen(value, default="-"):
+    components = _komponen_list(value)
+    return "; ".join(components) if components else default
 
 
 def _display_date(value):
@@ -363,7 +376,7 @@ def _handle_form_page(
     )
 
 
-def _get_active_peminjaman_delete_block_message(obj):
+def _get_active_transaksi_delete_block_message(obj):
     """
     Menolak hapus data master hanya jika item masih dipakai pada proses
     peminjaman/pengembalian aktif. Item yang sudah masuk Laporan Peminjaman
@@ -374,10 +387,11 @@ def _get_active_peminjaman_delete_block_message(obj):
             PeminjamanBahanOperasional,
             PeminjamanBarangLaboratorium,
             PeminjamanBarangPenunjang,
+            PeminjamanPeralatanLaboratorium,
             PengembalianBahanOperasional,
             PengembalianBarangLaboratorium,
             PengembalianBarangPenunjang,
-            PeminjamanRequest,
+            PengembalianPeralatanLaboratorium,
             ReturnStepChoices,
             StepChoices,
         )
@@ -399,8 +413,23 @@ def _get_active_peminjaman_delete_block_message(obj):
     if isinstance(obj, BarangLaboratorium):
         collect_numbers(PeminjamanBarangLaboratorium.objects.filter(barang=obj))
         collect_numbers(PengembalianBarangLaboratorium.objects.filter(barang=obj))
+        try:
+            from apps.pemeliharaan.models import ACTIVE_PEMELIHARAAN_STEPS, PemeliharaanPengajuan
+
+            for row in PemeliharaanPengajuan.objects.filter(
+                alat=obj,
+                current_step__in=ACTIVE_PEMELIHARAAN_STEPS,
+            )[:10]:
+                active_numbers.add(row.nomor_pengajuan or f"Pemeliharaan #{row.pk}")
+        except Exception:
+            pass
         if getattr(obj, "sedang_dipinjam", False):
             active_numbers.add("status barang sedang dipinjam")
+        if obj.kondisi_barang in {
+            KondisiBarangChoices.DALAM_PEMELIHARAAN,
+            KondisiBarangChoices.DALAM_PERBAIKAN,
+        }:
+            active_numbers.add(f"status barang {obj.kondisi_barang}")
     elif isinstance(obj, BarangPenunjangOperasional):
         collect_numbers(PeminjamanBarangPenunjang.objects.filter(barang=obj))
         collect_numbers(PengembalianBarangPenunjang.objects.filter(barang=obj))
@@ -409,6 +438,22 @@ def _get_active_peminjaman_delete_block_message(obj):
     elif isinstance(obj, BahanOperasional):
         collect_numbers(PeminjamanBahanOperasional.objects.filter(bahan=obj))
         collect_numbers(PengembalianBahanOperasional.objects.filter(bahan=obj))
+    elif isinstance(obj, PeralatanLaboratorium):
+        collect_numbers(PeminjamanPeralatanLaboratorium.objects.filter(barang=obj))
+        collect_numbers(PengembalianPeralatanLaboratorium.objects.filter(barang=obj))
+        if (getattr(obj, "volume_dipinjam", 0) or 0) > 0:
+            active_numbers.add("stok masih tercatat sedang dipinjam")
+        if obj.kondisi_barang in {
+            KondisiBarangChoices.DALAM_PEMELIHARAAN,
+            KondisiBarangChoices.DALAM_PERBAIKAN,
+        }:
+            active_numbers.add(f"status barang {obj.kondisi_barang}")
+    elif isinstance(obj, FasilitasRuangan):
+        if obj.kondisi_barang in {
+            KondisiBarangChoices.DALAM_PEMELIHARAAN,
+            KondisiBarangChoices.DALAM_PERBAIKAN,
+        }:
+            active_numbers.add(f"status barang {obj.kondisi_barang}")
 
     if not active_numbers:
         return ""
@@ -420,15 +465,15 @@ def _get_active_peminjaman_delete_block_message(obj):
 
     return (
         f'Data "{obj}" tidak dapat dihapus karena masih digunakan pada proses '
-        f'peminjaman/pengembalian aktif ({shown_text}). '
-        "Selesaikan proses pengembalian atau batalkan/hapus pengajuan aktif terlebih dahulu."
+        f'transaksi aktif ({shown_text}). '
+        "Selesaikan transaksi atau batalkan/hapus pengajuan aktif terlebih dahulu."
     )
 
 
 def _handle_delete(request, *, model, pk, success_message, redirect_to):
     obj = get_object_or_404(model, pk=pk)
     if request.method == "POST":
-        block_message = _get_active_peminjaman_delete_block_message(obj)
+        block_message = _get_active_transaksi_delete_block_message(obj)
         if block_message:
             messages.error(request, block_message)
             return redirect(redirect_to)
@@ -453,6 +498,11 @@ def _handle_delete(request, *, model, pk, success_message, redirect_to):
 def _ensure_qr_codes_for_context_items(context):
     items = context.get("items") or []
     ensure_master_qr_codes(items)
+
+
+def _mark_delete_blocks(context):
+    for item in context.get("items") or []:
+        item.delete_block_message = _get_active_transaksi_delete_block_message(item)
 
 
 def _get_pinjam_year(request, available_years):
@@ -623,7 +673,7 @@ def _render_public_master_detail(
 ):
     return render(
         request,
-        "master_data/public_detail_barang.html",
+        "master_data/detail_publik.html",
         {
             "obj": obj,
             "page_title": page_title,
@@ -653,6 +703,7 @@ def _render_barang_laboratorium_list(request, import_context=None):
         search_fields=(*ASSET_LIST_SEARCH_FIELDS, "kategori_barang"),
     )
     _ensure_qr_codes_for_context_items(context)
+    _mark_delete_blocks(context)
     context.update(
         {
             "page_title": "Data Peralatan Survei Lapangan",
@@ -660,7 +711,7 @@ def _render_barang_laboratorium_list(request, import_context=None):
             "import_context": import_context or {},
         }
     )
-    return render(request, "master_data/data_barang_laboratorium_list.html", context)
+    return render(request, "master_data/survei_list.html", context)
 
 
 @login_required
@@ -688,6 +739,7 @@ def export_barang_laboratorium(request):
         "Tanggal Pemeliharaan",
         "Tanggal Perbaikan",
         "Catatan",
+        "Komponen Pemeliharaan Rutin",
         "IK Alat (PDF)",
         "URL QR Detail",
     ]
@@ -716,6 +768,7 @@ def export_barang_laboratorium(request):
             obj.tanggal_pemeliharaan,
             obj.tanggal_perbaikan,
             obj.catatan,
+            _display_komponen(obj.komponen_pemeliharaan, ""),
             _file_export_url(request, obj.ik_alat),
             _public_detail_export_url(request, obj),
         ],
@@ -813,7 +866,7 @@ IMPORT_FASILITAS_RUANGAN_REQUIRED_HEADERS = [
     "Lokasi Barang",
 ]
 
-IMPORT_PERALATAN_LABORATORIUM_HEADERS = [
+HEADER_IMPOR_PERALATAN = [
     "Status Barang",
     "Nama Barang",
     "Tipe / Merek Barang",
@@ -830,7 +883,7 @@ IMPORT_PERALATAN_LABORATORIUM_HEADERS = [
     "Tanggal Perbaikan",
     "Catatan",
 ]
-IMPORT_PERALATAN_LABORATORIUM_REQUIRED_HEADERS = [
+HEADER_WAJIB_PERALATAN = [
     "Status Barang",
     "Nama Barang",
     "Tipe / Merek Barang",
@@ -1206,8 +1259,8 @@ def _validate_fasilitas_ruangan_import(file_obj):
 def _validate_peralatan_laboratorium_import(file_obj):
     return _validate_asset_status_import(
         file_obj,
-        headers=IMPORT_PERALATAN_LABORATORIUM_HEADERS,
-        required_headers=IMPORT_PERALATAN_LABORATORIUM_REQUIRED_HEADERS,
+        headers=HEADER_IMPOR_PERALATAN,
+        required_headers=HEADER_WAJIB_PERALATAN,
         model=PeralatanLaboratorium,
         empty_message='File Excel tidak memiliki data peralatan laboratorium untuk diimport.',
         include_kategori=False,
@@ -1461,6 +1514,11 @@ def _validate_barang_laboratorium_import(file_obj):
             'kategori_barang': cell(row, 'Kategori Barang'),
             'catatan': cell(row, 'Catatan'),
         }
+        components, component_errors = validate_komponen(
+            cell(row, 'Komponen Pemeliharaan Rutin')
+        )
+        data['komponen_pemeliharaan'] = components
+        row_errors.extend(component_errors)
 
         for header in IMPORT_BARANG_LAB_REQUIRED_HEADERS:
             if not cell(row, header):
@@ -1576,6 +1634,7 @@ def download_format_import_barang_laboratorium(request):
             '2026-03-01',
             '2026-04-01',
             'Contoh data, silakan hapus/ganti sebelum import.',
+            'Kalibrasi alat; Pembersihan sensor; Pemeriksaan baterai',
         ],
         references=[
             ('Status Barang', status_values),
@@ -2230,6 +2289,7 @@ def _render_barang_penunjang_list(request, import_context=None):
     queryset = BarangPenunjangOperasional.objects.order_by("nama_barang")
     context = paginate_list(request, queryset, search_fields=PENUNJANG_LIST_SEARCH_FIELDS)
     _ensure_qr_codes_for_context_items(context)
+    _mark_delete_blocks(context)
     context.update(
         {
             "page_title": "Data Barang Penunjang Lapangan",
@@ -2237,7 +2297,7 @@ def _render_barang_penunjang_list(request, import_context=None):
             "import_context": import_context or {},
         }
     )
-    return render(request, "master_data/data_barang_penunjang_list.html", context)
+    return render(request, "master_data/penunjang_list.html", context)
 
 
 @login_required
@@ -2292,6 +2352,7 @@ def _render_bahan_operasional_list(request, import_context=None):
     queryset = BahanOperasional.objects.order_by("nama_barang")
     context = paginate_list(request, queryset, search_fields=BAHAN_LIST_SEARCH_FIELDS)
     _ensure_qr_codes_for_context_items(context)
+    _mark_delete_blocks(context)
     context.update(
         {
             "page_title": "Data Bahan Operasional",
@@ -2299,7 +2360,7 @@ def _render_bahan_operasional_list(request, import_context=None):
             "import_context": import_context or {},
         }
     )
-    return render(request, "master_data/data_bahan_operasional_list.html", context)
+    return render(request, "master_data/bahan_list.html", context)
 
 
 @login_required
@@ -2358,6 +2419,7 @@ def _render_fasilitas_ruangan_list(request, import_context=None):
         search_fields=(*ASSET_LIST_SEARCH_FIELDS, "kategori_barang"),
     )
     _ensure_qr_codes_for_context_items(context)
+    _mark_delete_blocks(context)
     context.update(
         {
             "page_title": "Data Sarana Prasarana Ruangan",
@@ -2365,7 +2427,7 @@ def _render_fasilitas_ruangan_list(request, import_context=None):
             "import_context": import_context or {},
         }
     )
-    return render(request, "master_data/data_fasilitas_ruangan_list.html", context)
+    return render(request, "master_data/fasilitas_list.html", context)
 
 
 @login_required
@@ -2470,6 +2532,7 @@ def _render_peralatan_laboratorium_list(request, import_context=None):
     queryset = PeralatanLaboratorium.objects.order_by("nama_barang")
     context = paginate_list(request, queryset, search_fields=ASSET_LIST_SEARCH_FIELDS)
     _ensure_qr_codes_for_context_items(context)
+    _mark_delete_blocks(context)
     context.update(
         {
             "page_title": "Data Peralatan Laboratorium",
@@ -2477,7 +2540,7 @@ def _render_peralatan_laboratorium_list(request, import_context=None):
             "import_context": import_context or {},
         }
     )
-    return render(request, "master_data/data_peralatan_laboratorium_list.html", context)
+    return render(request, "master_data/peralatan_list.html", context)
 
 
 @login_required
@@ -2581,7 +2644,7 @@ def download_format_import_peralatan_laboratorium(request):
     satuan_values = [value for value, _label in SatuanAsetChoices.choices]
     kondisi_values = [value for value, _label in KondisiBarangChoices.choices]
     return _download_import_template(
-        headers=IMPORT_PERALATAN_LABORATORIUM_HEADERS,
+        headers=HEADER_IMPOR_PERALATAN,
         sample=[
             'BMN',
             'Mikroskop Laboratorium',

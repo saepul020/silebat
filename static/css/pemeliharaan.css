@@ -1,0 +1,299 @@
+.pemeliharaan-form-card {
+    max-width: 1040px;
+}
+
+.pemeliharaan-detail-head,
+.pemeliharaan-detail,
+.pemeliharaan-timeline {
+    width: 100%;
+}
+
+.list-table--pemeliharaan {
+    min-width: 1180px;
+}
+
+.pemeliharaan-panel .table-toolbar-actions {
+    margin-left: auto;
+}
+
+.pemeliharaan-form-card .form-group select.is-placeholder-state {
+    border-color: rgba(148, 163, 184, 0.55);
+    background-color: #f8fafc;
+    color: #94a3b8;
+}
+
+.pemeliharaan-empty {
+    display: flex;
+    min-height: 96px;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    border: 1px dashed rgba(16, 116, 159, 0.26);
+    border-radius: 12px;
+    background: #f8fafc;
+    color: #64748b;
+    font-size: 0.88rem;
+    font-weight: 600;
+}
+
+.pemeliharaan-empty[hidden] {
+    display: none;
+}
+
+.pemeliharaan-repair-empty {
+    display: flex;
+    min-height: 78px;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    border: 1px dashed rgba(16, 116, 159, 0.26);
+    border-radius: 12px;
+    background: #f8fafc;
+    color: #64748b;
+    font-size: 0.86rem;
+    font-weight: 600;
+}
+
+.pemeliharaan-repair-empty[hidden] {
+    display: none;
+}
+
+.pemeliharaan-komponen-list {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.pemeliharaan-komponen {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 16px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: #fff;
+}
+
+.pemeliharaan-komponen--repair {
+    background: #f8fafc;
+}
+
+.pemeliharaan-komponen__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.pemeliharaan-komponen__head h2 {
+    margin: 0;
+    color: var(--text-main);
+    font-size: 1rem;
+    line-height: 1.35;
+}
+
+.pemeliharaan-komponen__head span:not(.badge) {
+    color: var(--text-muted, #64748b);
+    font-size: 0.76rem;
+    font-weight: 700;
+}
+
+.pemeliharaan-komponen__errors {
+    margin: 0;
+}
+
+.pemeliharaan-action-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.pemeliharaan-action-panel[hidden] {
+    display: none;
+}
+
+.pemeliharaan-detail-list {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    width: 100%;
+}
+
+.pemeliharaan-detail-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
+    gap: 18px;
+    width: 100%;
+    margin-bottom: 18px;
+}
+
+.pemeliharaan-detail-head .detail-header {
+    align-items: flex-start;
+}
+
+.pemeliharaan-detail-head .status-badge {
+    margin-top: 8px;
+}
+
+.pemeliharaan-section-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.pemeliharaan-section-head h2 {
+    margin: 0;
+    color: var(--text-main);
+    font-size: 1rem;
+    line-height: 1.35;
+}
+
+.pemeliharaan-section-head p {
+    margin: 4px 0 0;
+    color: var(--text-soft);
+    font-size: 0.84rem;
+    line-height: 1.5;
+}
+
+.pemeliharaan-section-head > span:not(.badge) {
+    flex: 0 0 auto;
+    color: var(--text-muted, #64748b);
+    font-size: 0.76rem;
+    font-weight: 700;
+}
+
+.pemeliharaan-info-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.pemeliharaan-info-grid--compact {
+    margin-top: 12px;
+}
+
+.pemeliharaan-detail-item {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.pemeliharaan-detail-group {
+    display: grid;
+    grid-template-columns: minmax(260px, 0.78fr) minmax(0, 1.22fr);
+    gap: 18px;
+    align-items: start;
+}
+
+.pemeliharaan-check-card {
+    min-height: 100%;
+}
+
+.pemeliharaan-overview {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.pemeliharaan-photo-grid h3,
+.pemeliharaan-repair-detail h3,
+.pemeliharaan-photo-block h3 {
+    margin: 0 0 10px;
+    color: var(--text-main);
+    font-size: 0.94rem;
+}
+
+.pemeliharaan-repair-detail p {
+    margin: 0 0 14px;
+    color: var(--text-main);
+    line-height: 1.6;
+}
+
+.pemeliharaan-note {
+    border: 1px solid rgba(16, 62, 111, 0.1);
+    border-radius: 8px;
+    background: #f8fafc;
+    padding: 12px 14px;
+}
+
+.pemeliharaan-note span {
+    display: block;
+    margin-bottom: 4px;
+    color: var(--text-soft);
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.pemeliharaan-note p {
+    margin: 0;
+    color: var(--text-main);
+    line-height: 1.6;
+}
+
+.pemeliharaan-photo-block {
+    margin-top: 14px;
+}
+
+.pemeliharaan-photo-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.pemeliharaan-photo-strip--large a,
+.pemeliharaan-photo-strip--large .pemeliharaan-photo-empty {
+    width: 132px;
+    height: 132px;
+}
+
+.pemeliharaan-photo-strip a,
+.pemeliharaan-photo-empty {
+    display: inline-flex;
+    width: 108px;
+    height: 108px;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border: 1px solid rgba(16, 62, 111, 0.16);
+    border-radius: 8px;
+    background: #f8fafc;
+    color: #64748b;
+    font-size: 0.76rem;
+    font-weight: 700;
+    text-align: center;
+}
+
+.pemeliharaan-photo-strip img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+@media (max-width: 768px) {
+    .pemeliharaan-komponen {
+        padding: 14px;
+    }
+
+    .pemeliharaan-komponen__head {
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .pemeliharaan-detail-layout,
+    .pemeliharaan-detail-group,
+    .pemeliharaan-info-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .pemeliharaan-section-head {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .pemeliharaan-photo-strip a,
+    .pemeliharaan-photo-empty {
+        width: 94px;
+        height: 94px;
+    }
+}

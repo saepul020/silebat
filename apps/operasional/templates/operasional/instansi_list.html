@@ -24,7 +24,7 @@
         </div>
     </div>
 
-    {% include 'components/master_entries_control.html' %}
+    {% include 'components/entry_control.html' %}
 
     <div class="table-scroll-area table-scroll--list" tabindex="0" aria-label="Scroll tabel data instansi">
         <table class="table-data list-table--op-instansi">
@@ -68,13 +68,13 @@
         </table>
     </div>
 
-    {% include 'components/master_pagination.html' %}
+    {% include 'components/pagination.html' %}
 </div>
 
 {% if role_access.is_super_admin %}
     {% url 'operasional:import_instansi' as import_action_url %}
     {% url 'operasional:download_format_import_instansi' as import_download_url %}
-    {% include 'components/import_excel_modal.html' with import_context=import_context import_modal_id='instansiImportModal' import_file_id='instansiImportFile' import_title='Import Data Instansi (Klien)' import_action_url=import_action_url import_download_url=import_download_url import_help_text='Gunakan file .xlsx maksimal 7 MB. Nama instansi duplikat akan ditolak.' %}
+    {% include 'components/import_modal.html' with import_context=import_context import_modal_id='instansiImportModal' import_file_id='instansiImportFile' import_title='Import Data Instansi (Klien)' import_action_url=import_action_url import_download_url=import_download_url import_help_text='Gunakan file .xlsx maksimal 7 MB. Nama instansi duplikat akan ditolak.' %}
 {% endif %}
 
 <div class="delete-modal" id="operasionalDeleteModal">

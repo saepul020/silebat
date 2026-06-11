@@ -18,19 +18,19 @@
   <link
     rel="preload"
     as="image"
-    href="{% static 'assets/img/foto-kegiatan-gl-desktop.webp' %}"
-    imagesrcset="{% static 'assets/img/foto-kegiatan-gl-mobile.webp' %} 768w, {% static 'assets/img/foto-kegiatan-gl-desktop.webp' %} 1280w"
+    href="{% static 'assets/img/kegiatan-desktop.webp' %}"
+    imagesrcset="{% static 'assets/img/kegiatan-mobile.webp' %} 768w, {% static 'assets/img/kegiatan-desktop.webp' %} 1280w"
     imagesizes="(max-width: 860px) calc(100vw - 36px), (max-width: 1200px) 50vw, 600px"
     type="image/webp"
     fetchpriority="high"
   />
   <link rel="preload" href="{% static 'fonts/poppins-regular.woff2' %}" as="font" type="font/woff2" crossorigin />
-  <link rel="preload" href="{% static 'fonts/dm-serif-display-regular.woff2' %}" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="{% static 'fonts/dm-serif.woff2' %}" as="font" type="font/woff2" crossorigin />
 
   <link rel="stylesheet" href="{% static 'css/landing_critical.css' %}?v=20260606-typography-v1">
   <link rel="stylesheet" href="{% static 'css/landing_fonts.css' %}?v=20260606-v1">
   <link rel="stylesheet" href="{% static 'vendor/bootstrap-icons/bootstrap-icons.min.css' %}?v=1.11.3">
-  <link rel="stylesheet" href="{% static 'css/landing_page.css' %}?v=20260608-equipment-nav-v2">
+  <link rel="stylesheet" href="{% static 'css/landing_page.css' %}?v=20260610-equipment-card-v1">
   <link rel="stylesheet" href="{% static 'css/chatbot.css' %}?v=20260604-avatar-img-v1">
 </head>
 <body>
@@ -99,10 +99,10 @@
       <div class="hero-image-wrap">
         <div class="hero-img-card">
           <picture>
-            <source media="(max-width: 860px)" srcset="{% static 'assets/img/foto-kegiatan-gl-mobile.webp' %}" type="image/webp">
-            <source srcset="{% static 'assets/img/foto-kegiatan-gl-desktop.webp' %}" type="image/webp">
+            <source media="(max-width: 860px)" srcset="{% static 'assets/img/kegiatan-mobile.webp' %}" type="image/webp">
+            <source srcset="{% static 'assets/img/kegiatan-desktop.webp' %}" type="image/webp">
             <img
-              src="{% static 'assets/img/foto-kegiatan-gl-desktop.webp' %}"
+              src="{% static 'assets/img/kegiatan-desktop.webp' %}"
               alt="Foto kegiatan survei geolistrik Laboratorium Balai Air Tanah"
               width="1280"
               height="859"
@@ -155,9 +155,9 @@
     <div class="profil-grid">
       <div class="profil-img">
         <picture>
-          <source media="(max-width: 860px)" srcset="{% static 'assets/img/foto-lab-mobile.webp' %}" type="image/webp">
-          <source srcset="{% static 'assets/img/foto-lab-desktop.webp' %}" type="image/webp">
-          <img src="{% static 'assets/img/foto-lab-desktop.webp' %}" alt="Foto Laboratorium Balai Air Tanah" width="1200" height="902" loading="lazy" decoding="async">
+          <source media="(max-width: 860px)" srcset="{% static 'assets/img/lab-mobile.webp' %}" type="image/webp">
+          <source srcset="{% static 'assets/img/lab-desktop.webp' %}" type="image/webp">
+          <img src="{% static 'assets/img/lab-desktop.webp' %}" alt="Foto Laboratorium Balai Air Tanah" width="1200" height="902" loading="lazy" decoding="async">
         </picture>
       </div>
       <div>
@@ -342,9 +342,29 @@
         <p class="section-desc">Detail peralatan utama yang digunakan dalam kegiatan survei dan pengukuran lapangan.</p>
       </div>
     </div>
-    <div class="peralatan-grid">
+    {% if equipment_cards %}
+    <div class="peralatan-toolbar">
+      <div class="peralatan-filter" data-equipment-filter-wrap>
+        <span class="peralatan-filter__label">Kategori Barang :</span>
+        <div class="peralatan-filter__buttons" role="group" aria-label="Filter kategori barang">
+          {% for option in equipment_filters %}
+          <button type="button" class="peralatan-filter__button" data-equipment-filter-button value="{{ option.value }}" aria-pressed="{% if option.value == default_equipment_filter %}true{% else %}false{% endif %}">{{ option.label }}</button>
+          {% endfor %}
+        </div>
+        <label class="peralatan-filter__select-wrap" for="equipmentCategoryFilter">
+          <span class="sr-only">Kategori Barang :</span>
+          <select id="equipmentCategoryFilter" data-equipment-filter data-default-category="{{ default_equipment_filter|default:'Geolistrik' }}">
+            {% for option in equipment_filters %}
+            <option value="{{ option.value }}" {% if option.value == default_equipment_filter %}selected{% endif %}>{{ option.label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+      </div>
+    </div>
+    {% endif %}
+    <div class="peralatan-grid" data-equipment-grid>
       {% for item in equipment_cards %}
-      <div class="peralatan-card">
+      <div class="peralatan-card" data-equipment-card data-equipment-category="{{ item.kategori_barang }}">
         <div class="peralatan-img {% if item.foto_urls %}peralatan-img--photo{% endif %}" {% if item.foto_urls %}data-equipment-gallery data-gallery-title="{{ item.nama_barang }}"{% endif %}>
           {% if item.foto_urls %}
             <button type="button" class="equipment-gallery-open" data-gallery-open aria-label="Buka galeri foto {{ item.nama_barang }}">
@@ -365,13 +385,30 @@
           <span class="alat-type">{{ item.kategori_barang_label|default:"Peralatan" }}</span>
         </div>
         <div class="peralatan-body">
-          <div class="peralatan-brand">{{ item.jenis_barang|default:"-" }}</div>
-          <div class="peralatan-name">{{ item.nama_barang|default:"-" }}</div>
-          <div class="peralatan-desc">{{ item.ringkasan_alat|default:"-" }}</div>
+          <div class="peralatan-name">{{ item.merek_tipe_alat|default:"-" }}</div>
+          <div class="peralatan-brand">{{ item.nama_barang|default:"-" }}</div>
+          <div class="peralatan-desc" data-equipment-desc>
+            <span data-equipment-desc-text>{{ item.ringkasan_alat|default:"-" }}</span>
+            <button type="button" class="peralatan-desc__more" data-equipment-desc-toggle hidden>More</button>
+            <button type="button" class="peralatan-desc__collapse" data-equipment-desc-collapse hidden aria-label="Tutup deskripsi">
+              <i class="bi bi-arrow-up" aria-hidden="true"></i>
+            </button>
+          </div>
           <div class="peralatan-specs">
             <div class="spec-row"><span class="spec-label">Fungsi</span><span class="spec-val">{{ item.fungsi_alat|default:"-" }}</span></div>
-            <div class="spec-row"><span class="spec-label">Merek/Tipe</span><span class="spec-val">{{ item.merek_tipe_alat|default:"-" }}</span></div>
-            <div class="spec-row"><span class="spec-label">Spesifikasi</span><span class="spec-val">{{ item.spesifikasi_alat|default:"-" }}</span></div>
+            {% if item.metode_pengukuran %}
+            <div class="spec-row"><span class="spec-label">Metode</span><span class="spec-val">{{ item.metode_pengukuran }}</span></div>
+            {% endif %}
+            {% if item.spesifikasi_items %}
+            <div class="spec-row">
+              <span class="spec-label">Spesifikasi</span>
+              <div class="spec-val spec-grid">
+                {% for spec in item.spesifikasi_items %}
+                <span>{{ spec }}</span>
+                {% endfor %}
+              </div>
+            </div>
+            {% endif %}
           </div>
         </div>
       </div>
@@ -379,6 +416,7 @@
       <div class="landing-empty-state">Belum ada konten peralatan laboratorium yang dikonfigurasi.</div>
       {% endfor %}
     </div>
+    <div class="landing-empty-state peralatan-empty-filter" data-equipment-filter-empty hidden>Belum ada konten peralatan pada kategori ini.</div>
   </div>
 </section>
 </main>
@@ -480,7 +518,7 @@
   <div class="chat-window" id="chatWindow" role="dialog" aria-modal="false" aria-hidden="true" aria-labelledby="chatTitle">
     <div class="chat-head">
       <div class="chat-avatar">
-        <img src="{% static 'assets/img/icon-tanya-sobat.webp' %}" alt="" width="300" height="316" loading="lazy" decoding="async">
+        <img src="{% static 'assets/img/tanya-sobat.webp' %}" alt="" width="300" height="316" loading="lazy" decoding="async">
       </div>
       <div class="chat-head-text">
         <div class="t1" id="chatTitle">Asisten Virtual</div>
@@ -497,7 +535,7 @@
     </div>
   </div>
   <button class="chat-toggle" id="chatToggle" type="button" aria-label="Chat" aria-controls="chatWindow" aria-expanded="false">
-    <img class="chat-icon" src="{% static 'assets/img/icon-tanya-sobat.webp' %}" alt="" width="300" height="316" loading="lazy" decoding="async">
+    <img class="chat-icon" src="{% static 'assets/img/tanya-sobat.webp' %}" alt="" width="300" height="316" loading="lazy" decoding="async">
   </button>
 </div>
 
@@ -506,7 +544,7 @@
 
 {{ landing_stats|json_script:"landing-stats-data" }}
 {{ landing_charts|json_script:"landing-chart-data" }}
-<script src="{% static 'js/landing_page.js' %}?v=20260608-equipment-gallery-v1" defer></script>
+<script src="{% static 'js/landing_page.js' %}?v=20260610-equipment-card-v1" defer></script>
 <script src="{% static 'js/chatbot.js' %}?v=20260604-head-close-v1" defer></script>
 </body>
 </html>

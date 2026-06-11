@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Detail Pengajuan Pemeliharaan{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/pemeliharaan.css' %}?v=20260610-maintenance-detail-v3">
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Detail Pengajuan Pemeliharaan</h1>
+    <p>{{ obj.nomor_pengajuan }} - {{ obj.alat_label }}</p>
+</div>
+
+<div class="card detail-header-card pemeliharaan-detail-head">
+    <div class="detail-header-top">
+        <div>
+            <h2 class="card-title">{{ obj.nomor_pengajuan }}</h2>
+            <p class="detail-meta">{{ obj.alat_label }}</p>
+            <span class="status-badge {{ obj.status_badge_class }}">{{ obj.status_label }}</span>
+        </div>
+        <div class="detail-header-actions">
+            {% if can_submit_pengajuan %}
+            <button
+                type="button"
+                class="btn btn-primary"
+                data-maint-send-button
+                data-send-url="{% url 'pemeliharaan:kirim' obj.pk %}"
+                data-send-number="{{ obj.nomor_pengajuan|default:'-' }}"
+            >
+                Kirim Pengajuan
+            </button>
+            {% endif %}
+            {% if can_edit_pengajuan %}
+            <a href="{% url 'pemeliharaan:edit' obj.pk %}" class="btn btn-warning">Edit</a>
+            {% endif %}
+            <a href="{% url 'pemeliharaan:list' %}" class="btn btn-secondary">Kembali</a>
+            {% if can_delete_pengajuan %}
+            <form method="post" action="{% url 'pemeliharaan:hapus' obj.pk %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger" onclick="return confirm('Hapus pengajuan pemeliharaan ini?')">Hapus</button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% include 'pemeliharaan/detail_body.html' %}
+{% include 'pemeliharaan/timeline.html' %}
+{% include 'pemeliharaan/kirim_modal.html' %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/pemeliharaan.js' %}?v=20260610-maintenance-detail-v3" defer></script>
+{% endblock %}

@@ -1,0 +1,99 @@
+<section class="pemeliharaan-komponen pemeliharaan-komponen--repair" data-repair-row data-index="{{ row.index }}">
+    <div class="pemeliharaan-komponen__head">
+        <h2>{{ row.komponen }}</h2>
+        <span>Komponen Perbaikan</span>
+    </div>
+
+    {% if row.repair_errors %}
+    <div class="form-global-errors pemeliharaan-komponen__errors">
+        {% for error in row.repair_errors %}
+            <p class="input-error-text">*{{ error }}</p>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="form-row master-form-row master-form-row--1">
+        <div class="form-group">
+            <label for="id_tindakan_{{ row.index }}">Tindakan Perbaikan</label>
+            <select name="tindakan_{{ row.index }}" id="id_tindakan_{{ row.index }}" class="form-control" data-action-field data-preserve-placeholder="true" autocomplete="off">
+                <option value="">Pilih tindakan perbaikan</option>
+                <option value="Perbaikan Mandiri" {% if row.tindakan == 'Perbaikan Mandiri' %}selected{% endif %}>Perbaikan Mandiri</option>
+                <option value="Perbaikan Eksternal" {% if row.tindakan == 'Perbaikan Eksternal' %}selected{% endif %}>Perbaikan Eksternal</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="pemeliharaan-action-panel" data-action-panel="Perbaikan Mandiri" {% if row.tindakan != 'Perbaikan Mandiri' %}hidden{% endif %}>
+        <div class="form-row master-form-row master-form-row--1">
+            <div class="form-group form-group-full">
+                <label for="id_uraian_perbaikan_{{ row.index }}">Uraian Perbaikan</label>
+                <textarea name="uraian_perbaikan_{{ row.index }}" id="id_uraian_perbaikan_{{ row.index }}" class="form-control" rows="4" placeholder="Masukkan uraian perbaikan" autocomplete="off">{{ row.uraian_perbaikan }}</textarea>
+            </div>
+        </div>
+        <div class="form-row master-form-row master-form-row--2">
+            <div class="form-group">
+                <label>Tanggal Perbaikan Mulai</label>
+                <input type="text" class="form-control is-readonly-field" value="{{ tanggal_pemeriksaan_display }}" readonly aria-readonly="true">
+            </div>
+            <div class="form-group">
+                <label for="id_tanggal_selesai_perbaikan_{{ row.index }}">Tanggal Perbaikan Selesai</label>
+                <input type="datetime-local" name="tanggal_selesai_perbaikan_{{ row.index }}" id="id_tanggal_selesai_perbaikan_{{ row.index }}" class="form-control" value="{{ row.tanggal_selesai_perbaikan }}" autocomplete="off">
+            </div>
+        </div>
+        <div class="master-upload-stack landing-upload-stack">
+            <div class="upload-card landing-gallery-upload" data-maint-gallery data-gallery-max="3" data-gallery-label="Dokumentasi Perbaikan">
+                <div class="upload-card__head">
+                    <label for="id_dokumentasi_perbaikan_{{ row.index }}">Dokumentasi Perbaikan</label>
+                    <span class="landing-gallery-limit">Maksimal 3 foto, masing-masing 7 MB</span>
+                </div>
+                <div class="landing-gallery-picker">
+                    <input type="file" name="dokumentasi_perbaikan_{{ row.index }}" id="id_dokumentasi_perbaikan_{{ row.index }}" class="landing-gallery-input" accept=".jpg,.jpeg,.png" multiple data-gallery-input>
+                    <label for="id_dokumentasi_perbaikan_{{ row.index }}" class="landing-gallery-trigger" data-gallery-trigger>
+                        <span class="landing-gallery-trigger__icon"><i class="bi bi-images"></i></span>
+                        <span data-gallery-status>0/3 foto dipilih &middot; Tambah foto</span>
+                    </label>
+                </div>
+                <p class="input-error-text" data-gallery-error hidden></p>
+                <div class="landing-gallery-strip" data-gallery-strip>
+                    <div class="landing-gallery-new" data-gallery-new></div>
+                    <div class="landing-gallery-empty" data-gallery-empty>
+                        <i class="bi bi-images"></i>
+                        <span>Belum ada foto dipilih</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="pemeliharaan-action-panel" data-action-panel="Perbaikan Eksternal" {% if row.tindakan != 'Perbaikan Eksternal' %}hidden{% endif %}>
+        <div class="form-row master-form-row master-form-row--1">
+            <div class="form-group form-group-full">
+                <label for="id_uraian_kerusakan_{{ row.index }}">Uraian Kerusakan</label>
+                <textarea name="uraian_kerusakan_{{ row.index }}" id="id_uraian_kerusakan_{{ row.index }}" class="form-control" rows="4" placeholder="Masukkan uraian kerusakan" autocomplete="off">{{ row.uraian_kerusakan }}</textarea>
+            </div>
+        </div>
+        <div class="master-upload-stack landing-upload-stack">
+            <div class="upload-card landing-gallery-upload" data-maint-gallery data-gallery-max="3" data-gallery-label="Dokumentasi Kerusakan">
+                <div class="upload-card__head">
+                    <label for="id_dokumentasi_kerusakan_{{ row.index }}">Dokumentasi Kerusakan</label>
+                    <span class="landing-gallery-limit">Maksimal 3 foto, masing-masing 7 MB</span>
+                </div>
+                <div class="landing-gallery-picker">
+                    <input type="file" name="dokumentasi_kerusakan_{{ row.index }}" id="id_dokumentasi_kerusakan_{{ row.index }}" class="landing-gallery-input" accept=".jpg,.jpeg,.png" multiple data-gallery-input>
+                    <label for="id_dokumentasi_kerusakan_{{ row.index }}" class="landing-gallery-trigger" data-gallery-trigger>
+                        <span class="landing-gallery-trigger__icon"><i class="bi bi-images"></i></span>
+                        <span data-gallery-status>0/3 foto dipilih &middot; Tambah foto</span>
+                    </label>
+                </div>
+                <p class="input-error-text" data-gallery-error hidden></p>
+                <div class="landing-gallery-strip" data-gallery-strip>
+                    <div class="landing-gallery-new" data-gallery-new></div>
+                    <div class="landing-gallery-empty" data-gallery-empty>
+                        <i class="bi bi-images"></i>
+                        <span>Belum ada foto dipilih</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>

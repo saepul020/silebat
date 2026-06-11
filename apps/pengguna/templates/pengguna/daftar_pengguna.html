@@ -24,7 +24,7 @@
         {% endif %}
     </div>
 
-    {% include 'components/master_entries_control.html' %}
+    {% include 'components/entry_control.html' %}
 
     <div class="table-scroll-area table-scroll--list" tabindex="0" aria-label="Scroll tabel data pengguna">
         <table class="table-data list-table--pengguna">
@@ -82,13 +82,13 @@
         </table>
     </div>
 
-    {% include 'components/master_pagination.html' %}
+    {% include 'components/pagination.html' %}
 </div>
 
 {% if can_manage_user_app %}
     {% url 'pengguna:import_pengguna' as import_action_url %}
     {% url 'pengguna:download_format_import_pengguna' as import_download_url %}
-    {% include 'components/import_excel_modal.html' with import_context=import_context import_modal_id='penggunaImportModal' import_file_id='penggunaImportFile' import_title='Import Daftar Pengguna' import_action_url=import_action_url import_download_url=import_download_url import_help_text='Gunakan file .xlsx maksimal 7 MB. Username, email, NIP / NIK, dan Nomor HP duplikat akan ditolak.' %}
+    {% include 'components/import_modal.html' with import_context=import_context import_modal_id='penggunaImportModal' import_file_id='penggunaImportFile' import_title='Import Daftar Pengguna' import_action_url=import_action_url import_download_url=import_download_url import_help_text='Gunakan file .xlsx maksimal 7 MB. Username, email, NIP / NIK, dan Nomor HP duplikat akan ditolak.' %}
 {% endif %}
 
 <div class="delete-modal" id="deleteModal">

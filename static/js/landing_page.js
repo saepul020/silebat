@@ -5,11 +5,153 @@
 document.addEventListener('DOMContentLoaded', function () {
     initLandingNavbar();
     initBackToTop();
+    initEquipmentFilter();
     initScrollReveal();
     initLandingCounters();
     initChartsWhenVisible();
     initEquipmentGalleries();
+    initEquipmentDescriptions();
 });
+
+function initEquipmentFilter() {
+    const filter = document.querySelector('[data-equipment-filter]');
+    const buttons = Array.from(document.querySelectorAll('[data-equipment-filter-button]'));
+    const cards = Array.from(document.querySelectorAll('[data-equipment-card]'));
+    const empty = document.querySelector('[data-equipment-filter-empty]');
+
+    if (!filter || !cards.length) {
+        return;
+    }
+
+    const defaultCategory = filter.getAttribute('data-default-category') || filter.value;
+
+    function syncButtons(selectedCategory) {
+        buttons.forEach(function (button) {
+            const isActive = button.value === selectedCategory;
+            button.classList.toggle('is-active', isActive);
+            button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+        });
+    }
+
+    function applyFilter() {
+        const selectedCategory = filter.value;
+        let visibleCount = 0;
+
+        cards.forEach(function (card) {
+            const isVisible = card.getAttribute('data-equipment-category') === selectedCategory;
+            card.hidden = !isVisible;
+            if (isVisible) {
+                visibleCount += 1;
+            }
+        });
+
+        if (empty) {
+            empty.hidden = visibleCount > 0;
+        }
+
+        syncButtons(selectedCategory);
+        document.dispatchEvent(new CustomEvent('equipmentFilterChanged'));
+    }
+
+    if (defaultCategory && Array.from(filter.options).some(function (option) { return option.value === defaultCategory; })) {
+        filter.value = defaultCategory;
+    }
+
+    buttons.forEach(function (button) {
+        button.addEventListener('click', function () {
+            if (filter.value === button.value) {
+                return;
+            }
+            filter.value = button.value;
+            applyFilter();
+        });
+    });
+    filter.addEventListener('change', applyFilter);
+    applyFilter();
+}
+
+function initEquipmentDescriptions() {
+    const descriptions = Array.from(document.querySelectorAll('[data-equipment-desc]'));
+    if (!descriptions.length) {
+        return;
+    }
+
+    function trimText(value, length) {
+        return String(value || '').slice(0, length).replace(/\s+\S*$/, '').trim();
+    }
+
+    function syncDescription(description) {
+        const text = description.querySelector('[data-equipment-desc-text]');
+        const button = description.querySelector('[data-equipment-desc-toggle]');
+        const collapseButton = description.querySelector('[data-equipment-desc-collapse]');
+        if (!text || !button || !collapseButton || description.classList.contains('is-expanded')) {
+            return;
+        }
+
+        const fullText = text.dataset.fullText || text.textContent.trim();
+        text.dataset.fullText = fullText;
+        text.textContent = fullText;
+        button.hidden = true;
+        collapseButton.hidden = true;
+
+        if (description.scrollHeight <= description.clientHeight + 1) {
+            return;
+        }
+
+        button.hidden = false;
+        let low = 0;
+        let high = fullText.length;
+        let best = '';
+
+        while (low <= high) {
+            const middle = Math.floor((low + high) / 2);
+            const candidate = trimText(fullText, middle);
+            text.textContent = candidate ? candidate + '... ' : '';
+
+            if (description.scrollHeight <= description.clientHeight + 1) {
+                best = candidate;
+                low = middle + 1;
+                continue;
+            }
+
+            high = middle - 1;
+        }
+
+        text.textContent = best ? best + '... ' : '';
+    }
+
+    descriptions.forEach(function (description) {
+        const text = description.querySelector('[data-equipment-desc-text]');
+        const button = description.querySelector('[data-equipment-desc-toggle]');
+        const collapseButton = description.querySelector('[data-equipment-desc-collapse]');
+        if (!text || !button || !collapseButton) {
+            return;
+        }
+        text.dataset.fullText = text.textContent.trim();
+        button.addEventListener('click', function () {
+            description.classList.add('is-expanded');
+            text.textContent = text.dataset.fullText || text.textContent;
+            button.hidden = true;
+            collapseButton.hidden = false;
+        });
+        collapseButton.addEventListener('click', function () {
+            description.classList.remove('is-expanded');
+            collapseButton.hidden = true;
+            syncDescription(description);
+        });
+        syncDescription(description);
+    });
+
+    window.addEventListener('resize', function () {
+        descriptions.forEach(syncDescription);
+    }, { passive: true });
+    window.addEventListener('load', function () {
+        descriptions.forEach(syncDescription);
+    }, { once: true });
+    document.addEventListener('equipmentFilterChanged', function () {
+        descriptions.forEach(syncDescription);
+    });
+}
 
 function initEquipmentGalleries() {
     const galleries = Array.from(document.querySelectorAll('[data-equipment-gallery]'));

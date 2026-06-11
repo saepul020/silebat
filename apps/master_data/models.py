@@ -86,6 +86,9 @@ class KategoriBarangLaboratoriumChoices(models.TextChoices):
     )
 
 
+KOMPONEN_MAX_LENGTH = 100
+
+
 class KategoriBahanOperasionalChoices(models.TextChoices):
     BAHAN_LABORATORIUM = "Bahan Laboratorium", "Bahan Laboratorium"
     BAHAN_LAPANGAN = "Bahan Lapangan", "Bahan Lapangan"
@@ -231,6 +234,32 @@ class BarangLaboratorium(AssetBaseModel):
         choices=KategoriBarangLaboratoriumChoices.choices,
         null=True,
     )
+    komponen_pemeliharaan = models.JSONField(default=list, blank=True)
+
+    def _normalize_komponen(self, *, validate=True):
+        raw_values = self.komponen_pemeliharaan or []
+        if isinstance(raw_values, str):
+            raw_values = [raw_values]
+        elif not isinstance(raw_values, (list, tuple)):
+            raw_values = [raw_values]
+
+        components = []
+        errors = []
+        for index, raw_value in enumerate(raw_values, start=1):
+            text = str(raw_value or "").strip()
+            if not text:
+                continue
+            if len(text) > KOMPONEN_MAX_LENGTH:
+                errors.append(
+                    "Komponen Pemeliharaan Rutin nomor "
+                    f"{index} maksimal {KOMPONEN_MAX_LENGTH} karakter."
+                )
+            components.append(text)
+
+        if validate and errors:
+            raise ValidationError({"komponen_pemeliharaan": errors})
+
+        return components
 
     class Meta(AssetBaseModel.Meta):
         verbose_name = "Data Peralatan Survei Lapangan"
@@ -248,6 +277,10 @@ class BarangLaboratorium(AssetBaseModel):
 
     def __str__(self):
         return self.nama_barang
+
+    def clean(self):
+        super().clean()
+        self.komponen_pemeliharaan = self._normalize_komponen()
 
 
 class BarangPenunjangOperasional(QRCodeMixin):

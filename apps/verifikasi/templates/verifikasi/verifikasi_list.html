@@ -13,16 +13,17 @@
         <h2 class="table-title">Daftar Pengajuan Menunggu Tindakan</h2>
     </div>
 
-    {% include 'components/master_entries_control.html' %}
+    {% include 'components/entry_control.html' %}
 
     <div class="table-scroll-area table-scroll--list" tabindex="0" aria-label="Scroll tabel verifikasi pengajuan">
         <table class="table-data list-table--verifikasi">
             <thead>
                 <tr>
                     <th>Nomor</th>
-                    <th class="cell-wrap">Peminjam</th>
+                    <th>Jenis</th>
+                    <th class="cell-wrap">Pemohon</th>
                     <th class="cell-wrap">Layanan</th>
-                    <th class="cell-wrap">Tim Kegiatan</th>
+                    <th class="cell-wrap">Objek / Tim</th>
                     <th class="cell-status">Status Saat Ini</th>
                     <th class="cell-action">Aksi</th>
                 </tr>
@@ -31,21 +32,28 @@
                 {% for item in items %}
                 <tr>
                     <td>{{ item.nomor_pengajuan }}</td>
-                    <td class="cell-wrap">{{ item.nama_peminjam }}</td>
-                    <td class="cell-wrap">{{ item.layanan_kegiatan_label|default:'-' }}</td>
-                    <td class="cell-wrap">{{ item.tim_kegiatan.nama_tim|default:'-' }}</td>
+                    <td>{% if item.verifikasi_kind == 'pemeliharaan' %}Pemeliharaan{% else %}Peminjaman{% endif %}</td>
+                    <td class="cell-wrap">{% if item.verifikasi_kind == 'pemeliharaan' %}{{ item.nama_pemohon }}{% else %}{{ item.nama_peminjam }}{% endif %}</td>
+                    <td class="cell-wrap">{% if item.verifikasi_kind == 'pemeliharaan' %}Pemeliharaan Peralatan{% else %}{{ item.layanan_kegiatan_label|default:'-' }}{% endif %}</td>
+                    <td class="cell-wrap">{% if item.verifikasi_kind == 'pemeliharaan' %}{{ item.alat_label }}{% else %}{{ item.tim_kegiatan.nama_tim|default:'-' }}{% endif %}</td>
                     <td class="cell-status"><span class="status-badge {{ item.active_verification_badge_class }}">{{ item.active_verification_label }}</span></td>
-                    <td class="cell-action"><a href="{% url 'verifikasi:detail' item.pk %}" class="btn btn-primary btn-sm">{% if item.return_current_step != 'none' and item.return_current_step != 'completed' %}Proses Pengembalian{% else %}Proses Peminjaman{% endif %}</a></td>
+                    <td class="cell-action">
+                        {% if item.verifikasi_kind == 'pemeliharaan' %}
+                        <a href="{% url 'verifikasi:detail_pemeliharaan' item.pk %}" class="btn btn-primary btn-sm">Proses Pemeliharaan</a>
+                        {% else %}
+                        <a href="{% url 'verifikasi:detail' item.pk %}" class="btn btn-primary btn-sm">{% if item.return_current_step != 'none' and item.return_current_step != 'completed' %}Proses Pengembalian{% else %}Proses Peminjaman{% endif %}</a>
+                        {% endif %}
+                    </td>
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="6"><div class="empty-state">Tidak ada pengajuan yang sedang menunggu tindakan dari role Anda.</div></td>
+                    <td colspan="7"><div class="empty-state">Tidak ada pengajuan yang sedang menunggu tindakan dari role Anda.</div></td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
 
-    {% include 'components/master_pagination.html' %}
+    {% include 'components/pagination.html' %}
 </div>
 {% endblock %}

@@ -701,12 +701,7 @@ class PeminjamanRequest(models.Model):
     def requires_extended_pengembalian_verification(self):
         return self.pengembalian_has_issue() or self.pengembalian_has_transfer()
 
-    def get_next_pengembalian_step_after_teknisi_verification(self):
-        if self.requires_extended_pengembalian_verification():
-            return ReturnStepChoices.KEPALA_BA
-        return ReturnStepChoices.COMPLETED
-
-    def get_next_pengembalian_step_after_user_verification(self):
+    def get_step_pengembalian(self):
         if self.requires_extended_pengembalian_verification():
             return ReturnStepChoices.KEPALA_BA
         return ReturnStepChoices.COMPLETED

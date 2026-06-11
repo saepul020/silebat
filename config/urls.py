@@ -13,6 +13,7 @@ urlpatterns = [
     path("operasional/", include("apps.operasional.urls")),
     path("master-data/", include("apps.master_data.urls")),
     path("permintaan/", include("apps.peminjaman.urls")),
+    path("pemeliharaan/", include("apps.pemeliharaan.urls")),
     path("verifikasi/", include("apps.verifikasi.urls")),
     path("notifikasi/", include("apps.notifikasi.urls")),
     path(

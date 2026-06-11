@@ -177,7 +177,7 @@ def _handle_instansi_import_post(request):
         })
         if response:
             return response
-        return _render_data_instansi_list(request, import_context=import_context)
+        return _render_instansi_list(request, import_context=import_context)
 
     if action == 'save':
         rows = request.session.get(IMPORT_INSTANSI_SESSION_KEY) or []
@@ -192,7 +192,7 @@ def _handle_instansi_import_post(request):
             response = _import_json_response(request, payload)
             if response:
                 return response
-            return _render_data_instansi_list(request, import_context={'show_modal': True, 'errors': payload['errors']})
+            return _render_instansi_list(request, import_context={'show_modal': True, 'errors': payload['errors']})
 
         total_saved, save_errors = _save_instansi_import(rows)
         if save_errors:
@@ -207,7 +207,7 @@ def _handle_instansi_import_post(request):
             response = _import_json_response(request, payload)
             if response:
                 return response
-            return _render_data_instansi_list(request, import_context={'show_modal': True, 'errors': save_errors})
+            return _render_instansi_list(request, import_context={'show_modal': True, 'errors': save_errors})
 
         request.session.pop(IMPORT_INSTANSI_SESSION_KEY, None)
         response = _import_json_response(request, {
@@ -426,7 +426,7 @@ def data_tim(request):
         "page_subtitle": "Kelola data divisi tim kegiatan Balai Air Tanah.",
     }
     context.update(pagination_context)
-    return render(request, "operasional/data_tim_list.html", context)
+    return render(request, "operasional/tim_list.html", context)
 
 
 @login_required
@@ -480,7 +480,7 @@ def data_layanan(request):
         "page_subtitle": "Kelola jenis layanan kegiatan yang berlaku.",
     }
     context.update(pagination_context)
-    return render(request, "operasional/data_layanan_list.html", context)
+    return render(request, "operasional/layanan_list.html", context)
 
 
 @login_required
@@ -534,7 +534,7 @@ def data_survei(request):
         "page_subtitle": "Kelola jenis kegiatan survei yang tersedia.",
     }
     context.update(pagination_context)
-    return render(request, "operasional/data_survei_list.html", context)
+    return render(request, "operasional/survei_list.html", context)
 
 
 @login_required
@@ -578,7 +578,7 @@ def hapus_survei(request, pk):
     )
 
 
-def _render_data_instansi_list(request, import_context=None):
+def _render_instansi_list(request, import_context=None):
     queryset = InstansiKlien.objects.order_by("nama_instansi")
     pagination_context = paginate_list(
         request,
@@ -592,12 +592,12 @@ def _render_data_instansi_list(request, import_context=None):
         "import_context": import_context or {},
     }
     context.update(pagination_context)
-    return render(request, "operasional/data_instansi_list.html", context)
+    return render(request, "operasional/instansi_list.html", context)
 
 
 @login_required
 def data_instansi(request):
-    return _render_data_instansi_list(request)
+    return _render_instansi_list(request)
 
 
 @login_required
@@ -654,7 +654,7 @@ def data_kop_dokumen(request):
         "page_subtitle": "Kelola gambar kop dokumen yang digunakan pada dokumen sistem.",
     }
     context.update(pagination_context)
-    return render(request, "operasional/data_kop_dokumen_list.html", context)
+    return render(request, "operasional/kop_list.html", context)
 
 
 @login_required
@@ -673,7 +673,7 @@ def tambah_kop_dokumen(request):
         page_subtitle="Unggah gambar kop dokumen yang akan digunakan pada dokumen sistem.",
         submit_label="Simpan",
         cancel_url="operasional:data_kop_dokumen",
-        template_name="operasional/data_kop_dokumen_form.html",
+        template_name="operasional/kop_form.html",
     )
 
 
@@ -690,5 +690,5 @@ def edit_kop_dokumen(request, pk):
         page_subtitle="Perbarui gambar kop dokumen yang digunakan pada dokumen sistem.",
         submit_label="Update",
         cancel_url="operasional:data_kop_dokumen",
-        template_name="operasional/data_kop_dokumen_form.html",
+        template_name="operasional/kop_form.html",
     )

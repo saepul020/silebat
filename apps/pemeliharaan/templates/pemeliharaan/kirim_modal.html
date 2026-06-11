@@ -1,0 +1,20 @@
+<div class="delete-modal" id="maintSendModal">
+    <div class="delete-modal-backdrop" data-maint-send-close></div>
+    <div class="delete-modal-card" role="dialog" aria-modal="true" aria-labelledby="maintSendModalTitle">
+        <div class="delete-modal-header">
+            <h3 id="maintSendModalTitle">Konfirmasi Kirim Pengajuan</h3>
+            <button type="button" class="delete-modal-close" data-maint-send-close aria-label="Tutup">&times;</button>
+        </div>
+        <div class="delete-modal-body">
+            <p>Pengajuan <strong data-maint-send-number>-</strong> akan dikirim ke Kepala Lab untuk proses verifikasi.</p>
+            <p class="delete-warning-text">Lanjutkan mengirim pengajuan ini?</p>
+        </div>
+        <form method="post" id="maintSendForm">
+            {% csrf_token %}
+            <div class="delete-modal-actions">
+                <button type="button" class="btn btn-secondary" data-maint-send-close>Batal</button>
+                <button type="submit" class="btn btn-primary">Kirim Pengajuan</button>
+            </div>
+        </form>
+    </div>
+</div>

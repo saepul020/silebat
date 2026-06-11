@@ -12,6 +12,14 @@ from apps.master_data.models import BarangLaboratorium, KategoriBarangLaboratori
 from .models import MAX_EQUIPMENT_PHOTOS, LandingPeralatanCard, LandingPeralatanFoto
 
 
+def normalize_points(value):
+    if isinstance(value, (list, tuple)):
+        raw_items = value
+    else:
+        raw_items = str(value or "").replace(";", "\n").splitlines()
+    return [item.strip() for item in raw_items if item and item.strip()]
+
+
 class MultiImageInput(forms.ClearableFileInput):
     allow_multiple_selected = True
 
@@ -45,6 +53,7 @@ class LandingPeralatanCardForm(forms.ModelForm):
             "jenis_barang",
             "merek_tipe_alat",
             "fungsi_alat",
+            "metode_pengukuran",
             "spesifikasi_alat",
             "ringkasan_alat",
             "urutan",
@@ -52,7 +61,7 @@ class LandingPeralatanCardForm(forms.ModelForm):
         ]
         widgets = {
             "ringkasan_alat": forms.Textarea(attrs={"rows": 4}),
-            "spesifikasi_alat": forms.Textarea(attrs={"rows": 3}),
+            "spesifikasi_alat": forms.HiddenInput(),
         }
 
     def __init__(self, *args, **kwargs):
@@ -62,6 +71,7 @@ class LandingPeralatanCardForm(forms.ModelForm):
         self._setup_upload_field()
         self._setup_existing_photos()
         self._set_input_attrs()
+        self._setup_spec_field()
         self.fields["is_active"].widget.attrs["class"] = "landing-visible-checkbox"
         self.fields["is_active"].label = "Tampilkan"
 
@@ -139,12 +149,34 @@ class LandingPeralatanCardForm(forms.ModelForm):
             "jenis_barang": {"placeholder": "Masukkan jenis barang", "autocomplete": "off"},
             "merek_tipe_alat": {"placeholder": "Masukkan merek / tipe alat", "autocomplete": "off"},
             "fungsi_alat": {"placeholder": "Masukkan fungsi alat", "autocomplete": "off"},
-            "spesifikasi_alat": {"placeholder": "Masukkan spesifikasi alat", "rows": 3},
+            "metode_pengukuran": {"placeholder": "Masukkan metode pengukuran", "autocomplete": "off"},
             "ringkasan_alat": {"placeholder": "Masukkan ringkasan alat", "rows": 4},
             "urutan": {"placeholder": "Contoh: 1", "min": "1", "inputmode": "numeric"},
         }
         for field_name, attrs in attrs_map.items():
             self.fields[field_name].widget.attrs.update(attrs)
+
+    def _setup_spec_field(self):
+        self.spec_rows = normalize_points(
+            self.data.getlist(self.add_prefix("spesifikasi_alat"))
+            if self.is_bound
+            else getattr(self.instance, "spesifikasi_alat", "")
+        )
+        if not self.spec_rows:
+            self.spec_rows = [""]
+        self.spec_max_length = 180
+        self.spec_min_rows = 1
+
+    def clean_spesifikasi_alat(self):
+        points = normalize_points(self.data.getlist(self.add_prefix("spesifikasi_alat")))
+        if not points:
+            raise forms.ValidationError("Spesifikasi Alat wajib diisi.")
+        too_long = [point for point in points if len(point) > self.spec_max_length]
+        if too_long:
+            raise forms.ValidationError(
+                f"Setiap poin Spesifikasi Alat maksimal {self.spec_max_length} karakter."
+            )
+        return "\n".join(points)
 
     def clean_foto_barang(self):
         files = self.cleaned_data.get("foto_barang") or []

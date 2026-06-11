@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 function initDashboardActiveItemModals() {
-    const openButtons = document.querySelectorAll('[data-active-item-modal-open]');
+    const openButtons = document.querySelectorAll('[data-item-open]');
     if (!openButtons.length) {
         return;
     }
@@ -24,7 +24,7 @@ function initDashboardActiveItemModals() {
         if (activeModal === modal) {
             activeModal = null;
         }
-        if (!document.querySelector('.dashboard-item-modal.show')) {
+        if (!document.querySelector('.item-modal.show')) {
             document.body.classList.remove('is-scroll-locked');
         }
     }
@@ -44,13 +44,13 @@ function initDashboardActiveItemModals() {
 
     openButtons.forEach(function (button) {
         button.addEventListener('click', function () {
-            openModal(button.getAttribute('data-active-item-modal-open'));
+            openModal(button.getAttribute('data-item-open'));
         });
     });
 
-    document.querySelectorAll('.dashboard-item-modal [data-active-item-modal-close]').forEach(function (button) {
+    document.querySelectorAll('.item-modal [data-item-close]').forEach(function (button) {
         button.addEventListener('click', function () {
-            closeModal(button.closest('.dashboard-item-modal'));
+            closeModal(button.closest('.item-modal'));
         });
     });
 
@@ -640,10 +640,10 @@ function createSingleSeriesChartOptions(maxValue, labelWrapWidth, rotation) {
 }
 
 function initTimKegiatanChart() {
-    const canvas = document.getElementById('timKegiatanChart');
-    const source = readDashboardChartData('tim-chart-data');
-    const yearFilter = document.getElementById('timChartYearFilter');
-    const monthFilter = document.getElementById('timChartMonthFilter');
+    const canvas = document.getElementById('grafikTim');
+    const source = readDashboardChartData('data-tim');
+    const yearFilter = document.getElementById('tahunTim');
+    const monthFilter = document.getElementById('bulanTim');
 
     if (!canvas || !source || !yearFilter || !monthFilter) {
         return;
@@ -679,9 +679,9 @@ function initTimKegiatanChart() {
 }
 
 function initLayananKegiatanChart() {
-    const canvas = document.getElementById('layananKegiatanChart');
-    const source = readDashboardChartData('layanan-chart-data');
-    const yearFilter = document.getElementById('layananChartYearFilter');
+    const canvas = document.getElementById('grafikLayanan');
+    const source = readDashboardChartData('data-layanan');
+    const yearFilter = document.getElementById('tahunLayanan');
 
     if (!canvas || !source || !yearFilter) {
         return;
@@ -1002,10 +1002,10 @@ function wrapChartLabel(label, maxCharsPerLine, maxLines) {
 }
 
 function initPengukuranLapanganChart() {
-    const canvas = document.getElementById('pengukuranLapanganChart');
-    const source = readDashboardChartData('pengukuran-chart-data');
-    const yearFilter = document.getElementById('pengukuranChartYearFilter');
-    const monthFilter = document.getElementById('pengukuranChartMonthFilter');
+    const canvas = document.getElementById('grafikUkur');
+    const source = readDashboardChartData('data-ukur');
+    const yearFilter = document.getElementById('tahunUkur');
+    const monthFilter = document.getElementById('bulanUkur');
 
     if (!canvas || !source || !yearFilter || !monthFilter) {
         return;
@@ -1042,9 +1042,9 @@ function initPengukuranLapanganChart() {
 
 
 function initApprovedPeminjamanChart() {
-    const canvas = document.getElementById('approvedPeminjamanChart');
-    const source = readDashboardChartData('approved-peminjaman-chart-data');
-    const yearFilter = document.getElementById('approvedPeminjamanChartYearFilter');
+    const canvas = document.getElementById('grafikPinjam');
+    const source = readDashboardChartData('data-pinjam');
+    const yearFilter = document.getElementById('tahunPinjam');
 
     if (!canvas || !source || !yearFilter) {
         return;
@@ -1077,10 +1077,10 @@ function initApprovedPeminjamanChart() {
 
 
 function initSurveiKegiatanChart() {
-    const canvas = document.getElementById('surveiKegiatanChart');
-    const source = readDashboardChartData('survei-chart-data');
+    const canvas = document.getElementById('grafikSurvei');
+    const source = readDashboardChartData('data-survei');
     const holder = document.querySelector('[data-chart-holder="survei"]');
-    const yearFilter = document.getElementById('surveiChartYearFilter');
+    const yearFilter = document.getElementById('tahunSurvei');
 
     if (!canvas || !source || !holder || !yearFilter) {
         return;
@@ -1107,10 +1107,10 @@ function initSurveiKegiatanChart() {
 }
 
 function initInstansiTujuanChart() {
-    const canvas = document.getElementById('instansiTujuanKegiatanChart');
-    const source = readDashboardChartData('instansi-chart-data');
+    const canvas = document.getElementById('grafikInstansi');
+    const source = readDashboardChartData('data-instansi');
     const holder = document.querySelector('[data-chart-holder="instansi"]');
-    const yearFilter = document.getElementById('instansiChartYearFilter');
+    const yearFilter = document.getElementById('tahunInstansi');
 
     if (!canvas || !source || !holder || !yearFilter) {
         return;
@@ -1207,7 +1207,7 @@ function buildPenunjangChartData(source) {
     const commonDataset = {
         stack: 'condition',
         borderWidth: 1,
-        borderRadius: 7,
+        borderRadius: 0,
         borderSkipped: false,
         categoryPercentage: barSizing.categoryPercentage,
         barPercentage: barSizing.barPercentage,
@@ -1240,8 +1240,8 @@ function buildPenunjangChartData(source) {
 }
 
 function initBahanOperasionalChart() {
-    const canvas = document.getElementById('bahanOperasionalChart');
-    const source = readDashboardChartData('bahan-chart-data');
+    const canvas = document.getElementById('grafikBahan');
+    const source = readDashboardChartData('data-bahan');
     const holder = document.querySelector('[data-chart-holder="bahan"]');
 
     if (!canvas || !source || !holder) {
@@ -1264,8 +1264,8 @@ function initBahanOperasionalChart() {
 }
 
 function initBarangPenunjangChart() {
-    const canvas = document.getElementById('barangPenunjangChart');
-    const source = readDashboardChartData('penunjang-chart-data');
+    const canvas = document.getElementById('grafikPenunjang');
+    const source = readDashboardChartData('data-penunjang');
     const holder = document.querySelector('[data-chart-holder="penunjang"]');
 
     if (!canvas || !source || !holder) {

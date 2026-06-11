@@ -4,13 +4,97 @@
 
 {% block title %}Detail Verifikasi - SILEBAT{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/pemeliharaan.css' %}?v=20260610-maintenance-detail-v3">
+{% endblock %}
+
 {% block content %}
 <div class="page-header">
     <h1>{{ page_title }}</h1>
     <p>{{ page_subtitle }}</p>
 </div>
 
-{% if verification_mode == 'pengembalian' %}
+{% if verification_mode == 'pemeliharaan' %}
+<div class="card detail-header-card">
+    <div class="detail-header-top">
+        <div>
+            <h2 class="card-title">{{ obj.nomor_pengajuan }}</h2>
+            <p class="detail-meta">Diajukan oleh {{ obj.nama_pemohon }}{% if obj.submitted_at %} pada {{ obj.submitted_at|date:'d M Y H:i' }}{% endif %}</p>
+        </div>
+        <div class="detail-header-actions">
+            <span class="status-badge {{ obj.active_verification_badge_class }}">{{ obj.active_verification_label }}</span>
+            <a href="{% url 'verifikasi:index' %}" class="btn btn-secondary">Kembali</a>
+        </div>
+    </div>
+</div>
+
+{% include 'pemeliharaan/detail_body.html' %}
+
+<div class="card verify-action-card">
+    {% if action_buttons %}
+    <div class="verify-action-grid verify-action-grid--{{ action_buttons|length }}">
+        {% for action in action_buttons %}
+        <button
+            type="button"
+            class="btn {{ action.button_class }} js-verify-action"
+            data-action="{{ action.value }}"
+            data-label="{{ action.label }}"
+            data-requires-note="{% if action.requires_note %}true{% else %}false{% endif %}"
+            data-modal-title="{{ action.modal_title }}"
+            data-submit-label="{{ action.modal_submit_label }}"
+            data-note-label="{{ action.note_label }}"
+            data-note-placeholder="{{ action.note_placeholder }}"
+            data-note-help="{{ action.note_help_text }}"
+            data-submit-class="{{ action.submit_class }}"
+        >
+            {{ action.label }}
+        </button>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">Tidak ada aksi verifikasi yang tersedia untuk tahap ini.</div>
+    {% endif %}
+</div>
+
+{% include 'pemeliharaan/timeline.html' %}
+
+<div class="delete-modal {% if open_action_modal %}show{% endif %}" id="verificationNoteModal" data-open-on-load="{% if open_action_modal %}true{% else %}false{% endif %}">
+    <div class="delete-modal-backdrop" id="verificationNoteModalBackdrop"></div>
+    <div class="delete-modal-card verify-note-modal" role="dialog" aria-modal="true" aria-labelledby="verificationNoteModalTitle">
+        <div class="delete-modal-header">
+            <h3 id="verificationNoteModalTitle">{{ active_action.modal_title|default:'Input Catatan' }}</h3>
+            <button type="button" class="delete-modal-close" id="verificationNoteModalClose" aria-label="Tutup">&times;</button>
+        </div>
+
+        <form method="post" id="verificationActionForm" class="verify-note-form" novalidate>
+            {% csrf_token %}
+            <input type="hidden" name="aksi" id="verificationActionInput" value="{{ selected_action|default:'' }}">
+
+            <div class="delete-modal-body">
+                <div class="form-group {% if form.catatan.errors %}has-error{% endif %}">
+                    <label for="verificationCatatanInput" id="verificationNoteLabel">{{ active_action.note_label|default:'Catatan / Alasan' }}</label>
+                    <textarea
+                        name="catatan"
+                        id="verificationCatatanInput"
+                        rows="5"
+                        placeholder="{{ active_action.note_placeholder|default:'Tulis catatan verifikasi di sini.' }}"
+                        {% if active_action.requires_note %}required{% endif %}
+                    >{{ catatan_value }}</textarea>
+                    {% for error in form.catatan.errors %}
+                    <p class="input-error-text verify-note-error">{{ error }}</p>
+                    {% endfor %}
+                    <p class="helper-text" id="verificationNoteHelp" {% if not active_action.note_help_text %}hidden{% endif %}>{{ active_action.note_help_text|default:'' }}</p>
+                </div>
+            </div>
+
+            <div class="delete-modal-actions verify-note-actions">
+                <button type="button" class="btn btn-secondary" id="verificationNoteModalCancel">Kembali</button>
+                <button type="submit" class="btn {{ active_action.submit_class|default:'btn-primary' }}" id="verificationModalSubmitButton">{{ active_action.modal_submit_label|default:'Kirim' }}</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% elif verification_mode == 'pengembalian' %}
 <div class="card detail-header-card">
     <div class="detail-header-shell detail-shell">
         <div class="detail-header-primary detail-main detail-main--loan">
@@ -88,6 +172,7 @@
 </div>
 {% endif %}
 
+{% if verification_mode != 'pemeliharaan' %}
 <div class="detail-layout-grid">
     <div class="card">
         <h3 class="card-title">Data Peminjam</h3>
@@ -558,4 +643,5 @@
         </form>
     </div>
 </div>
+{% endif %}
 {% endblock %}

@@ -44,7 +44,7 @@ class ListPaginationSearchTests(TestCase):
 
     def test_report_search_control_follows_year_without_submit_button(self):
         html = render_to_string(
-            "components/master_entries_control.html",
+            "components/entry_control.html",
             {
                 "selected_entries": "10",
                 "has_entries_filter": False,

@@ -535,6 +535,16 @@ textarea {
     word-break: break-word;
 }
 
+.detail-list {
+    margin: 0;
+    padding-left: 18px;
+    font-weight: 600;
+}
+
+.detail-list li + li {
+    margin-top: 5px;
+}
+
 .detail-layout-grid,
 .detail-grid,
 .card,
@@ -701,6 +711,40 @@ textarea {
     background: var(--danger-border);
     cursor: not-allowed;
     opacity: 0.8;
+}
+
+.master-delete-lock.btn-danger:disabled,
+.komponen-rutin__remove--locked:disabled {
+    border: 1px solid var(--danger-border);
+    background: var(--danger-bg);
+    color: var(--reject-dark);
+    cursor: not-allowed;
+    opacity: 0.58;
+}
+
+.master-delete-lock:hover,
+.master-delete-lock:disabled:hover,
+.komponen-rutin__remove--locked:hover,
+.komponen-rutin__remove--locked:disabled:hover {
+    border-color: var(--reject);
+    background: color-mix(in srgb, var(--reject) 18%, var(--color-white));
+    color: var(--reject-dark);
+    opacity: 0.92;
+}
+
+.master-delete-lock__blocked,
+.komponen-rutin__blocked {
+    display: none;
+}
+
+.master-delete-lock:hover .master-delete-lock__trash,
+.komponen-rutin__remove--locked:hover .komponen-rutin__trash {
+    display: none;
+}
+
+.master-delete-lock:hover .master-delete-lock__blocked,
+.komponen-rutin__remove--locked:hover .komponen-rutin__blocked {
+    display: inline-block;
 }
 
 
@@ -1579,6 +1623,58 @@ input[type="hidden"] {
 .master-upload-stack .upload-card {
     width: 100%;
     margin-bottom: 0;
+}
+
+.komponen-rutin {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.komponen-rutin__list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.komponen-rutin__row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 42px;
+    gap: 10px;
+    align-items: center;
+}
+
+.komponen-rutin__remove {
+    width: 42px;
+    height: 42px;
+    border: 1px solid var(--danger-border);
+    border-radius: 8px;
+    background: var(--danger-bg);
+    color: var(--reject-dark);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.komponen-rutin__remove:hover {
+    background: var(--reject);
+    border-color: var(--reject);
+    color: var(--color-white);
+}
+
+.komponen-rutin__remove:disabled {
+    opacity: 0.48;
+    cursor: not-allowed;
+}
+
+.komponen-rutin__remove--locked:disabled {
+    opacity: 0.58;
+}
+
+.komponen-rutin__add {
+    align-self: flex-start;
+    gap: 6px;
 }
 
 .upload-preview-card--master {

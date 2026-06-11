@@ -5,7 +5,102 @@
 document.addEventListener('DOMContentLoaded', function () {
     initLandingEquipmentOrderValidation();
     initLandingEquipmentGalleryUpload();
+    initLandingSpecInput();
 });
+
+function initLandingSpecInput() {
+    const control = document.querySelector('[data-landing-spec]');
+    if (!control) {
+        return;
+    }
+
+    const list = control.querySelector('[data-spec-list]');
+    const addButton = control.querySelector('[data-spec-add]');
+    const fieldName = control.getAttribute('data-spec-field') || 'spesifikasi_alat';
+    const maxLength = Number(control.getAttribute('data-spec-max') || 180);
+    const minRows = Number(control.getAttribute('data-spec-min') || 1);
+    const label = control.querySelector('label');
+    const labelId = label ? label.id : '';
+
+    if (!list || !addButton) {
+        return;
+    }
+
+    function rows() {
+        return Array.from(list.querySelectorAll('[data-spec-row]'));
+    }
+
+    function updateRemoveState() {
+        const rowList = rows();
+        rowList.forEach(function (row) {
+            const removeButton = row.querySelector('[data-spec-remove]');
+            if (removeButton) {
+                removeButton.disabled = rowList.length <= minRows;
+            }
+        });
+    }
+
+    function renumberRows() {
+        rows().forEach(function (row, index) {
+            const input = row.querySelector('[data-spec-input]');
+            if (input) {
+                input.placeholder = 'Spesifikasi ' + (index + 1);
+            }
+        });
+    }
+
+    function createRow() {
+        const row = document.createElement('div');
+        const input = document.createElement('input');
+        const removeButton = document.createElement('button');
+        const icon = document.createElement('i');
+
+        row.className = 'landing-spec__row';
+        row.setAttribute('data-spec-row', 'true');
+
+        input.type = 'text';
+        input.name = fieldName;
+        input.className = 'form-control';
+        input.maxLength = maxLength;
+        input.autocomplete = 'off';
+        input.setAttribute('data-spec-input', 'true');
+        if (labelId) {
+            input.setAttribute('aria-labelledby', labelId);
+        }
+
+        removeButton.type = 'button';
+        removeButton.className = 'landing-spec__remove';
+        removeButton.title = 'Hapus spesifikasi';
+        removeButton.setAttribute('aria-label', 'Hapus spesifikasi');
+        removeButton.setAttribute('data-spec-remove', 'true');
+
+        icon.className = 'bi bi-trash';
+        icon.setAttribute('aria-hidden', 'true');
+        removeButton.appendChild(icon);
+        row.append(input, removeButton);
+        return row;
+    }
+
+    addButton.addEventListener('click', function () {
+        const row = createRow();
+        list.appendChild(row);
+        renumberRows();
+        updateRemoveState();
+        row.querySelector('[data-spec-input]')?.focus();
+    });
+
+    list.addEventListener('click', function (event) {
+        const removeButton = event.target.closest('[data-spec-remove]');
+        if (!removeButton || removeButton.disabled) {
+            return;
+        }
+        removeButton.closest('[data-spec-row]')?.remove();
+        renumberRows();
+        updateRemoveState();
+    });
+
+    updateRemoveState();
+}
 
 function initLandingEquipmentGalleryUpload() {
     const control = document.querySelector('[data-gallery-upload]');
@@ -68,8 +163,11 @@ function initLandingEquipmentGalleryUpload() {
         const count = selectedCount();
         const isFull = count >= maxFiles;
         status.textContent = count + '/' + maxFiles + ' foto dipilih' + (isFull ? ' \u00b7 Batas maksimal tercapai' : ' \u00b7 Tambah foto lagi');
+        control.classList.toggle('is-full', isFull);
         trigger.classList.toggle('is-full', isFull);
         trigger.setAttribute('aria-disabled', String(isFull));
+        input.setAttribute('aria-disabled', String(isFull));
+        input.tabIndex = isFull ? -1 : 0;
         empty.hidden = count > 0;
     }
 
@@ -136,6 +234,11 @@ function initLandingEquipmentGalleryUpload() {
     }
 
     input.addEventListener('change', addSelection);
+    input.addEventListener('click', function (event) {
+        if (selectedCount() >= maxFiles) {
+            event.preventDefault();
+        }
+    });
     removeInputs.forEach(function (checkbox) {
         checkbox.addEventListener('change', function () {
             clearError();
