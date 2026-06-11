@@ -1,4 +1,5 @@
 from django import forms
+from django.utils.functional import cached_property
 
 from apps.core.file_cleanup import delete_file_if_unused
 from apps.core.upload_validation import (
@@ -23,6 +24,8 @@ from .models import (
 
 
 KOMPONEN_MIN_ROWS = 1
+KOMPONEN_LOCK_MESSAGE = "Komponen sedang digunakan pada pengajuan pemeliharaan aktif."
+KONDISI_LOCK_MESSAGE = "Kondisi Barang tidak dapat diubah karena masih ada transaksi aktif."
 
 
 def _iter_komponen(values):
@@ -65,6 +68,87 @@ def validate_komponen(values):
 def normalize_komponen(values):
     components, _errors = validate_komponen(values)
     return components
+
+
+def _get_active_pemeliharaan_numbers(obj):
+    if not getattr(obj, "pk", None) or not isinstance(obj, BarangLaboratorium):
+        return []
+
+    try:
+        from apps.pemeliharaan.models import (
+            ACTIVE_PEMELIHARAAN_STEPS,
+            PemeliharaanPengajuan,
+        )
+    except Exception:
+        return []
+
+    numbers = []
+    for row in PemeliharaanPengajuan.objects.filter(
+        alat=obj,
+        current_step__in=ACTIVE_PEMELIHARAAN_STEPS,
+    ).order_by("id")[:10]:
+        numbers.append(row.nomor_pengajuan or f"Pemeliharaan #{row.pk}")
+    return numbers
+
+
+def _get_active_peminjaman_numbers(obj):
+    if not getattr(obj, "pk", None):
+        return []
+
+    try:
+        from apps.peminjaman.models import (
+            PeminjamanBarangLaboratorium,
+            PeminjamanPeralatanLaboratorium,
+            PengembalianBarangLaboratorium,
+            PengembalianPeralatanLaboratorium,
+            ReturnStepChoices,
+            StepChoices,
+        )
+    except Exception:
+        return []
+
+    querysets = []
+    if isinstance(obj, BarangLaboratorium):
+        querysets = [
+            PeminjamanBarangLaboratorium.objects.filter(barang=obj),
+            PengembalianBarangLaboratorium.objects.filter(barang=obj),
+        ]
+    elif isinstance(obj, PeralatanLaboratorium):
+        querysets = [
+            PeminjamanPeralatanLaboratorium.objects.filter(barang=obj),
+            PengembalianPeralatanLaboratorium.objects.filter(barang=obj),
+        ]
+
+    numbers = set()
+    for queryset in querysets:
+        queryset = (
+            queryset.select_related("pengajuan")
+            .exclude(pengajuan__return_current_step=ReturnStepChoices.COMPLETED)
+            .exclude(pengajuan__current_step=StepChoices.REJECTED)
+        )
+        for row in queryset[:10]:
+            nomor = (
+                getattr(row.pengajuan, "nomor_pengajuan", "")
+                or f"Pengajuan #{row.pengajuan_id}"
+            )
+            numbers.add(nomor)
+
+    if getattr(obj, "sedang_dipinjam", False):
+        numbers.add("status barang sedang dipinjam")
+    if (getattr(obj, "volume_dipinjam", 0) or 0) > 0:
+        numbers.add("stok masih tercatat sedang dipinjam")
+
+    return sorted(numbers)
+
+
+def _format_lock_message(base, numbers):
+    if not numbers:
+        return base
+
+    shown_text = ", ".join(numbers[:5])
+    if len(numbers) > 5:
+        shown_text += f", dan {len(numbers) - 5} data lainnya"
+    return f"{base} ({shown_text})"
 
 
 class BaseMasterDataForm(forms.ModelForm):
@@ -303,6 +387,44 @@ class AssetBaseForm(BaseMasterDataForm):
             "invalid", "Tahun perolehan harus berupa angka yang valid."
         )
         self._sync_bmn_field_requirements()
+        self._lock_kondisi_barang_field()
+
+    @cached_property
+    def kondisi_barang_lock_numbers(self):
+        if not getattr(self.instance, "pk", None):
+            return []
+
+        numbers = set(_get_active_peminjaman_numbers(self.instance))
+        numbers.update(_get_active_pemeliharaan_numbers(self.instance))
+        return sorted(numbers)
+
+    @cached_property
+    def kondisi_barang_locked(self):
+        return bool(self.kondisi_barang_lock_numbers)
+
+    @cached_property
+    def kondisi_barang_lock_message(self):
+        return _format_lock_message(
+            KONDISI_LOCK_MESSAGE,
+            self.kondisi_barang_lock_numbers,
+        )
+
+    def _lock_kondisi_barang_field(self):
+        field = self.fields.get("kondisi_barang")
+        if not field or not self.kondisi_barang_locked:
+            return
+
+        field.disabled = True
+        field.required = False
+        field.widget.attrs.pop("required", None)
+        field.widget.attrs.update(
+            {
+                "disabled": "disabled",
+                "aria-disabled": "true",
+                "data-transaction-locked": "true",
+                "title": self.kondisi_barang_lock_message,
+            }
+        )
 
     def _get_locked_volume_value(self, kondisi_barang=None):
         kondisi = (
@@ -451,6 +573,12 @@ class AssetBaseForm(BaseMasterDataForm):
 
     def clean(self):
         cleaned_data = super().clean()
+        if self.kondisi_barang_locked:
+            cleaned_data["kondisi_barang"] = (
+                getattr(self.instance, "kondisi_barang", None)
+                or KondisiBarangChoices.BAIK
+            )
+
         if getattr(self._meta.model, "lock_volume_to_one", True):
             cleaned_data["volume"] = self._get_locked_volume_value(
                 cleaned_data.get("kondisi_barang")
@@ -562,6 +690,15 @@ class BarangLaboratoriumForm(AssetBaseForm):
                 "maxlength": str(KOMPONEN_MAX_LENGTH),
             }
         )
+        if self.komponen_field_locked:
+            self.fields["komponen_pemeliharaan"].widget.attrs.update(
+                {
+                    "disabled": "disabled",
+                    "aria-disabled": "true",
+                    "data-transaction-locked": "true",
+                    "title": self.komponen_lock_message,
+                }
+            )
 
     @property
     def komponen_max_length(self):
@@ -571,7 +708,7 @@ class BarangLaboratoriumForm(AssetBaseForm):
     def komponen_min_rows(self):
         return KOMPONEN_MIN_ROWS
 
-    @property
+    @cached_property
     def komponen_locked_values(self):
         if not getattr(self.instance, "pk", None):
             return set()
@@ -587,6 +724,21 @@ class BarangLaboratoriumForm(AssetBaseForm):
                 pengajuan__alat=self.instance,
                 pengajuan__current_step__in=ACTIVE_PEMELIHARAAN_STEPS,
             ).values_list("komponen", flat=True)
+        )
+
+    @cached_property
+    def komponen_lock_numbers(self):
+        return _get_active_pemeliharaan_numbers(self.instance)
+
+    @cached_property
+    def komponen_field_locked(self):
+        return bool(self.komponen_lock_numbers)
+
+    @cached_property
+    def komponen_lock_message(self):
+        return _format_lock_message(
+            KOMPONEN_LOCK_MESSAGE,
+            self.komponen_lock_numbers,
         )
 
     def _get_komponen_values(self):
@@ -606,6 +758,11 @@ class BarangLaboratoriumForm(AssetBaseForm):
         return values + [""] * (row_count - len(values))
 
     def clean_komponen_pemeliharaan(self):
+        if self.komponen_field_locked:
+            return normalize_komponen(
+                getattr(self.instance, "komponen_pemeliharaan", [])
+            )
+
         values = (
             self.data.getlist(self.add_prefix("komponen_pemeliharaan"))
             if self.is_bound

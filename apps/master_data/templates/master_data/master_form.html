@@ -174,11 +174,13 @@
                                             data-komponen-id="{{ field.id_for_label }}"
                                             data-komponen-max="{{ form.komponen_max_length }}"
                                             data-komponen-min="{{ form.komponen_min_rows }}"
+                                            {% if form.komponen_field_locked %}data-komponen-locked-all="true" aria-disabled="true"{% endif %}
+                                            data-komponen-lock-message="{{ form.komponen_lock_message }}"
                                         >
                                             <label id="{{ field.id_for_label }}_label">{{ field.label }}</label>
                                             <div class="komponen-rutin__list" data-komponen-list>
                                                 {% for value in form.komponen_rows %}
-                                                <div class="komponen-rutin__row" data-komponen-row {% if value in form.komponen_locked_values %}data-komponen-locked="true"{% endif %}>
+                                                <div class="komponen-rutin__row" data-komponen-row {% if form.komponen_field_locked or value in form.komponen_locked_values %}data-komponen-locked="true"{% endif %}>
                                                     <input
                                                         type="text"
                                                         name="{{ field.html_name }}"
@@ -191,16 +193,15 @@
                                                         aria-labelledby="{{ field.id_for_label }}_label"
                                                         data-status-dependent="true"
                                                         data-komponen-input
-                                                        {% if value in form.komponen_locked_values %}readonly aria-readonly="true" title="Komponen sedang digunakan pada pengajuan pemeliharaan aktif"{% endif %}
+                                                        {% if form.komponen_field_locked or value in form.komponen_locked_values %}readonly disabled aria-readonly="true" aria-disabled="true" data-transaction-locked="true" title="{{ form.komponen_lock_message }}"{% endif %}
                                                     >
-                                                    <button type="button" class="komponen-rutin__remove {% if value in form.komponen_locked_values %}komponen-rutin__remove--locked{% endif %}" data-komponen-remove title="{% if value in form.komponen_locked_values %}Komponen sedang digunakan pada pengajuan pemeliharaan aktif{% else %}Hapus komponen{% endif %}" aria-label="Hapus komponen" {% if value in form.komponen_locked_values %}disabled{% endif %}>
-                                                        <i class="bi bi-trash komponen-rutin__trash" aria-hidden="true"></i>
-                                                        <i class="bi bi-x-circle-fill komponen-rutin__blocked" aria-hidden="true"></i>
+                                                    <button type="button" class="komponen-rutin__remove {% if form.komponen_field_locked or value in form.komponen_locked_values %}komponen-rutin__remove--locked{% endif %}" data-komponen-remove title="{% if form.komponen_field_locked or value in form.komponen_locked_values %}{{ form.komponen_lock_message }}{% else %}Hapus komponen{% endif %}" aria-label="Hapus komponen" {% if form.komponen_field_locked or value in form.komponen_locked_values %}disabled aria-disabled="true" data-transaction-locked="true"{% endif %}>
+                                                        <i class="bi bi-trash" aria-hidden="true"></i>
                                                     </button>
                                                 </div>
                                                 {% endfor %}
                                             </div>
-                                            <button type="button" class="btn btn-secondary komponen-rutin__add" data-komponen-add>
+                                            <button type="button" class="btn btn-secondary komponen-rutin__add{% if form.komponen_field_locked %} btn-disabled{% endif %}" data-komponen-add {% if form.komponen_field_locked %}disabled title="{{ form.komponen_lock_message }}" aria-disabled="true" data-transaction-locked="true"{% endif %}>
                                                 <i class="bi bi-plus-circle"></i>
                                                 <span>Tambah Komponen</span>
                                             </button>

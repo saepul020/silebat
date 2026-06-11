@@ -1,0 +1,15 @@
+{% if item.delete_block_message %}
+<button type="button" class="btn btn-danger btn-sm operasional-delete-lock" disabled title="{{ item.delete_block_message }}" aria-label="Data tidak dapat dihapus">
+    <i class="bi bi-trash3-fill" aria-hidden="true"></i>
+</button>
+{% else %}
+<button
+    type="button"
+    class="btn btn-danger btn-sm js-delete-btn" data-delete-modal="operasional"
+    data-delete-url="{{ delete_url }}"
+    data-item-name="{{ item_name }}"
+    data-item-meta="{{ item_meta }}"
+>
+    <i class="bi bi-trash3-fill"></i>
+</button>
+{% endif %}

@@ -3,6 +3,7 @@ from io import BytesIO
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
+from django.db.models.deletion import ProtectedError
 from django.http import HttpResponse, JsonResponse
 from django.urls import reverse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -406,9 +407,68 @@ def _handle_form_page(
 def _handle_delete(request, *, model, pk, success_message, redirect_to):
     obj = get_object_or_404(model, pk=pk)
     if request.method == "POST":
-        obj.delete()
+        block_message = _get_active_transaksi_delete_block_message(obj)
+        if block_message:
+            messages.error(request, block_message)
+            return redirect(redirect_to)
+
+        try:
+            obj.delete()
+        except ProtectedError:
+            messages.error(
+                request,
+                f'Data "{obj}" belum dapat dihapus karena masih mempunyai relasi aktif di modul lain.',
+            )
+            return redirect(redirect_to)
+
         messages.success(request, success_message)
     return redirect(redirect_to)
+
+
+def _get_active_transaksi_delete_block_message(obj):
+    try:
+        from apps.peminjaman.models import PeminjamanRequest, ReturnStepChoices, StepChoices
+    except Exception:
+        return ""
+
+    queryset = PeminjamanRequest.objects.exclude(
+        current_step=StepChoices.REJECTED,
+    ).exclude(
+        return_current_step=ReturnStepChoices.COMPLETED,
+    )
+
+    if isinstance(obj, TimKegiatan):
+        queryset = queryset.filter(tim_kegiatan=obj)
+    elif isinstance(obj, LayananKegiatan):
+        queryset = queryset.filter(layanan_kegiatan=obj)
+    elif isinstance(obj, SurveiKegiatan):
+        queryset = queryset.filter(kegiatan_survei=obj)
+    elif isinstance(obj, InstansiKlien):
+        queryset = queryset.filter(instansi_tujuan=obj)
+    else:
+        return ""
+
+    active_numbers = []
+    for row in queryset.order_by("id")[:10]:
+        active_numbers.append(row.nomor_pengajuan or f"Pengajuan #{row.pk}")
+
+    if not active_numbers:
+        return ""
+
+    shown_text = ", ".join(active_numbers[:5])
+    if len(active_numbers) > 5:
+        shown_text += f", dan {len(active_numbers) - 5} data lainnya"
+
+    return (
+        f'Data "{obj}" tidak dapat dihapus karena masih digunakan pada proses '
+        f'transaksi aktif ({shown_text}). '
+        "Selesaikan transaksi atau batalkan/hapus pengajuan aktif terlebih dahulu."
+    )
+
+
+def _mark_delete_blocks(context):
+    for item in context.get("items") or []:
+        item.delete_block_message = _get_active_transaksi_delete_block_message(item)
 
 
 @login_required
@@ -426,6 +486,7 @@ def data_tim(request):
         "page_subtitle": "Kelola data divisi tim kegiatan Balai Air Tanah.",
     }
     context.update(pagination_context)
+    _mark_delete_blocks(context)
     return render(request, "operasional/tim_list.html", context)
 
 
@@ -480,6 +541,7 @@ def data_layanan(request):
         "page_subtitle": "Kelola jenis layanan kegiatan yang berlaku.",
     }
     context.update(pagination_context)
+    _mark_delete_blocks(context)
     return render(request, "operasional/layanan_list.html", context)
 
 
@@ -534,6 +596,7 @@ def data_survei(request):
         "page_subtitle": "Kelola jenis kegiatan survei yang tersedia.",
     }
     context.update(pagination_context)
+    _mark_delete_blocks(context)
     return render(request, "operasional/survei_list.html", context)
 
 
@@ -592,6 +655,7 @@ def _render_instansi_list(request, import_context=None):
         "import_context": import_context or {},
     }
     context.update(pagination_context)
+    _mark_delete_blocks(context)
     return render(request, "operasional/instansi_list.html", context)
 
 

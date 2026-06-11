@@ -1958,8 +1958,10 @@ function initMasterDataFormBehavior() {
             return;
         }
 
-        field.disabled = disabled;
-        if (disabled) {
+        const locked = field.getAttribute('data-transaction-locked') === 'true';
+        const shouldDisable = disabled || locked;
+        field.disabled = shouldDisable;
+        if (shouldDisable) {
             field.setAttribute('aria-disabled', 'true');
         } else {
             field.removeAttribute('aria-disabled');
@@ -2320,6 +2322,8 @@ function initKomponenRutin() {
         const maxLength = Number(group.getAttribute('data-komponen-max') || 100);
         const minRows = Math.max(Number(group.getAttribute('data-komponen-min') || 1), 1);
         const labelId = fieldId + '_label';
+        const isGroupLocked = group.getAttribute('data-komponen-locked-all') === 'true';
+        const lockMessage = group.getAttribute('data-komponen-lock-message') || 'Komponen sedang digunakan pada pengajuan pemeliharaan aktif';
 
         if (!list || !addButton) {
             return;
@@ -2381,9 +2385,53 @@ function initKomponenRutin() {
                 }
 
                 if (removeButton) {
-                    removeButton.disabled = row.dataset.komponenLocked === 'true' || rows.length <= minRows;
+                    const isLocked = isGroupLocked || row.dataset.komponenLocked === 'true';
+                    removeButton.disabled = isLocked || rows.length <= minRows;
+                    removeButton.classList.toggle('komponen-rutin__remove--locked', isLocked);
+                    removeButton.title = isLocked ? lockMessage : 'Hapus komponen';
+                    removeButton.setAttribute('aria-disabled', String(isLocked || rows.length <= minRows));
+                    removeButton.toggleAttribute('data-transaction-locked', isLocked);
+                }
+
+                if (input) {
+                    const isLocked = isGroupLocked || row.dataset.komponenLocked === 'true';
+                    input.disabled = isLocked;
+                    input.readOnly = isLocked;
+                    input.toggleAttribute('readonly', isLocked);
+                    input.toggleAttribute('data-transaction-locked', isLocked);
+                    input.classList.toggle('is-readonly-field', isLocked);
+                    input.setAttribute('aria-disabled', String(isLocked));
+                    input.setAttribute('aria-readonly', String(isLocked));
                 }
             });
+
+            addButton.disabled = isGroupLocked;
+            addButton.classList.toggle('btn-disabled', isGroupLocked);
+            addButton.setAttribute('aria-disabled', String(isGroupLocked));
+            addButton.toggleAttribute('data-transaction-locked', isGroupLocked);
+            if (isGroupLocked) {
+                addButton.title = lockMessage;
+            }
+        }
+
+        function focusAfterRemove(index) {
+            const rows = getRows();
+            const start = Math.min(index, rows.length - 1);
+            const orderedRows = rows.slice(start).concat(rows.slice(0, start).reverse());
+            const targetInput = orderedRows
+                .map(function (item) {
+                    return item.querySelector('[data-komponen-input]');
+                })
+                .find(function (input) {
+                    return input && !input.disabled && !input.readOnly;
+                });
+
+            if (targetInput) {
+                targetInput.focus();
+                return;
+            }
+
+            addButton.focus();
         }
 
         while (getRows().length < minRows) {
@@ -2393,6 +2441,10 @@ function initKomponenRutin() {
         syncRows();
 
         addButton.addEventListener('click', function () {
+            if (isGroupLocked || addButton.disabled) {
+                return;
+            }
+
             const row = createRow('');
             list.appendChild(row);
             syncRows();
@@ -2406,14 +2458,17 @@ function initKomponenRutin() {
                 return;
             }
 
+            event.preventDefault();
+
             const rows = getRows();
             const row = removeButton.closest('[data-komponen-row]');
+            const rowIndex = rows.indexOf(row);
 
             if (!row) {
                 return;
             }
 
-            if (row.dataset.komponenLocked === 'true') {
+            if (isGroupLocked || row.dataset.komponenLocked === 'true') {
                 return;
             }
 
@@ -2428,6 +2483,7 @@ function initKomponenRutin() {
 
             row.remove();
             syncRows();
+            focusAfterRemove(Math.max(rowIndex, 0));
         });
     });
 }

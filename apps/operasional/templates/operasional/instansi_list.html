@@ -47,15 +47,8 @@
                             <a href="{% url 'operasional:edit_instansi' item.pk %}?next={{ request.get_full_path|urlencode }}" class="btn btn-warning btn-sm">
                                 <i class="bi bi-pencil-square"></i>
                             </a>
-                            <button
-                                type="button"
-                                class="btn btn-danger btn-sm js-delete-btn" data-delete-modal="operasional"
-                                data-delete-url="{% url 'operasional:hapus_instansi' item.pk %}"
-                                data-item-name="{{ item.nama_instansi }}"
-                                data-item-meta="{{ item.organisasi|default:'-' }}"
-                            >
-                                <i class="bi bi-trash3-fill"></i>
-                            </button>
+                            {% url 'operasional:hapus_instansi' item.pk as delete_url %}
+                            {% include 'operasional/delete_button.html' with delete_url=delete_url item_name=item.nama_instansi item_meta=item.organisasi|default:'-' %}
                         </div>
                     </td>
                 </tr>

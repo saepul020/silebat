@@ -14,9 +14,7 @@ from apps.core.permissions import (
     deny_access,
     get_role_name,
 )
-from apps.master_data.models import BarangLaboratorium
-
-from .forms import PemeliharaanForm
+from .forms import PemeliharaanForm, get_available_alat_queryset
 from .models import (
     JenisFotoPemeliharaanChoices,
     KeputusanPemeliharaanChoices,
@@ -86,26 +84,13 @@ def _get_pengajuan_queryset():
 
 
 def _build_alat_components(instance=None):
-    active_alat_ids = PemeliharaanPengajuan.objects.filter(
-        current_step__in=(
-            StepPemeliharaanChoices.DRAFT,
-            StepPemeliharaanChoices.KEPALA_LAB,
-            StepPemeliharaanChoices.PIMPINAN,
-            StepPemeliharaanChoices.DIKEMBALIKAN,
-        ),
-        alat__isnull=False,
-    )
-    if instance and instance.pk:
-        active_alat_ids = active_alat_ids.exclude(pk=instance.pk)
     return {
         str(item.pk): [
             str(component or "").strip()
             for component in (item.komponen_pemeliharaan or [])
             if str(component or "").strip()
         ]
-        for item in BarangLaboratorium.objects.exclude(
-            pk__in=active_alat_ids.values("alat_id")
-        ).order_by("nama_barang", "kode_laboratorium")
+        for item in get_available_alat_queryset(instance)
     }
 
 

@@ -3,10 +3,12 @@ from urllib.parse import quote
 from django.test import TestCase
 from django.urls import reverse
 from django.utils.html import escape
+from django.utils import timezone
 
 from apps.pengguna.models import Role, User
 
-from apps.operasional.models import LayananKegiatan
+from apps.operasional.models import InstansiKlien, LayananKegiatan, TimKegiatan
+from apps.peminjaman.models import PeminjamanRequest
 
 
 class EditReturnNavigationTests(TestCase):
@@ -70,3 +72,56 @@ class EditReturnNavigationTests(TestCase):
             reverse("operasional:data_layanan"),
             fetch_redirect_response=False,
         )
+
+    def test_delete_active_transaction_layanan_is_blocked(self):
+        tim = TimKegiatan.objects.create(nama_tim="Tim Uji")
+        instansi = InstansiKlien.objects.create(
+            nama_instansi="Instansi Uji",
+            alamat_instansi="Alamat Uji",
+            organisasi=InstansiKlien.OrganisasiChoices.EKSTERNAL_PU,
+        )
+        today = timezone.localdate()
+        pengajuan = PeminjamanRequest.objects.create(
+            peminjam=self.user,
+            nama_peminjam="Admin",
+            layanan_kegiatan=self.obj,
+            tim_kegiatan=tim,
+            instansi_tujuan=instansi,
+            tanggal_mulai=today,
+            tanggal_selesai=today,
+        )
+
+        response = self.client.post(reverse("operasional:hapus_layanan", args=[self.obj.pk]))
+
+        self.assertRedirects(
+            response,
+            reverse("operasional:data_layanan"),
+            fetch_redirect_response=False,
+        )
+        self.assertTrue(LayananKegiatan.objects.filter(pk=self.obj.pk).exists())
+        messages = [str(message) for message in response.wsgi_request._messages]
+        self.assertTrue(any(pengajuan.nomor_pengajuan in message for message in messages))
+
+    def test_active_transaction_layanan_delete_button_is_locked(self):
+        tim = TimKegiatan.objects.create(nama_tim="Tim Uji")
+        instansi = InstansiKlien.objects.create(
+            nama_instansi="Instansi Uji",
+            alamat_instansi="Alamat Uji",
+            organisasi=InstansiKlien.OrganisasiChoices.EKSTERNAL_PU,
+        )
+        today = timezone.localdate()
+        PeminjamanRequest.objects.create(
+            peminjam=self.user,
+            nama_peminjam="Admin",
+            layanan_kegiatan=self.obj,
+            tim_kegiatan=tim,
+            instansi_tujuan=instansi,
+            tanggal_mulai=today,
+            tanggal_selesai=today,
+        )
+
+        response = self.client.get(reverse("operasional:data_layanan"))
+
+        self.assertContains(response, "operasional-delete-lock")
+        self.assertContains(response, "disabled")
+        self.assertNotContains(response, f'data-delete-url="{reverse("operasional:hapus_layanan", args=[self.obj.pk])}"')

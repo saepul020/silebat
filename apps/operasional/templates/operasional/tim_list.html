@@ -35,15 +35,8 @@
                             <a href="{% url 'operasional:edit_tim' item.pk %}?next={{ request.get_full_path|urlencode }}" class="btn btn-warning btn-sm">
                                 <i class="bi bi-pencil-square"></i>
                             </a>
-                            <button
-                                type="button"
-                                class="btn btn-danger btn-sm js-delete-btn" data-delete-modal="operasional"
-                                data-delete-url="{% url 'operasional:hapus_tim' item.pk %}"
-                                data-item-name="{{ item.nama_tim }}"
-                                data-item-meta="{{ item.ketua_tim.get_full_name|default:item.ketua_tim.username|default:'-' }}"
-                            >
-                                <i class="bi bi-trash3-fill"></i>
-                            </button>
+                            {% url 'operasional:hapus_tim' item.pk as delete_url %}
+                            {% include 'operasional/delete_button.html' with delete_url=delete_url item_name=item.nama_tim item_meta=item.ketua_tim.get_full_name|default:item.ketua_tim.username|default:'-' %}
                         </div>
                     </td>
                 </tr>

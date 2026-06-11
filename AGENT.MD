@@ -279,6 +279,20 @@ Saat mengubah template:
 - Jika mengubah id/class yang dipakai JS, update semua selector terkait.
 - Jangan menyisakan markup tersembunyi lama yang sudah diganti logic baru.
 
+### Button Tidak Aktif dan Terkunci
+
+Gunakan pola seragam untuk semua tombol yang tidak bisa diklik, baik hapus, edit, download, export, import, tambah, maupun tombol aksi lain.
+
+- Untuk tombol HTML, gunakan attribute `disabled` dan tetap pakai class dasar `.btn` beserta varian warnanya, misalnya `btn btn-danger btn-sm`.
+- Untuk link yang harus tampil seperti tombol tidak aktif, jangan beri `href`; gunakan elemen `<button type="button" disabled>` bila memang tidak boleh diklik.
+- Tambahkan class modifier lock yang singkat dan spesifik konteks bila tombol terkunci karena aturan data, misalnya `master-delete-lock`, `operasional-delete-lock`, atau `komponen-rutin__remove--locked`.
+- Style tombol tidak aktif wajib samar, memakai `cursor: not-allowed`, dan tidak boleh memiliki efek hover visual. Hover hanya boleh mengubah cursor menjadi icon dilarang, bukan warna, border, ikon, shadow, transform, atau opacity.
+- Jangan mengganti ikon tombol terkunci saat hover. Ikon tetap sama dengan aksi aslinya agar UI konsisten.
+- Untuk selector CSS, batasi hover tombol aktif dengan pola seperti `.nama-button:not(.nama-button--locked):not(:disabled):hover`.
+- Style global tombol disabled berada di `static/css/base.css`. Jangan membuat aturan disabled baru yang bertumpuk bila bisa memakai `.btn:disabled`, `.btn-disabled`, atau modifier lock existing.
+- Jika status lock berubah lewat JS, sinkronkan class modifier, attribute `disabled`, `title`, dan `aria-label` sejak render awal dan setiap update state.
+- Tombol terkunci hanya UX. Aturan hapus/edit/download yang penting wajib tetap divalidasi di server-side view/form/model agar request manual tidak bisa melewati lock.
+
 Saat mengubah asset:
 
 - Edit sumber di `static/`, bukan `staticfiles/`.

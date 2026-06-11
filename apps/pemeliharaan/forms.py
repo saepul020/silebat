@@ -24,6 +24,21 @@ from .models import (
 DATE_TIME_INPUT_FORMATS = ["%Y-%m-%dT%H:%M"]
 
 
+def get_available_alat_queryset(instance=None):
+    active_alat_ids = PemeliharaanPengajuan.objects.filter(
+        current_step__in=ACTIVE_PEMELIHARAAN_STEPS,
+        alat__isnull=False,
+    )
+    if instance and instance.pk:
+        active_alat_ids = active_alat_ids.exclude(pk=instance.pk)
+
+    return (
+        BarangLaboratorium.objects.filter(sedang_dipinjam=False)
+        .exclude(pk__in=active_alat_ids.values("alat_id"))
+        .order_by("nama_barang", "kode_laboratorium")
+    )
+
+
 class PemeliharaanAlatChoiceField(forms.ModelChoiceField):
     def label_from_instance(self, obj):
         kode = obj.kode_laboratorium or "-"
@@ -57,17 +72,7 @@ class PemeliharaanForm(forms.Form):
         self.cleaned_items = []
         self.pemeriksaan_files = []
         self.component_errors = {}
-        active_alat_ids = PemeliharaanPengajuan.objects.filter(
-            current_step__in=ACTIVE_PEMELIHARAAN_STEPS,
-            alat__isnull=False,
-        )
-        if self.instance and self.instance.pk:
-            active_alat_ids = active_alat_ids.exclude(pk=self.instance.pk)
-        self.fields["pilih_alat"].queryset = BarangLaboratorium.objects.exclude(
-            pk__in=active_alat_ids.values("alat_id")
-        ).order_by(
-            "nama_barang", "kode_laboratorium"
-        )
+        self.fields["pilih_alat"].queryset = get_available_alat_queryset(self.instance)
         if self.instance and self.instance.alat_id:
             self.fields["pilih_alat"].initial = self.instance.alat
         self.fields["tanggal_pemeriksaan"].initial = self.tanggal_pemeriksaan_value

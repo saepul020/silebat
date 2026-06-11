@@ -14,6 +14,7 @@ from apps.master_data.models import (
 )
 from apps.pengguna.models import Role, User
 
+from apps.pemeliharaan.forms import PemeliharaanForm
 from apps.pemeliharaan.models import (
     KondisiPemeliharaanChoices,
     PemeliharaanItem,
@@ -112,6 +113,49 @@ class PemeliharaanVerifikasiTests(TestCase):
         response = self.client.get(reverse("pemeliharaan:tambah"))
         self.assertNotContains(response, self.alat.nama_barang)
 
+    def test_alat_sedang_dipinjam_tidak_muncul_di_dropdown_pengajuan(self):
+        with patch("apps.master_data.signals.ensure_master_qr_code"):
+            alat_dipinjam = BarangLaboratorium.objects.create(
+                nama_barang="Drone Sedang Dipinjam",
+                tipe_merek_barang="DJI Dipinjam",
+                jenis_barang="Drone",
+                status_barang=StatusBarangChoices.NON_BMN,
+                kode_laboratorium="LAB-PEM-DIPINJAM",
+                lokasi_barang="Gudang Uji",
+                kategori_barang=KategoriBarangLaboratoriumChoices.DRONE,
+                komponen_pemeliharaan=["Kamera"],
+                sedang_dipinjam=True,
+            )
+
+        self._login("Admin Lab")
+        response = self.client.get(reverse("pemeliharaan:tambah"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, alat_dipinjam.nama_barang)
+        self.assertNotContains(response, f'"{alat_dipinjam.pk}":')
+
+    def test_form_menolak_post_manual_alat_sedang_dipinjam(self):
+        with patch("apps.master_data.signals.ensure_master_qr_code"):
+            alat_dipinjam = BarangLaboratorium.objects.create(
+                nama_barang="Drone Manual Dipinjam",
+                tipe_merek_barang="DJI Manual",
+                jenis_barang="Drone",
+                status_barang=StatusBarangChoices.NON_BMN,
+                kode_laboratorium="LAB-PEM-MANUAL-DIPINJAM",
+                lokasi_barang="Gudang Uji",
+                kategori_barang=KategoriBarangLaboratoriumChoices.DRONE,
+                komponen_pemeliharaan=["Kamera"],
+                sedang_dipinjam=True,
+            )
+
+        form = PemeliharaanForm(
+            data={"pilih_alat": str(alat_dipinjam.pk)},
+            actor=self.users["Admin Lab"],
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertIn("pilih_alat", form.errors)
+
     def test_master_data_menolak_hapus_komponen_dan_barang_aktif(self):
         pengajuan = self._create_pengajuan(TindakanPerbaikanChoices.MANDIRI)
         pengajuan.tandai_alat_dalam_pemeliharaan()
@@ -120,8 +164,8 @@ class PemeliharaanVerifikasiTests(TestCase):
             data=self._master_form_data(self.alat, []),
             instance=self.alat,
         )
-        self.assertFalse(form.is_valid())
-        self.assertIn("komponen_pemeliharaan", form.errors)
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(form.cleaned_data["komponen_pemeliharaan"], ["Kamera"])
 
         self._login("Admin Lab")
         response = self.client.post(
