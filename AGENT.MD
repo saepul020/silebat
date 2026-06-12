@@ -279,6 +279,38 @@ Saat mengubah template:
 - Jika mengubah id/class yang dipakai JS, update semua selector terkait.
 - Jangan menyisakan markup tersembunyi lama yang sudah diganti logic baru.
 
+### Card Detail Data Domain
+
+Untuk halaman detail yang menampilkan dua kelompok data metadata berdampingan, ikuti pola detail peminjaman:
+
+- Bungkus dua card dengan `.detail-layout-grid` agar desktop tampil kiri-kanan dan mobile turun satu kolom.
+- Setiap card memakai `.card`, judul `.card-title`, lalu daftar field dalam `.detail-grid`.
+- Setiap field memakai `.detail-item` dengan urutan `<label>Nama Field</label>` lalu `<p>Nilai field</p>`, sehingga label selalu di atas dan nilai di bawah.
+- Gunakan pola ini untuk konteks serupa, misalnya card pelaksana/pemohon di kiri dan data barang/kegiatan di kanan, sebelum membuat selector baru.
+
+### Jarak Card Halaman Detail
+
+Untuk halaman detail transaksi atau verifikasi yang berisi beberapa card berurutan, seragamkan jarak antar-card seperti dashboard:
+
+- Bungkus seluruh card konten detail dengan `.detail-card-stack` setelah `.page-header`.
+- Jangan masukkan modal, overlay, atau elemen global tersembunyi ke dalam `.detail-card-stack`.
+- Gunakan gap bawaan `.detail-card-stack`: `20px` pada desktop dan `16px` pada mobile.
+- Untuk dua card sejajar di dalam stack, tetap gunakan `.detail-layout-grid`; gap-nya mengikuti aturan stack agar desktop `20px` dan mobile `16px`.
+- Jangan menambah `margin-top` atau `margin-bottom` manual pada card detail baru jika card berada di dalam `.detail-card-stack`; atur jarak lewat gap stack agar tidak bertumpuk.
+- Terapkan pola ini untuk konteks serupa seperti Detail Pengajuan Peminjaman, Detail Pengajuan Pemeliharaan, Detail Verifikasi Pengajuan, dan Detail Peminjaman.
+
+### Input Tanggal dan Waktu
+
+Untuk input tanggal di form aplikasi, gunakan pola popup kalender custom yang sama seperti form Tambah Pengajuan Peminjaman:
+
+- Input tanggal-saja memakai `type="text"`, class `.date-input`, placeholder `Masukan tanggal sesuai format`, `autocomplete="off"`, dan format tampilan `dd Mon yyyy` seperti `01 Jun 2026`.
+- Hindari native `date` atau `datetime-local` jika halaman membutuhkan tampilan seragam di desktop, mobile, dan responsive device lain.
+- Picker tanggal-saja wajib memakai style global `.date-picker-control`, `.date-picker-toggle`, `.date-picker-popup`, `.date-picker-grid`, dan responsive rule di `static/css/base.css`.
+- Jika input tanggal dibuat dinamis lewat JS, inisialisasi ulang picker setelah markup baru dirender agar baris baru punya perilaku yang sama.
+- Validasi tanggal penting tetap dibuat di server-side. Backend harus menerima format tampilan picker dan format lama yang masih mungkin tersimpan/ter-post.
+- Jika field membutuhkan jam, gunakan pola date-time picker seperti form Tambah Pengumuman: input text dengan popup kalender, baris input waktu, class `.date-time-picker-control`, `.date-time-picker-popup`, dan style responsive date-time yang sudah ada di `static/css/base.css`.
+- Jangan mencampur native browser picker dengan custom picker dalam konteks form yang sama kecuali ada alasan teknis kuat.
+
 ### Button Tidak Aktif dan Terkunci
 
 Gunakan pola seragam untuk semua tombol yang tidak bisa diklik, baik hapus, edit, download, export, import, tambah, maupun tombol aksi lain.

@@ -21,8 +21,9 @@ class TindakanPerbaikanChoices(models.TextChoices):
 class StepPemeliharaanChoices(models.TextChoices):
     DRAFT = "draft", "Draft"
     KEPALA_LAB = "kepala_lab", "Verifikasi Pemeliharaan - Kepala Lab"
-    PIMPINAN = "pimpinan", "Verifikasi Pemeliharaan - Pimpinan"
+    PIMPINAN = "pimpinan", "Verifikasi Pemeliharaan - Ketua Tim Layanan Teknis"
     SELESAI = "selesai", "Selesai"
+    DITOLAK = "ditolak", "Ditolak"
     DIKEMBALIKAN = "dikembalikan", "Dikembalikan ke Pemohon"
 
 
@@ -32,11 +33,16 @@ ACTIVE_PEMELIHARAAN_STEPS = (
     StepPemeliharaanChoices.PIMPINAN,
     StepPemeliharaanChoices.DIKEMBALIKAN,
 )
+FINAL_PEMELIHARAAN_STEPS = (
+    StepPemeliharaanChoices.SELESAI,
+    StepPemeliharaanChoices.DITOLAK,
+)
 
 
 class KeputusanPemeliharaanChoices(models.TextChoices):
     PENDING = "pending", "Menunggu"
     APPROVED = "approved", "Disetujui"
+    REJECTED = "rejected", "Ditolak"
     REVISION = "revision", "Dikembalikan"
 
 
@@ -68,7 +74,11 @@ class PemeliharaanPengajuan(models.Model):
     snapshot_nama_barang = models.CharField(max_length=200, blank=True)
     snapshot_kode_laboratorium = models.CharField(max_length=100, blank=True)
     snapshot_tipe_merek_barang = models.CharField(max_length=200, blank=True)
+    snapshot_status_barang = models.CharField(max_length=30, blank=True)
     kondisi_barang_sebelum = models.CharField(max_length=30, blank=True)
+    tanggal_pemeliharaan_sebelum = models.DateField(null=True, blank=True)
+    tanggal_perbaikan_sebelum = models.DateField(null=True, blank=True)
+    master_awal_disimpan = models.BooleanField(default=False)
     current_step = models.CharField(
         max_length=30,
         choices=StepPemeliharaanChoices.choices,
@@ -143,6 +153,31 @@ class PemeliharaanPengajuan(models.Model):
         return nama_lengkap or self.pemohon.username
 
     @property
+    def nama_pelaksana(self):
+        return self.nama_pemohon
+
+    @property
+    def jabatan_pemohon(self):
+        profile = getattr(self.pemohon, "safe_profile", None)
+        jabatan = getattr(profile, "jabatan", "") or ""
+        if jabatan:
+            return jabatan
+        role = getattr(profile, "role", None)
+        return getattr(role, "nama", "") or "-"
+
+    @property
+    def jabatan_pelaksana(self):
+        return self.jabatan_pemohon
+
+    @property
+    def status_barang_label(self):
+        if self.snapshot_status_barang:
+            return self.snapshot_status_barang
+        if self.alat_id and self.alat:
+            return self.alat.get_status_barang_display()
+        return "-"
+
+    @property
     def jenis_pengajuan_label(self):
         return "Pemeliharaan"
 
@@ -157,8 +192,33 @@ class PemeliharaanPengajuan(models.Model):
             StepPemeliharaanChoices.KEPALA_LAB: "badge-warning",
             StepPemeliharaanChoices.PIMPINAN: "badge-warning",
             StepPemeliharaanChoices.SELESAI: "badge-success",
+            StepPemeliharaanChoices.DITOLAK: "badge-danger",
             StepPemeliharaanChoices.DIKEMBALIKAN: "badge-danger",
         }.get(self.current_step, "badge-secondary")
+
+    @property
+    def hasil_label(self):
+        return (
+            "Ditolak"
+            if self.current_step == StepPemeliharaanChoices.DITOLAK
+            else "Disetujui"
+        )
+
+    @property
+    def hasil_badge_class(self):
+        return (
+            "badge-danger"
+            if self.current_step == StepPemeliharaanChoices.DITOLAK
+            else "badge-success"
+        )
+
+    @property
+    def can_download_pdf(self):
+        return self.current_step in FINAL_PEMELIHARAAN_STEPS
+
+    @property
+    def selesai_at(self):
+        return self.pimpinan_at or self.kepala_lab_at or self.updated_at
 
     @property
     def active_verification_label(self):
@@ -193,7 +253,7 @@ class PemeliharaanPengajuan(models.Model):
     @property
     def alur_label(self):
         if self.perlu_pimpinan:
-            return "Kepala Lab > Pimpinan > Selesai"
+            return "Kepala Lab > Ketua Tim Layanan Teknis > Selesai"
         return "Kepala Lab > Selesai"
 
     @property
@@ -221,6 +281,7 @@ class PemeliharaanPengajuan(models.Model):
         self.snapshot_nama_barang = self.alat.nama_barang or ""
         self.snapshot_kode_laboratorium = self.alat.kode_laboratorium or ""
         self.snapshot_tipe_merek_barang = self.alat.tipe_merek_barang or ""
+        self.snapshot_status_barang = self.alat.get_status_barang_display() or ""
 
     def add_timeline(self, stage, action, actor=None, note=""):
         return PemeliharaanTimeline.objects.create(
@@ -237,7 +298,21 @@ class PemeliharaanPengajuan(models.Model):
 
         alat = self.alat
         update_self = []
-        if not self.kondisi_barang_sebelum:
+        if not self.master_awal_disimpan:
+            if not self.kondisi_barang_sebelum:
+                self.kondisi_barang_sebelum = alat.kondisi_barang or KondisiBarangChoices.BAIK
+                update_self.append("kondisi_barang_sebelum")
+            self.tanggal_pemeliharaan_sebelum = alat.tanggal_pemeliharaan
+            self.tanggal_perbaikan_sebelum = alat.tanggal_perbaikan
+            self.master_awal_disimpan = True
+            update_self.extend(
+                [
+                    "tanggal_pemeliharaan_sebelum",
+                    "tanggal_perbaikan_sebelum",
+                    "master_awal_disimpan",
+                ]
+            )
+        elif not self.kondisi_barang_sebelum:
             self.kondisi_barang_sebelum = alat.kondisi_barang or KondisiBarangChoices.BAIK
             update_self.append("kondisi_barang_sebelum")
 
@@ -248,16 +323,18 @@ class PemeliharaanPengajuan(models.Model):
         if update_self and self.pk:
             self.save(update_fields=update_self)
 
-    def pulihkan_kondisi_alat_jika_selesai(self, alat=None):
-        alat = alat or self.alat
+    def _boleh_ubah_kondisi_alat(self, alat):
         if not alat:
-            return
+            return False
 
-        has_active = PemeliharaanPengajuan.objects.filter(
+        return not PemeliharaanPengajuan.objects.filter(
             alat=alat,
             current_step__in=ACTIVE_PEMELIHARAAN_STEPS,
         ).exclude(pk=self.pk).exists()
-        if has_active:
+
+    def pulihkan_kondisi_alat_awal(self, alat=None):
+        alat = alat or self.alat
+        if not self._boleh_ubah_kondisi_alat(alat):
             return
 
         kondisi = self.kondisi_barang_sebelum or KondisiBarangChoices.BAIK
@@ -265,6 +342,73 @@ class PemeliharaanPengajuan(models.Model):
             kondisi = KondisiBarangChoices.BAIK
         alat.kondisi_barang = kondisi
         alat.save(update_fields=["kondisi_barang", "updated_at"])
+
+    def tandai_alat_baik_jika_selesai(self, alat=None):
+        alat = alat or self.alat
+        if not self._boleh_ubah_kondisi_alat(alat):
+            return
+
+        alat.kondisi_barang = KondisiBarangChoices.BAIK
+        alat.save(update_fields=["kondisi_barang", "updated_at"])
+
+    def catat_riwayat_alat_disetujui(self, alat=None):
+        alat = alat or self.alat
+        if not alat:
+            return
+        if not self.master_awal_disimpan:
+            self.tandai_alat_dalam_pemeliharaan()
+            alat.refresh_from_db()
+
+        update_fields = ["tanggal_pemeliharaan"]
+        tanggal_pemeriksaan = self.tanggal_pemeriksaan or timezone.now()
+        alat.tanggal_pemeliharaan = timezone.localdate(tanggal_pemeriksaan)
+
+        has_repair = False
+        selesai_mandiri = []
+        prefetched_items = getattr(self, "_prefetched_objects_cache", {}).get("items")
+        items = prefetched_items if prefetched_items is not None else self.items.all()
+        for item in items:
+            if item.perlu_perbaikan:
+                has_repair = True
+            if item.tindakan_perbaikan != TindakanPerbaikanChoices.MANDIRI:
+                continue
+            if item.tanggal_selesai_perbaikan:
+                selesai_mandiri.append(item.tanggal_selesai_perbaikan)
+
+        if selesai_mandiri:
+            alat.tanggal_perbaikan = timezone.localdate(max(selesai_mandiri))
+            update_fields.append("tanggal_perbaikan")
+        elif has_repair:
+            alat.tanggal_perbaikan = timezone.localdate()
+            update_fields.append("tanggal_perbaikan")
+
+        alat.save(update_fields=update_fields)
+
+    def pulihkan_data_alat_awal(self, alat=None):
+        alat = alat or self.alat
+        if not alat:
+            return
+
+        has_newer = PemeliharaanPengajuan.objects.filter(
+            alat=alat,
+        ).exclude(pk=self.pk).filter(
+            models.Q(created_at__gt=self.created_at)
+            | models.Q(created_at=self.created_at, pk__gt=self.pk)
+        ).exists()
+        if has_newer:
+            return
+
+        kondisi = self.kondisi_barang_sebelum or KondisiBarangChoices.BAIK
+        if kondisi == KondisiBarangChoices.DALAM_PEMELIHARAAN:
+            kondisi = KondisiBarangChoices.BAIK
+
+        alat.kondisi_barang = kondisi
+        update_fields = ["kondisi_barang", "updated_at"]
+        if self.master_awal_disimpan:
+            alat.tanggal_pemeliharaan = self.tanggal_pemeliharaan_sebelum
+            alat.tanggal_perbaikan = self.tanggal_perbaikan_sebelum
+            update_fields.extend(["tanggal_pemeliharaan", "tanggal_perbaikan"])
+        alat.save(update_fields=update_fields)
 
     def save(self, *args, **kwargs):
         self.sync_snapshot_from_master()
@@ -367,3 +511,9 @@ class PemeliharaanTimeline(models.Model):
 
     def __str__(self):
         return f"{self.pengajuan} - {self.action}"
+
+    @property
+    def stage_label(self):
+        if self.stage == "Pemohon":
+            return "Pelaksana Pemeliharaan"
+        return self.stage

@@ -1,135 +1,114 @@
-<div class="pemeliharaan-detail-layout">
-    <section class="card pemeliharaan-overview">
+{% include 'pemeliharaan/info_card.html' %}
+
+<div class="pemeliharaan-detail-list">
+    <section class="card pemeliharaan-detail-item pemeliharaan-check-card">
         <div class="pemeliharaan-section-head">
             <div>
-                <h2>Ringkasan Pengajuan</h2>
-                <p>Data pemeriksaan, status proses, dan alur verifikasi.</p>
+                <h2>Pemeriksaan</h2>
             </div>
-            <span class="badge {% if obj.perlu_perbaikan %}badge-warning{% else %}badge-success{% endif %}">{{ obj.kondisi_ringkas }}</span>
         </div>
 
-        <div class="pemeliharaan-info-grid">
-            <div class="detail-item">
-                <span>Pemohon</span>
-                <strong>{{ obj.nama_pemohon }}</strong>
+        <div class="pemeliharaan-detail-block">
+            <h3>Kondisi Komponen</h3>
+            <div class="pemeliharaan-check-list">
+                {% for item in items %}
+                <div class="pemeliharaan-check-row">
+                    <span>{{ item.komponen }}</span>
+                    {% if item.perlu_perbaikan %}
+                        <span class="badge badge-warning">{{ item.kondisi }}</span>
+                    {% else %}
+                        <span class="badge badge-success">{{ item.kondisi }}</span>
+                    {% endif %}
+                </div>
+                {% empty %}
+                <div class="empty-state">Belum ada item komponen pemeliharaan.</div>
+                {% endfor %}
             </div>
-            <div class="detail-item">
-                <span>Tanggal Pemeriksaan</span>
-                <strong>{{ obj.tanggal_pemeriksaan|date:'d M Y H:i' }}</strong>
+        </div>
+
+        <div class="pemeliharaan-detail-block">
+            <div class="pemeliharaan-subhead">
+                <h3>Dokumentasi Pemeriksaan</h3>
+                <span>{{ pemeriksaan_fotos|length }} Foto</span>
             </div>
-            <div class="detail-item">
-                <span>Kode Laboratorium</span>
-                <strong>{{ obj.snapshot_kode_laboratorium|default:'-' }}</strong>
-            </div>
-            <div class="detail-item">
-                <span>Tipe / Merek Barang</span>
-                <strong>{{ obj.snapshot_tipe_merek_barang|default:'-' }}</strong>
-            </div>
-            <div class="detail-item">
-                <span>Alur Verifikasi</span>
-                <strong>{{ obj.alur_label }}</strong>
-            </div>
-            <div class="detail-item">
-                <span>Tanggal Kirim</span>
-                <strong>{% if obj.submitted_at %}{{ obj.submitted_at|date:'d M Y H:i' }}{% else %}-{% endif %}</strong>
+            <div class="pemeliharaan-photo-strip pemeliharaan-photo-strip--large">
+                {% for foto in pemeriksaan_fotos %}
+                    <a href="{{ foto.foto.url }}" target="_blank" rel="noopener" class="pemeliharaan-photo-link" data-maint-photo data-photo-group="pemeriksaan" data-photo-src="{{ foto.foto.url }}" data-photo-alt="Dokumentasi pemeriksaan {{ obj.nomor_pengajuan }} {{ forloop.counter }}" data-photo-caption="Dokumentasi Pemeriksaan {{ forloop.counter }}">
+                        <img src="{{ foto.foto.url }}" alt="Dokumentasi pemeriksaan {{ obj.nomor_pengajuan }} {{ forloop.counter }}">
+                    </a>
+                {% empty %}
+                    <span class="pemeliharaan-photo-empty">Belum ada foto</span>
+                {% endfor %}
             </div>
         </div>
     </section>
 
-    <section class="card pemeliharaan-detail-item">
+    <section class="card pemeliharaan-detail-item pemeliharaan-repair-card">
         <div class="pemeliharaan-section-head">
             <div>
-                <h2>Dokumentasi Pemeriksaan</h2>
-                <p>Foto kondisi awal saat pemeriksaan dilakukan.</p>
+                <h2>Perbaikan</h2>
             </div>
-            <span>{{ pemeriksaan_fotos|length }} Foto</span>
         </div>
-        <div class="pemeliharaan-photo-strip pemeliharaan-photo-strip--large">
-            {% for foto in pemeriksaan_fotos %}
-                <a href="{{ foto.foto.url }}" target="_blank" rel="noopener">
-                    <img src="{{ foto.foto.url }}" alt="Dokumentasi pemeriksaan {{ obj.nomor_pengajuan }} {{ forloop.counter }}">
-                </a>
+
+        <div class="pemeliharaan-repair-detail-list">
+            {% for item in repair_items %}
+            <div class="pemeliharaan-repair-row">
+                <div class="pemeliharaan-repair-head">
+                    <div>
+                        <h3>{{ item.komponen }}</h3>
+                    </div>
+                    <span class="badge badge-warning">{{ item.tindakan_perbaikan|default:'-' }}</span>
+                </div>
+
+                {% if item.is_mandiri %}
+                    <div class="pemeliharaan-note">
+                        <span>Uraian Perbaikan</span>
+                        <p>{{ item.uraian_perbaikan|linebreaksbr }}</p>
+                    </div>
+                    <div class="detail-grid pemeliharaan-repair-meta">
+                        <div class="detail-item">
+                            <label>Mulai Perbaikan</label>
+                            <p>{{ item.tanggal_mulai_perbaikan|date:'d M Y'|default:'-' }}</p>
+                        </div>
+                        <div class="detail-item">
+                            <label>Selesai Perbaikan</label>
+                            <p>{{ item.tanggal_selesai_perbaikan|date:'d M Y'|default:'-' }}</p>
+                        </div>
+                    </div>
+                    <div class="pemeliharaan-detail-block">
+                        <h3>Dokumentasi Perbaikan</h3>
+                        <div class="pemeliharaan-photo-strip">
+                            {% for foto in item.foto_perbaikan %}
+                                <a href="{{ foto.foto.url }}" target="_blank" rel="noopener" class="pemeliharaan-photo-link" data-maint-photo data-photo-group="perbaikan-{{ item.id }}" data-photo-src="{{ foto.foto.url }}" data-photo-alt="Dokumentasi perbaikan {{ item.komponen }} {{ forloop.counter }}" data-photo-caption="Dokumentasi Perbaikan {{ item.komponen }} {{ forloop.counter }}">
+                                    <img src="{{ foto.foto.url }}" alt="Dokumentasi perbaikan {{ item.komponen }} {{ forloop.counter }}">
+                                </a>
+                            {% empty %}
+                                <span class="pemeliharaan-photo-empty">Belum ada foto</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% elif item.is_eksternal %}
+                    <div class="pemeliharaan-note">
+                        <span>Uraian Kerusakan</span>
+                        <p>{{ item.uraian_kerusakan|linebreaksbr }}</p>
+                    </div>
+                    <div class="pemeliharaan-detail-block">
+                        <h3>Dokumentasi Kerusakan</h3>
+                        <div class="pemeliharaan-photo-strip">
+                            {% for foto in item.foto_kerusakan %}
+                                <a href="{{ foto.foto.url }}" target="_blank" rel="noopener" class="pemeliharaan-photo-link" data-maint-photo data-photo-group="kerusakan-{{ item.id }}" data-photo-src="{{ foto.foto.url }}" data-photo-alt="Dokumentasi kerusakan {{ item.komponen }} {{ forloop.counter }}" data-photo-caption="Dokumentasi Kerusakan {{ item.komponen }} {{ forloop.counter }}">
+                                    <img src="{{ foto.foto.url }}" alt="Dokumentasi kerusakan {{ item.komponen }} {{ forloop.counter }}">
+                                </a>
+                            {% empty %}
+                                <span class="pemeliharaan-photo-empty">Belum ada foto</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
             {% empty %}
-                <span class="pemeliharaan-photo-empty">Belum ada foto</span>
+            <div class="empty-state">Tidak ada komponen yang perlu perbaikan.</div>
             {% endfor %}
         </div>
     </section>
-</div>
-
-<div class="pemeliharaan-detail-list">
-    {% for item in items %}
-    <div class="pemeliharaan-detail-group">
-        <section class="card pemeliharaan-detail-item pemeliharaan-check-card">
-            <div class="pemeliharaan-section-head">
-                <h2>{{ item.komponen }}</h2>
-                {% if item.perlu_perbaikan %}
-                    <span class="badge badge-warning">{{ item.kondisi }}</span>
-                {% else %}
-                    <span class="badge badge-success">{{ item.kondisi }}</span>
-                {% endif %}
-            </div>
-        </section>
-
-        {% if item.perlu_perbaikan %}
-        <section class="card pemeliharaan-detail-item pemeliharaan-repair-card">
-            <div class="pemeliharaan-section-head">
-                <h2>Data Perbaikan</h2>
-                <span>{{ item.tindakan_perbaikan|default:'-' }}</span>
-            </div>
-
-            <div class="pemeliharaan-repair-detail">
-            {% if item.is_mandiri %}
-                <div class="pemeliharaan-note">
-                    <span>Uraian Perbaikan</span>
-                    <p>{{ item.uraian_perbaikan|linebreaksbr }}</p>
-                </div>
-                <div class="pemeliharaan-info-grid pemeliharaan-info-grid--compact">
-                    <div class="detail-item">
-                        <span>Mulai Perbaikan</span>
-                        <strong>{{ item.tanggal_mulai_perbaikan|date:'d M Y H:i'|default:'-' }}</strong>
-                    </div>
-                    <div class="detail-item">
-                        <span>Selesai Perbaikan</span>
-                        <strong>{{ item.tanggal_selesai_perbaikan|date:'d M Y H:i'|default:'-' }}</strong>
-                    </div>
-                </div>
-                <div class="pemeliharaan-photo-block">
-                    <h3>Dokumentasi Perbaikan</h3>
-                    <div class="pemeliharaan-photo-strip">
-                        {% for foto in item.foto_perbaikan %}
-                            <a href="{{ foto.foto.url }}" target="_blank" rel="noopener">
-                                <img src="{{ foto.foto.url }}" alt="Dokumentasi perbaikan {{ item.komponen }} {{ forloop.counter }}">
-                            </a>
-                        {% empty %}
-                            <span class="pemeliharaan-photo-empty">Belum ada foto</span>
-                        {% endfor %}
-                    </div>
-                </div>
-            {% elif item.is_eksternal %}
-                <div class="pemeliharaan-note">
-                    <span>Uraian Kerusakan</span>
-                    <p>{{ item.uraian_kerusakan|linebreaksbr }}</p>
-                </div>
-                <div class="pemeliharaan-photo-block">
-                    <h3>Dokumentasi Kerusakan</h3>
-                    <div class="pemeliharaan-photo-strip">
-                        {% for foto in item.foto_kerusakan %}
-                            <a href="{{ foto.foto.url }}" target="_blank" rel="noopener">
-                                <img src="{{ foto.foto.url }}" alt="Dokumentasi kerusakan {{ item.komponen }} {{ forloop.counter }}">
-                            </a>
-                        {% empty %}
-                            <span class="pemeliharaan-photo-empty">Belum ada foto</span>
-                        {% endfor %}
-                    </div>
-                </div>
-            {% endif %}
-            </div>
-        </section>
-        {% endif %}
-    </div>
-    {% empty %}
-    <section class="card pemeliharaan-detail-item">
-        <div class="empty-state">Belum ada item komponen pemeliharaan.</div>
-    </section>
-    {% endfor %}
 </div>

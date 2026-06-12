@@ -1,0 +1,22 @@
+<div class="pemeliharaan-photo-modal" id="pemeliharaanPhotoModal" hidden data-maint-photo-modal>
+    <div class="pemeliharaan-photo-modal__backdrop" data-photo-close></div>
+    <div class="pemeliharaan-photo-modal__card" role="dialog" aria-modal="true" aria-labelledby="pemeliharaanPhotoTitle">
+        <div class="pemeliharaan-photo-modal__head">
+            <div>
+                <h3 id="pemeliharaanPhotoTitle">Preview Dokumentasi</h3>
+                <span data-photo-counter></span>
+            </div>
+            <button type="button" class="pemeliharaan-photo-modal__close" data-photo-close aria-label="Tutup preview">&times;</button>
+        </div>
+        <div class="pemeliharaan-photo-modal__stage">
+            <button type="button" class="pemeliharaan-photo-modal__nav" data-photo-prev aria-label="Foto sebelumnya">
+                <i class="bi bi-chevron-left"></i>
+            </button>
+            <img src="" alt="" data-photo-image>
+            <button type="button" class="pemeliharaan-photo-modal__nav" data-photo-next aria-label="Foto berikutnya">
+                <i class="bi bi-chevron-right"></i>
+            </button>
+        </div>
+        <p class="pemeliharaan-photo-modal__caption" data-photo-caption></p>
+    </div>
+</div>

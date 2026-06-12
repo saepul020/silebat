@@ -427,7 +427,6 @@ def _get_active_transaksi_delete_block_message(obj):
             active_numbers.add("status barang sedang dipinjam")
         if obj.kondisi_barang in {
             KondisiBarangChoices.DALAM_PEMELIHARAAN,
-            KondisiBarangChoices.DALAM_PERBAIKAN,
         }:
             active_numbers.add(f"status barang {obj.kondisi_barang}")
     elif isinstance(obj, BarangPenunjangOperasional):
@@ -445,13 +444,11 @@ def _get_active_transaksi_delete_block_message(obj):
             active_numbers.add("stok masih tercatat sedang dipinjam")
         if obj.kondisi_barang in {
             KondisiBarangChoices.DALAM_PEMELIHARAAN,
-            KondisiBarangChoices.DALAM_PERBAIKAN,
         }:
             active_numbers.add(f"status barang {obj.kondisi_barang}")
     elif isinstance(obj, FasilitasRuangan):
         if obj.kondisi_barang in {
             KondisiBarangChoices.DALAM_PEMELIHARAAN,
-            KondisiBarangChoices.DALAM_PERBAIKAN,
         }:
             active_numbers.add(f"status barang {obj.kondisi_barang}")
 

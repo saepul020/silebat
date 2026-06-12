@@ -5,7 +5,7 @@
 {% block title %}Detail Verifikasi - SILEBAT{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/pemeliharaan.css' %}?v=20260610-maintenance-detail-v3">
+<link rel="stylesheet" href="{% static 'css/pemeliharaan.css' %}?v=20260612-maintenance-detail-v6">
 {% endblock %}
 
 {% block content %}
@@ -14,6 +14,7 @@
     <p>{{ page_subtitle }}</p>
 </div>
 
+<div class="detail-card-stack">
 {% if verification_mode == 'pemeliharaan' %}
 <div class="card detail-header-card">
     <div class="detail-header-top">
@@ -58,6 +59,7 @@
 
 {% include 'pemeliharaan/timeline.html' %}
 
+</div>
 <div class="delete-modal {% if open_action_modal %}show{% endif %}" id="verificationNoteModal" data-open-on-load="{% if open_action_modal %}true{% else %}false{% endif %}">
     <div class="delete-modal-backdrop" id="verificationNoteModalBackdrop"></div>
     <div class="delete-modal-card verify-note-modal" role="dialog" aria-modal="true" aria-labelledby="verificationNoteModalTitle">
@@ -607,6 +609,7 @@
     </div>
 </div>
 
+</div>
 <div class="delete-modal {% if open_action_modal %}show{% endif %}" id="verificationNoteModal" data-open-on-load="{% if open_action_modal %}true{% else %}false{% endif %}">
     <div class="delete-modal-backdrop" id="verificationNoteModalBackdrop"></div>
     <div class="delete-modal-card verify-note-modal" role="dialog" aria-modal="true" aria-labelledby="verificationNoteModalTitle">

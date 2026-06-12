@@ -50,7 +50,6 @@ class SatuanAsetChoices(models.TextChoices):
 class KondisiBarangChoices(models.TextChoices):
     BAIK = "Baik", "Baik"
     DALAM_PEMELIHARAAN = "Dalam Pemeliharaan", "Dalam Pemeliharaan"
-    DALAM_PERBAIKAN = "Dalam Perbaikan", "Dalam Perbaikan"
     RUSAK = "Rusak", "Rusak"
     HILANG = "Hilang", "Hilang"
 

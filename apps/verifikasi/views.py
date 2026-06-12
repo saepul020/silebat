@@ -167,11 +167,13 @@ ACTION_META = {
 
 PEMELIHARAAN_ACTION_CHOICES = {
     StepPemeliharaanChoices.KEPALA_LAB: [
-        ("kembalikan", "Tidak Setuju"),
+        ("tolak", "Tolak"),
+        ("perbaiki", "Perbaiki"),
         ("setujui", "Setujui"),
     ],
     StepPemeliharaanChoices.PIMPINAN: [
-        ("kembalikan", "Tidak Setuju"),
+        ("tolak", "Tolak"),
+        ("perbaiki", "Perbaiki"),
         ("setujui", "Setujui"),
     ],
 }
@@ -328,7 +330,7 @@ def _get_pending_pemeliharaan_queryset(user):
         )
     if role_name == ROLE_KEPALA_LAB:
         return qs.filter(current_step=StepPemeliharaanChoices.KEPALA_LAB)
-    if role_name == ROLE_PIMPINAN:
+    if _is_return_pimpinan_actor(user):
         return qs.filter(current_step=StepPemeliharaanChoices.PIMPINAN)
     return qs.none()
 
@@ -478,7 +480,7 @@ def _user_can_act_pemeliharaan(user, obj):
     if obj.current_step == StepPemeliharaanChoices.KEPALA_LAB:
         return role_name == ROLE_KEPALA_LAB
     if obj.current_step == StepPemeliharaanChoices.PIMPINAN:
-        return role_name == ROLE_PIMPINAN
+        return _is_return_pimpinan_actor(user)
     return False
 
 def _action_requires_note(aksi):
@@ -507,6 +509,9 @@ def _get_action_config(aksi, action_choices):
 
 def _build_action_buttons(action_choices):
     return [_get_action_config(aksi, action_choices) for aksi, _label in action_choices]
+
+def _build_pemeliharaan_buttons(action_choices):
+    return [button for button in _build_action_buttons(action_choices) if button]
 
 def _reorder_pengembalian_action_buttons(action_buttons):
     order_map = {
@@ -845,6 +850,7 @@ def detail(request, pk):
 
 def _get_pemeliharaan_detail_context(obj):
     items = []
+    repair_items = []
     pemeriksaan_fotos = []
     for item in obj.items.all():
         fotos = list(item.fotos.all())
@@ -858,9 +864,12 @@ def _get_pemeliharaan_detail_context(obj):
             foto for foto in fotos if foto.jenis == JenisFotoPemeliharaanChoices.KERUSAKAN
         ]
         items.append(item)
+        if item.perlu_perbaikan:
+            repair_items.append(item)
 
     return {
         "items": items,
+        "repair_items": repair_items,
         "pemeriksaan_fotos": pemeriksaan_fotos,
         "page_title": "Detail Verifikasi Pemeliharaan",
         "page_subtitle": "Verifikasi pengajuan pemeliharaan peralatan survei lapangan.",
@@ -885,9 +894,7 @@ def detail_pemeliharaan(request, pk):
         )
 
     action_choices = PEMELIHARAAN_ACTION_CHOICES.get(obj.current_step, [])
-    action_buttons = [
-        button for button in _build_action_buttons(action_choices) if button
-    ]
+    action_buttons = _build_pemeliharaan_buttons(action_choices)
     selected_action = ""
     catatan_value = ""
     open_action_modal = False
@@ -954,19 +961,45 @@ def _process_pemeliharaan_action(request, obj, aksi, catatan):
         obj.kepala_lab_by = user
         obj.kepala_lab_at = now
         obj.kepala_lab_note = catatan
-        if aksi == "setujui":
+        if aksi == "tolak":
+            obj.kepala_lab_status = KeputusanPemeliharaanChoices.REJECTED
+            obj.current_step = StepPemeliharaanChoices.DITOLAK
+            obj.add_timeline(
+                "Kepala Lab",
+                "Pengajuan pemeliharaan ditolak Kepala Lab dan dinyatakan selesai",
+                user,
+                catatan,
+            )
+            messages.success(
+                request,
+                "Pengajuan pemeliharaan ditolak dan proses selesai.",
+            )
+        elif aksi == "perbaiki":
+            obj.kepala_lab_status = KeputusanPemeliharaanChoices.REVISION
+            obj.current_step = StepPemeliharaanChoices.DIKEMBALIKAN
+            obj.add_timeline(
+                "Kepala Lab",
+                "Pengajuan pemeliharaan dikembalikan oleh Kepala Lab untuk perbaikan",
+                user,
+                catatan,
+            )
+            messages.success(
+                request,
+                "Pengajuan pemeliharaan dikembalikan ke pemohon untuk perbaikan.",
+            )
+        elif aksi == "setujui":
             obj.kepala_lab_status = KeputusanPemeliharaanChoices.APPROVED
             if obj.perlu_pimpinan:
                 obj.current_step = StepPemeliharaanChoices.PIMPINAN
                 obj.add_timeline(
                     "Kepala Lab",
-                    "Pengajuan pemeliharaan disetujui Kepala Lab dan diteruskan ke Pimpinan",
+                    "Pengajuan pemeliharaan disetujui Kepala Lab dan diteruskan ke Ketua Tim Layanan Teknis",
                     user,
                     catatan,
                 )
                 messages.success(
                     request,
-                    "Pengajuan pemeliharaan disetujui dan diteruskan ke Pimpinan.",
+                    "Pengajuan pemeliharaan disetujui dan diteruskan ke Ketua Tim Layanan Teknis.",
                 )
             else:
                 obj.current_step = StepPemeliharaanChoices.SELESAI
@@ -980,63 +1013,69 @@ def _process_pemeliharaan_action(request, obj, aksi, catatan):
                     request,
                     "Pengajuan pemeliharaan disetujui dan proses selesai.",
                 )
-        elif aksi == "kembalikan":
-            obj.kepala_lab_status = KeputusanPemeliharaanChoices.REVISION
-            obj.current_step = StepPemeliharaanChoices.DIKEMBALIKAN
-            obj.add_timeline(
-                "Kepala Lab",
-                "Pengajuan pemeliharaan dikembalikan oleh Kepala Lab",
-                user,
-                catatan,
-            )
-            messages.success(
-                request,
-                "Pengajuan pemeliharaan dikembalikan ke pemohon.",
-            )
         else:
             messages.error(request, "Aksi verifikasi pemeliharaan tidak valid.")
             return
         obj.save()
         if obj.current_step == StepPemeliharaanChoices.SELESAI:
-            obj.pulihkan_kondisi_alat_jika_selesai()
+            obj.catat_riwayat_alat_disetujui()
+            obj.tandai_alat_baik_jika_selesai()
+        elif obj.current_step == StepPemeliharaanChoices.DITOLAK:
+            obj.pulihkan_kondisi_alat_awal()
         return
 
     if obj.current_step == StepPemeliharaanChoices.PIMPINAN:
         obj.pimpinan_by = user
         obj.pimpinan_at = now
         obj.pimpinan_note = catatan
-        if aksi == "setujui":
-            obj.pimpinan_status = KeputusanPemeliharaanChoices.APPROVED
-            obj.current_step = StepPemeliharaanChoices.SELESAI
+        if aksi == "tolak":
+            obj.pimpinan_status = KeputusanPemeliharaanChoices.REJECTED
+            obj.current_step = StepPemeliharaanChoices.DITOLAK
             obj.add_timeline(
-                "Pimpinan",
-                "Pengajuan pemeliharaan disetujui Pimpinan dan dinyatakan selesai",
+                "Ketua Tim Layanan Teknis",
+                "Pengajuan pemeliharaan ditolak Ketua Tim Layanan Teknis dan dinyatakan selesai",
                 user,
                 catatan,
             )
             messages.success(
                 request,
-                "Pengajuan pemeliharaan disetujui Pimpinan dan proses selesai.",
+                "Pengajuan pemeliharaan ditolak Ketua Tim Layanan Teknis dan proses selesai.",
             )
-        elif aksi == "kembalikan":
+        elif aksi == "perbaiki":
             obj.pimpinan_status = KeputusanPemeliharaanChoices.REVISION
             obj.current_step = StepPemeliharaanChoices.DIKEMBALIKAN
             obj.add_timeline(
-                "Pimpinan",
-                "Pengajuan pemeliharaan dikembalikan oleh Pimpinan",
+                "Ketua Tim Layanan Teknis",
+                "Pengajuan pemeliharaan dikembalikan oleh Ketua Tim Layanan Teknis untuk perbaikan",
                 user,
                 catatan,
             )
             messages.success(
                 request,
-                "Pengajuan pemeliharaan dikembalikan ke pemohon.",
+                "Pengajuan pemeliharaan dikembalikan ke pemohon untuk perbaikan.",
+            )
+        elif aksi == "setujui":
+            obj.pimpinan_status = KeputusanPemeliharaanChoices.APPROVED
+            obj.current_step = StepPemeliharaanChoices.SELESAI
+            obj.add_timeline(
+                "Ketua Tim Layanan Teknis",
+                "Pengajuan pemeliharaan disetujui Ketua Tim Layanan Teknis dan dinyatakan selesai",
+                user,
+                catatan,
+            )
+            messages.success(
+                request,
+                "Pengajuan pemeliharaan disetujui Ketua Tim Layanan Teknis dan proses selesai.",
             )
         else:
             messages.error(request, "Aksi verifikasi pemeliharaan tidak valid.")
             return
         obj.save()
         if obj.current_step == StepPemeliharaanChoices.SELESAI:
-            obj.pulihkan_kondisi_alat_jika_selesai()
+            obj.catat_riwayat_alat_disetujui()
+            obj.tandai_alat_baik_jika_selesai()
+        elif obj.current_step == StepPemeliharaanChoices.DITOLAK:
+            obj.pulihkan_kondisi_alat_awal()
         return
 
 def _process_action(request, obj, aksi, catatan, verification_mode="pengajuan"):

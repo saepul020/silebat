@@ -1,7 +1,10 @@
+from datetime import datetime, time
+
 from django import forms
 from django.db import transaction
 from django.utils import timezone
 
+from apps.peminjaman.forms import parse_flexible_date
 from apps.core.upload_validation import (
     MAX_UPLOAD_SIZE_BYTES,
     build_max_upload_size_message,
@@ -21,7 +24,24 @@ from .models import (
 )
 
 
-DATE_TIME_INPUT_FORMATS = ["%Y-%m-%dT%H:%M"]
+DATE_TIME_INPUT_FORMATS = ["%Y-%m-%dT%H:%M", "%Y-%m-%d %H:%M"]
+MONTH_NAMES_SHORT_ID = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"]
+
+
+def format_display_date(value):
+    if not value:
+        return ""
+    if isinstance(value, datetime):
+        value = timezone.localtime(value).date() if timezone.is_aware(value) else value.date()
+    return f"{value.day:02d} {MONTH_NAMES_SHORT_ID[value.month - 1]} {value.year}"
+
+
+def date_to_end_of_day(value):
+    parsed_date = parse_flexible_date(value)
+    if not parsed_date:
+        return None
+    combined = datetime.combine(parsed_date, time(23, 59))
+    return timezone.make_aware(combined, timezone.get_current_timezone())
 
 
 def get_available_alat_queryset(instance=None):
@@ -54,12 +74,17 @@ class PemeliharaanForm(forms.Form):
         queryset=BarangLaboratorium.objects.none(),
         empty_label="Pilih alat",
     )
-    tanggal_pemeriksaan = forms.DateTimeField(
+    tanggal_pemeriksaan = forms.CharField(
         label="Tanggal Pemeriksaan",
         required=False,
         disabled=True,
-        input_formats=DATE_TIME_INPUT_FORMATS,
-        widget=forms.DateTimeInput(format="%Y-%m-%dT%H:%M", attrs={"type": "datetime-local"}),
+        widget=forms.TextInput(
+            attrs={
+                "class": "date-input",
+                "placeholder": "Masukan tanggal sesuai format",
+                "autocomplete": "off",
+            }
+        ),
     )
 
     def __init__(self, *args, **kwargs):
@@ -75,7 +100,7 @@ class PemeliharaanForm(forms.Form):
         self.fields["pilih_alat"].queryset = get_available_alat_queryset(self.instance)
         if self.instance and self.instance.alat_id:
             self.fields["pilih_alat"].initial = self.instance.alat
-        self.fields["tanggal_pemeriksaan"].initial = self.tanggal_pemeriksaan_value
+        self.fields["tanggal_pemeriksaan"].initial = format_display_date(self.tanggal_pemeriksaan_value)
         self._set_common_widget_style()
         self.fields["pilih_alat"].widget.attrs["data-preserve-placeholder"] = "true"
         self.fields["tanggal_pemeriksaan"].widget.attrs.update(
@@ -176,16 +201,19 @@ class PemeliharaanForm(forms.Form):
             self._add_component_error(index, f"{label} wajib diisi.", area="perbaikan")
             return None
 
-        field = forms.DateTimeField(input_formats=DATE_TIME_INPUT_FORMATS)
         try:
+            field = forms.DateTimeField(input_formats=DATE_TIME_INPUT_FORMATS)
             return field.clean(value)
         except forms.ValidationError:
-            self._add_component_error(
-                index,
-                f"{label} harus berupa tanggal dan waktu yang valid.",
-                area="perbaikan",
-            )
-            return None
+            try:
+                return date_to_end_of_day(value)
+            except (TypeError, ValueError, forms.ValidationError):
+                self._add_component_error(
+                    index,
+                    f"{label} harus berupa tanggal yang valid.",
+                    area="perbaikan",
+                )
+                return None
 
     def _build_bound_rows(self, components):
         rows = []
@@ -225,11 +253,9 @@ class PemeliharaanForm(forms.Form):
                     "kondisi": getattr(item, "kondisi", "") if item else "",
                     "tindakan": getattr(item, "tindakan_perbaikan", "") if item else "",
                     "uraian_perbaikan": getattr(item, "uraian_perbaikan", "") if item else "",
-                    "tanggal_selesai_perbaikan": (
-                        item.tanggal_selesai_perbaikan.strftime("%Y-%m-%dT%H:%M")
-                        if item and item.tanggal_selesai_perbaikan
-                        else ""
-                    ),
+                    "tanggal_selesai_perbaikan": format_display_date(item.tanggal_selesai_perbaikan)
+                    if item and item.tanggal_selesai_perbaikan
+                    else "",
                     "uraian_kerusakan": getattr(item, "uraian_kerusakan", "") if item else "",
                     "errors": self.component_errors.get(index, {}).get("komponen", []),
                     "repair_errors": self.component_errors.get(index, {}).get("perbaikan", []),
@@ -435,10 +461,16 @@ class PemeliharaanForm(forms.Form):
                 )
             else:
                 old_kondisi_barang = pengajuan.kondisi_barang_sebelum
+                old_tanggal_pemeliharaan = pengajuan.tanggal_pemeliharaan_sebelum
+                old_tanggal_perbaikan = pengajuan.tanggal_perbaikan_sebelum
+                old_master_awal_disimpan = pengajuan.master_awal_disimpan
                 pengajuan.alat = alat
                 pengajuan.tanggal_pemeriksaan = self.tanggal_pemeriksaan_value
                 if old_alat and old_alat.pk != alat.pk:
                     pengajuan.kondisi_barang_sebelum = ""
+                    pengajuan.tanggal_pemeliharaan_sebelum = None
+                    pengajuan.tanggal_perbaikan_sebelum = None
+                    pengajuan.master_awal_disimpan = False
                 pengajuan.save(
                     update_fields=[
                         "alat",
@@ -446,7 +478,11 @@ class PemeliharaanForm(forms.Form):
                         "snapshot_nama_barang",
                         "snapshot_kode_laboratorium",
                         "snapshot_tipe_merek_barang",
+                        "snapshot_status_barang",
                         "kondisi_barang_sebelum",
+                        "tanggal_pemeliharaan_sebelum",
+                        "tanggal_perbaikan_sebelum",
+                        "master_awal_disimpan",
                         "updated_at",
                     ]
                 )
@@ -488,19 +524,6 @@ class PemeliharaanForm(forms.Form):
                     self.pemeriksaan_files,
                 )
 
-            local_date = timezone.localdate(self.tanggal_pemeriksaan_value)
-            update_fields = ["tanggal_pemeliharaan"]
-            alat.tanggal_pemeliharaan = local_date
-            selesai_mandiri = [
-                row["tanggal_selesai_perbaikan"]
-                for row in self.cleaned_items
-                if row["tindakan_perbaikan"] == TindakanPerbaikanChoices.MANDIRI
-                and row["tanggal_selesai_perbaikan"]
-            ]
-            if selesai_mandiri:
-                alat.tanggal_perbaikan = timezone.localdate(max(selesai_mandiri))
-                update_fields.append("tanggal_perbaikan")
-            alat.save(update_fields=update_fields)
             pengajuan.tandai_alat_dalam_pemeliharaan()
             if old_alat and old_alat.pk != alat.pk:
                 has_active_old = PemeliharaanPengajuan.objects.filter(
@@ -509,7 +532,12 @@ class PemeliharaanForm(forms.Form):
                 ).exclude(pk=pengajuan.pk).exists()
                 if not has_active_old:
                     old_alat.kondisi_barang = old_kondisi_barang or KondisiBarangChoices.BAIK
-                    old_alat.save(update_fields=["kondisi_barang", "updated_at"])
+                    update_fields = ["kondisi_barang", "updated_at"]
+                    if old_master_awal_disimpan:
+                        old_alat.tanggal_pemeliharaan = old_tanggal_pemeliharaan
+                        old_alat.tanggal_perbaikan = old_tanggal_perbaikan
+                        update_fields.extend(["tanggal_pemeliharaan", "tanggal_perbaikan"])
+                    old_alat.save(update_fields=update_fields)
         return pengajuan
 
     def _save_photos(self, item, jenis, files):

@@ -1,7 +1,402 @@
 document.addEventListener('DOMContentLoaded', function () {
     initPemeliharaanForm();
     initPemeliharaanSendModal();
+    initPemeliharaanPhotoModal();
 });
+
+const MAINT_MONTH_SHORT_ID = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+const MAINT_MONTH_LONG_ID = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+const MAINT_DAY_SHORT_ID = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+
+function parseMaintDate(value) {
+    const rawValue = String(value || '').trim();
+    if (!rawValue) {
+        return null;
+    }
+
+    const isoMatch = rawValue.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if (isoMatch) {
+        return createMaintDate(Number(isoMatch[1]), Number(isoMatch[2]) - 1, Number(isoMatch[3]));
+    }
+
+    const numericMatch = rawValue.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+    if (numericMatch) {
+        return createMaintDate(Number(numericMatch[3]), Number(numericMatch[2]) - 1, Number(numericMatch[1]));
+    }
+
+    const textMatch = rawValue.match(/^(\d{1,2})\s+([A-Za-zÀ-ÿ.]+)\s+(\d{4})$/);
+    if (textMatch) {
+        const monthKey = textMatch[2].toLowerCase().replace('.', '');
+        const monthMap = {
+            jan: 0, januari: 0, january: 0,
+            feb: 1, februari: 1, february: 1,
+            mar: 2, maret: 2, march: 2,
+            apr: 3, april: 3,
+            mei: 4, may: 4,
+            jun: 5, juni: 5, june: 5,
+            jul: 6, juli: 6, july: 6,
+            agu: 7, agustus: 7, aug: 7, august: 7,
+            sep: 8, sept: 8, september: 8,
+            okt: 9, oktober: 9, oct: 9, october: 9,
+            nov: 10, november: 10,
+            des: 11, desember: 11, dec: 11, december: 11,
+        };
+        if (Object.prototype.hasOwnProperty.call(monthMap, monthKey)) {
+            return createMaintDate(Number(textMatch[3]), monthMap[monthKey], Number(textMatch[1]));
+        }
+    }
+
+    return null;
+}
+
+function createMaintDate(year, month, day) {
+    const date = new Date(year, month, day, 12, 0, 0, 0);
+    if (date.getFullYear() !== year || date.getMonth() !== month || date.getDate() !== day) {
+        return null;
+    }
+    return date;
+}
+
+function formatMaintDate(date) {
+    return [
+        String(date.getDate()).padStart(2, '0'),
+        MAINT_MONTH_SHORT_ID[date.getMonth()],
+        date.getFullYear(),
+    ].join(' ');
+}
+
+function maintDateKey(date) {
+    return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+}
+
+function initPemeliharaanDatePickers(scope) {
+    const controls = (scope || document).querySelectorAll('[data-maint-date-picker="true"]:not([data-date-picker-ready="true"])');
+
+    controls.forEach(function (input) {
+        const initialDate = parseMaintDate(input.value);
+        if (initialDate) {
+            input.value = formatMaintDate(initialDate);
+        }
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'date-picker-control pemeliharaan-date-picker';
+        input.parentNode.insertBefore(wrapper, input);
+        wrapper.appendChild(input);
+
+        const toggleButton = document.createElement('button');
+        toggleButton.type = 'button';
+        toggleButton.className = 'date-picker-toggle';
+        toggleButton.setAttribute('aria-label', 'Pilih tanggal');
+        toggleButton.innerHTML = '<i class="bi bi-calendar3"></i>';
+        wrapper.appendChild(toggleButton);
+
+        const popup = document.createElement('div');
+        popup.className = 'date-picker-popup';
+        popup.hidden = true;
+        popup.innerHTML = `
+            <div class="date-picker-header">
+                <button type="button" class="date-picker-nav" data-maint-date-prev aria-label="Bulan sebelumnya">&lsaquo;</button>
+                <div class="date-picker-title" data-maint-date-title></div>
+                <button type="button" class="date-picker-nav" data-maint-date-next aria-label="Bulan berikutnya">&rsaquo;</button>
+            </div>
+            <div class="date-picker-weekdays" data-maint-date-weekdays></div>
+            <div class="date-picker-grid" data-maint-date-grid></div>
+            <div class="date-picker-footer">
+                <button type="button" class="date-picker-footer-btn" data-maint-date-today>Hari ini</button>
+                <button type="button" class="date-picker-footer-btn" data-maint-date-clear>Kosongkan</button>
+            </div>
+        `;
+        wrapper.appendChild(popup);
+
+        const title = popup.querySelector('[data-maint-date-title]');
+        const weekdays = popup.querySelector('[data-maint-date-weekdays]');
+        const grid = popup.querySelector('[data-maint-date-grid]');
+        const prevButton = popup.querySelector('[data-maint-date-prev]');
+        const nextButton = popup.querySelector('[data-maint-date-next]');
+        const todayButton = popup.querySelector('[data-maint-date-today]');
+        const clearButton = popup.querySelector('[data-maint-date-clear]');
+        const baseDate = initialDate || new Date();
+        const state = { year: baseDate.getFullYear(), month: baseDate.getMonth() };
+
+        weekdays.innerHTML = MAINT_DAY_SHORT_ID.map(function (dayName) {
+            return `<span class="date-picker-weekday">${dayName}</span>`;
+        }).join('');
+
+        function setInputDate(date) {
+            input.value = formatMaintDate(date);
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+
+        function renderCalendar() {
+            grid.innerHTML = '';
+            title.textContent = `${MAINT_MONTH_LONG_ID[state.month]} ${state.year}`;
+
+            const selectedDate = parseMaintDate(input.value);
+            const today = new Date();
+            const todayKey = maintDateKey(today);
+            const firstDay = new Date(state.year, state.month, 1, 12, 0, 0, 0);
+            const startOffset = firstDay.getDay();
+            const daysInMonth = new Date(state.year, state.month + 1, 0, 12, 0, 0, 0).getDate();
+
+            for (let index = 0; index < 42; index += 1) {
+                const dayButton = document.createElement('button');
+                dayButton.type = 'button';
+                dayButton.className = 'date-picker-day';
+
+                const dayNumber = index - startOffset + 1;
+                if (dayNumber < 1 || dayNumber > daysInMonth) {
+                    dayButton.classList.add('is-empty');
+                    dayButton.tabIndex = -1;
+                    dayButton.disabled = true;
+                    grid.appendChild(dayButton);
+                    continue;
+                }
+
+                const candidate = createMaintDate(state.year, state.month, dayNumber);
+                if (!candidate) {
+                    continue;
+                }
+
+                dayButton.textContent = String(dayNumber);
+                if (selectedDate && maintDateKey(candidate) === maintDateKey(selectedDate)) {
+                    dayButton.classList.add('is-selected');
+                }
+                if (maintDateKey(candidate) === todayKey) {
+                    dayButton.classList.add('is-today');
+                }
+                dayButton.addEventListener('click', function () {
+                    setInputDate(candidate);
+                    closePopup();
+                    input.focus();
+                });
+                grid.appendChild(dayButton);
+            }
+        }
+
+        function adjustPopupPosition() {
+            popup.style.left = '0';
+            popup.style.right = 'auto';
+
+            const viewportPadding = 12;
+            const rect = popup.getBoundingClientRect();
+            const wrapperRect = wrapper.getBoundingClientRect();
+
+            if (rect.right > window.innerWidth - viewportPadding) {
+                const overflowRight = rect.right - (window.innerWidth - viewportPadding);
+                popup.style.left = `${Math.min(0, -overflowRight)}px`;
+            }
+
+            const updatedRect = popup.getBoundingClientRect();
+            if (updatedRect.left < viewportPadding) {
+                popup.style.left = `${viewportPadding - wrapperRect.left}px`;
+            }
+
+            const finalRect = popup.getBoundingClientRect();
+            if (finalRect.bottom > window.innerHeight - viewportPadding) {
+                window.scrollBy({
+                    top: finalRect.bottom - window.innerHeight + viewportPadding + 20,
+                    behavior: 'smooth',
+                });
+            }
+        }
+
+        function openPopup() {
+            if (input.disabled) {
+                return;
+            }
+            const selectedDate = parseMaintDate(input.value) || new Date();
+            state.year = selectedDate.getFullYear();
+            state.month = selectedDate.getMonth();
+            renderCalendar();
+            popup.hidden = false;
+            wrapper.classList.add('is-open');
+            adjustPopupPosition();
+            window.setTimeout(adjustPopupPosition, 0);
+        }
+
+        function closePopup() {
+            popup.hidden = true;
+            wrapper.classList.remove('is-open');
+            popup.style.left = '';
+            popup.style.right = '';
+        }
+
+        toggleButton.addEventListener('click', function (event) {
+            event.preventDefault();
+            if (input.disabled) {
+                return;
+            }
+            if (popup.hidden) {
+                openPopup();
+                return;
+            }
+            closePopup();
+        });
+
+        prevButton.addEventListener('click', function () {
+            state.month = state.month === 0 ? 11 : state.month - 1;
+            state.year = state.month === 11 ? state.year - 1 : state.year;
+            renderCalendar();
+        });
+
+        nextButton.addEventListener('click', function () {
+            state.month = state.month === 11 ? 0 : state.month + 1;
+            state.year = state.month === 0 ? state.year + 1 : state.year;
+            renderCalendar();
+        });
+
+        todayButton.addEventListener('click', function () {
+            setInputDate(new Date());
+            closePopup();
+            input.focus();
+        });
+
+        clearButton.addEventListener('click', function () {
+            input.value = '';
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+            closePopup();
+            input.focus();
+        });
+
+        input.addEventListener('focus', renderCalendar);
+        input.addEventListener('input', renderCalendar);
+        window.addEventListener('resize', function () {
+            if (!popup.hidden) {
+                adjustPopupPosition();
+            }
+        });
+        document.addEventListener('click', function (event) {
+            if (!wrapper.contains(event.target)) {
+                closePopup();
+            }
+        });
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape' && !popup.hidden) {
+                closePopup();
+            }
+        });
+
+        input.dataset.datePickerReady = 'true';
+    });
+}
+
+function initPemeliharaanPhotoModal() {
+    const modal = document.querySelector('[data-maint-photo-modal]');
+    const links = document.querySelectorAll('[data-maint-photo]');
+
+    if (!modal || !links.length) {
+        return;
+    }
+
+    const image = modal.querySelector('[data-photo-image]');
+    const caption = modal.querySelector('[data-photo-caption]');
+    const counter = modal.querySelector('[data-photo-counter]');
+    const prevButton = modal.querySelector('[data-photo-prev]');
+    const nextButton = modal.querySelector('[data-photo-next]');
+    const closeButtons = modal.querySelectorAll('[data-photo-close]');
+    const groups = {};
+    let activeGroup = [];
+    let activeIndex = 0;
+
+    links.forEach(function (link) {
+        const groupName = link.getAttribute('data-photo-group') || 'default';
+        if (!groups[groupName]) {
+            groups[groupName] = [];
+        }
+        groups[groupName].push(link);
+    });
+
+    function renderPhoto() {
+        const link = activeGroup[activeIndex];
+        if (!link || !image) {
+            return;
+        }
+
+        const total = activeGroup.length;
+        image.src = link.getAttribute('data-photo-src') || link.href;
+        image.alt = link.getAttribute('data-photo-alt') || 'Dokumentasi pemeliharaan';
+        if (caption) {
+            caption.textContent = link.getAttribute('data-photo-caption') || image.alt;
+        }
+        if (counter) {
+            counter.textContent = total > 1 ? `${activeIndex + 1} / ${total}` : '1 / 1';
+        }
+        [prevButton, nextButton].forEach(function (button) {
+            if (!button) {
+                return;
+            }
+            button.hidden = total <= 1;
+            button.disabled = total <= 1;
+        });
+    }
+
+    function openModal(groupName, index) {
+        activeGroup = groups[groupName] || [];
+        activeIndex = index;
+        renderPhoto();
+        modal.hidden = false;
+        modal.classList.add('is-open');
+        document.body.classList.add('is-scroll-locked');
+    }
+
+    function closeModal() {
+        modal.classList.remove('is-open');
+        modal.hidden = true;
+        document.body.classList.remove('is-scroll-locked');
+        if (image) {
+            image.src = '';
+        }
+    }
+
+    function showPhoto(nextIndex) {
+        if (!activeGroup.length) {
+            return;
+        }
+        activeIndex = (nextIndex + activeGroup.length) % activeGroup.length;
+        renderPhoto();
+    }
+
+    links.forEach(function (link) {
+        link.addEventListener('click', function (event) {
+            const groupName = link.getAttribute('data-photo-group') || 'default';
+            const group = groups[groupName] || [];
+            const index = group.indexOf(link);
+            event.preventDefault();
+            openModal(groupName, Math.max(index, 0));
+        });
+    });
+
+    prevButton?.addEventListener('click', function () {
+        showPhoto(activeIndex - 1);
+    });
+
+    nextButton?.addEventListener('click', function () {
+        showPhoto(activeIndex + 1);
+    });
+
+    closeButtons.forEach(function (button) {
+        button.addEventListener('click', closeModal);
+    });
+
+    document.addEventListener('keydown', function (event) {
+        if (modal.hidden) {
+            return;
+        }
+        if (event.key === 'Escape') {
+            closeModal();
+            return;
+        }
+        if (event.key === 'ArrowLeft') {
+            showPhoto(activeIndex - 1);
+            return;
+        }
+        if (event.key === 'ArrowRight') {
+            showPhoto(activeIndex + 1);
+        }
+    });
+}
 
 function initPemeliharaanSendModal() {
     const modal = document.getElementById('maintSendModal');
@@ -186,7 +581,7 @@ function initPemeliharaanForm() {
                         </div>
                         <div class="form-group">
                             <label for="id_tanggal_selesai_perbaikan_${index}">Tanggal Perbaikan Selesai</label>
-                            <input type="datetime-local" name="tanggal_selesai_perbaikan_${index}" id="id_tanggal_selesai_perbaikan_${index}" class="form-control" value="${escapeHtml(tanggalSelesai)}" autocomplete="off">
+                            <input type="text" name="tanggal_selesai_perbaikan_${index}" id="id_tanggal_selesai_perbaikan_${index}" class="form-control date-input pemeliharaan-date-input" value="${escapeHtml(tanggalSelesai)}" placeholder="Masukan tanggal sesuai format" autocomplete="off" data-maint-date-picker="true">
                         </div>
                     </div>
                     ${uploadBlock(index, 'dokumentasi_perbaikan', 'Dokumentasi Perbaikan')}
@@ -272,6 +667,7 @@ function initPemeliharaanForm() {
             syncRepairRow(row);
         });
         initPemeliharaanGallery(root);
+        initPemeliharaanDatePickers(root);
         bindSelectPlaceholderState(root);
         bindErrorClear(root);
     }
@@ -420,6 +816,7 @@ function initPemeliharaanForm() {
     bindComponentRows(form);
     bindRepairRows(form);
     initPemeliharaanGallery(form);
+    initPemeliharaanDatePickers(form);
 }
 
 function initPemeliharaanGallery(scope) {

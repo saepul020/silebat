@@ -11,7 +11,7 @@
 <div class="table-wrapper table-panel">
     <div class="table-toolbar">
         <div>
-            <h2 class="table-title">{% if is_report %}Riwayat Pengajuan{% else %}Daftar Pengajuan{% endif %}</h2>
+            <h2 class="table-title">{% if is_report %}Riwayat Pengajuan{% else %}Daftar Peminjaman Berjalan{% endif %}</h2>
         </div>
         <div class="table-toolbar-actions">
             {% if is_report and role_access.is_super_admin %}

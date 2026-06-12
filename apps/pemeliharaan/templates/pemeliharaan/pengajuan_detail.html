@@ -1,45 +1,56 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Detail Pengajuan Pemeliharaan{% endblock %}
+{% block title %}{% if is_report %}Detail Laporan Pemeliharaan{% else %}Detail Pengajuan Pemeliharaan{% endif %}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/pemeliharaan.css' %}?v=20260610-maintenance-detail-v3">
+<link rel="stylesheet" href="{% static 'css/pemeliharaan.css' %}?v=20260612-maintenance-detail-v8">
 {% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <h1>Detail Pengajuan Pemeliharaan</h1>
+    <h1>{% if is_report %}Detail Laporan Pemeliharaan{% else %}Detail Pengajuan Pemeliharaan{% endif %}</h1>
     <p>{{ obj.nomor_pengajuan }} - {{ obj.alat_label }}</p>
 </div>
 
+<div class="detail-card-stack">
 <div class="card detail-header-card pemeliharaan-detail-head">
     <div class="detail-header-top">
         <div>
             <h2 class="card-title">{{ obj.nomor_pengajuan }}</h2>
-            <p class="detail-meta">{{ obj.alat_label }}</p>
+            {% if is_report %}
+            <span class="status-badge {{ obj.hasil_badge_class }}">{{ obj.hasil_label }}</span>
+            {% else %}
             <span class="status-badge {{ obj.status_badge_class }}">{{ obj.status_label }}</span>
+            {% endif %}
         </div>
-        <div class="detail-header-actions">
+        <div class="detail-header-actions pemeliharaan-head-actions">
+            {% if obj.can_download_pdf %}
+            <a href="{% url 'pemeliharaan:download_pdf' obj.pk %}" class="btn btn-primary pemeliharaan-head-btn">Export PDF</a>
+            {% endif %}
+            {% if not is_report %}
             {% if can_submit_pengajuan %}
             <button
                 type="button"
-                class="btn btn-primary"
+                class="btn btn-primary pemeliharaan-head-btn"
                 data-maint-send-button
                 data-send-url="{% url 'pemeliharaan:kirim' obj.pk %}"
                 data-send-number="{{ obj.nomor_pengajuan|default:'-' }}"
             >
-                Kirim Pengajuan
+                Kirim
             </button>
             {% endif %}
             {% if can_edit_pengajuan %}
-            <a href="{% url 'pemeliharaan:edit' obj.pk %}" class="btn btn-warning">Edit</a>
+            <a href="{% url 'pemeliharaan:edit' obj.pk %}" class="btn btn-warning pemeliharaan-head-btn">Edit</a>
+            {% else %}
+            <button type="button" class="btn btn-secondary pemeliharaan-head-btn" title="Pengajuan tidak dapat diedit pada tahap ini" disabled>Edit</button>
             {% endif %}
-            <a href="{% url 'pemeliharaan:list' %}" class="btn btn-secondary">Kembali</a>
+            {% endif %}
+            <a href="{% if is_report %}{% url 'pemeliharaan:laporan' %}{% else %}{% url 'pemeliharaan:list' %}{% endif %}" class="btn btn-secondary pemeliharaan-head-btn">Kembali</a>
             {% if can_delete_pengajuan %}
-            <form method="post" action="{% url 'pemeliharaan:hapus' obj.pk %}">
+            <form method="post" action="{% url 'pemeliharaan:hapus' obj.pk %}" class="pemeliharaan-head-form">
                 {% csrf_token %}
-                <button type="submit" class="btn btn-danger" onclick="return confirm('Hapus pengajuan pemeliharaan ini?')">Hapus</button>
+                <button type="submit" class="btn btn-danger pemeliharaan-head-btn" onclick="return confirm('Hapus pengajuan pemeliharaan ini?')">Hapus</button>
             </form>
             {% endif %}
         </div>
@@ -48,9 +59,11 @@
 
 {% include 'pemeliharaan/detail_body.html' %}
 {% include 'pemeliharaan/timeline.html' %}
-{% include 'pemeliharaan/kirim_modal.html' %}
+</div>
+{% include 'pemeliharaan/foto_modal.html' %}
+{% if not is_report %}{% include 'pemeliharaan/kirim_modal.html' %}{% endif %}
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/pemeliharaan.js' %}?v=20260610-maintenance-detail-v3" defer></script>
+<script src="{% static 'js/pemeliharaan.js' %}?v=20260612-maintenance-detail-v7" defer></script>
 {% endblock %}

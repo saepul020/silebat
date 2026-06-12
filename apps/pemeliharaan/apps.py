@@ -5,3 +5,6 @@ class PemeliharaanConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
     name = "apps.pemeliharaan"
     verbose_name = "Pemeliharaan"
+
+    def ready(self):
+        __import__("apps.pemeliharaan.signals")

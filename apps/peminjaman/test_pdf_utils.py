@@ -1,4 +1,6 @@
 from io import BytesIO
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -7,6 +9,7 @@ from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from reportlab.lib.units import cm, mm
 from reportlab.platypus import Table
+from PIL import Image
 
 from apps.peminjaman.pdf_utils import (
     BOTTOM_MARGIN,
@@ -15,6 +18,9 @@ from apps.peminjaman.pdf_utils import (
     LEFT_MARGIN,
     PAGE_HEIGHT,
     PAGE_WIDTH,
+    PAIR_SIGN_COL_WIDTHS,
+    PAIR_SIGN_GAP,
+    PAIR_SIGN_WIDTH,
     RIGHT_MARGIN,
     SIGN_GAP,
     SIGN_WIDTH,
@@ -26,7 +32,9 @@ from apps.peminjaman.pdf_utils import (
     _peminjam_rows,
     data_table,
     render_berita_acara_pdf,
+    photo_grid,
     signature_block,
+    signature_list,
     title_block,
 )
 
@@ -196,6 +204,136 @@ class PdfLayoutTests(SimpleTestCase):
         )[0]
         _PdfDoc(output, "Uji Nama Tanda Tangan", has_kop=False).build([block])
         self.assertTrue(output.getvalue().startswith(b"%PDF"))
+
+    def test_signature_list_supports_only_users_involved_in_process(self):
+        user = SimpleNamespace(get_full_name=lambda: "Pelaksana", nip="123")
+        block = signature_list(
+            "Bandung, 01 Januari 2026",
+            [
+                ("Pelaksana Pemeliharaan,", user),
+                ("Kepala Laboratorium,", user),
+                ("Ketua Tim Layanan Teknis,", user),
+            ],
+        )[0]
+
+        self.assertEqual(len(block._content), 7)
+        first_signers = block._content[3]
+        last_signer = block._content[5]
+        self.assertEqual(first_signers._cellvalues[0][0][-2].getPlainText(), "Pelaksana")
+        self.assertEqual(first_signers._cellvalues[0][2][-2].getPlainText(), "Pelaksana")
+        self.assertEqual(last_signer._cellvalues[0][0][-2].getPlainText(), "Pelaksana")
+        self.assertEqual(last_signer._cellvalues[0][2], "")
+
+    def test_signature_list_centers_content_and_last_signer_on_canvas(self):
+        pelaksana = SimpleNamespace(
+            get_full_name=lambda: "Pelaksana",
+            username="pelaksana",
+            nip="111",
+        )
+        kepala = SimpleNamespace(
+            get_full_name=lambda: "Kepala Lab",
+            username="kepala",
+            nip="222",
+        )
+        ketua = SimpleNamespace(
+            get_full_name=lambda: "Ketua Tim",
+            username="ketua",
+            nip="333",
+        )
+        block = signature_list(
+            "Bandung, 01 Januari 2026",
+            [
+                ("Pelaksana Pemeliharaan,", pelaksana),
+                ("Kepala Laboratorium,", kepala),
+                ("Ketua Tim Layanan Teknis,", ketua),
+            ],
+            centered=True,
+            approval_label="Menyetujui:",
+        )[0]
+
+        date_table = block._content[1]
+        first_signers = block._content[3]
+        approval_heading = block._content[5]
+        last_signer = block._content[6]
+        self.assertEqual(date_table._cellvalues[0][0], "")
+        self.assertEqual(date_table._cellvalues[0][1], "")
+        self.assertEqual(
+            date_table._cellvalues[0][2].getPlainText(),
+            "Bandung, 01 Januari 2026",
+        )
+        self.assertEqual(date_table._cellvalues[0][2].style.alignment, TA_CENTER)
+        self.assertEqual(first_signers._argW, PAIR_SIGN_COL_WIDTHS)
+        self.assertEqual(date_table._argW, first_signers._argW)
+        self.assertEqual(PAIR_SIGN_GAP, 30 * mm)
+        self.assertEqual(first_signers._cellvalues[0][0][0].style.alignment, TA_CENTER)
+        self.assertEqual(first_signers._cellvalues[0][1], "")
+        self.assertEqual(first_signers._cellvalues[0][2][0].style.alignment, TA_CENTER)
+        self.assertEqual(first_signers._cellvalues[0][0][-2].getPlainText(), "Pelaksana")
+        self.assertEqual(first_signers._cellvalues[0][0][-1].getPlainText(), "NIP/NIK: 111")
+        self.assertEqual(first_signers._cellvalues[0][2][-2].getPlainText(), "Kepala Lab")
+        self.assertEqual(first_signers._cellvalues[0][2][-1].getPlainText(), "NIP/NIK: 222")
+        self.assertEqual(
+            approval_heading._cellvalues[0][1].getPlainText(),
+            "Menyetujui:",
+        )
+        self.assertEqual(
+            approval_heading._cellvalues[0][1].style.fontName,
+            "Helvetica-Bold",
+        )
+        self.assertEqual(last_signer._cellvalues[0][0], "")
+        self.assertEqual(
+            last_signer._cellvalues[0][1][0].getPlainText(),
+            "Ketua Tim Layanan Teknis,",
+        )
+        self.assertEqual(last_signer._cellvalues[0][2], "")
+        self.assertEqual(last_signer._cellvalues[0][1][-2].getPlainText(), "Ketua Tim")
+        self.assertEqual(last_signer._cellvalues[0][1][-1].getPlainText(), "NIP/NIK: 333")
+        self.assertTrue(last_signer._cellvalues[0][1][-2].centered)
+        self.assertEqual(
+            first_signers._cellvalues[0][0][-2].wrap(PAIR_SIGN_WIDTH, PAGE_HEIGHT)[0],
+            PAIR_SIGN_WIDTH,
+        )
+        self.assertEqual(
+            first_signers._cellvalues[0][2][-2].wrap(PAIR_SIGN_WIDTH, PAGE_HEIGHT)[0],
+            PAIR_SIGN_WIDTH,
+        )
+
+        output = BytesIO()
+        _PdfDoc(output, "Uji Tanda Tangan Tengah", has_kop=False).build([block])
+        self.assertTrue(output.getvalue().startswith(b"%PDF"))
+
+    def test_photo_grid_builds_three_photos_in_one_row(self):
+        with TemporaryDirectory() as directory:
+            paths = []
+            for index in range(3):
+                path = Path(directory) / f"foto-{index}.png"
+                Image.new("RGB", (120, 80), "white").save(path, format="PNG")
+                paths.append(SimpleNamespace(name=path.name, path=str(path)))
+
+            story = photo_grid(paths, header="Dokumentasi Pemeriksaan")
+
+            table = story[0]
+            self.assertEqual(table._ncols, 3)
+            self.assertEqual(table._nrows, 2)
+            self.assertEqual(
+                table._cellvalues[0][0].getPlainText(),
+                "Dokumentasi Pemeriksaan",
+            )
+            self.assertTrue(all(table._cellvalues[1]))
+            self.assertTrue(
+                all(cell.__class__.__name__ == "Image" for cell in table._cellvalues[1])
+            )
+            self.assertTrue(all(cell.drawHeight <= 18 * mm for cell in table._cellvalues[1]))
+
+    def test_photo_grid_uses_automatic_uniform_header_height(self):
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "foto.png"
+            Image.new("RGB", (120, 80), "white").save(path, format="PNG")
+            field = SimpleNamespace(name=path.name, path=str(path))
+
+            table = photo_grid([field], header="Dokumentasi Pemeriksaan")[0]
+
+        self.assertIsNone(table._argH[0])
 
     def test_berita_acara_uses_borrow_and_completed_dates(self):
         submitted = object()

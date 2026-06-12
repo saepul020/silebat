@@ -35,6 +35,9 @@ CONTENT_WIDTH = PAGE_WIDTH - LEFT_MARGIN - RIGHT_MARGIN
 SIGN_WIDTH = 65 * mm
 SIGN_GAP = CONTENT_WIDTH - (2 * SIGN_WIDTH)
 SIGN_COL_WIDTHS = [SIGN_WIDTH, SIGN_GAP, SIGN_WIDTH]
+PAIR_SIGN_GAP = 30 * mm
+PAIR_SIGN_WIDTH = (CONTENT_WIDTH - PAIR_SIGN_GAP) / 2
+PAIR_SIGN_COL_WIDTHS = [PAIR_SIGN_WIDTH, PAIR_SIGN_GAP, PAIR_SIGN_WIDTH]
 
 
 def _styles():
@@ -141,6 +144,16 @@ def _styles():
             spaceBefore=0,
             spaceAfter=0,
         ),
+        "sign_center": ParagraphStyle(
+            "PdfSignCenter",
+            parent=styles["BodyText"],
+            fontName="Helvetica",
+            fontSize=8,
+            leading=8.5,
+            alignment=TA_CENTER,
+            spaceBefore=0,
+            spaceAfter=0,
+        ),
         "sign_name": ParagraphStyle(
             "PdfSignName",
             parent=styles["BodyText"],
@@ -158,6 +171,17 @@ def _styles():
             leading=11,
             textColor=colors.black,
             spaceBefore=2 * mm,
+            spaceAfter=1.5 * mm,
+        ),
+        "sign_heading_center": ParagraphStyle(
+            "PdfSignHeadingCenter",
+            parent=styles["Heading3"],
+            fontName="Helvetica-Bold",
+            fontSize=9,
+            leading=11,
+            alignment=TA_CENTER,
+            textColor=colors.black,
+            spaceBefore=0,
             spaceAfter=1.5 * mm,
         ),
     }
@@ -291,13 +315,13 @@ def title_block(title, left_rows, right_rows):
     ]
 
 
-def info_table(rows):
+def info_table(rows, valign="TOP"):
     data = [[text(label, "label"), text(value)] for label, value in rows]
     table = Table(data, colWidths=[38 * mm, CONTENT_WIDTH - (38 * mm)], hAlign="LEFT")
     table.setStyle(
         TableStyle(
             [
-                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("VALIGN", (0, 0), (-1, -1), valign),
                 ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#EEF3F8")),
                 ("BOX", (0, 0), (-1, -1), 0.45, colors.HexColor("#9AAFC2")),
                 ("INNERGRID", (0, 0), (-1, -1), 0.3, colors.HexColor("#C3CED8")),
@@ -328,7 +352,7 @@ def _table_value(value):
     return value
 
 
-def data_table(headers, rows, weights=None):
+def data_table(headers, rows, weights=None, valign="TOP"):
     if not rows:
         rows = [["-"] + [""] * (len(headers) - 1)]
     weights = weights or [1] * len(headers)
@@ -362,7 +386,7 @@ def data_table(headers, rows, weights=None):
     table.setStyle(
         TableStyle(
             [
-                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("VALIGN", (0, 0), (-1, -1), valign),
                 ("VALIGN", (0, 0), (-1, 0), "MIDDLE"),
                 ("ALIGN", (0, 0), (-1, 0), "CENTER"),
                 ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#17365D")),
@@ -411,33 +435,126 @@ def kop_story(path):
     return [image, Spacer(1, 3 * mm)]
 
 
+def _photo_cells(files, max_width, max_height):
+    cells = []
+    for field in files:
+        path = _file_path(field)
+        if not path:
+            continue
+        try:
+            image = _image(path, max_width, max_height)
+            image.hAlign = "CENTER"
+        except Exception:
+            continue
+        cells.append(image)
+    return cells
+
+
+def photo_cell(files, width, max_height=14 * mm):
+    column_count = 3
+    cells = _photo_cells(
+        files,
+        min((width / column_count) - (2 * mm), 30 * mm),
+        max_height,
+    )[:column_count]
+    if not cells:
+        return text("-", "small_center")
+
+    cells.extend([""] * (column_count - len(cells)))
+    return Table(
+        [cells[:column_count]],
+        colWidths=[width / column_count] * column_count,
+        style=TableStyle(
+            [
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 1),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 1),
+                ("TOPPADDING", (0, 0), (-1, -1), 1),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 1),
+            ]
+        ),
+    )
+
+
+def photo_grid(files, header=None):
+    column_count = 3
+    cell_width = CONTENT_WIDTH / column_count
+    cells = _photo_cells(files, 44 * mm, 18 * mm)
+
+    if not cells:
+        return []
+
+    rows = []
+    if header:
+        rows.append([text(header, "head"), "", ""])
+    for index in range(0, len(cells), column_count):
+        row = cells[index:index + column_count]
+        row.extend([""] * (column_count - len(row)))
+        rows.append(row)
+
+    styles = [
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+        ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#758A9D")),
+        ("INNERGRID", (0, 0), (-1, -1), 0.3, colors.HexColor("#AAB8C4")),
+        ("LEFTPADDING", (0, 0), (-1, -1), 1.5 * mm),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 1.5 * mm),
+        ("TOPPADDING", (0, 0), (-1, -1), 1.5 * mm),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 1.5 * mm),
+    ]
+    if header:
+        styles.extend(
+            [
+                ("SPAN", (0, 0), (-1, 0)),
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#17365D")),
+            ]
+        )
+
+    table = Table(
+        rows,
+        colWidths=[cell_width] * column_count,
+        hAlign="LEFT",
+        style=TableStyle(styles),
+    )
+    return [table]
+
+
 class SignName(Flowable):
-    def __init__(self, value):
+    def __init__(self, value, centered=False):
         super().__init__()
         self.value = " ".join(str(value or "-").split()) or "-"
         self.style = STYLES["sign_name"]
         self.font_size = self.style.fontSize
+        self.centered = centered
+        if centered:
+            self.hAlign = "CENTER"
 
     def wrap(self, avail_width, avail_height):
         text_width = stringWidth(self.value, self.style.fontName, self.style.fontSize)
         scale = min(1, avail_width / text_width) if text_width else 1
         self.font_size = self.style.fontSize * scale
-        self.width = min(text_width, avail_width)
+        self.width = avail_width if self.centered else min(text_width, avail_width)
         self.height = self.style.leading * scale
         return self.width, self.height
 
     def draw(self):
         self.canv.setFont(self.style.fontName, self.font_size)
-        self.canv.drawString(0, max((self.height - self.font_size) / 2, 0), self.value)
+        y = max((self.height - self.font_size) / 2, 0)
+        if self.centered:
+            self.canv.drawCentredString(self.width / 2, y, self.value)
+        else:
+            self.canv.drawString(0, y, self.value)
 
     def getPlainText(self):
         return self.value
 
 
-def _signature_cell(title, user):
-    full_name = user.get_full_name() if user else "-"
+def _signature_cell(title, user, centered=False):
+    full_name = (user.get_full_name() or user.username) if user else "-"
     nip = getattr(user, "nip", "") if user else ""
-    content = [text(title, "sign"), Spacer(1, 1 * mm)]
+    sign_style = "sign_center" if centered else "sign"
+    content = [text(title, sign_style), Spacer(1, 1 * mm)]
     signature = None
     if user is not None:
         try:
@@ -447,7 +564,7 @@ def _signature_cell(title, user):
     if signature:
         try:
             image = _image(signature, 35 * mm, 16 * mm)
-            image.hAlign = "LEFT"
+            image.hAlign = "CENTER" if centered else "LEFT"
             content.append(image)
         except Exception:
             content.append(Spacer(1, 16 * mm))
@@ -456,8 +573,8 @@ def _signature_cell(title, user):
     content.extend(
         [
             Spacer(1, 0.8 * mm),
-            SignName(full_name),
-            text(f"NIP/NIK: {nip or '-'}", "sign"),
+            SignName(full_name, centered=centered),
+            text(f"NIP/NIK: {nip or '-'}", sign_style),
         ]
     )
     return content
@@ -470,6 +587,41 @@ def _sign_table(left, right):
         style=TableStyle(
             [
                 ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+                ("TOPPADDING", (0, 0), (-1, -1), 0),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+            ]
+        ),
+    )
+
+
+def _center_sign_table(content):
+    side_width = (CONTENT_WIDTH - SIGN_WIDTH) / 2
+    return Table(
+        [["", content, ""]],
+        colWidths=[side_width, SIGN_WIDTH, side_width],
+        style=TableStyle(
+            [
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+                ("TOPPADDING", (0, 0), (-1, -1), 0),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+            ]
+        ),
+    )
+
+
+def _paired_sign_table(left, right):
+    return Table(
+        [[left, "", right]],
+        colWidths=PAIR_SIGN_COL_WIDTHS,
+        style=TableStyle(
+            [
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
                 ("LEFTPADDING", (0, 0), (-1, -1), 0),
                 ("RIGHTPADDING", (0, 0), (-1, -1), 0),
                 ("TOPPADDING", (0, 0), (-1, -1), 0),
@@ -495,6 +647,28 @@ def signature_block(date_text, first_signers, knowing_signers):
             _signature_cell(*knowing_signers[1]),
         ),
     ]
+    return [KeepTogether(story)]
+
+
+def signature_list(date_text, signers, centered=False, approval_label=None):
+    date = text(date_text, "sign_center" if centered else "sign")
+    story = [
+        Spacer(1, 4 * mm),
+        _paired_sign_table("", date) if centered else _sign_table("", date),
+        Spacer(1, 1 * mm),
+    ]
+    for index in range(0, len(signers), 2):
+        pair = signers[index:index + 2]
+        left = _signature_cell(*pair[0], centered=centered)
+        if len(pair) > 1:
+            right = _signature_cell(*pair[1], centered=centered)
+            table = _paired_sign_table(left, right) if centered else _sign_table(left, right)
+        else:
+            if approval_label:
+                heading = Paragraph(escape(approval_label), STYLES["sign_heading_center"])
+                story.append(_center_sign_table(heading))
+            table = _center_sign_table(left) if centered else _sign_table(left, "")
+        story.extend([table, Spacer(1, 3 * mm)])
     return [KeepTogether(story)]
 
 

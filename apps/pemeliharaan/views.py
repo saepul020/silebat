@@ -1,6 +1,7 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
@@ -14,13 +15,16 @@ from apps.core.permissions import (
     deny_access,
     get_role_name,
 )
-from .forms import PemeliharaanForm, get_available_alat_queryset
+from .forms import PemeliharaanForm, format_display_date, get_available_alat_queryset
 from .models import (
+    ACTIVE_PEMELIHARAAN_STEPS,
+    FINAL_PEMELIHARAAN_STEPS,
     JenisFotoPemeliharaanChoices,
     KeputusanPemeliharaanChoices,
     PemeliharaanPengajuan,
     StepPemeliharaanChoices,
 )
+from .pdf_utils import render_pemeliharaan_pdf
 
 
 PEMELIHARAAN_LIST_SEARCH_FIELDS = (
@@ -46,8 +50,6 @@ PEMELIHARAAN_INPUT_ROLES = {
     ROLE_ADMIN_LAB,
     ROLE_TEKNISI_LAB,
 }
-
-
 def _can_view_pengajuan(user, obj):
     if get_role_name(user) in PEMELIHARAAN_ADMIN_ROLES:
         return True
@@ -77,7 +79,12 @@ def _can_edit_pengajuan(user, obj):
 
 def _get_pengajuan_queryset():
     return (
-        PemeliharaanPengajuan.objects.select_related("pemohon", "alat")
+        PemeliharaanPengajuan.objects.select_related(
+            "pemohon",
+            "alat",
+            "kepala_lab_by",
+            "pimpinan_by",
+        )
         .prefetch_related("items__fotos", "timeline_entries__actor")
         .order_by("-tanggal_pemeriksaan", "-id")
     )
@@ -94,10 +101,31 @@ def _build_alat_components(instance=None):
     }
 
 
-def _format_local_datetime(value):
+def _format_local_date(value):
     if not value:
         return "-"
-    return timezone.localtime(value).strftime("%d %b %Y %H:%M")
+    return format_display_date(value)
+
+
+def _prepare_detail_items(obj):
+    items = []
+    repair_items = []
+    pemeriksaan_fotos = []
+    for item in obj.items.all():
+        fotos = list(item.fotos.all())
+        pemeriksaan_fotos.extend(
+            foto for foto in fotos if foto.jenis == JenisFotoPemeliharaanChoices.PEMERIKSAAN
+        )
+        item.foto_perbaikan = [
+            foto for foto in fotos if foto.jenis == JenisFotoPemeliharaanChoices.PERBAIKAN
+        ]
+        item.foto_kerusakan = [
+            foto for foto in fotos if foto.jenis == JenisFotoPemeliharaanChoices.KERUSAKAN
+        ]
+        items.append(item)
+        if item.perlu_perbaikan:
+            repair_items.append(item)
+    return items, repair_items, pemeriksaan_fotos
 
 
 @login_required
@@ -107,7 +135,7 @@ def index(request):
 
 @login_required
 def daftar_pengajuan(request):
-    queryset = _get_pengajuan_queryset()
+    queryset = _get_pengajuan_queryset().filter(current_step__in=ACTIVE_PEMELIHARAAN_STEPS)
     if get_role_name(request.user) not in PEMELIHARAAN_ADMIN_ROLES:
         queryset = queryset.filter(pemohon=request.user)
 
@@ -132,6 +160,30 @@ def daftar_pengajuan(request):
 
 
 @login_required
+def laporan_pemeliharaan(request):
+    queryset = _get_pengajuan_queryset().filter(current_step__in=FINAL_PEMELIHARAAN_STEPS)
+    if get_role_name(request.user) not in PEMELIHARAAN_ADMIN_ROLES:
+        queryset = queryset.filter(pemohon=request.user)
+
+    pagination_context = paginate_list(
+        request,
+        queryset,
+        search_fields=PEMELIHARAAN_LIST_SEARCH_FIELDS,
+    )
+    return render(
+        request,
+        "pemeliharaan/pengajuan_list.html",
+        {
+            **pagination_context,
+            "page_title": "Laporan Pemeliharaan",
+            "page_subtitle": "Riwayat pengajuan pemeliharaan yang sudah selesai disetujui atau ditolak.",
+            "can_delete_pengajuan": _can_delete_pengajuan(request.user),
+            "is_report": True,
+        },
+    )
+
+
+@login_required
 def tambah_pengajuan(request):
     if not _can_input_pengajuan(request.user):
         return deny_access(
@@ -149,7 +201,7 @@ def tambah_pengajuan(request):
     if request.method == "POST" and form.is_valid():
         pengajuan = form.save()
         pengajuan.add_timeline(
-            "Pemohon",
+            "Pelaksana Pemeliharaan",
             "Pengajuan pemeliharaan dibuat sebagai draft",
             request.user,
         )
@@ -165,7 +217,7 @@ def tambah_pengajuan(request):
             "page_subtitle": "Pilih alat, isi kondisi setiap komponen, dan unggah dokumentasi pemeriksaan.",
             "submit_label": "Simpan",
             "alat_components": _build_alat_components(),
-            "tanggal_pemeriksaan_display": _format_local_datetime(tanggal_pemeriksaan),
+            "tanggal_pemeriksaan_display": _format_local_date(tanggal_pemeriksaan),
         },
     )
 
@@ -188,7 +240,7 @@ def edit_pengajuan(request, pk):
     if request.method == "POST" and form.is_valid():
         pengajuan = form.save()
         pengajuan.add_timeline(
-            "Pemohon",
+            "Pelaksana Pemeliharaan",
             "Draft pengajuan pemeliharaan diperbarui",
             request.user,
         )
@@ -204,7 +256,7 @@ def edit_pengajuan(request, pk):
             "page_subtitle": "Perbarui data pemeriksaan sebelum dikirim ke proses verifikasi.",
             "submit_label": "Simpan",
             "alat_components": _build_alat_components(obj),
-            "tanggal_pemeriksaan_display": _format_local_datetime(obj.tanggal_pemeriksaan),
+            "tanggal_pemeriksaan_display": _format_local_date(obj.tanggal_pemeriksaan),
         },
     )
 
@@ -218,20 +270,7 @@ def detail_pengajuan(request, pk):
             "Anda tidak memiliki akses untuk melihat pengajuan pemeliharaan ini.",
         )
 
-    items = []
-    pemeriksaan_fotos = []
-    for item in obj.items.all():
-        fotos = list(item.fotos.all())
-        pemeriksaan_fotos.extend(
-            foto for foto in fotos if foto.jenis == JenisFotoPemeliharaanChoices.PEMERIKSAAN
-        )
-        item.foto_perbaikan = [
-            foto for foto in fotos if foto.jenis == JenisFotoPemeliharaanChoices.PERBAIKAN
-        ]
-        item.foto_kerusakan = [
-            foto for foto in fotos if foto.jenis == JenisFotoPemeliharaanChoices.KERUSAKAN
-        ]
-        items.append(item)
+    items, repair_items, pemeriksaan_fotos = _prepare_detail_items(obj)
 
     return render(
         request,
@@ -239,6 +278,7 @@ def detail_pengajuan(request, pk):
         {
             "obj": obj,
             "items": items,
+            "repair_items": repair_items,
             "pemeriksaan_fotos": pemeriksaan_fotos,
             "can_delete_pengajuan": _can_delete_pengajuan(request.user),
             "can_submit_pengajuan": _can_submit_pengajuan(request.user, obj),
@@ -248,9 +288,60 @@ def detail_pengajuan(request, pk):
 
 
 @login_required
+def detail_laporan(request, pk):
+    obj = get_object_or_404(
+        _get_pengajuan_queryset(),
+        pk=pk,
+        current_step__in=FINAL_PEMELIHARAAN_STEPS,
+    )
+    if not _can_view_pengajuan(request.user, obj):
+        return deny_access(
+            request,
+            "Anda tidak memiliki akses untuk melihat laporan pemeliharaan ini.",
+        )
+
+    items, repair_items, pemeriksaan_fotos = _prepare_detail_items(obj)
+    return render(
+        request,
+        "pemeliharaan/pengajuan_detail.html",
+        {
+            "obj": obj,
+            "items": items,
+            "repair_items": repair_items,
+            "pemeriksaan_fotos": pemeriksaan_fotos,
+            "can_delete_pengajuan": _can_delete_pengajuan(request.user),
+            "can_submit_pengajuan": False,
+            "can_edit_pengajuan": False,
+            "is_report": True,
+        },
+    )
+
+
+@login_required
+def download_pdf(request, pk):
+    obj = get_object_or_404(
+        _get_pengajuan_queryset(),
+        pk=pk,
+        current_step__in=FINAL_PEMELIHARAAN_STEPS,
+    )
+    if not _can_view_pengajuan(request.user, obj):
+        return deny_access(
+            request,
+            "Anda tidak memiliki akses untuk mengunduh PDF laporan pemeliharaan ini.",
+        )
+
+    response = HttpResponse(content_type="application/pdf")
+    response["Content-Disposition"] = (
+        f'attachment; filename="laporan-pemeliharaan-{obj.nomor_pengajuan}.pdf"'
+    )
+    render_pemeliharaan_pdf(response, obj, format_display_date)
+    return response
+
+
+@login_required
 def kirim_pengajuan(request, pk):
     if request.method != "POST":
-        return redirect("pemeliharaan:detail", pk=pk)
+        return redirect("pemeliharaan:list")
 
     obj = get_object_or_404(
         PemeliharaanPengajuan.objects.prefetch_related("items"),
@@ -289,7 +380,7 @@ def kirim_pengajuan(request, pk):
             ]
         )
         obj.add_timeline(
-            "Pemohon",
+            "Pelaksana Pemeliharaan",
             "Pengajuan pemeliharaan dikirim ke Kepala Lab",
             request.user,
         )
@@ -298,7 +389,7 @@ def kirim_pengajuan(request, pk):
         request,
         "Pengajuan pemeliharaan berhasil dikirim ke Kepala Lab untuk verifikasi.",
     )
-    return redirect("pemeliharaan:detail", pk=obj.pk)
+    return redirect("pemeliharaan:list")
 
 
 @login_required
@@ -311,9 +402,15 @@ def hapus_pengajuan(request, pk):
             "Hanya Super Admin yang dapat menghapus pengajuan pemeliharaan.",
         )
 
-    obj = get_object_or_404(PemeliharaanPengajuan, pk=pk)
-    nomor_pengajuan = obj.nomor_pengajuan
-    obj.pulihkan_kondisi_alat_jika_selesai()
-    obj.delete()
+    with transaction.atomic():
+        obj = get_object_or_404(
+            PemeliharaanPengajuan.objects.select_for_update(),
+            pk=pk,
+        )
+        nomor_pengajuan = obj.nomor_pengajuan
+        obj.pulihkan_data_alat_awal()
+        obj.delete()
     messages.success(request, f"Pengajuan {nomor_pengajuan} berhasil dihapus.")
+    if "/laporan/" in (request.META.get("HTTP_REFERER") or ""):
+        return redirect("pemeliharaan:laporan")
     return redirect("pemeliharaan:list")

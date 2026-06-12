@@ -1,0 +1,21 @@
+<div class="detail-layout-grid pemeliharaan-info-layout">
+    <section class="card">
+        <h3 class="card-title">Pelaksana Pemeliharaan</h3>
+        <div class="detail-grid">
+            <div class="detail-item"><label>Nama</label><p>{{ obj.nama_pelaksana }}</p></div>
+            <div class="detail-item"><label>Jabatan</label><p>{{ obj.jabatan_pelaksana }}</p></div>
+            <div class="detail-item"><label>Tanggal Pemeriksaan</label><p>{{ obj.tanggal_pemeriksaan|date:'d M Y' }}</p></div>
+            <div class="detail-item"><label>Tanggal Kirim</label><p>{% if obj.submitted_at %}{{ obj.submitted_at|date:'d M Y H:i' }}{% else %}-{% endif %}</p></div>
+        </div>
+    </section>
+
+    <section class="card">
+        <h3 class="card-title">Data Barang</h3>
+        <div class="detail-grid">
+            <div class="detail-item"><label>Nama Barang</label><p>{{ obj.snapshot_nama_barang|default:'-' }}</p></div>
+            <div class="detail-item"><label>Tipe / Merek Barang</label><p>{{ obj.snapshot_tipe_merek_barang|default:'-' }}</p></div>
+            <div class="detail-item"><label>Kode Laboratorium</label><p>{{ obj.snapshot_kode_laboratorium|default:'-' }}</p></div>
+            <div class="detail-item"><label>Status Barang</label><p>{{ obj.status_barang_label }}</p></div>
+        </div>
+    </section>
+</div>

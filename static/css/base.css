@@ -577,6 +577,30 @@ textarea {
     margin-top: 5px;
 }
 
+.detail-card-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    width: 100%;
+}
+
+.detail-card-stack > .card,
+.detail-card-stack > .detail-layout-grid,
+.detail-card-stack > .pemeliharaan-detail-list,
+.detail-card-stack .detail-layout-grid > .card,
+.detail-card-stack .pemeliharaan-detail-list > .card {
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+.detail-card-stack .detail-layout-grid {
+    gap: 20px;
+}
+
+.detail-card-stack .pemeliharaan-detail-list {
+    gap: 20px;
+}
+
 .detail-layout-grid,
 .detail-grid,
 .card,
@@ -2608,6 +2632,14 @@ input[type="hidden"] {
 
     .checkbox-grid ul {
         grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .detail-card-stack,
+    .detail-card-stack .detail-layout-grid,
+    .detail-card-stack .pemeliharaan-detail-list {
+        gap: 16px;
     }
 }
 

@@ -37,7 +37,7 @@
             </div>
             <div class="form-group">
                 <label for="id_tanggal_selesai_perbaikan_{{ row.index }}">Tanggal Perbaikan Selesai</label>
-                <input type="datetime-local" name="tanggal_selesai_perbaikan_{{ row.index }}" id="id_tanggal_selesai_perbaikan_{{ row.index }}" class="form-control" value="{{ row.tanggal_selesai_perbaikan }}" autocomplete="off">
+                <input type="text" name="tanggal_selesai_perbaikan_{{ row.index }}" id="id_tanggal_selesai_perbaikan_{{ row.index }}" class="form-control date-input pemeliharaan-date-input" value="{{ row.tanggal_selesai_perbaikan }}" placeholder="Masukan tanggal sesuai format" autocomplete="off" data-maint-date-picker="true">
             </div>
         </div>
         <div class="master-upload-stack landing-upload-stack">

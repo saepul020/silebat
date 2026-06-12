@@ -743,7 +743,7 @@ def daftar_pengajuan(request):
 
     context = {
         "items": pagination_context["items"],
-        "page_title": "Permintaan Peminjaman",
+        "page_title": "Pengajuan Peminjaman",
         "page_subtitle": "Kelola seluruh pengajuan peminjaman yang masih aktif.",
         "can_add": _can_create_pengajuan(request.user),
         "can_delete": _can_delete_pengajuan(request.user),
