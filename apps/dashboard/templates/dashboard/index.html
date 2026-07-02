@@ -424,6 +424,42 @@
 <section class="card dashboard-chart dashboard-chart--full">
     <div class="dashboard-chart__header">
         <div class="dashboard-chart__top">
+            <h3 class="card-title">Transaksi Pemakaian Peralatan Survei Lapangan</h3>
+            <div class="chart-download">
+                <button type="button" class="chart-download__toggle" aria-label="Download chart Transaksi Pemakaian Peralatan Survei Lapangan" aria-expanded="false" data-chart-menu-toggle>
+                    <i class="bi bi-three-dots-vertical"></i>
+                </button>
+                <div class="chart-download__menu" data-chart-menu>
+                    <button type="button" data-chart-download="jpg" data-chart-target="grafikPeralatanSurvei" data-chart-title="Transaksi Pemakaian Peralatan Survei Lapangan"><i class="bi bi-filetype-jpg" aria-hidden="true"></i><span>Download JPG</span></button>
+                </div>
+            </div>
+        </div>
+        <div class="dashboard-chart__filters">
+            <div class="chart-filter">
+                <select id="tahunPeralatanSurvei" aria-label="Filter tahun transaksi peralatan survei lapangan" title="Filter tahun">
+                    <option value="all">All</option>
+                    {% for year in survey_equipment_chart.availableYears %}
+                        <option value="{{ year }}" {% if year == survey_equipment_chart.defaultYear %}selected{% endif %}>{{ year }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+    </div>
+    <div class="dashboard-chart__area chart-area--scroll" data-chart-wrapper="peralatan-survei">
+        <div class="dashboard-chart__scroll" data-chart-scroll="peralatan-survei">
+            <div class="dashboard-chart__holder" data-chart-holder="peralatan-survei">
+                <canvas id="grafikPeralatanSurvei" aria-label="Grafik transaksi pemakaian peralatan survei lapangan"></canvas>
+            </div>
+        </div>
+        <div class="dashboard-chart__empty is-hidden" data-chart-empty="peralatan-survei">
+            Belum ada transaksi pemakaian peralatan survei lapangan.
+        </div>
+    </div>
+</section>
+
+<section class="card dashboard-chart dashboard-chart--full">
+    <div class="dashboard-chart__header">
+        <div class="dashboard-chart__top">
             <h3 class="card-title">Instansi Tujuan Kegiatan</h3>
             <div class="chart-download">
                 <button type="button" class="chart-download__toggle" aria-label="Download chart Instansi Tujuan Kegiatan" aria-expanded="false" data-chart-menu-toggle>
@@ -517,6 +553,7 @@
 {{ pengukuran_chart|json_script:"data-ukur" }}
 {{ approved_peminjaman_chart|json_script:"data-pinjam" }}
 {{ survei_chart|json_script:"data-survei" }}
+{{ survey_equipment_chart|json_script:"data-peralatan-survei" }}
 {{ instansi_chart|json_script:"data-instansi" }}
 {% if role_access.show_master_data %}
 {{ bahan_chart|json_script:"data-bahan" }}
@@ -526,5 +563,5 @@
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
-<script src="{% static 'js/dashboard.js' %}?v=20260609-penunjang-square-v2" defer></script>
+<script src="{% static 'js/dashboard.js' %}?v=20260702-survey-equipment" defer></script>
 {% endblock %}

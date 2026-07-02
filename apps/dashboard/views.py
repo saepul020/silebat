@@ -8,10 +8,10 @@ from django.template.loader import render_to_string
 from django.utils import timezone
 
 from apps.core.permissions import can_access_master_data, get_role_name
-from apps.master_data.models import BahanOperasional, BarangPenunjangOperasional
+from apps.master_data.models import BahanOperasional, BarangLaboratorium, BarangPenunjangOperasional
 from apps.operasional.models import InstansiKlien, LayananKegiatan, SurveiKegiatan, TimKegiatan
 from apps.peminjaman.constants import PENGUKURAN_FIELD_CONFIG
-from apps.peminjaman.models import PeminjamanRequest, ReturnStepChoices, StepChoices
+from apps.peminjaman.models import PeminjamanBarangLaboratorium, PeminjamanRequest, ReturnStepChoices, StepChoices
 
 
 MONTH_LABELS_ID = {
@@ -212,6 +212,58 @@ def build_inventory_chart_context():
                 for row in penunjang_rows
             ],
         },
+    }
+
+
+def build_survey_equipment_chart(current_year):
+    equipment_list = list(
+        BarangLaboratorium.objects.order_by("nama_barang", "kode_laboratorium").values(
+            "id",
+            "nama_barang",
+            "kode_laboratorium",
+        )
+    )
+    equipment_rows = list(
+        PeminjamanBarangLaboratorium.objects.filter(
+            pengajuan__current_step=StepChoices.APPROVED,
+        )
+        .annotate(
+            year=ExtractYear(Coalesce("pengajuan__pimpinan_at", "pengajuan__updated_at"))
+        )
+        .values("year", "barang_id")
+        .annotate(total=Count("id"))
+        .order_by("year", "barang__nama_barang")
+    )
+    available_years = sorted(
+        {
+            int(row["year"])
+            for row in equipment_rows
+            if row.get("year")
+        }
+        | {current_year}
+    )
+
+    return {
+        "categories": [
+            {
+                "id": item["id"],
+                "label": item["nama_barang"],
+                "code": item["kode_laboratorium"] or "",
+                "backgroundColor": SURVEI_COLOR_PALETTE[index % len(SURVEI_COLOR_PALETTE)],
+            }
+            for index, item in enumerate(equipment_list)
+        ],
+        "rows": [
+            {
+                "year": int(row["year"]),
+                "barangId": row["barang_id"],
+                "total": row["total"],
+            }
+            for row in equipment_rows
+            if row.get("year") and row.get("barang_id")
+        ],
+        "availableYears": available_years,
+        "defaultYear": current_year,
     }
 
 
@@ -561,6 +613,8 @@ def build_dashboard_context(request=None, active_limit=None):
         "defaultYear": current_year,
     }
 
+    survey_equipment_chart = build_survey_equipment_chart(current_year)
+
     active_peminjaman = get_active_peminjaman_queryset()
     if active_limit:
         active_peminjaman = active_peminjaman[:active_limit]
@@ -585,6 +639,7 @@ def build_dashboard_context(request=None, active_limit=None):
         "pengukuran_chart": pengukuran_chart,
         "approved_peminjaman_chart": approved_peminjaman_chart,
         "survei_chart": survei_chart,
+        "survey_equipment_chart": survey_equipment_chart,
         "instansi_chart": instansi_chart,
         "month_choices": [
             {"value": month_number, "label": month_label}

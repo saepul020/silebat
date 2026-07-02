@@ -267,12 +267,18 @@ class PeminjamanRequestForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         self.actor = kwargs.pop("actor", None)
+        allow_peminjam_selection = kwargs.pop("allow_peminjam_selection", False)
         self.actor_role_name = get_role_name(self.actor)
-        self.enable_peminjam_selection = self.actor_role_name in PEMINJAM_SELECT_ROLES and not kwargs.get("instance")
+        instance = kwargs.get("instance")
+        self.enable_peminjam_selection = self.actor_role_name in PEMINJAM_SELECT_ROLES and (
+            not instance or allow_peminjam_selection
+        )
         super().__init__(*args, **kwargs)
 
         if self.enable_peminjam_selection:
             self.fields["peminjam_user"].queryset = get_peminjam_dropdown_queryset()
+            if self.instance and self.instance.pk and not self.is_bound:
+                self.initial["peminjam_user"] = self.instance.peminjam_id
             self.fields["peminjam_user"].widget.attrs.update({
                 "class": "select-input",
                 "data-peminjam-select": "true",

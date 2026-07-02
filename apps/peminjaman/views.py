@@ -56,6 +56,7 @@ from .models import (
     build_asal_peminjaman_maps,
     resolve_asal_peminjaman_label,
 )
+from .inventory import sync_active_inventory
 from .pdf_utils import (
     render_berita_acara_pdf,
     render_laporan_pdf,
@@ -334,6 +335,7 @@ def _build_inventory_context(selection=None, survei_labels=None, current_obj=Non
     selected_peralatan_lab_qty = selection.get("peralatan_lab_qty") or {}
     current_booking = _get_current_booking_state(current_obj)
     visible_lab_categories = _get_lab_categories_for_survei_labels(survei_labels)
+    sync_active_inventory()
 
     lab_items = list(
         BarangLaboratorium.objects.order_by("kategori_barang", "nama_barang")
@@ -1167,6 +1169,12 @@ def _apply_peminjam_snapshot(pengajuan, peminjam):
     pengajuan.nip_peminjam = peminjam.nip or ""
 
 
+def _user_label(user):
+    if not user:
+        return "-"
+    return user.get_full_name() or user.username or "-"
+
+
 @login_required
 def tambah_pengajuan(request):
     if not _can_create_pengajuan(request.user):
@@ -1264,7 +1272,7 @@ def edit_pengajuan(request, pk):
     if not _can_edit_pengajuan(request.user, obj):
         return deny_access(
             request,
-            "Form edit peminjaman hanya dapat dilakukan oleh Teknisi Laboratorium dan Super Admin pada tahap verifikasi Teknisi Laboratorium.",
+            "Form edit peminjaman hanya dapat dilakukan oleh Teknisi Lab dan Super Admin pada tahap Proses Peminjaman - Teknisi Lab.",
         )
 
     selection_state = (
@@ -1283,7 +1291,13 @@ def edit_pengajuan(request, pk):
     inventory_form_errors = []
 
     if request.method == "POST":
-        form = PeminjamanRequestForm(request.POST, request.FILES, instance=obj, actor=request.user)
+        form = PeminjamanRequestForm(
+            request.POST,
+            request.FILES,
+            instance=obj,
+            actor=request.user,
+            allow_peminjam_selection=True,
+        )
         (
             selected_lab,
             selected_penunjang,
@@ -1296,8 +1310,15 @@ def edit_pengajuan(request, pk):
         if form.is_valid() and not item_errors:
             try:
                 with transaction.atomic():
+                    peminjam_lama = obj.peminjam
                     pengajuan = form.save(commit=False)
-                    _apply_peminjam_snapshot(pengajuan, pengajuan.peminjam)
+                    peminjam = form.cleaned_data.get("peminjam_user") or pengajuan.peminjam
+                    peminjam_berubah = (
+                        peminjam_lama
+                        and peminjam
+                        and peminjam_lama.pk != peminjam.pk
+                    )
+                    _apply_peminjam_snapshot(pengajuan, peminjam)
                     pengajuan.save()
                     form.save_m2m()
 
@@ -1310,18 +1331,31 @@ def edit_pengajuan(request, pk):
                         selected_bahan,
                     )
                     pengajuan.apply_inventory_allocation()
+                    if peminjam_berubah:
+                        pengajuan.add_timeline(
+                            "Peminjaman",
+                            "Data peminjam diperbarui",
+                            request.user,
+                            f"Peminjam diubah dari {_user_label(peminjam_lama)} menjadi {_user_label(peminjam)}.",
+                        )
                     pengajuan.add_timeline(
                         "Peminjaman",
                         "Data pengajuan dan daftar barang diperbarui; booking stok disesuaikan",
                         request.user,
                     )
+                    if peminjam_berubah:
+                        sync_transaction_notifications(pengajuan, actor=request.user)
             except ValidationError as exc:
                 inventory_form_errors = _get_validation_messages(exc)
             else:
                 messages.success(request, "Data pengajuan peminjaman dan booking stok berhasil diperbarui.")
                 return redirect("verifikasi:detail", pk=obj.pk)
     else:
-        form = PeminjamanRequestForm(instance=obj, actor=request.user)
+        form = PeminjamanRequestForm(
+            instance=obj,
+            actor=request.user,
+            allow_peminjam_selection=True,
+        )
 
     return render(
         request,

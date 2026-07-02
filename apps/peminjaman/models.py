@@ -19,7 +19,6 @@ from apps.operasional.models import InstansiKlien, LayananKegiatan, SurveiKegiat
 class StepChoices(models.TextChoices):
     ADMIN_LAB = "admin_lab", "Verifikasi Peminjaman - Admin Lab"
     TEKNISI_LAB = "teknisi_lab", "Proses Peminjaman - Teknisi Lab"
-    USER = "user", "Verifikasi Peminjaman - User"
     KEPALA_LAB = "kepala_lab", "Verifikasi Peminjaman - Kepala Lab"
     PIMPINAN = "pimpinan", "Verifikasi Peminjaman - Ketua Tim"
     APPROVED = "approved", "Disetujui"
@@ -289,7 +288,6 @@ class PeminjamanRequest(models.Model):
         return {
             StepChoices.ADMIN_LAB: "badge-warning",
             StepChoices.TEKNISI_LAB: "badge-primary",
-            StepChoices.USER: "badge-warning",
             StepChoices.KEPALA_LAB: "badge-warning",
             StepChoices.PIMPINAN: "badge-warning",
             StepChoices.APPROVED: "badge-success",
@@ -831,7 +829,13 @@ class PeminjamanRequest(models.Model):
             still_booked_elsewhere = PeminjamanBarangLaboratorium.objects.filter(
                 barang_id=barang.id,
                 pengajuan__aset_sudah_dialokasikan=True,
-            ).exclude(pengajuan_id=self.pk).exists()
+            ).exclude(
+                pengajuan_id=self.pk
+            ).exclude(
+                pengajuan__current_step=StepChoices.REJECTED
+            ).exclude(
+                pengajuan__return_current_step=ReturnStepChoices.COMPLETED
+            ).exists()
             barang.sedang_dipinjam = still_booked_elsewhere
             barang.save(update_fields=["sedang_dipinjam", "ketersediaan", "updated_at"])
 
@@ -972,8 +976,9 @@ class PeminjamanRequest(models.Model):
 
         self.return_inventory_applied = True
         self.return_completed_at = timezone.now()
+        self.aset_sudah_dialokasikan = False
         self.report_snapshot = self.build_report_snapshot()
-        self.save(update_fields=["return_inventory_applied", "return_completed_at", "report_snapshot", "updated_at"])
+        self.save(update_fields=["return_inventory_applied", "return_completed_at", "aset_sudah_dialokasikan", "report_snapshot", "updated_at"])
 
     def add_timeline(self, stage, action, actor=None, note=""):
         return PeminjamanTimeline.objects.create(

@@ -154,8 +154,6 @@ def _verification_recipients(pengajuan):
         return _merge_users(_users_by_role(ROLE_ADMIN_LAB), _super_admin_users())
     if step == StepChoices.TEKNISI_LAB:
         return _merge_users(_users_by_role(ROLE_TEKNISI_LAB), _super_admin_users())
-    if step == StepChoices.USER:
-        return _merge_users(pengajuan.peminjam)
     if step == StepChoices.KEPALA_LAB:
         return _merge_users(_users_by_role(ROLE_KEPALA_LAB), _super_admin_users())
     if step == StepChoices.PIMPINAN:
@@ -211,8 +209,7 @@ def _is_revision_followup(pengajuan, source_action=None):
     return (
         pengajuan.current_step == StepChoices.TEKNISI_LAB
         and (
-            pengajuan.user_verification_status == DecisionChoices.MISMATCH
-            or pengajuan.kepala_lab_status == DecisionChoices.REVISION
+            pengajuan.kepala_lab_status == DecisionChoices.REVISION
             or pengajuan.pimpinan_status == DecisionChoices.REVISION
         )
     )
@@ -500,7 +497,6 @@ def ensure_user_pending_notifications(user):
         | Q(current_step__in=[
             StepChoices.ADMIN_LAB,
             StepChoices.TEKNISI_LAB,
-            StepChoices.USER,
             StepChoices.KEPALA_LAB,
             StepChoices.PIMPINAN,
         ])

@@ -239,6 +239,16 @@ def _display_value(value, default="-"):
     return value
 
 
+def _sync_peminjaman_inventory(*, lab_ids=None, penunjang_ids=None, peralatan_lab_ids=None):
+    from apps.peminjaman.inventory import sync_active_inventory
+
+    sync_active_inventory(
+        lab_ids=lab_ids,
+        penunjang_ids=penunjang_ids,
+        peralatan_lab_ids=peralatan_lab_ids,
+    )
+
+
 def _komponen_list(value):
     return normalize_komponen(value)
 
@@ -693,6 +703,7 @@ def index(request):
 
 
 def _render_barang_laboratorium_list(request, import_context=None):
+    _sync_peminjaman_inventory()
     queryset = BarangLaboratorium.objects.order_by("nama_barang")
     context = paginate_list(
         request,
@@ -718,6 +729,7 @@ def data_barang_laboratorium(request):
 
 @login_required
 def export_barang_laboratorium(request):
+    _sync_peminjaman_inventory()
     headers = [
         "Nama Barang",
         "Status Barang",
@@ -1799,6 +1811,7 @@ def download_format_import_fasilitas_ruangan(request):
 
 @login_required
 def export_barang_penunjang(request):
+    _sync_peminjaman_inventory()
     headers = [
         "Nama Barang",
         "Tipe / Merek Barang",
@@ -1925,6 +1938,7 @@ def export_fasilitas_ruangan(request):
 
 @login_required
 def export_peralatan_laboratorium(request):
+    _sync_peminjaman_inventory()
     headers = [
         "Nama Barang",
         "Status Barang",
@@ -2091,6 +2105,8 @@ def public_barang_laboratorium(request, token):
     from apps.peminjaman.models import PeminjamanBarangLaboratorium
 
     obj = get_object_or_404(BarangLaboratorium, qr_token=token)
+    _sync_peminjaman_inventory(lab_ids=[obj.pk])
+    obj.refresh_from_db()
     return _render_public_master_detail(
         request,
         obj=obj,
@@ -2111,6 +2127,8 @@ def public_barang_laboratorium(request, token):
 
 def public_barang_penunjang(request, token):
     obj = get_object_or_404(BarangPenunjangOperasional, qr_token=token)
+    _sync_peminjaman_inventory(penunjang_ids=[obj.pk])
+    obj.refresh_from_db()
     return _render_public_master_detail(
         request,
         obj=obj,
@@ -2194,6 +2212,8 @@ def public_peralatan_laboratorium(request, token):
     from apps.peminjaman.models import PeminjamanPeralatanLaboratorium
 
     obj = get_object_or_404(PeralatanLaboratorium, qr_token=token)
+    _sync_peminjaman_inventory(peralatan_lab_ids=[obj.pk])
+    obj.refresh_from_db()
     return _render_public_master_detail(
         request,
         obj=obj,
@@ -2216,6 +2236,7 @@ def public_peralatan_laboratorium(request, token):
 def detail_barang_laboratorium(request, pk):
     from apps.peminjaman.models import PeminjamanBarangLaboratorium
 
+    _sync_peminjaman_inventory(lab_ids=[pk])
     obj = get_object_or_404(BarangLaboratorium, pk=pk)
     context = _build_detail_context(
         obj=obj,
@@ -2283,6 +2304,7 @@ def hapus_barang_laboratorium(request, pk):
 
 
 def _render_barang_penunjang_list(request, import_context=None):
+    _sync_peminjaman_inventory()
     queryset = BarangPenunjangOperasional.objects.order_by("nama_barang")
     context = paginate_list(request, queryset, search_fields=PENUNJANG_LIST_SEARCH_FIELDS)
     _ensure_qr_codes_for_context_items(context)
@@ -2526,6 +2548,7 @@ def hapus_fasilitas_ruangan(request, pk):
     )
 
 def _render_peralatan_laboratorium_list(request, import_context=None):
+    _sync_peminjaman_inventory()
     queryset = PeralatanLaboratorium.objects.order_by("nama_barang")
     context = paginate_list(request, queryset, search_fields=ASSET_LIST_SEARCH_FIELDS)
     _ensure_qr_codes_for_context_items(context)
@@ -2549,6 +2572,7 @@ def data_peralatan_laboratorium(request):
 def detail_peralatan_laboratorium(request, pk):
     from apps.peminjaman.models import PeminjamanPeralatanLaboratorium
 
+    _sync_peminjaman_inventory(peralatan_lab_ids=[pk])
     obj = get_object_or_404(PeralatanLaboratorium, pk=pk)
     context = _build_detail_context(
         obj=obj,

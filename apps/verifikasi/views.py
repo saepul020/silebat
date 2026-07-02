@@ -43,7 +43,6 @@ from apps.pemeliharaan.models import (
 ACTION_CHOICES = {
     StepChoices.ADMIN_LAB: [("tolak", "Tolak"), ("setujui", "Setujui")],
     StepChoices.TEKNISI_LAB: [("selesai", "Lanjutkan Proses")],
-    StepChoices.USER: [("tidak_sesuai", "Belum Sesuai"), ("sesuai", "Sudah Sesuai")],
     StepChoices.KEPALA_LAB: [
         ("tolak", "Tolak"),
         ("perbaiki", "Perbaiki"),
@@ -270,13 +269,11 @@ def _get_pending_queryset(user):
     if role_name == ROLE_ADMIN_LAB:
         return qs.filter(
             Q(current_step=StepChoices.ADMIN_LAB)
-            | Q(current_step=StepChoices.USER, peminjam=user)
             | Q(return_current_step=ReturnStepChoices.USER_VERIFICATION, peminjam=user)
         ).distinct()
     if role_name == ROLE_TEKNISI_LAB:
         return qs.filter(
             Q(current_step=StepChoices.TEKNISI_LAB)
-            | Q(current_step=StepChoices.USER, peminjam=user)
             | Q(
                 return_current_step__in=[
                     ReturnStepChoices.TEKNISI_VERIFICATION,
@@ -287,8 +284,7 @@ def _get_pending_queryset(user):
         ).distinct()
     if role_name == ROLE_USER:
         return qs.filter(
-            Q(current_step=StepChoices.USER, peminjam=user)
-            | Q(return_current_step=ReturnStepChoices.USER_VERIFICATION, peminjam=user)
+            Q(return_current_step=ReturnStepChoices.USER_VERIFICATION, peminjam=user)
         ).distinct()
     if role_name == ROLE_KEPALA_LAB:
         return qs.filter(
@@ -464,8 +460,6 @@ def _user_can_act(user, obj):
         return role_name == ROLE_ADMIN_LAB
     if obj.current_step == StepChoices.TEKNISI_LAB:
         return role_name == ROLE_TEKNISI_LAB
-    if obj.current_step == StepChoices.USER:
-        return role_name in BORROWER_CONFIRMATION_ROLES and obj.peminjam_id == user.id
     if obj.current_step == StepChoices.KEPALA_LAB:
         return role_name == ROLE_KEPALA_LAB
     if obj.current_step == StepChoices.PIMPINAN:
@@ -1290,43 +1284,19 @@ def _process_action(request, obj, aksi, catatan, verification_mode="pengajuan"):
         obj.teknisi_lab_at = now
         obj.teknisi_lab_note = catatan
         obj.teknisi_lab_status = DecisionChoices.READY
-        obj.user_verification_status = DecisionChoices.PENDING
-        obj.current_step = StepChoices.USER
+        obj.kepala_lab_status = DecisionChoices.PENDING
+        obj.current_step = StepChoices.KEPALA_LAB
         obj.add_timeline(
-            "Teknisi Lab", "Pemenuhan barang selesai dan dikirim ke User", user, catatan
+            "Teknisi Lab",
+            "Pemenuhan barang selesai dan dikirim ke Kepala Lab",
+            user,
+            catatan,
         )
         obj.save()
         messages.success(
             request,
-            "Pengajuan berhasil diteruskan ke User untuk pengecekan kesesuaian barang.",
+            "Pengajuan berhasil diteruskan ke Kepala Lab.",
         )
-        return
-
-    if obj.current_step == StepChoices.USER:
-        obj.user_verification_at = now
-        obj.user_verification_note = catatan
-        if aksi == "sesuai":
-            obj.user_verification_status = DecisionChoices.APPROVED
-            obj.current_step = StepChoices.KEPALA_LAB
-            obj.add_timeline(
-                "User", "Barang dinyatakan sudah sesuai oleh User", user, catatan
-            )
-            messages.success(
-                request,
-                "Verifikasi user berhasil. Pengajuan diteruskan ke Kepala Laboratorium.",
-            )
-        else:
-            obj.user_verification_status = DecisionChoices.MISMATCH
-            obj.teknisi_lab_status = DecisionChoices.PENDING
-            obj.current_step = StepChoices.TEKNISI_LAB
-            obj.add_timeline(
-                "User", "Barang dinyatakan belum sesuai oleh User", user, catatan
-            )
-            messages.success(
-                request,
-                "Pengajuan dikembalikan ke Teknisi Lab untuk perbaikan pemenuhan barang.",
-            )
-        obj.save()
         return
 
     if obj.current_step == StepChoices.KEPALA_LAB:

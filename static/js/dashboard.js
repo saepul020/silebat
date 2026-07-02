@@ -139,6 +139,7 @@ function initDashboardCharts() {
     initPengukuranLapanganChart();
     initApprovedPeminjamanChart();
     initSurveiKegiatanChart();
+    initPeralatanSurveiChart();
     initInstansiTujuanChart();
     initInventoryCharts();
     initSdmCharts();
@@ -1127,6 +1128,41 @@ function initInstansiTujuanChart() {
             'scrollable',
         );
         updateScrollableChartWidth(holder, chartData.labels.length, isSmallMobileViewport() ? 56 : (isMobileViewport() ? 66 : 136));
+        const options = createSingleSeriesChartOptions(chartData.maxValue, isMobileViewport() ? 12 : 18, isMobileViewport() ? 58 : 46);
+        chartInstance = upsertBarChart(chartInstance, canvas, chartData.labels, chartData.datasets, options, updateMode);
+    }
+
+    yearFilter.addEventListener('change', renderChart);
+    bindDashboardChartResize(renderChart);
+    renderChart();
+}
+
+function initPeralatanSurveiChart() {
+    const canvas = document.getElementById('grafikPeralatanSurvei');
+    const source = readDashboardChartData('data-peralatan-survei');
+    const holder = document.querySelector('[data-chart-holder="peralatan-survei"]');
+    const yearFilter = document.getElementById('tahunPeralatanSurvei');
+
+    if (!canvas || !source || !holder || !yearFilter) {
+        return;
+    }
+
+    let chartInstance = null;
+
+    function renderChart(updateMode) {
+        const chartData = buildSingleSeriesChartData(
+            source,
+            normalizeDashboardYearFilter(yearFilter.value),
+            'barangId',
+            'Total Transaksi',
+            'scrollable',
+        );
+        updateScrollableChartWidth(holder, chartData.labels.length, isSmallMobileViewport() ? 56 : (isMobileViewport() ? 66 : 136));
+        updateChartEmptyState('peralatan-survei', chartData.datasets.some(function (dataset) {
+            return dataset.data.some(function (value) {
+                return Number(value) > 0;
+            });
+        }));
         const options = createSingleSeriesChartOptions(chartData.maxValue, isMobileViewport() ? 12 : 18, isMobileViewport() ? 58 : 46);
         chartInstance = upsertBarChart(chartInstance, canvas, chartData.labels, chartData.datasets, options, updateMode);
     }
