@@ -1379,15 +1379,32 @@ function initChartDownloadActions() {
     });
 
     downloadButtons.forEach(function (button) {
-        button.addEventListener('click', function (event) {
+        button.addEventListener('click', async function (event) {
             event.preventDefault();
             event.stopPropagation();
 
             const chartId = button.dataset.chartTarget;
             const title = button.dataset.chartTitle || 'Dashboard Chart';
+            const format = button.dataset.chartDownload || 'jpg';
+
+            closeChartDownloadMenus();
+            if (format === 'xlsx') {
+                button.disabled = true;
+                try {
+                    await downloadDashboardChartExcel(
+                        chartId,
+                        title,
+                        button.dataset.chartExportUrl
+                    );
+                } catch (error) {
+                    window.alert(error.message || 'Export Excel grafik gagal diproses.');
+                } finally {
+                    button.disabled = false;
+                }
+                return;
+            }
 
             downloadDashboardChart(chartId, title);
-            closeChartDownloadMenus();
         });
     });
 
@@ -1402,6 +1419,78 @@ function initChartDownloadActions() {
             closeChartDownloadMenus();
         }
     });
+}
+
+function getDashboardCsrfToken() {
+    const cookie = document.cookie
+        .split(';')
+        .map(function (item) { return item.trim(); })
+        .find(function (item) { return item.startsWith('csrftoken='); });
+    return cookie ? decodeURIComponent(cookie.slice('csrftoken='.length)) : '';
+}
+
+function normalizeDashboardChartValue(value) {
+    if (value && typeof value === 'object') {
+        return Number(value.y ?? value.x ?? 0);
+    }
+    return Number(value || 0);
+}
+
+async function downloadDashboardChartExcel(chartId, title, exportUrl) {
+    const canvas = document.getElementById(chartId);
+    const chartInstance = canvas && typeof Chart !== 'undefined' ? Chart.getChart(canvas) : null;
+    if (!chartInstance || !exportUrl) {
+        throw new Error('Data grafik tidak tersedia untuk export Excel.');
+    }
+
+    chartInstance.update('none');
+    const payload = {
+        title: title,
+        type: chartInstance.config.type || 'bar',
+        stacked: Boolean(
+            chartInstance.options?.scales?.x?.stacked ||
+            chartInstance.options?.scales?.y?.stacked
+        ),
+        labels: (chartInstance.data.labels || []).map(function (label) {
+            return Array.isArray(label) ? label.join(' ') : String(label ?? '-');
+        }),
+        datasets: (chartInstance.data.datasets || []).map(function (dataset, index) {
+            return {
+                label: dataset.label || 'Data ' + (index + 1),
+                data: (dataset.data || []).map(normalizeDashboardChartValue),
+            };
+        }),
+    };
+
+    const response = await fetch(exportUrl, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getDashboardCsrfToken(),
+        },
+        body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+        let message = 'Export Excel grafik gagal diproses.';
+        try {
+            const errorData = await response.json();
+            message = errorData.error || message;
+        } catch (error) {
+            // Respons non-JSON tetap menggunakan pesan standar.
+        }
+        throw new Error(message);
+    }
+
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = objectUrl;
+    link.download = buildDashboardChartFileName(title, 'xlsx');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(objectUrl);
 }
 
 function downloadDashboardChart(chartId, title) {

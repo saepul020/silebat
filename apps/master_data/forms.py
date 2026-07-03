@@ -1,3 +1,5 @@
+import re
+
 from django import forms
 from django.utils.functional import cached_property
 
@@ -26,6 +28,35 @@ from .models import (
 KOMPONEN_MIN_ROWS = 1
 KOMPONEN_LOCK_MESSAGE = "Komponen sedang digunakan pada pengajuan pemeliharaan aktif."
 KONDISI_LOCK_MESSAGE = "Kondisi Barang tidak dapat diubah karena masih ada transaksi aktif."
+VOLUME_CHOICES = (("true", "Ya"), ("false", "Tidak"))
+
+
+def _coerce_volume_choice(value):
+    if value in (True, "true", "True", "1"):
+        return True
+    if value in (False, "false", "False", "0"):
+        return False
+    raise ValueError("Pilihan status volume tidak valid.")
+
+
+def get_next_kode_laboratorium(model):
+    last = (
+        model.objects.exclude(kode_laboratorium__isnull=True)
+        .exclude(kode_laboratorium="")
+        .order_by("-pk")
+        .values_list("kode_laboratorium", "pk")
+        .first()
+    )
+    if not last:
+        return "1"
+
+    kode, pk = last
+    match = re.search(r"(\d+)$", str(kode).strip())
+    if not match:
+        return str(pk + 1)
+
+    number = str(int(match.group(1)) + 1).zfill(len(match.group(1)))
+    return f"{str(kode).strip()[:match.start(1)]}{number}"
 
 
 def _iter_komponen(values):
@@ -255,10 +286,11 @@ class AssetBaseForm(BaseMasterDataForm):
         self._files_to_delete_after_save = []
         self.fields["foto_barang"].widget = forms.FileInput(
             attrs={
-                "accept": ".jpg,.jpeg,.png",
+                "accept": "image/*,.jpg,.jpeg,.png",
+                "capture": "environment",
                 "class": "input-file--proxy",
                 "data-inline-file-input": "true",
-                "data-inline-file-placeholder": "Pilih file",
+                "data-inline-file-placeholder": "Pilih gambar",
                 "data-inline-file-extensions": "jpg,jpeg,png",
                 "data-inline-file-error": "Foto Barang hanya boleh berupa file JPG, JPEG, atau PNG.",
             }
@@ -319,10 +351,11 @@ class AssetBaseForm(BaseMasterDataForm):
                     "data-status-dependent": "true",
                 },
                 "foto_barang": {
-                    "accept": ".jpg,.jpeg,.png",
+                    "accept": "image/*,.jpg,.jpeg,.png",
+                    "capture": "environment",
                     "class": "input-file--proxy",
                     "data-inline-file-input": "true",
-                    "data-inline-file-placeholder": "Pilih file",
+                    "data-inline-file-placeholder": "Pilih gambar",
                     "data-inline-file-extensions": "jpg,jpeg,png",
                     "data-inline-file-error": "Foto Barang hanya boleh berupa file JPG, JPEG, atau PNG.",
                     "data-status-dependent": "true",
@@ -374,6 +407,11 @@ class AssetBaseForm(BaseMasterDataForm):
             }
         )
         self.fields["volume"].initial = self._get_locked_volume_value()
+        if not self.is_bound and not getattr(self.instance, "pk", None):
+            self.fields["kode_laboratorium"].initial = get_next_kode_laboratorium(
+                self._meta.model
+            )
+        self._set_required_state(["kode_laboratorium", "lokasi_barang"])
         self.fields["ketersediaan_info"].initial = self._get_ketersediaan_value()
         self.fields["tanggal_pemeliharaan_info"].initial = getattr(
             self.instance, "tanggal_pemeliharaan", None
@@ -463,6 +501,10 @@ class AssetBaseForm(BaseMasterDataForm):
             return str(self.instance.status_barang).strip()
 
         return ""
+
+    @property
+    def dependent_fields_locked(self):
+        return not self._get_status_barang_value()
 
     def _get_persisted_instance(self):
         if not getattr(self.instance, "pk", None):
@@ -640,12 +682,134 @@ class AssetBaseForm(BaseMasterDataForm):
         return instance
 
 
-class BarangLaboratoriumForm(AssetBaseForm):
-    komponen_pemeliharaan = forms.CharField(
-        label="Komponen Pemeliharaan Rutin",
-        required=False,
-        widget=forms.HiddenInput(),
-    )
+class KomponenFormMixin:
+    def _setup_komponen_field(self):
+        field = forms.CharField(
+            label="Komponen Pemeliharaan Rutin",
+            required=False,
+            widget=forms.HiddenInput(),
+        )
+        field.widget.attrs.update(
+            {
+                "data-status-dependent": "true",
+                "maxlength": str(KOMPONEN_MAX_LENGTH),
+            }
+        )
+        self.fields["komponen_pemeliharaan"] = field
+        if self.komponen_field_locked:
+            field.widget.attrs.update(
+                {
+                    "disabled": "disabled",
+                    "aria-disabled": "true",
+                    "data-transaction-locked": "true",
+                    "title": self.komponen_lock_message,
+                }
+            )
+
+    def _komponen_enabled(self):
+        if not isinstance(self.instance, (FasilitasRuangan, PeralatanLaboratorium)):
+            return True
+        status_barang = self._get_status_barang_value()
+        return status_barang == StatusBarangChoices.BMN or (
+            status_barang == StatusBarangChoices.NON_BMN
+            and self._get_bervolume_value() is False
+        )
+
+    @property
+    def komponen_visible(self):
+        return self._komponen_enabled()
+
+    @property
+    def komponen_max_length(self):
+        return KOMPONEN_MAX_LENGTH
+
+    @property
+    def komponen_min_rows(self):
+        return KOMPONEN_MIN_ROWS
+
+    @cached_property
+    def komponen_locked_values(self):
+        if not getattr(self.instance, "pk", None) or not isinstance(
+            self.instance, BarangLaboratorium
+        ):
+            return set()
+        try:
+            from apps.pemeliharaan.models import (
+                ACTIVE_PEMELIHARAAN_STEPS,
+                PemeliharaanItem,
+            )
+        except Exception:
+            return set()
+        return set(
+            PemeliharaanItem.objects.filter(
+                pengajuan__alat=self.instance,
+                pengajuan__current_step__in=ACTIVE_PEMELIHARAAN_STEPS,
+            ).values_list("komponen", flat=True)
+        )
+
+    @cached_property
+    def komponen_lock_numbers(self):
+        return _get_active_pemeliharaan_numbers(self.instance)
+
+    @cached_property
+    def komponen_field_locked(self):
+        return bool(self.komponen_lock_numbers)
+
+    @cached_property
+    def komponen_lock_message(self):
+        return _format_lock_message(
+            KOMPONEN_LOCK_MESSAGE,
+            self.komponen_lock_numbers,
+        )
+
+    def _posted_komponen(self):
+        field_name = self.add_prefix("komponen_pemeliharaan")
+        if hasattr(self.data, "getlist"):
+            return list(self.data.getlist(field_name))
+        values = self.data.get(field_name, [])
+        return list(values) if isinstance(values, (list, tuple)) else [values]
+
+    def _get_komponen_values(self):
+        if self.is_bound:
+            return self._posted_komponen()
+        initial_value = self.initial.get("komponen_pemeliharaan")
+        if initial_value is None:
+            initial_value = getattr(self.instance, "komponen_pemeliharaan", [])
+        return normalize_komponen(initial_value)
+
+    @property
+    def komponen_rows(self):
+        values = [str(value or "") for value in self._get_komponen_values()]
+        row_count = max(KOMPONEN_MIN_ROWS, len(values))
+        return values + [""] * (row_count - len(values))
+
+    def clean_komponen_pemeliharaan(self):
+        if not self._komponen_enabled():
+            return []
+        if self.komponen_field_locked:
+            return normalize_komponen(
+                getattr(self.instance, "komponen_pemeliharaan", [])
+            )
+
+        values = (
+            self._posted_komponen()
+            if self.is_bound
+            else self.cleaned_data.get("komponen_pemeliharaan")
+        )
+        components, errors = validate_komponen(values)
+        if errors:
+            raise forms.ValidationError(errors)
+        locked_values = self.komponen_locked_values
+        removed_values = sorted(locked_values - set(components))
+        if removed_values:
+            raise forms.ValidationError(
+                "Komponen yang sedang digunakan pada pengajuan pemeliharaan aktif "
+                f"tidak boleh dihapus: {', '.join(removed_values)}."
+            )
+        return components
+
+
+class BarangLaboratoriumForm(KomponenFormMixin, AssetBaseForm):
 
     class Meta(AssetBaseForm.Meta):
         model = BarangLaboratorium
@@ -684,101 +848,7 @@ class BarangLaboratoriumForm(AssetBaseForm):
             ("", "Pilih kategori barang"),
             *KategoriBarangLaboratoriumChoices.choices,
         ]
-        self.fields["komponen_pemeliharaan"].widget.attrs.update(
-            {
-                "data-status-dependent": "true",
-                "maxlength": str(KOMPONEN_MAX_LENGTH),
-            }
-        )
-        if self.komponen_field_locked:
-            self.fields["komponen_pemeliharaan"].widget.attrs.update(
-                {
-                    "disabled": "disabled",
-                    "aria-disabled": "true",
-                    "data-transaction-locked": "true",
-                    "title": self.komponen_lock_message,
-                }
-            )
-
-    @property
-    def komponen_max_length(self):
-        return KOMPONEN_MAX_LENGTH
-
-    @property
-    def komponen_min_rows(self):
-        return KOMPONEN_MIN_ROWS
-
-    @cached_property
-    def komponen_locked_values(self):
-        if not getattr(self.instance, "pk", None):
-            return set()
-        try:
-            from apps.pemeliharaan.models import (
-                ACTIVE_PEMELIHARAAN_STEPS,
-                PemeliharaanItem,
-            )
-        except Exception:
-            return set()
-        return set(
-            PemeliharaanItem.objects.filter(
-                pengajuan__alat=self.instance,
-                pengajuan__current_step__in=ACTIVE_PEMELIHARAAN_STEPS,
-            ).values_list("komponen", flat=True)
-        )
-
-    @cached_property
-    def komponen_lock_numbers(self):
-        return _get_active_pemeliharaan_numbers(self.instance)
-
-    @cached_property
-    def komponen_field_locked(self):
-        return bool(self.komponen_lock_numbers)
-
-    @cached_property
-    def komponen_lock_message(self):
-        return _format_lock_message(
-            KOMPONEN_LOCK_MESSAGE,
-            self.komponen_lock_numbers,
-        )
-
-    def _get_komponen_values(self):
-        field_name = self.add_prefix("komponen_pemeliharaan")
-        if self.is_bound:
-            return list(self.data.getlist(field_name))
-
-        initial_value = self.initial.get("komponen_pemeliharaan")
-        if initial_value is None:
-            initial_value = getattr(self.instance, "komponen_pemeliharaan", [])
-        return normalize_komponen(initial_value)
-
-    @property
-    def komponen_rows(self):
-        values = [str(value or "") for value in self._get_komponen_values()]
-        row_count = max(KOMPONEN_MIN_ROWS, len(values))
-        return values + [""] * (row_count - len(values))
-
-    def clean_komponen_pemeliharaan(self):
-        if self.komponen_field_locked:
-            return normalize_komponen(
-                getattr(self.instance, "komponen_pemeliharaan", [])
-            )
-
-        values = (
-            self.data.getlist(self.add_prefix("komponen_pemeliharaan"))
-            if self.is_bound
-            else self.cleaned_data.get("komponen_pemeliharaan")
-        )
-        components, errors = validate_komponen(values)
-        if errors:
-            raise forms.ValidationError(errors)
-        locked_values = self.komponen_locked_values
-        removed_values = sorted(locked_values - set(components))
-        if removed_values:
-            raise forms.ValidationError(
-                "Komponen yang sedang digunakan pada pengajuan pemeliharaan aktif "
-                f"tidak boleh dihapus: {', '.join(removed_values)}."
-            )
-        return components
+        self._setup_komponen_field()
 
 
 class VolumeBaikAssetFormMixin:
@@ -798,6 +868,32 @@ class VolumeBaikAssetFormMixin:
             return str(self.instance.kondisi_barang).strip()
 
         return KondisiBarangChoices.BAIK
+
+    def _get_bervolume_value(self):
+        if self.is_bound:
+            if self.kondisi_barang_locked:
+                return bool(getattr(self.instance, "bervolume", False))
+            value = self.data.get(self.add_prefix("bervolume"))
+            if value in (None, ""):
+                return None
+            try:
+                return _coerce_volume_choice(value)
+            except ValueError:
+                return None
+
+        if getattr(self.instance, "pk", None):
+            return bool(getattr(self.instance, "bervolume", False))
+        return None
+
+    @property
+    def dependent_fields_locked(self):
+        status_barang = self._get_status_barang_value()
+        if not status_barang:
+            return True
+        return (
+            status_barang == StatusBarangChoices.NON_BMN
+            and self._get_bervolume_value() is None
+        )
 
     def _get_bmn_volume_values(self, kondisi_barang=None):
         kondisi = (
@@ -827,11 +923,46 @@ class VolumeBaikAssetFormMixin:
         status_barang = self._get_status_barang_value()
         is_bmn = status_barang == StatusBarangChoices.BMN
         is_non_bmn = status_barang == StatusBarangChoices.NON_BMN
+        volume_choice = self._get_bervolume_value()
+        is_manual = is_non_bmn and volume_choice is True
+        is_auto = is_bmn or (is_non_bmn and volume_choice is False)
+        is_ready = is_bmn or (is_non_bmn and volume_choice is not None)
+
+        bervolume_field = forms.TypedChoiceField(
+            label="Apakah barang ber-volume?",
+            choices=VOLUME_CHOICES,
+            coerce=_coerce_volume_choice,
+            empty_value=None,
+            required=is_non_bmn,
+            widget=forms.RadioSelect(
+                attrs={
+                    "data-bervolume-field": "true",
+                    "data-status-dependent": "true",
+                }
+            ),
+        )
+        bervolume_field.initial = (
+            None if volume_choice is None else str(volume_choice).lower()
+        )
+        bervolume_field.error_messages["required"] = (
+            "Pilih Ya atau Tidak untuk status barang ber-volume."
+        )
+        self.fields["bervolume"] = bervolume_field
+        if self.kondisi_barang_locked:
+            bervolume_field.disabled = True
+            bervolume_field.widget.attrs.update(
+                {
+                    "disabled": "disabled",
+                    "aria-disabled": "true",
+                    "data-transaction-locked": "true",
+                    "title": self.kondisi_barang_lock_message,
+                }
+            )
 
         volume_field = self.fields["volume"]
         volume_field.label = "Volume Baik"
         volume_field.disabled = False
-        volume_field.required = not is_bmn
+        volume_field.required = is_manual
         volume_field.widget.attrs.pop("disabled", None)
         volume_field.widget.attrs.pop("data-volume-locked", None)
         volume_field.widget.attrs.pop("readonly", None)
@@ -855,7 +986,7 @@ class VolumeBaikAssetFormMixin:
         volume_field.error_messages.setdefault("min_value", "Volume baik minimal 0.")
 
         volume_rusak_field = self.fields["volume_rusak"]
-        volume_rusak_field.required = is_non_bmn
+        volume_rusak_field.required = is_manual
         volume_rusak_field.widget.attrs.update(
             {
                 "min": "0",
@@ -873,7 +1004,7 @@ class VolumeBaikAssetFormMixin:
             "min_value", "Volume rusak minimal 0."
         )
 
-        if is_non_bmn:
+        if is_manual:
             volume_field.widget.attrs["required"] = "required"
             volume_rusak_field.widget.attrs["required"] = "required"
             for field in (volume_field, volume_rusak_field):
@@ -888,7 +1019,7 @@ class VolumeBaikAssetFormMixin:
                     for class_name in field.widget.attrs.get("class", "").split()
                     if class_name != "is-readonly-field"
                 )
-        elif is_bmn:
+        elif is_auto:
             volume_baik, volume_rusak = self._get_bmn_volume_values()
             self._force_bound_bmn_volume_data(volume_baik, volume_rusak)
             volume_field.initial = volume_baik
@@ -932,7 +1063,7 @@ class VolumeBaikAssetFormMixin:
                 "min": "0",
             }
         )
-        if is_bmn:
+        if is_auto:
             volume_baik, volume_rusak = self._get_bmn_volume_values()
             total_volume_field.widget.attrs.update({"min": "0", "max": "1"})
             total_volume_field.initial = (volume_baik or 0) + (volume_rusak or 0)
@@ -941,12 +1072,31 @@ class VolumeBaikAssetFormMixin:
             total_volume_field.initial = getattr(self.instance, "total_volume", 0)
 
         kondisi_field = self.fields["kondisi_barang"]
-        kondisi_field.widget.attrs["data-bmn-only"] = "true"
-        kondisi_field.required = is_bmn
-        if is_bmn:
+        kondisi_field.widget.attrs["data-auto-volume-only"] = "true"
+        kondisi_field.required = is_auto
+        if kondisi_field.required:
             kondisi_field.widget.attrs["required"] = "required"
         else:
             kondisi_field.widget.attrs.pop("required", None)
+
+        metadata_required = is_ready and not is_manual
+        self._set_required_state(
+            ["kode_laboratorium", "lokasi_barang"], metadata_required
+        )
+        if not getattr(self.instance, "pk", None):
+            self._set_required_state(["tahun_perolehan"], metadata_required)
+
+        for field_name in (
+            "kode_laboratorium",
+            "tahun_perolehan",
+            "lokasi_barang",
+            "ik_alat",
+            "tanggal_pemeliharaan_info",
+            "tanggal_perbaikan_info",
+        ):
+            field = self.fields.get(field_name)
+            if field:
+                field.widget.attrs["data-volume-metadata"] = "true"
 
     def clean(self):
         cleaned_data = super().clean()
@@ -957,7 +1107,23 @@ class VolumeBaikAssetFormMixin:
         if not status_barang:
             return cleaned_data
 
-        if status_barang == StatusBarangChoices.BMN:
+        if (
+            status_barang == StatusBarangChoices.NON_BMN
+            and cleaned_data.get("bervolume") is None
+        ):
+            if "bervolume" not in self.errors:
+                self.add_error(
+                    "bervolume",
+                    "Pilih Ya atau Tidak untuk status barang ber-volume.",
+                )
+            return cleaned_data
+
+        is_manual = (
+            status_barang == StatusBarangChoices.NON_BMN
+            and cleaned_data.get("bervolume") is True
+        )
+
+        if not is_manual:
             kondisi_barang = cleaned_data.get("kondisi_barang")
             if not kondisi_barang:
                 self.add_error("kondisi_barang", "Kondisi Barang wajib dipilih.")
@@ -966,9 +1132,8 @@ class VolumeBaikAssetFormMixin:
             volume_baik, volume_rusak = self._get_bmn_volume_values(kondisi_barang)
             cleaned_data["volume"] = volume_baik
             cleaned_data["volume_rusak"] = volume_rusak
-            return cleaned_data
-
-        if status_barang != StatusBarangChoices.NON_BMN:
+            if status_barang == StatusBarangChoices.BMN:
+                cleaned_data["bervolume"] = False
             return cleaned_data
 
         volume = cleaned_data.get("volume")
@@ -984,20 +1149,39 @@ class VolumeBaikAssetFormMixin:
             self.add_error("volume_rusak", "Volume rusak minimal 0.")
 
         cleaned_data["kode_aset_bmn"] = None
+        cleaned_data["kode_laboratorium"] = None
+        cleaned_data["tahun_perolehan"] = None
+        cleaned_data["lokasi_barang"] = ""
+        cleaned_data["ik_alat"] = None
         cleaned_data["kondisi_barang"] = KondisiBarangChoices.BAIK
         return cleaned_data
 
     def save(self, commit=True):
         instance = super().save(commit=False)
 
-        if instance.status_barang == StatusBarangChoices.BMN:
+        is_manual = (
+            instance.status_barang == StatusBarangChoices.NON_BMN
+            and bool(instance.bervolume)
+        )
+
+        if not is_manual:
             volume_baik, volume_rusak = self._get_bmn_volume_values(
                 instance.kondisi_barang
             )
             instance.volume = volume_baik
             instance.volume_rusak = volume_rusak
+            if instance.status_barang == StatusBarangChoices.BMN:
+                instance.bervolume = False
         else:
+            persisted_instance = self._get_persisted_instance()
+            self._queue_file_for_delete(getattr(persisted_instance, "ik_alat", None))
             instance.kode_aset_bmn = None
+            instance.kode_laboratorium = None
+            instance.tahun_perolehan = None
+            instance.lokasi_barang = ""
+            instance.ik_alat = None
+            instance.tanggal_pemeliharaan = None
+            instance.tanggal_perbaikan = None
             instance.kondisi_barang = KondisiBarangChoices.BAIK
             if instance.volume is None:
                 instance.volume = 0
@@ -1012,7 +1196,9 @@ class VolumeBaikAssetFormMixin:
         return instance
 
 
-class FasilitasRuanganForm(VolumeBaikAssetFormMixin, AssetBaseForm):
+class FasilitasRuanganForm(
+    KomponenFormMixin, VolumeBaikAssetFormMixin, AssetBaseForm
+):
     total_volume_info = forms.IntegerField(
         label="Total Volume", required=False, disabled=True, min_value=0
     )
@@ -1020,12 +1206,15 @@ class FasilitasRuanganForm(VolumeBaikAssetFormMixin, AssetBaseForm):
     class Meta(AssetBaseForm.Meta):
         model = FasilitasRuangan
         fields = AssetBaseForm.Meta.fields + [
+            "bervolume",
             "volume_rusak",
             "total_volume_info",
             "kategori_barang",
+            "komponen_pemeliharaan",
         ]
         labels = {
             "status_barang": "Status Barang",
+            "bervolume": "Barang ber-volume",
             "nama_barang": "Nama Barang",
             "tipe_merek_barang": "Tipe / Merek Barang",
             "jenis_barang": "Jenis Barang",
@@ -1041,6 +1230,7 @@ class FasilitasRuanganForm(VolumeBaikAssetFormMixin, AssetBaseForm):
             "foto_barang": "Foto Barang",
             "ik_alat": "IK Alat (PDF)",
             "catatan": "Catatan",
+            "komponen_pemeliharaan": "Komponen Pemeliharaan Rutin",
         }
 
     def __init__(self, *args, **kwargs):
@@ -1048,18 +1238,27 @@ class FasilitasRuanganForm(VolumeBaikAssetFormMixin, AssetBaseForm):
         self._set_placeholder_choice("kategori_barang", "Pilih kategori barang")
         self.fields["kategori_barang"].widget.attrs["data-status-dependent"] = "true"
         self._setup_volume_baik_fields()
+        self._setup_komponen_field()
 
 
-class PeralatanLaboratoriumForm(VolumeBaikAssetFormMixin, AssetBaseForm):
+class PeralatanLaboratoriumForm(
+    KomponenFormMixin, VolumeBaikAssetFormMixin, AssetBaseForm
+):
     total_volume_info = forms.IntegerField(
         label="Total Volume", required=False, disabled=True, min_value=0
     )
 
     class Meta(AssetBaseForm.Meta):
         model = PeralatanLaboratorium
-        fields = AssetBaseForm.Meta.fields + ["volume_rusak", "total_volume_info"]
+        fields = AssetBaseForm.Meta.fields + [
+            "bervolume",
+            "volume_rusak",
+            "total_volume_info",
+            "komponen_pemeliharaan",
+        ]
         labels = {
             "status_barang": "Status Barang",
+            "bervolume": "Barang ber-volume",
             "nama_barang": "Nama Barang",
             "tipe_merek_barang": "Tipe / Merek Barang",
             "jenis_barang": "Jenis Barang",
@@ -1074,11 +1273,13 @@ class PeralatanLaboratoriumForm(VolumeBaikAssetFormMixin, AssetBaseForm):
             "foto_barang": "Foto Barang",
             "ik_alat": "IK Alat (PDF)",
             "catatan": "Catatan",
+            "komponen_pemeliharaan": "Komponen Pemeliharaan Rutin",
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._setup_volume_baik_fields()
+        self._setup_komponen_field()
 
 
 class BarangPenunjangOperasionalForm(BaseMasterDataForm):

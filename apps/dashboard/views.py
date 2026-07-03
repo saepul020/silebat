@@ -1,3 +1,6 @@
+import json
+import math
+
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Sum
@@ -6,7 +9,11 @@ from django.http import Http404, JsonResponse
 from django.shortcuts import render
 from django.template.loader import render_to_string
 from django.utils import timezone
+from django.utils.text import slugify
+from django.views.decorators.csrf import ensure_csrf_cookie
+from django.views.decorators.http import require_POST
 
+from apps.core.excel_utils import build_excel_response
 from apps.core.permissions import can_access_master_data, get_role_name
 from apps.master_data.models import BahanOperasional, BarangLaboratorium, BarangPenunjangOperasional
 from apps.operasional.models import InstansiKlien, LayananKegiatan, SurveiKegiatan, TimKegiatan
@@ -653,11 +660,91 @@ def build_dashboard_context(request=None, active_limit=None):
 
 
 @login_required
+@ensure_csrf_cookie
 def index(request):
     context = build_dashboard_context(request)
     if can_access_master_data(request.user):
         context.update(build_inventory_chart_context())
     return render(request, "dashboard/index.html", context)
+
+
+def _chart_export_data(payload):
+    title = str(payload.get("title") or "Grafik Dashboard").strip()[:150]
+    labels = payload.get("labels")
+    datasets = payload.get("datasets")
+    if not isinstance(labels, list) or not isinstance(datasets, list):
+        raise ValueError("Data grafik tidak valid.")
+    if not labels or len(labels) > 1000 or not datasets or len(datasets) > 30:
+        raise ValueError("Data grafik kosong atau melebihi batas export.")
+
+    def clean_text(value, limit):
+        text = "".join(
+            char for char in str(value or "-").strip() if ord(char) >= 32
+        )[:limit] or "-"
+        return f"'{text}" if text.startswith(("=", "+", "-", "@")) else text
+
+    clean_labels = [clean_text(label, 150) for label in labels]
+    headers = ["Kategori"]
+    columns = []
+    for index, dataset in enumerate(datasets, start=1):
+        if not isinstance(dataset, dict) or not isinstance(dataset.get("data"), list):
+            raise ValueError("Dataset grafik tidak valid.")
+        values = dataset["data"]
+        if len(values) != len(clean_labels):
+            raise ValueError("Jumlah data grafik tidak konsisten.")
+        numeric_values = []
+        for value in values:
+            try:
+                number = float(value)
+            except (TypeError, ValueError) as exc:
+                raise ValueError("Nilai grafik harus berupa angka.") from exc
+            if not math.isfinite(number):
+                raise ValueError("Nilai grafik harus berupa angka yang valid.")
+            numeric_values.append(int(number) if number.is_integer() else number)
+        headers.append(clean_text(dataset.get("label") or f"Data {index}", 100))
+        columns.append(numeric_values)
+
+    rows = [
+        [label, *(column[index] for column in columns)]
+        for index, label in enumerate(clean_labels)
+    ]
+    return title, headers, rows
+
+
+@login_required
+@require_POST
+def export_chart(request):
+    try:
+        content_length = int(request.META.get("CONTENT_LENGTH") or 0)
+    except (TypeError, ValueError):
+        content_length = 0
+    if content_length > 1_000_000:
+        return JsonResponse({"error": "Payload export terlalu besar."}, status=413)
+    try:
+        payload = json.loads(request.body or b"{}")
+        if not isinstance(payload, dict):
+            raise ValueError("Payload export tidak valid.")
+        title, headers, rows = _chart_export_data(payload)
+    except (json.JSONDecodeError, ValueError) as exc:
+        return JsonResponse({"error": str(exc)}, status=400)
+
+    chart_type = "pie" if payload.get("type") == "pie" else "bar"
+    filename = f"{slugify(title) or 'grafik-dashboard'}-{timezone.localdate():%Y%m%d}.xlsx"
+    return build_excel_response(
+        filename,
+        [
+            {
+                "title": "Data Grafik",
+                "headers": headers,
+                "rows": rows,
+                "chart": {
+                    "type": chart_type,
+                    "title": title,
+                    "stacked": bool(payload.get("stacked")),
+                },
+            }
+        ],
+    )
 
 
 def display(request, portal_slug):

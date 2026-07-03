@@ -588,11 +588,17 @@
     min-width: 0;
 }
 
-.chart-download__menu button:hover,
-.chart-download__menu button:focus-visible {
+.chart-download__menu button:not(:disabled):hover,
+.chart-download__menu button:not(:disabled):focus-visible {
     background: var(--color-soft-blue);
     color: var(--color-primary-navy);
     outline: none;
+}
+
+.chart-download__menu button:disabled {
+    color: var(--text-soft);
+    cursor: not-allowed;
+    opacity: 0.6;
 }
 
 @media (max-width: 480px) {

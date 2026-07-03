@@ -24,11 +24,11 @@
 
         {% with has_status_field=form.fields.status_barang %}
         {% for group_title, field_rows in field_groups %}
-            <fieldset>
+            <fieldset class="{% if group_title == 'Komponen Pemeliharaan Rutin' and not form.komponen_visible %}is-hidden{% endif %}" data-field-group="{{ group_title }}" {% if group_title == 'Komponen Pemeliharaan Rutin' %}data-komponen-fieldset="true" aria-hidden="{% if form.komponen_visible %}false{% else %}true{% endif %}"{% endif %}>
                 <legend>{{ group_title }}</legend>
 
                 {% if group_title == 'Lampiran' %}
-                    <div class="master-upload-stack is-status-dependent {% if has_status_field and form.status_barang.value|default:'' == '' %}is-locked{% endif %}" {% if has_status_field %}data-status-dependent-group="true"{% endif %}>
+                    <div class="master-upload-stack is-status-dependent {% if has_status_field and form.dependent_fields_locked %}is-locked{% endif %}" {% if has_status_field %}data-status-dependent-group="true"{% endif %}>
                         {% for row in field_rows %}
                             {% for field_name in row %}
                                 {% with field=form|get_item:field_name %}
@@ -36,6 +36,7 @@
                                         {% if field_name == 'foto_barang' %}
                                         <div
                                             class="upload-card {% if field.errors %}has-error{% endif %}"
+                                            data-field-wrapper="foto_barang"
                                             data-upload-control
                                             data-upload-mode="replace-only"
                                             {% if form.hapus_foto_barang %}data-hidden-input-id="{{ form.hapus_foto_barang.id_for_label }}" data-hidden-input-name="{{ form.hapus_foto_barang.html_name }}"{% endif %}
@@ -66,7 +67,7 @@
                                                         {{ field }}
                                                         <label for="{{ field.id_for_label }}" class="file-input-proxy">
                                                             <span class="file-input-proxy__button" aria-hidden="true"><i class="bi bi-image"></i></span>
-                                                            <span class="file-input-proxy__text is-placeholder" data-inline-file-text>Pilih file</span>
+                                                            <span class="file-input-proxy__text is-placeholder" data-inline-file-text>Pilih gambar</span>
                                                         </label>
                                                     </div>
                                                     <div class="upload-file-state upload-file-state--inline is-hidden" data-file-state data-inline-file-state>
@@ -96,6 +97,7 @@
                                         {% elif field_name == 'ik_alat' %}
                                         <div
                                             class="upload-card upload-card--document {% if field.errors %}has-error{% endif %}"
+                                            data-field-wrapper="ik_alat"
                                             data-upload-control
                                             data-upload-mode="replace-only"
                                             {% if form.hapus_ik_alat %}data-hidden-input-id="{{ form.hapus_ik_alat.id_for_label }}" data-hidden-input-name="{{ form.hapus_ik_alat.html_name }}"{% endif %}
@@ -160,7 +162,7 @@
                         {% endfor %}
                     </div>
                 {% else %}
-                    <div class="master-fieldset-stack {% if has_status_field and group_title != 'Status Barang' %}is-status-dependent {% if form.status_barang.value|default:'' == '' %}is-locked{% endif %}{% endif %}" {% if has_status_field and group_title != 'Status Barang' %}data-status-dependent-group="true"{% endif %}>
+                    <div class="master-fieldset-stack {% if has_status_field and group_title != 'Status Barang' %}is-status-dependent {% if form.dependent_fields_locked %}is-locked{% endif %}{% endif %}" {% if has_status_field and group_title != 'Status Barang' %}data-status-dependent-group="true"{% endif %}>
                         {% for row in field_rows %}
                             <div class="form-row master-form-row master-form-row--{{ row|length }}">
                                 {% for field_name in row %}
@@ -210,9 +212,21 @@
                                             {% endfor %}
                                         </div>
                                         {% else %}
-                                        <div class="form-group {% if field.errors %}has-error{% endif %} {% if field_name == 'catatan' or row|length == 1 %}form-group-full{% endif %} {% if field_name == 'kode_aset_bmn' and form.status_barang.value|default:'' != 'BMN' %}is-hidden{% endif %}" {% if field_name == 'kode_aset_bmn' %}data-bmn-code-wrapper="true"{% endif %}>
+                                        <div class="form-group {% if field.errors %}has-error{% endif %} {% if field_name == 'catatan' or row|length == 1 %}form-group-full{% endif %} {% if field_name == 'kode_aset_bmn' and form.status_barang.value|default:'' != 'BMN' %}is-hidden{% endif %} {% if field_name == 'bervolume' %}master-volume-option-wrap {% if form.status_barang.value|default:'' != 'Non BMN' %}is-hidden{% endif %}{% endif %}" data-field-wrapper="{{ field_name }}" {% if field_name == 'kode_aset_bmn' %}data-bmn-code-wrapper="true"{% elif field_name == 'bervolume' %}data-bervolume-wrapper="true"{% endif %}>
+                                            {% if field_name == 'bervolume' %}
+                                            <label id="{{ field.id_for_label }}_label">{{ field.label }}</label>
+                                            <div class="master-volume-option" role="radiogroup" aria-labelledby="{{ field.id_for_label }}_label">
+                                                {% for option in field %}
+                                                <label class="master-volume-option__item" for="{{ option.id_for_label }}">
+                                                    {{ option.tag }}
+                                                    <span class="master-volume-option__button">{{ option.choice_label }}</span>
+                                                </label>
+                                                {% endfor %}
+                                            </div>
+                                            {% else %}
                                             <label for="{{ field.id_for_label }}">{{ field.label }}</label>
                                             {{ field }}
+                                            {% endif %}
                                             {% for error in field.errors %}
                                                 <p class="input-error-text">*{{ error }}</p>
                                             {% endfor %}

@@ -4,10 +4,11 @@
 {% block title %}Dashboard{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=20260609-inventory-height-v2">
+<link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=20260703-chart-excel-v1">
 {% endblock %}
 
 {% block content %}
+{% url 'dashboard:export_chart' as chart_export_url %}
 <div class="page-header dashboard-header">
     <h1>Dashboard</h1>
     <p>
@@ -246,6 +247,7 @@
                 </button>
                 <div class="chart-download__menu" data-chart-menu>
                     <button type="button" data-chart-download="jpg" data-chart-target="grafikPinjam" data-chart-title="Rekap Peminjaman"><i class="bi bi-filetype-jpg" aria-hidden="true"></i><span>Download JPG</span></button>
+                    <button type="button" data-chart-download="xlsx" data-chart-target="grafikPinjam" data-chart-title="Rekap Peminjaman" data-chart-export-url="{{ chart_export_url }}"><i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i><span>Download Excel</span></button>
                 </div>
             </div>
         </div>
@@ -278,6 +280,7 @@
                 </button>
                 <div class="chart-download__menu" data-chart-menu>
                     <button type="button" data-chart-download="jpg" data-chart-target="grafikLayanan" data-chart-title="Rekap Layanan Kegiatan"><i class="bi bi-filetype-jpg" aria-hidden="true"></i><span>Download JPG</span></button>
+                    <button type="button" data-chart-download="xlsx" data-chart-target="grafikLayanan" data-chart-title="Rekap Layanan Kegiatan" data-chart-export-url="{{ chart_export_url }}"><i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i><span>Download Excel</span></button>
                 </div>
             </div>
         </div>
@@ -312,6 +315,7 @@
                 </button>
                 <div class="chart-download__menu" data-chart-menu>
                     <button type="button" data-chart-download="jpg" data-chart-target="grafikUkur" data-chart-title="Rekap Data Pengukuran Lapangan"><i class="bi bi-filetype-jpg" aria-hidden="true"></i><span>Download JPG</span></button>
+                    <button type="button" data-chart-download="xlsx" data-chart-target="grafikUkur" data-chart-title="Rekap Data Pengukuran Lapangan" data-chart-export-url="{{ chart_export_url }}"><i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i><span>Download Excel</span></button>
                 </div>
             </div>
         </div>
@@ -353,6 +357,7 @@
                 </button>
                 <div class="chart-download__menu" data-chart-menu>
                     <button type="button" data-chart-download="jpg" data-chart-target="grafikTim" data-chart-title="Rekap Tim Kegiatan"><i class="bi bi-filetype-jpg" aria-hidden="true"></i><span>Download JPG</span></button>
+                    <button type="button" data-chart-download="xlsx" data-chart-target="grafikTim" data-chart-title="Rekap Tim Kegiatan" data-chart-export-url="{{ chart_export_url }}"><i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i><span>Download Excel</span></button>
                 </div>
             </div>
         </div>
@@ -395,6 +400,7 @@
                 </button>
                 <div class="chart-download__menu" data-chart-menu>
                     <button type="button" data-chart-download="jpg" data-chart-target="grafikSurvei" data-chart-title="Rekap Kegiatan Survei"><i class="bi bi-filetype-jpg" aria-hidden="true"></i><span>Download JPG</span></button>
+                    <button type="button" data-chart-download="xlsx" data-chart-target="grafikSurvei" data-chart-title="Rekap Kegiatan Survei" data-chart-export-url="{{ chart_export_url }}"><i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i><span>Download Excel</span></button>
                 </div>
             </div>
         </div>
@@ -431,6 +437,7 @@
                 </button>
                 <div class="chart-download__menu" data-chart-menu>
                     <button type="button" data-chart-download="jpg" data-chart-target="grafikPeralatanSurvei" data-chart-title="Transaksi Pemakaian Peralatan Survei Lapangan"><i class="bi bi-filetype-jpg" aria-hidden="true"></i><span>Download JPG</span></button>
+                    <button type="button" data-chart-download="xlsx" data-chart-target="grafikPeralatanSurvei" data-chart-title="Transaksi Pemakaian Peralatan Survei Lapangan" data-chart-export-url="{{ chart_export_url }}"><i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i><span>Download Excel</span></button>
                 </div>
             </div>
         </div>
@@ -467,6 +474,7 @@
                 </button>
                 <div class="chart-download__menu" data-chart-menu>
                     <button type="button" data-chart-download="jpg" data-chart-target="grafikInstansi" data-chart-title="Instansi Tujuan Kegiatan"><i class="bi bi-filetype-jpg" aria-hidden="true"></i><span>Download JPG</span></button>
+                    <button type="button" data-chart-download="xlsx" data-chart-target="grafikInstansi" data-chart-title="Instansi Tujuan Kegiatan" data-chart-export-url="{{ chart_export_url }}"><i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i><span>Download Excel</span></button>
                 </div>
             </div>
         </div>
@@ -505,6 +513,7 @@
                 </button>
                 <div class="chart-download__menu" data-chart-menu>
                     <button type="button" data-chart-download="jpg" data-chart-target="grafikBahan" data-chart-title="Data Bahan Operasional"><i class="bi bi-filetype-jpg" aria-hidden="true"></i><span>Download JPG</span></button>
+                    <button type="button" data-chart-download="xlsx" data-chart-target="grafikBahan" data-chart-title="Data Bahan Operasional" data-chart-export-url="{{ chart_export_url }}"><i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i><span>Download Excel</span></button>
                 </div>
             </div>
         </div>
@@ -531,6 +540,7 @@
                 </button>
                 <div class="chart-download__menu" data-chart-menu>
                     <button type="button" data-chart-download="jpg" data-chart-target="grafikPenunjang" data-chart-title="Data Barang Penunjang Lapangan"><i class="bi bi-filetype-jpg" aria-hidden="true"></i><span>Download JPG</span></button>
+                    <button type="button" data-chart-download="xlsx" data-chart-target="grafikPenunjang" data-chart-title="Data Barang Penunjang Lapangan" data-chart-export-url="{{ chart_export_url }}"><i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i><span>Download Excel</span></button>
                 </div>
             </div>
         </div>
@@ -563,5 +573,5 @@
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
-<script src="{% static 'js/dashboard.js' %}?v=20260702-survey-equipment" defer></script>
+<script src="{% static 'js/dashboard.js' %}?v=20260703-chart-excel-v1" defer></script>
 {% endblock %}

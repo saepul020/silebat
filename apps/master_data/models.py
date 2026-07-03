@@ -88,6 +88,43 @@ class KategoriBarangLaboratoriumChoices(models.TextChoices):
 KOMPONEN_MAX_LENGTH = 100
 
 
+class KomponenAssetMixin(models.Model):
+    komponen_pemeliharaan = models.JSONField(default=list, blank=True)
+
+    class Meta:
+        abstract = True
+
+    def _normalize_komponen(self, *, validate=True):
+        raw_values = self.komponen_pemeliharaan or []
+        if isinstance(raw_values, str):
+            raw_values = [raw_values]
+        elif not isinstance(raw_values, (list, tuple)):
+            raw_values = [raw_values]
+
+        components = []
+        errors = []
+        for index, raw_value in enumerate(raw_values, start=1):
+            text = str(raw_value or "").strip()
+            if not text:
+                continue
+            if len(text) > KOMPONEN_MAX_LENGTH:
+                errors.append(
+                    "Komponen Pemeliharaan Rutin nomor "
+                    f"{index} maksimal {KOMPONEN_MAX_LENGTH} karakter."
+                )
+            components.append(text)
+
+        if validate and errors:
+            raise ValidationError({"komponen_pemeliharaan": errors})
+        return components
+
+    def clean(self):
+        super().clean()
+        self.komponen_pemeliharaan = (
+            [] if getattr(self, "volume_manual", False) else self._normalize_komponen()
+        )
+
+
 class KategoriBahanOperasionalChoices(models.TextChoices):
     BAHAN_LABORATORIUM = "Bahan Laboratorium", "Bahan Laboratorium"
     BAHAN_LAPANGAN = "Bahan Lapangan", "Bahan Lapangan"
@@ -125,7 +162,7 @@ class AssetBaseModel(QRCodeMixin):
     jenis_barang = models.CharField(max_length=150)
     status_barang = models.CharField(max_length=20, choices=StatusBarangChoices.choices)
     kode_aset_bmn = models.CharField(max_length=100, null=True, blank=True)
-    kode_laboratorium = models.CharField(max_length=100)
+    kode_laboratorium = models.CharField(max_length=100, null=True, blank=True)
     volume = models.PositiveIntegerField(default=1)
     satuan = models.CharField(
         max_length=20, choices=SatuanAsetChoices.choices, default=SatuanAsetChoices.UNIT
@@ -142,7 +179,7 @@ class AssetBaseModel(QRCodeMixin):
         choices=KondisiBarangChoices.choices,
         default=KondisiBarangChoices.BAIK,
     )
-    lokasi_barang = models.CharField(max_length=200)
+    lokasi_barang = models.CharField(max_length=200, blank=True)
     foto_barang = models.ImageField(
         upload_to="master_data/foto_barang/", blank=True, null=True
     )
@@ -224,7 +261,7 @@ class AssetBaseModel(QRCodeMixin):
         )
 
 
-class BarangLaboratorium(AssetBaseModel):
+class BarangLaboratorium(KomponenAssetMixin, AssetBaseModel):
     qr_url_name = "master_data:public_barang_laboratorium"
     qr_filename_prefix = "peralatan-survei"
 
@@ -233,33 +270,6 @@ class BarangLaboratorium(AssetBaseModel):
         choices=KategoriBarangLaboratoriumChoices.choices,
         null=True,
     )
-    komponen_pemeliharaan = models.JSONField(default=list, blank=True)
-
-    def _normalize_komponen(self, *, validate=True):
-        raw_values = self.komponen_pemeliharaan or []
-        if isinstance(raw_values, str):
-            raw_values = [raw_values]
-        elif not isinstance(raw_values, (list, tuple)):
-            raw_values = [raw_values]
-
-        components = []
-        errors = []
-        for index, raw_value in enumerate(raw_values, start=1):
-            text = str(raw_value or "").strip()
-            if not text:
-                continue
-            if len(text) > KOMPONEN_MAX_LENGTH:
-                errors.append(
-                    "Komponen Pemeliharaan Rutin nomor "
-                    f"{index} maksimal {KOMPONEN_MAX_LENGTH} karakter."
-                )
-            components.append(text)
-
-        if validate and errors:
-            raise ValidationError({"komponen_pemeliharaan": errors})
-
-        return components
-
     class Meta(AssetBaseModel.Meta):
         verbose_name = "Data Peralatan Survei Lapangan"
         verbose_name_plural = "Data Peralatan Survei Lapangan"
@@ -276,11 +286,6 @@ class BarangLaboratorium(AssetBaseModel):
 
     def __str__(self):
         return self.nama_barang
-
-    def clean(self):
-        super().clean()
-        self.komponen_pemeliharaan = self._normalize_komponen()
-
 
 class BarangPenunjangOperasional(QRCodeMixin):
     qr_url_name = "master_data:public_barang_penunjang"
@@ -432,6 +437,7 @@ class BahanOperasional(QRCodeMixin):
 class VolumeBaikAssetMixin(models.Model):
     lock_volume_to_one = False
 
+    bervolume = models.BooleanField(default=False)
     volume_rusak = models.PositiveIntegerField(default=0, validators=[MinValueValidator(0)])
 
     class Meta:
@@ -453,8 +459,15 @@ class VolumeBaikAssetMixin(models.Model):
     def total_volume(self):
         return (self.volume or 0) + (self.volume_rusak or 0)
 
-    def _sync_bmn_volume_by_condition(self):
-        if self.status_barang != StatusBarangChoices.BMN:
+    @property
+    def volume_manual(self):
+        return (
+            self.status_barang == StatusBarangChoices.NON_BMN
+            and bool(self.bervolume)
+        )
+
+    def _sync_auto_volume_by_condition(self):
+        if self.volume_manual:
             return
 
         kondisi = self.kondisi_barang or KondisiBarangChoices.BAIK
@@ -471,8 +484,10 @@ class VolumeBaikAssetMixin(models.Model):
     def clean(self):
         super().clean()
 
-        if self.status_barang == StatusBarangChoices.BMN:
-            self._sync_bmn_volume_by_condition()
+        if not self.volume_manual:
+            self._sync_auto_volume_by_condition()
+            if self.status_barang == StatusBarangChoices.NON_BMN:
+                self.kode_aset_bmn = None
             return
 
         if self.volume is None:
@@ -480,11 +495,17 @@ class VolumeBaikAssetMixin(models.Model):
         if self.volume_rusak is None:
             self.volume_rusak = 0
         self.kode_aset_bmn = None
+        self.kode_laboratorium = None
+        self.tahun_perolehan = None
+        self.lokasi_barang = ""
+        self.ik_alat = None
+        self.tanggal_pemeliharaan = None
+        self.tanggal_perbaikan = None
         self.kondisi_barang = KondisiBarangChoices.BAIK
 
     def sync_ketersediaan(self):
-        if self.status_barang == StatusBarangChoices.BMN:
-            self._sync_bmn_volume_by_condition()
+        if not self.volume_manual:
+            self._sync_auto_volume_by_condition()
             if hasattr(self, "volume_dipinjam"):
                 self.sedang_dipinjam = self.volume_pinjam_aktif > 0
             return super().sync_ketersediaan()
@@ -506,8 +527,10 @@ class VolumeBaikAssetMixin(models.Model):
     def save(self, *args, **kwargs):
         update_fields = kwargs.get("update_fields")
 
-        if self.status_barang == StatusBarangChoices.BMN:
-            self._sync_bmn_volume_by_condition()
+        if not self.volume_manual:
+            self._sync_auto_volume_by_condition()
+            if self.status_barang == StatusBarangChoices.NON_BMN:
+                self.kode_aset_bmn = None
         else:
             if self.volume is None:
                 self.volume = 0
@@ -516,6 +539,13 @@ class VolumeBaikAssetMixin(models.Model):
             if hasattr(self, "volume_dipinjam") and self.volume_dipinjam is None:
                 self.volume_dipinjam = 0
             self.kode_aset_bmn = None
+            self.kode_laboratorium = None
+            self.tahun_perolehan = None
+            self.lokasi_barang = ""
+            self.ik_alat = None
+            self.tanggal_pemeliharaan = None
+            self.tanggal_perbaikan = None
+            self.komponen_pemeliharaan = []
             self.kondisi_barang = KondisiBarangChoices.BAIK
 
         if self.sedang_dipinjam is None:
@@ -526,6 +556,7 @@ class VolumeBaikAssetMixin(models.Model):
             extra_fields = {
                 "volume",
                 "volume_rusak",
+                "bervolume",
                 "kondisi_barang",
                 "ketersediaan",
                 "updated_at",
@@ -535,12 +566,24 @@ class VolumeBaikAssetMixin(models.Model):
                 extra_fields.add("sedang_dipinjam")
             if self.status_barang != StatusBarangChoices.BMN:
                 extra_fields.add("kode_aset_bmn")
+            if self.volume_manual:
+                extra_fields.update(
+                    {
+                        "kode_laboratorium",
+                        "tahun_perolehan",
+                        "lokasi_barang",
+                        "ik_alat",
+                        "tanggal_pemeliharaan",
+                        "tanggal_perbaikan",
+                        "komponen_pemeliharaan",
+                    }
+                )
             kwargs["update_fields"] = set(update_fields).union(extra_fields)
 
         super(AssetBaseModel, self).save(*args, **kwargs)
 
 
-class FasilitasRuangan(VolumeBaikAssetMixin, AssetBaseModel):
+class FasilitasRuangan(VolumeBaikAssetMixin, KomponenAssetMixin, AssetBaseModel):
     qr_url_name = "master_data:public_fasilitas_ruangan"
     qr_filename_prefix = "fasilitas-ruangan"
 
@@ -558,7 +601,7 @@ class FasilitasRuangan(VolumeBaikAssetMixin, AssetBaseModel):
         return self.nama_barang
 
 
-class PeralatanLaboratorium(VolumeBaikAssetMixin, AssetBaseModel):
+class PeralatanLaboratorium(VolumeBaikAssetMixin, KomponenAssetMixin, AssetBaseModel):
     qr_url_name = "master_data:public_peralatan_laboratorium"
     qr_filename_prefix = "peralatan-laboratorium"
 

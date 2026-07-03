@@ -37,6 +37,7 @@ def build_excel_response(filename: str, sheets: Sequence[Mapping]) -> HttpRespon
     """
     try:
         from openpyxl import Workbook
+        from openpyxl.chart import BarChart, PieChart, Reference
         from openpyxl.styles import Font, PatternFill
         from openpyxl.utils import get_column_letter
     except ImportError as exc:  # pragma: no cover
@@ -80,6 +81,37 @@ def build_excel_response(filename: str, sheets: Sequence[Mapping]) -> HttpRespon
             )
             width = min(max((len(value) for value in values), default=12) + 2, 55)
             worksheet.column_dimensions[letter].width = max(width, 12)
+
+        chart_config = sheet.get("chart") or {}
+        if chart_config and rows and len(headers) > 1:
+            chart_type = str(chart_config.get("type") or "bar").lower()
+            chart = PieChart() if chart_type == "pie" else BarChart()
+            data = Reference(
+                worksheet,
+                min_col=2,
+                max_col=len(headers),
+                min_row=1,
+                max_row=len(rows) + 1,
+            )
+            categories = Reference(
+                worksheet,
+                min_col=1,
+                min_row=2,
+                max_row=len(rows) + 1,
+            )
+            chart.add_data(data, titles_from_data=True)
+            chart.set_categories(categories)
+            chart.title = str(chart_config.get("title") or sheet.get("title") or "Grafik")
+            chart.height = 10
+            chart.width = 18
+            if isinstance(chart, BarChart):
+                chart.type = "col"
+                chart.y_axis.title = str(chart_config.get("value_title") or "Total")
+                chart.x_axis.title = str(chart_config.get("category_title") or "Kategori")
+                if chart_config.get("stacked"):
+                    chart.grouping = "stacked"
+                    chart.overlap = 100
+            worksheet.add_chart(chart, f"{get_column_letter(len(headers) + 2)}2")
 
     output = BytesIO()
     workbook.save(output)

@@ -1,8 +1,11 @@
 from datetime import date
+from io import BytesIO
+import json
 from unittest.mock import patch
 
 from django.test import TestCase
 from django.urls import reverse
+from openpyxl import load_workbook
 
 from apps.master_data.models import (
     BahanOperasional,
@@ -172,3 +175,72 @@ class DashboardSurveyEquipmentChartTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'id="grafikPeralatanSurvei"')
         self.assertEqual(response.context["survey_equipment_chart"]["rows"][0]["total"], 1)
+
+
+class DashboardChartExportTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="dashboard-export-user",
+            password="test-pass-123",
+        )
+        role, _ = Role.objects.get_or_create(nama="Admin Lab")
+        self.user.safe_profile.role = role
+        self.user.safe_profile.save(update_fields=["role"])
+        self.payload = {
+            "title": "Rekap Peminjaman",
+            "type": "bar",
+            "labels": ["Jan", "Feb"],
+            "datasets": [
+                {"label": "Selesai", "data": [3, 5]},
+                {"label": "Berjalan", "data": [2, 1]},
+            ],
+        }
+
+    def test_dashboard_menampilkan_pilihan_download_excel(self):
+        self.client.force_login(self.user)
+
+        response = self.client.get(reverse("dashboard:index"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content.count(b'data-chart-download="xlsx"'), 9)
+        self.assertContains(response, "Download Excel")
+
+    def test_export_excel_berisi_data_dan_chart(self):
+        self.client.force_login(self.user)
+
+        response = self.client.post(
+            reverse("dashboard:export_chart"),
+            data=json.dumps(self.payload),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("spreadsheetml.sheet", response["Content-Type"])
+        self.assertIn("rekap-peminjaman", response["Content-Disposition"])
+        workbook = load_workbook(BytesIO(response.content))
+        worksheet = workbook["Data Grafik"]
+        self.assertEqual(
+            list(worksheet.values)[:3],
+            [
+                ("Kategori", "Selesai", "Berjalan"),
+                ("Jan", 3, 2),
+                ("Feb", 5, 1),
+            ],
+        )
+        self.assertEqual(len(worksheet._charts), 1)
+
+    def test_export_excel_membutuhkan_login_dan_data_valid(self):
+        login_response = self.client.post(
+            reverse("dashboard:export_chart"),
+            data=json.dumps(self.payload),
+            content_type="application/json",
+        )
+        self.assertEqual(login_response.status_code, 302)
+
+        self.client.force_login(self.user)
+        invalid_response = self.client.post(
+            reverse("dashboard:export_chart"),
+            data=json.dumps({**self.payload, "datasets": [{"label": "A", "data": [1]}]}),
+            content_type="application/json",
+        )
+        self.assertEqual(invalid_response.status_code, 400)

@@ -1,4 +1,5 @@
 from unittest.mock import patch
+from urllib.parse import urlencode
 
 from django.test import TestCase
 from django.urls import reverse
@@ -42,3 +43,12 @@ class MasterEditReturnNavigationTests(TestCase):
         )
 
         self.assertRedirects(response, next_url, fetch_redirect_response=False)
+
+    def test_master_delete_returns_to_source_page(self):
+        next_url = f"{reverse('master_data:data_bahan_operasional')}?entries=10&page=3&q=bahan"
+        response = self.client.post(
+            f"{reverse('master_data:hapus_bahan_operasional', args=[self.obj.pk])}?{urlencode({'next': next_url})}",
+        )
+
+        self.assertRedirects(response, next_url, fetch_redirect_response=False)
+        self.assertFalse(BahanOperasional.objects.filter(pk=self.obj.pk).exists())

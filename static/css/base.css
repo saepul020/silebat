@@ -1658,6 +1658,64 @@ input[type="hidden"] {
     gap: 18px;
 }
 
+.master-volume-option {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.master-volume-option__item {
+    position: relative;
+    margin: 0;
+}
+
+.master-volume-option__item input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.master-volume-option__button {
+    display: flex;
+    min-height: 0;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border-strong);
+    border-radius: 12px;
+    background: var(--color-white);
+    color: var(--text);
+    cursor: pointer;
+    padding: 11px 13px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    line-height: normal;
+    transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
+}
+
+.master-volume-option__item input:not(:disabled) + .master-volume-option__button:hover {
+    border-color: var(--primary);
+}
+
+.master-volume-option__item input:checked + .master-volume-option__button {
+    border-color: var(--primary);
+    background: var(--primary);
+    color: var(--color-white);
+}
+
+.master-volume-option__item input:focus-visible + .master-volume-option__button {
+    outline: 3px solid color-mix(in srgb, var(--color-aqua-teal) 45%, transparent);
+    outline-offset: 2px;
+}
+
+.master-volume-option__item input:disabled + .master-volume-option__button {
+    background: var(--color-soft-gray);
+    color: var(--text-soft);
+    cursor: not-allowed;
+    opacity: 0.65;
+}
+
 .master-upload-stack {
     display: flex;
     flex-direction: column;

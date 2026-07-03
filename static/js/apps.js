@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', function () {
         initDigitsOnlyInputs,
         initDeleteUserModal,
         initMasterDataDeleteModal,
+        initMasterReturnNavigation,
         initAnnouncementDeleteModal,
         initBarangLaboratoriumImportModal,
         initOperasionalDeleteModal,
@@ -381,7 +382,12 @@ function bindDeleteModal(config) {
     }
 
     function openModal(button) {
-        deleteForm.action = button.getAttribute('data-delete-url') || '';
+        const deleteUrl = new URL(button.getAttribute('data-delete-url') || '', window.location.href);
+        const returnUrl = button.getAttribute('data-return-url') || '';
+        if (returnUrl) {
+            deleteUrl.searchParams.set('next', returnUrl);
+        }
+        deleteForm.action = deleteUrl.toString();
         primaryField.textContent = button.getAttribute(config.primaryDataAttr) || '-';
         secondaryField.textContent = button.getAttribute(config.secondaryDataAttr) || '-';
         modal.classList.add('show');
@@ -452,6 +458,58 @@ function initMasterDataDeleteModal() {
         secondaryFieldId: 'masterDeleteItemMeta',
         primaryDataAttr: 'data-item-name',
         secondaryDataAttr: 'data-item-meta'
+    });
+}
+
+function initMasterReturnNavigation() {
+    const list = document.querySelector('.table-scroll--list');
+    const storagePrefix = 'master-list-position:';
+
+    function keyFor(url) {
+        const parsed = new URL(url, window.location.href);
+        return storagePrefix + parsed.pathname + parsed.search;
+    }
+
+    function savePosition(returnUrl) {
+        if (!returnUrl || !list) {
+            return;
+        }
+        sessionStorage.setItem(keyFor(returnUrl), JSON.stringify({
+            top: window.scrollY,
+            left: list.scrollLeft,
+        }));
+    }
+
+    if (list) {
+        const key = keyFor(window.location.href);
+        const saved = sessionStorage.getItem(key);
+        if (saved) {
+            sessionStorage.removeItem(key);
+            try {
+                const position = JSON.parse(saved);
+                window.requestAnimationFrame(function () {
+                    list.scrollLeft = Number(position.left || 0);
+                    window.scrollTo(0, Number(position.top || 0));
+                });
+            } catch (error) {
+                console.error('Posisi daftar master data tidak dapat dipulihkan.', error);
+            }
+        }
+    }
+
+    document.addEventListener('click', function (event) {
+        const editLink = event.target.closest?.('.table-scroll--list a.btn-warning');
+        if (editLink) {
+            const target = new URL(editLink.href, window.location.href);
+            savePosition(target.searchParams.get('next') || window.location.href);
+            return;
+        }
+
+    });
+
+    document.getElementById('masterDeleteForm')?.addEventListener('submit', function (event) {
+        const action = new URL(event.currentTarget.action, window.location.href);
+        savePosition(action.searchParams.get('next') || window.location.href);
     });
 }
 
@@ -1904,6 +1962,8 @@ function initPelatihanFormBehavior() {
 function initMasterDataFormBehavior() {
     const form = document.querySelector('.master-data-form');
     const statusField = form ? form.querySelector('[data-status-field="true"]') : document.querySelector('[data-status-field="true"]');
+    const bervolumeFields = Array.from(form ? form.querySelectorAll('[data-bervolume-field="true"]') : document.querySelectorAll('[data-bervolume-field="true"]'));
+    const bervolumeWrapper = form ? form.querySelector('[data-bervolume-wrapper="true"]') : document.querySelector('[data-bervolume-wrapper="true"]');
     const bmnCodeField = form ? form.querySelector('[data-bmn-code-field="true"]') : document.querySelector('[data-bmn-code-field="true"]');
     const bmnCodeWrapper = form ? form.querySelector('[data-bmn-code-wrapper="true"]') : document.querySelector('[data-bmn-code-wrapper="true"]');
     const kondisiField = form ? form.querySelector('#id_kondisi_barang') : document.getElementById('id_kondisi_barang');
@@ -1953,6 +2013,33 @@ function initMasterDataFormBehavior() {
         return Boolean(statusField && (statusField.value || '').trim() === 'BMN');
     }
 
+    function isNonBmnStatus() {
+        return Boolean(statusField && (statusField.value || '').trim() === 'Non BMN');
+    }
+
+    function getVolumeChoice() {
+        const selected = bervolumeFields.find(function (field) {
+            return field.checked;
+        });
+        return selected ? selected.value : '';
+    }
+
+    function hasVolumeChoice() {
+        return Boolean(getVolumeChoice());
+    }
+
+    function usesManualVolume() {
+        return isNonBmnStatus() && getVolumeChoice() === 'true';
+    }
+
+    function usesAutoVolume() {
+        return isBmnStatus() || (isNonBmnStatus() && getVolumeChoice() === 'false');
+    }
+
+    function isInputReady() {
+        return hasStatusValue() && (!isNonBmnStatus() || hasVolumeChoice());
+    }
+
     function setFieldDisabledState(field, disabled) {
         if (!field) {
             return;
@@ -1973,7 +2060,7 @@ function initMasterDataFormBehavior() {
             return;
         }
 
-        const unlocked = hasStatusValue();
+        const unlocked = isInputReady();
 
         statusDependentGroups.forEach(function (group) {
             group.classList.toggle('is-locked', !unlocked);
@@ -1993,7 +2080,7 @@ function initMasterDataFormBehavior() {
             return;
         }
 
-        const unlocked = hasStatusValue();
+        const unlocked = isInputReady();
         const isBMN = isBmnStatus();
 
         bmnCodeWrapper.classList.toggle('is-hidden', !isBMN);
@@ -2013,32 +2100,28 @@ function initMasterDataFormBehavior() {
     }
 
     function syncStatusSpecificAssetFields() {
-        const isUnlocked = hasStatusValue();
-        const isNonBmn = Boolean(statusField && (statusField.value || '').trim() === 'Non BMN');
-        const nonBmnOnlyFields = form ? form.querySelectorAll('[data-non-bmn-only="true"]') : document.querySelectorAll('[data-non-bmn-only="true"]');
-        const bmnOnlyFields = form ? form.querySelectorAll('[data-bmn-only="true"]') : document.querySelectorAll('[data-bmn-only="true"]');
+        const isUnlocked = isInputReady();
+        const isNonBmn = isNonBmnStatus();
+        const isManual = usesManualVolume();
+        const autoVolumeFields = form ? form.querySelectorAll('[data-auto-volume-only="true"]') : document.querySelectorAll('[data-auto-volume-only="true"]');
+        const metadataFields = form ? form.querySelectorAll('[data-volume-metadata="true"]') : document.querySelectorAll('[data-volume-metadata="true"]');
 
-        nonBmnOnlyFields.forEach(function (field) {
-            const wrapper = field.closest('.form-group');
-            if (wrapper) {
-                wrapper.classList.toggle('is-hidden', !isNonBmn);
-                wrapper.setAttribute('aria-hidden', isNonBmn ? 'false' : 'true');
+        if (bervolumeWrapper && bervolumeFields.length) {
+            bervolumeWrapper.classList.toggle('is-hidden', !isNonBmn);
+            bervolumeWrapper.setAttribute('aria-hidden', isNonBmn ? 'false' : 'true');
+            bervolumeFields.forEach(function (field) {
+                setFieldDisabledState(field, !hasStatusValue() || !isNonBmn);
+            });
+            if (!isNonBmn) {
+                bervolumeFields.forEach(function (field) {
+                    field.checked = false;
+                });
             }
+        }
 
-            const shouldDisable = !isUnlocked || !isNonBmn || alwaysDisabledFieldIds.has(field.id);
-            setFieldDisabledState(field, shouldDisable);
-            if (isNonBmn && field.id !== 'id_total_volume_info') {
-                field.setAttribute('required', 'required');
-                field.required = true;
-            } else if (field.id !== 'id_total_volume_info') {
-                field.removeAttribute('required');
-                field.required = false;
-            }
-        });
-
-        bmnOnlyFields.forEach(function (field) {
+        autoVolumeFields.forEach(function (field) {
             const wrapper = field.closest('.form-group');
-            const showField = isBmnStatus();
+            const showField = usesAutoVolume();
 
             if (wrapper) {
                 wrapper.classList.toggle('is-hidden', !showField);
@@ -2054,14 +2137,29 @@ function initMasterDataFormBehavior() {
                 field.required = false;
             }
         });
+
+        metadataFields.forEach(function (field) {
+            const wrapper = field.closest('[data-field-wrapper]') || field.closest('.form-group');
+            if (wrapper) {
+                wrapper.classList.toggle('is-hidden', isManual);
+                wrapper.setAttribute('aria-hidden', isManual ? 'true' : 'false');
+            }
+            setFieldDisabledState(field, !isUnlocked || isManual || alwaysDisabledFieldIds.has(field.id));
+            if (['id_kode_laboratorium', 'id_lokasi_barang'].includes(field.id)) {
+                field.required = isUnlocked && !isManual;
+                field.toggleAttribute('required', field.required);
+            }
+        });
+
+        const historyGroup = form?.querySelector('[data-field-group="Riwayat Terakhir"]');
+        if (historyGroup) {
+            historyGroup.classList.toggle('is-hidden', isManual);
+            historyGroup.setAttribute('aria-hidden', isManual ? 'true' : 'false');
+        }
     }
 
     function getNormalizedValue(field) {
         return field ? (field.value || '').trim() : '';
-    }
-
-    function isNonBmnStatus() {
-        return getNormalizedValue(statusField) === 'Non BMN';
     }
 
     function setReadonlyVisualState(field, readonly) {
@@ -2140,9 +2238,9 @@ function initMasterDataFormBehavior() {
             return;
         }
 
-        const isUnlocked = hasStatusValue();
-        const isBMN = isBmnStatus();
-        const isNonBMN = isNonBmnStatus();
+        const isUnlocked = isInputReady();
+        const isAutoVolume = usesAutoVolume();
+        const isManual = usesManualVolume();
         const autoFields = [volumeField, volumeRusakField];
 
         autoFields.forEach(function (field) {
@@ -2152,7 +2250,7 @@ function initMasterDataFormBehavior() {
 
             field.setAttribute('min', '0');
 
-            if (isBMN) {
+            if (isAutoVolume) {
                 field.disabled = !isUnlocked;
                 setReadonlyVisualState(field, true);
                 field.setAttribute('max', '1');
@@ -2167,7 +2265,7 @@ function initMasterDataFormBehavior() {
             field.removeAttribute('max');
             field.removeAttribute('title');
 
-            if (isNonBMN && isUnlocked) {
+            if (isManual && isUnlocked) {
                 field.setAttribute('required', 'required');
                 field.required = true;
             } else {
@@ -2177,7 +2275,7 @@ function initMasterDataFormBehavior() {
         });
 
         if (totalVolumeField) {
-            if (isBMN) {
+            if (isAutoVolume) {
                 totalVolumeField.setAttribute('min', '0');
                 totalVolumeField.setAttribute('max', '1');
             } else {
@@ -2186,7 +2284,7 @@ function initMasterDataFormBehavior() {
             }
         }
 
-        if (isBMN && isUnlocked) {
+        if (isAutoVolume && isUnlocked) {
             applyBmnVolumeValues();
         }
     }
@@ -2202,7 +2300,7 @@ function initMasterDataFormBehavior() {
         );
 
         if (totalVolumeField) {
-            if (isBmnStatus() && hasAutoVolumeFields) {
+            if (usesAutoVolume() && hasAutoVolumeFields) {
                 const values = getBmnVolumeByKondisi();
                 totalVolumeField.value = String(values.volumeBaik + values.volumeRusak);
             } else {
@@ -2214,9 +2312,9 @@ function initMasterDataFormBehavior() {
             return;
         }
 
-        const isNonBmnAsset = Boolean(volumeRusakField && statusField && (statusField.value || '').trim() === 'Non BMN');
+        const isManualAsset = Boolean(volumeRusakField && usesManualVolume());
 
-        if (kondisiField && !isNonBmnAsset) {
+        if (kondisiField && !isManualAsset) {
             const kondisiValue = kondisiField.value || '';
             ketersediaanField.value = kondisiValue === 'Baik' ? 'Tersedia' : 'Tidak Tersedia';
             return;
@@ -2251,6 +2349,20 @@ function initMasterDataFormBehavior() {
         }
     }
 
+    function syncKomponenVisibility() {
+        const fieldset = form?.querySelector('[data-komponen-fieldset="true"]');
+        if (!fieldset) {
+            return;
+        }
+
+        const showFieldset = !bervolumeFields.length || usesAutoVolume();
+        fieldset.classList.toggle('is-hidden', !showFieldset);
+        fieldset.setAttribute('aria-hidden', showFieldset ? 'false' : 'true');
+        fieldset.querySelector('[data-komponen]')?.dispatchEvent(
+            new CustomEvent('komponenvisibilitychange')
+        );
+    }
+
     function refreshMasterDataDynamicFields() {
         syncDependentFieldLock();
         syncBmnFieldVisibility();
@@ -2258,6 +2370,7 @@ function initMasterDataFormBehavior() {
         syncBmnAutoVolumeFields();
         applySingleLockedVolumeValue();
         syncKetersediaanPreview();
+        syncKomponenVisibility();
     }
 
     refreshMasterDataDynamicFields();
@@ -2265,6 +2378,14 @@ function initMasterDataFormBehavior() {
     if (statusField) {
         ['change', 'input'].forEach(function (eventName) {
             statusField.addEventListener(eventName, refreshMasterDataDynamicFields);
+        });
+    }
+
+    if (bervolumeFields.length) {
+        ['change', 'input'].forEach(function (eventName) {
+            bervolumeFields.forEach(function (field) {
+                field.addEventListener(eventName, refreshMasterDataDynamicFields);
+            });
         });
     }
 
@@ -2277,7 +2398,7 @@ function initMasterDataFormBehavior() {
     if (form) {
         ['change', 'input', 'keyup'].forEach(function (eventName) {
             form.addEventListener(eventName, function (event) {
-                if (event.target === statusField || event.target === kondisiField) {
+                if (event.target === statusField || event.target === kondisiField || bervolumeFields.includes(event.target)) {
                     refreshMasterDataDynamicFields();
                     return;
                 }
@@ -2371,6 +2492,9 @@ function initKomponenRutin() {
 
         function syncRows() {
             const rows = getRows();
+            const conditionalLocked = Boolean(
+                group.closest('[data-komponen-fieldset="true"]')?.classList.contains('is-hidden')
+            );
 
             rows.forEach(function (row, index) {
                 const input = row.querySelector('[data-komponen-input]');
@@ -2385,29 +2509,32 @@ function initKomponenRutin() {
                 }
 
                 if (removeButton) {
-                    const isLocked = isGroupLocked || row.dataset.komponenLocked === 'true';
+                    const transactionLocked = isGroupLocked || row.dataset.komponenLocked === 'true';
+                    const isLocked = transactionLocked || conditionalLocked;
                     removeButton.disabled = isLocked || rows.length <= minRows;
                     removeButton.classList.toggle('komponen-rutin__remove--locked', isLocked);
                     removeButton.title = isLocked ? lockMessage : 'Hapus komponen';
                     removeButton.setAttribute('aria-disabled', String(isLocked || rows.length <= minRows));
-                    removeButton.toggleAttribute('data-transaction-locked', isLocked);
+                    removeButton.toggleAttribute('data-transaction-locked', transactionLocked);
                 }
 
                 if (input) {
-                    const isLocked = isGroupLocked || row.dataset.komponenLocked === 'true';
+                    const transactionLocked = isGroupLocked || row.dataset.komponenLocked === 'true';
+                    const isLocked = transactionLocked || conditionalLocked;
                     input.disabled = isLocked;
                     input.readOnly = isLocked;
                     input.toggleAttribute('readonly', isLocked);
-                    input.toggleAttribute('data-transaction-locked', isLocked);
+                    input.toggleAttribute('data-transaction-locked', transactionLocked);
                     input.classList.toggle('is-readonly-field', isLocked);
                     input.setAttribute('aria-disabled', String(isLocked));
                     input.setAttribute('aria-readonly', String(isLocked));
                 }
             });
 
-            addButton.disabled = isGroupLocked;
-            addButton.classList.toggle('btn-disabled', isGroupLocked);
-            addButton.setAttribute('aria-disabled', String(isGroupLocked));
+            const addLocked = isGroupLocked || conditionalLocked;
+            addButton.disabled = addLocked;
+            addButton.classList.toggle('btn-disabled', addLocked);
+            addButton.setAttribute('aria-disabled', String(addLocked));
             addButton.toggleAttribute('data-transaction-locked', isGroupLocked);
             if (isGroupLocked) {
                 addButton.title = lockMessage;
@@ -2439,6 +2566,7 @@ function initKomponenRutin() {
         }
 
         syncRows();
+        group.addEventListener('komponenvisibilitychange', syncRows);
 
         addButton.addEventListener('click', function () {
             if (isGroupLocked || addButton.disabled) {

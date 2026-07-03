@@ -191,7 +191,7 @@ BAHAN_FIELD_GROUPS = [
 ]
 
 SARANA_FIELD_GROUPS = [
-    ("Status Barang", [["status_barang"]]),
+    ("Status Barang", [["status_barang", "bervolume"]]),
     (
         "Detail Informasi Barang",
         [
@@ -209,10 +209,11 @@ SARANA_FIELD_GROUPS = [
         [["tanggal_pemeliharaan_info", "tanggal_perbaikan_info"]],
     ),
     ("Catatan", [["catatan"]]),
+    ("Komponen Pemeliharaan Rutin", [["komponen_pemeliharaan"]]),
 ]
 
 PERALATAN_LAB_FIELD_GROUPS = [
-    ("Status Barang", [["status_barang"]]),
+    ("Status Barang", [["status_barang", "bervolume"]]),
     (
         "Detail Informasi Barang",
         [
@@ -230,6 +231,7 @@ PERALATAN_LAB_FIELD_GROUPS = [
         [["tanggal_pemeliharaan_info", "tanggal_perbaikan_info"]],
     ),
     ("Catatan", [["catatan"]]),
+    ("Komponen Pemeliharaan Rutin", [["komponen_pemeliharaan"]]),
 ]
 
 
@@ -289,6 +291,27 @@ def _ik_alat_detail_item(obj):
 
 def _boolean_display(value):
     return "Ya" if value else "Tidak"
+
+
+def _show_asset_condition(obj):
+    return obj.status_barang == StatusBarangChoices.BMN or (
+        isinstance(obj, (FasilitasRuangan, PeralatanLaboratorium))
+        and not obj.bervolume
+    )
+
+
+def _bervolume_display(obj):
+    if obj.status_barang != StatusBarangChoices.NON_BMN:
+        return "-"
+    return _boolean_display(obj.bervolume)
+
+
+def _komponen_detail_item(obj):
+    return {
+        "label": "Komponen Pemeliharaan Rutin",
+        "value": _display_komponen(obj.komponen_pemeliharaan),
+        "full": True,
+    }
 
 
 def _public_detail_export_url(request, obj):
@@ -483,7 +506,7 @@ def _handle_delete(request, *, model, pk, success_message, redirect_to):
         block_message = _get_active_transaksi_delete_block_message(obj)
         if block_message:
             messages.error(request, block_message)
-            return redirect(redirect_to)
+            return redirect_next(request, redirect_to)
 
         try:
             obj.delete()
@@ -496,10 +519,10 @@ def _handle_delete(request, *, model, pk, success_message, redirect_to):
                     "lalu jalankan migrasi terbaru agar data laporan memakai snapshot dan tidak lagi mengunci data master."
                 ),
             )
-            return redirect(redirect_to)
+            return redirect_next(request, redirect_to)
 
         messages.success(request, success_message)
-    return redirect(redirect_to)
+    return redirect_next(request, redirect_to)
 
 
 def _ensure_qr_codes_for_context_items(context):
@@ -862,6 +885,7 @@ IMPORT_FASILITAS_RUANGAN_HEADERS = [
     "Tanggal Pemeliharaan",
     "Tanggal Perbaikan",
     "Catatan",
+    "Komponen Pemeliharaan Rutin",
 ]
 IMPORT_FASILITAS_RUANGAN_REQUIRED_HEADERS = [
     "Status Barang",
@@ -891,6 +915,7 @@ HEADER_IMPOR_PERALATAN = [
     "Tanggal Pemeliharaan",
     "Tanggal Perbaikan",
     "Catatan",
+    "Komponen Pemeliharaan Rutin",
 ]
 HEADER_WAJIB_PERALATAN = [
     "Status Barang",
@@ -1141,6 +1166,11 @@ def _validate_asset_status_import(
         }
         if include_kategori:
             data['kategori_barang'] = cell(row, 'Kategori Barang')
+        components, component_errors = validate_komponen(
+            cell(row, 'Komponen Pemeliharaan Rutin')
+        )
+        data['komponen_pemeliharaan'] = components
+        row_errors.extend(component_errors)
 
         for header in required_headers:
             if not cell(row, header):
@@ -1202,6 +1232,7 @@ def _validate_asset_status_import(
                 data['volume'] = 0
                 data['volume_rusak'] = 1
         elif data['status_barang'] == StatusBarangChoices.NON_BMN:
+            data['bervolume'] = True
             if data['volume'] is None:
                 row_errors.append('Volume Baik wajib diisi untuk barang berstatus Non BMN.')
             if data['volume_rusak'] is None:
@@ -1790,6 +1821,7 @@ def download_format_import_fasilitas_ruangan(request):
             '2026-03-01',
             '2026-04-01',
             'Contoh catatan sarana.',
+            'Pemeriksaan kondisi; Pembersihan rutin',
         ],
         references=[
             ('Status Barang', status_values),
@@ -1883,6 +1915,7 @@ def export_fasilitas_ruangan(request):
     headers = [
         "Nama Barang",
         "Status Barang",
+        "Barang Ber-volume",
         "Tipe / Merek Barang",
         "Jenis Barang",
         "Kode Aset BMN",
@@ -1900,6 +1933,7 @@ def export_fasilitas_ruangan(request):
         "Tanggal Pemeliharaan",
         "Tanggal Perbaikan",
         "Catatan",
+        "Komponen Pemeliharaan Rutin",
         "IK Alat (PDF)",
         "URL QR Detail",
     ]
@@ -1913,6 +1947,7 @@ def export_fasilitas_ruangan(request):
         row_builder=lambda obj: [
             obj.nama_barang,
             obj.status_barang,
+            _bervolume_display(obj),
             obj.tipe_merek_barang,
             obj.jenis_barang,
             obj.kode_aset_bmn,
@@ -1930,6 +1965,7 @@ def export_fasilitas_ruangan(request):
             obj.tanggal_pemeliharaan,
             obj.tanggal_perbaikan,
             obj.catatan,
+            _display_komponen(obj.komponen_pemeliharaan, ""),
             _file_export_url(request, obj.ik_alat),
             _public_detail_export_url(request, obj),
         ],
@@ -1942,6 +1978,7 @@ def export_peralatan_laboratorium(request):
     headers = [
         "Nama Barang",
         "Status Barang",
+        "Barang Ber-volume",
         "Tipe / Merek Barang",
         "Jenis Barang",
         "Kode Aset BMN",
@@ -1960,6 +1997,7 @@ def export_peralatan_laboratorium(request):
         "Tanggal Pemeliharaan",
         "Tanggal Perbaikan",
         "Catatan",
+        "Komponen Pemeliharaan Rutin",
         "IK Alat (PDF)",
         "URL QR Detail",
     ]
@@ -1973,6 +2011,7 @@ def export_peralatan_laboratorium(request):
         row_builder=lambda obj: [
             obj.nama_barang,
             obj.status_barang,
+            _bervolume_display(obj),
             obj.tipe_merek_barang,
             obj.jenis_barang,
             obj.kode_aset_bmn,
@@ -1991,6 +2030,7 @@ def export_peralatan_laboratorium(request):
             obj.tanggal_pemeliharaan,
             obj.tanggal_perbaikan,
             obj.catatan,
+            _display_komponen(obj.komponen_pemeliharaan, ""),
             _file_export_url(request, obj.ik_alat),
             _public_detail_export_url(request, obj),
         ],
@@ -2070,6 +2110,7 @@ def _get_peralatan_laboratorium_detail_items(obj):
         },
         {"label": "Jenis Barang", "value": _display_value(obj.jenis_barang)},
         {"label": "Status Barang", "value": _display_value(obj.status_barang)},
+        {"label": "Barang Ber-volume", "value": _bervolume_display(obj)},
         {"label": "Kode Aset BMN", "value": _display_value(obj.kode_aset_bmn)},
         {
             "label": "Kode Laboratorium",
@@ -2084,7 +2125,7 @@ def _get_peralatan_laboratorium_detail_items(obj):
         {
             "label": "Kondisi Barang",
             "value": _display_value(
-                obj.kondisi_barang if obj.status_barang == StatusBarangChoices.BMN else None
+                obj.kondisi_barang if _show_asset_condition(obj) else None
             ),
         },
         {"label": "Lokasi Barang", "value": _display_value(obj.lokasi_barang)},
@@ -2098,6 +2139,7 @@ def _get_peralatan_laboratorium_detail_items(obj):
         },
         _ik_alat_detail_item(obj),
         {"label": "Catatan", "value": _display_value(obj.catatan), "full": True},
+        *([] if obj.volume_manual else [_komponen_detail_item(obj)]),
     ]
 
 
@@ -2188,6 +2230,7 @@ def public_fasilitas_ruangan(request, token):
             {"label": "Tipe / Merek Barang", "value": _display_value(obj.tipe_merek_barang)},
             {"label": "Jenis Barang", "value": _display_value(obj.jenis_barang)},
             {"label": "Status Barang", "value": _display_value(obj.status_barang)},
+            {"label": "Barang Ber-volume", "value": _bervolume_display(obj)},
             {"label": "Kode Aset BMN", "value": _display_value(obj.kode_aset_bmn)},
             {"label": "Kode Laboratorium", "value": _display_value(obj.kode_laboratorium)},
             {"label": "Kategori Barang", "value": _display_value(obj.kategori_barang)},
@@ -2197,12 +2240,13 @@ def public_fasilitas_ruangan(request, token):
             {"label": "Satuan", "value": _display_value(obj.satuan)},
             {"label": "Ketersediaan", "value": _display_value(obj.ketersediaan)},
             {"label": "Tahun Perolehan", "value": _display_value(obj.tahun_perolehan)},
-            {"label": "Kondisi Barang", "value": _display_value(obj.kondisi_barang if obj.status_barang == StatusBarangChoices.BMN else None)},
+            {"label": "Kondisi Barang", "value": _display_value(obj.kondisi_barang if _show_asset_condition(obj) else None)},
             {"label": "Lokasi Barang", "value": _display_value(obj.lokasi_barang)},
             {"label": "Pemeliharaan Terakhir", "value": _display_date(obj.tanggal_pemeliharaan)},
             {"label": "Perbaikan Terakhir", "value": _display_date(obj.tanggal_perbaikan)},
             _ik_alat_detail_item(obj),
             {"label": "Catatan", "value": _display_value(obj.catatan), "full": True},
+            *([] if obj.volume_manual else [_komponen_detail_item(obj)]),
         ],
         top_icon="bi-building",
     )
@@ -2474,6 +2518,7 @@ def detail_fasilitas_ruangan(request, pk):
             },
             {"label": "Jenis Barang", "value": _display_value(obj.jenis_barang)},
             {"label": "Status Barang", "value": _display_value(obj.status_barang)},
+            {"label": "Barang Ber-volume", "value": _bervolume_display(obj)},
             {"label": "Kode Aset BMN", "value": _display_value(obj.kode_aset_bmn)},
             {
                 "label": "Kode Laboratorium",
@@ -2486,7 +2531,7 @@ def detail_fasilitas_ruangan(request, pk):
             {"label": "Satuan", "value": _display_value(obj.satuan)},
             {"label": "Ketersediaan", "value": _display_value(obj.ketersediaan)},
             {"label": "Tahun Perolehan", "value": _display_value(obj.tahun_perolehan)},
-            {"label": "Kondisi Barang", "value": _display_value(obj.kondisi_barang if obj.status_barang == StatusBarangChoices.BMN else None)},
+            {"label": "Kondisi Barang", "value": _display_value(obj.kondisi_barang if _show_asset_condition(obj) else None)},
             {"label": "Lokasi Barang", "value": _display_value(obj.lokasi_barang)},
             {
                 "label": "Pemeliharaan Terakhir",
@@ -2498,6 +2543,7 @@ def detail_fasilitas_ruangan(request, pk):
             },
             _ik_alat_detail_item(obj),
             {"label": "Catatan", "value": _display_value(obj.catatan), "full": True},
+            *([] if obj.volume_manual else [_komponen_detail_item(obj)]),
         ],
         top_icon="bi-building",
     )
@@ -2682,6 +2728,7 @@ def download_format_import_peralatan_laboratorium(request):
             '2026-03-01',
             '2026-04-01',
             'Contoh catatan peralatan.',
+            'Kalibrasi alat; Pembersihan sensor',
         ],
         references=[
             ('Status Barang', status_values),

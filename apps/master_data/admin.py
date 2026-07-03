@@ -32,13 +32,13 @@ class BahanOperasionalAdmin(admin.ModelAdmin):
 
 @admin.register(FasilitasRuangan)
 class SaranaPrasaranaRuanganAdmin(admin.ModelAdmin):
-    list_display = ('nama_barang', 'kategori_barang', 'status_barang', 'kode_laboratorium', 'volume_baik', 'volume_rusak', 'total_volume', 'kondisi_barang', 'ketersediaan', 'lokasi_barang')
+    list_display = ('nama_barang', 'kategori_barang', 'status_barang', 'bervolume', 'kode_laboratorium', 'volume_baik', 'volume_rusak', 'total_volume', 'kondisi_barang', 'ketersediaan', 'lokasi_barang')
     search_fields = ('nama_barang', 'kategori_barang', 'kode_laboratorium', 'kode_aset_bmn', 'tipe_merek_barang', 'lokasi_barang')
-    list_filter = ('kategori_barang', 'status_barang', 'kondisi_barang', 'ketersediaan', 'satuan')
+    list_filter = ('kategori_barang', 'status_barang', 'bervolume', 'kondisi_barang', 'ketersediaan', 'satuan')
 
 
 @admin.register(PeralatanLaboratorium)
 class PeralatanLaboratoriumAdmin(admin.ModelAdmin):
-    list_display = ('nama_barang', 'status_barang', 'kode_laboratorium', 'volume_baik', 'volume_rusak', 'total_volume', 'kondisi_barang', 'ketersediaan', 'lokasi_barang')
+    list_display = ('nama_barang', 'status_barang', 'bervolume', 'kode_laboratorium', 'volume_baik', 'volume_rusak', 'total_volume', 'kondisi_barang', 'ketersediaan', 'lokasi_barang')
     search_fields = ('nama_barang', 'kode_laboratorium', 'kode_aset_bmn', 'tipe_merek_barang', 'lokasi_barang')
-    list_filter = ('status_barang', 'kondisi_barang', 'ketersediaan', 'satuan')
+    list_filter = ('status_barang', 'bervolume', 'kondisi_barang', 'ketersediaan', 'satuan')

@@ -61,7 +61,7 @@
                     <td>{{ item.volume_baik|display_dash }}</td>
                     <td>{{ item.volume_rusak|display_dash }}</td>
                     <td>{{ item.total_volume|display_dash }}</td>
-                    <td>{% if item.status_barang == 'BMN' %}{{ item.kondisi_barang|display_dash }}{% else %}-{% endif %}</td>
+                    <td>{% if item.status_barang == 'BMN' or not item.bervolume %}{{ item.kondisi_barang|display_dash }}{% else %}-{% endif %}</td>
                     <td class="cell-status"><span class="status-badge {{ item.status_badge_class }}">{{ item.ketersediaan }}</span></td>
                     <td class="cell-wrap">{{ item.lokasi_barang|display_dash }}</td>
                     <td class="cell-action">
