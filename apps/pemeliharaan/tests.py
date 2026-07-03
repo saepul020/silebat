@@ -17,6 +17,7 @@ from apps.master_data.models import (
     KondisiBarangChoices,
     StatusBarangChoices,
 )
+from apps.notifikasi.models import Notification, NotificationCategory
 from apps.operasional.models import TIM_LAYANAN_TEKNIS_NAME, TimKegiatan
 from apps.pengguna.models import Role, User
 
@@ -295,6 +296,64 @@ class PemeliharaanVerifikasiTests(TestCase):
         self.assertEqual(self.alat.kondisi_barang, KondisiBarangChoices.BAIK)
         self.assertIsNotNone(self.alat.tanggal_pemeliharaan)
         self.assertIsNotNone(self.alat.tanggal_perbaikan)
+
+    def test_kirim_pengajuan_membuat_notifikasi_kepala_lab(self):
+        pengajuan = self._create_pengajuan(TindakanPerbaikanChoices.MANDIRI)
+
+        self._login("Admin Lab")
+        self.client.post(reverse("pemeliharaan:kirim", args=[pengajuan.pk]))
+
+        notification = Notification.objects.get(
+            recipient=self.users["Kepala Lab"],
+            source_pemeliharaan=pengajuan,
+            category=NotificationCategory.VERIFICATION,
+            dedupe_key=(
+                f"pemeliharaan:{pengajuan.pk}:"
+                f"step:{StepPemeliharaanChoices.KEPALA_LAB.value}:flow:pending"
+            ),
+        )
+        self.assertEqual(notification.title, f"Verifikasi Pemeliharaan {pengajuan.nomor_pengajuan}")
+        self.assertIn("menunggu proses", notification.message)
+        self.assertEqual(
+            notification.link_url,
+            reverse("verifikasi:detail_pemeliharaan", args=[pengajuan.pk]),
+        )
+        self.assertFalse(notification.is_read)
+
+    def test_persetujuan_final_menutup_notifikasi_lama_dan_mengabari_pemohon(self):
+        pengajuan = self._create_pengajuan(TindakanPerbaikanChoices.MANDIRI)
+
+        self._login("Admin Lab")
+        self.client.post(reverse("pemeliharaan:kirim", args=[pengajuan.pk]))
+
+        self._login("Kepala Lab")
+        self.client.post(
+            reverse("verifikasi:detail_pemeliharaan", args=[pengajuan.pk]),
+            {"aksi": "setujui", "catatan": ""},
+        )
+
+        kepala_notification = Notification.objects.get(
+            recipient=self.users["Kepala Lab"],
+            source_pemeliharaan=pengajuan,
+            category=NotificationCategory.VERIFICATION,
+        )
+        self.assertTrue(kepala_notification.is_read)
+
+        status_notification = Notification.objects.get(
+            recipient=self.users["Admin Lab"],
+            source_pemeliharaan=pengajuan,
+            category=NotificationCategory.STATUS,
+            dedupe_key=(
+                f"pemeliharaan:{pengajuan.pk}:"
+                f"status:{StepPemeliharaanChoices.SELESAI.value}"
+            ),
+        )
+        self.assertEqual(status_notification.title, "Pemeliharaan Selesai")
+        self.assertIn("telah selesai", status_notification.message)
+        self.assertEqual(
+            status_notification.link_url,
+            reverse("pemeliharaan:detail", args=[pengajuan.pk]),
+        )
 
     def test_alur_mandiri_selesai_di_kepala_lab(self):
         self.alat.kondisi_barang = KondisiBarangChoices.RUSAK

@@ -15,6 +15,7 @@ from apps.core.permissions import (
     deny_access,
     get_role_name,
 )
+from apps.notifikasi.services import sync_transaction_notifications
 from .forms import PemeliharaanForm, format_display_date, get_available_alat_queryset
 from .models import (
     ACTIVE_PEMELIHARAAN_STEPS,
@@ -384,6 +385,7 @@ def kirim_pengajuan(request, pk):
             "Pengajuan pemeliharaan dikirim ke Kepala Lab",
             request.user,
         )
+        sync_transaction_notifications(obj, actor=request.user)
 
     messages.success(
         request,

@@ -31,6 +31,13 @@ class Notification(models.Model):
         blank=True,
         related_name="notifikasi_items",
     )
+    source_pemeliharaan = models.ForeignKey(
+        "pemeliharaan.PemeliharaanPengajuan",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="notifikasi_items",
+    )
     dedupe_key = models.CharField(max_length=220, blank=True, db_index=True)
     is_read = models.BooleanField(default=False)
     read_at = models.DateTimeField(null=True, blank=True)

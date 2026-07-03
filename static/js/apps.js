@@ -19,6 +19,7 @@ document.addEventListener('DOMContentLoaded', function () {
         initVerificationActionModal,
         typeof initPengembalianFormBehavior === 'function' ? initPengembalianFormBehavior : null,
         initUploadPreviewControls,
+        initInlineImageSourceButtons,
         initInlineFileProxyControls,
         initMasterDataFormBehavior,
         initKomponenRutin,
@@ -1467,6 +1468,96 @@ function initInlineFileProxyControls() {
 }
 
 
+function initInlineImageSourceButtons() {
+    const openButtons = document.querySelectorAll('[data-file-source-open]');
+    const buttons = document.querySelectorAll('[data-file-source-select]');
+    const modals = document.querySelectorAll('[data-file-source-modal]');
+
+    if (!openButtons.length && !buttons.length && !modals.length) {
+        return;
+    }
+
+    function closeModal(modal) {
+        if (!modal) {
+            return;
+        }
+
+        modal.classList.remove('show');
+        document.body.classList.remove('is-scroll-locked');
+    }
+
+    function openModal(modal) {
+        if (!modal) {
+            return;
+        }
+
+        modal.classList.add('show');
+        document.body.classList.add('is-scroll-locked');
+        window.setTimeout(function () {
+            const firstButton = modal.querySelector('[data-file-source-select]');
+            if (firstButton) {
+                firstButton.focus();
+            }
+        }, 10);
+    }
+
+    openButtons.forEach(function (button) {
+        button.addEventListener('click', function () {
+            if (button.disabled) {
+                return;
+            }
+
+            const modalId = button.getAttribute('data-file-source-open');
+            openModal(modalId ? document.getElementById(modalId) : null);
+        });
+    });
+
+    modals.forEach(function (modal) {
+        modal.querySelectorAll('[data-file-source-close]').forEach(function (element) {
+            element.addEventListener('click', function () {
+                closeModal(modal);
+            });
+        });
+    });
+
+    buttons.forEach(function (button) {
+        button.addEventListener('click', function () {
+            if (button.disabled) {
+                return;
+            }
+
+            const targetId = button.getAttribute('data-file-source-target');
+            const input = targetId ? document.getElementById(targetId) : null;
+
+            if (!input || input.disabled) {
+                return;
+            }
+
+            if (button.getAttribute('data-file-source-select') === 'camera') {
+                input.setAttribute('capture', 'environment');
+            } else {
+                input.removeAttribute('capture');
+            }
+
+            closeModal(button.closest('[data-file-source-modal]'));
+            input.click();
+        });
+    });
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key !== 'Escape') {
+            return;
+        }
+
+        modals.forEach(function (modal) {
+            if (modal.classList.contains('show')) {
+                closeModal(modal);
+            }
+        });
+    });
+}
+
+
 
 
 /* ========================================
@@ -2037,7 +2128,7 @@ function initMasterDataFormBehavior() {
     }
 
     function isInputReady() {
-        return hasStatusValue() && (!isNonBmnStatus() || hasVolumeChoice());
+        return hasStatusValue() && (!isNonBmnStatus() || !bervolumeFields.length || hasVolumeChoice());
     }
 
     function setFieldDisabledState(field, disabled) {

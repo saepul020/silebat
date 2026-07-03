@@ -908,7 +908,15 @@ def detail_pemeliharaan(request, pk):
                 open_action_modal = True
                 selected_action = aksi
             else:
+                previous_current_step = obj.current_step
                 _process_pemeliharaan_action(request, obj, aksi, catatan)
+                sync_transaction_notifications(
+                    obj,
+                    actor=request.user,
+                    source_action=aksi,
+                    previous_current_step=previous_current_step,
+                    action_note=catatan,
+                )
                 return redirect("verifikasi:index")
         elif _action_requires_note(selected_action):
             open_action_modal = True

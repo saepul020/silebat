@@ -24,6 +24,9 @@ NOTIFICATION_LIST_SEARCH_FIELDS = (
     "category",
     "source_pengajuan__nomor_pengajuan",
     "source_pengajuan__nama_peminjam",
+    "source_pemeliharaan__nomor_pengajuan",
+    "source_pemeliharaan__pemohon__username",
+    "source_pemeliharaan__pemohon__nama_lengkap",
 )
 ANNOUNCEMENT_LIST_SEARCH_FIELDS = (
     "title",

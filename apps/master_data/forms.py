@@ -287,7 +287,6 @@ class AssetBaseForm(BaseMasterDataForm):
         self.fields["foto_barang"].widget = forms.FileInput(
             attrs={
                 "accept": "image/*,.jpg,.jpeg,.png",
-                "capture": "environment",
                 "class": "input-file--proxy",
                 "data-inline-file-input": "true",
                 "data-inline-file-placeholder": "Pilih gambar",
@@ -352,7 +351,6 @@ class AssetBaseForm(BaseMasterDataForm):
                 },
                 "foto_barang": {
                     "accept": "image/*,.jpg,.jpeg,.png",
-                    "capture": "environment",
                     "class": "input-file--proxy",
                     "data-inline-file-input": "true",
                     "data-inline-file-placeholder": "Pilih gambar",

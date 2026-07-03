@@ -56,6 +56,10 @@ class KomponenPemeliharaanRutinTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "data-komponen")
+        self.assertContains(response, "data-file-source-modal")
+        self.assertContains(response, "data-file-source-open")
+        self.assertContains(response, 'data-file-source-select="upload"')
+        self.assertContains(response, 'data-file-source-select="camera"')
         self.assertEqual(content.count("data-komponen-input"), 1)
         self.assertLess(
             content.index("<legend>Catatan</legend>"),

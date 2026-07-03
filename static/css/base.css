@@ -1194,6 +1194,17 @@ textarea {
     transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 
+.file-input-proxy--trigger {
+    padding: 0;
+    text-align: left;
+    font: inherit;
+}
+
+.file-input-proxy--trigger:disabled {
+    cursor: not-allowed;
+    opacity: 0.62;
+}
+
 .file-input-proxy:hover,
 .file-input-proxy:focus-within {
     border-color: var(--color-soft-blue);
@@ -1236,6 +1247,46 @@ textarea {
 
 .file-input-proxy__text.is-placeholder {
     color: var(--text-muted);
+}
+
+.file-source-option {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.file-source-option__button {
+    min-height: 92px;
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    background: var(--color-white);
+    color: var(--color-primary-navy);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    flex-direction: column;
+}
+
+.file-source-option__button i {
+    font-size: 1.45rem;
+}
+
+.file-source-option__button:not(:disabled):hover,
+.file-source-option__button:not(:disabled):focus-visible {
+    border-color: var(--color-soft-blue);
+    box-shadow: 0 0 0 3px rgba(100, 205, 209, 0.12);
+}
+
+.file-source-option__button:disabled {
+    cursor: not-allowed;
+    opacity: 0.62;
+}
+
+.file-source-modal__card {
+    max-width: 420px;
 }
 
 .upload-input-wrap--file-proxy .file-input-proxy__text,

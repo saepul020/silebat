@@ -3,6 +3,7 @@ from unittest.mock import patch
 from django.test import TestCase
 
 from apps.master_data.forms import (
+    BarangLaboratoriumForm,
     FasilitasRuanganForm,
     PeralatanLaboratoriumForm,
 )
@@ -159,10 +160,32 @@ class VolumeAssetFormTests(TestCase):
 
         self.assertEqual(form.fields["kode_laboratorium"].initial, "LAB-010")
 
-    def test_foto_barang_supports_rear_camera_capture(self):
+    def test_foto_barang_tidak_memaksa_kamera_otomatis(self):
         form = PeralatanLaboratoriumForm()
 
         attrs = form.fields["foto_barang"].widget.attrs
-        self.assertEqual(attrs["capture"], "environment")
+        self.assertNotIn("capture", attrs)
         self.assertIn("image/*", attrs["accept"])
         self.assertEqual(attrs["data-inline-file-placeholder"], "Pilih gambar")
+
+    def test_form_survei_tidak_memiliki_pilihan_barang_bervolume(self):
+        form = BarangLaboratoriumForm(
+            data={
+                "status_barang": StatusBarangChoices.NON_BMN,
+                "nama_barang": "Drone Survei",
+                "tipe_merek_barang": "DJI",
+                "jenis_barang": "Drone",
+                "kode_laboratorium": "SUR-001",
+                "satuan": "Unit",
+                "tahun_perolehan": 2026,
+                "kondisi_barang": KondisiBarangChoices.BAIK,
+                "lokasi_barang": "Gudang",
+                "kategori_barang": "Drone",
+                "catatan": "",
+                "komponen_pemeliharaan": ["Kamera"],
+            }
+        )
+
+        self.assertNotIn("bervolume", form.fields)
+        self.assertFalse(form.dependent_fields_locked)
+        self.assertTrue(form.is_valid(), form.errors)

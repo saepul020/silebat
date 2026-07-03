@@ -65,15 +65,39 @@
                                                 <div class="upload-input-wrap upload-input-wrap--inline upload-input-wrap--file-proxy" data-inline-file-proxy>
                                                     <div class="upload-input-wrap__field">
                                                         {{ field }}
-                                                        <label for="{{ field.id_for_label }}" class="file-input-proxy">
+                                                        <button type="button" class="file-input-proxy file-input-proxy--trigger" data-file-source-open="{{ field.id_for_label }}SourceModal" aria-haspopup="dialog" aria-controls="{{ field.id_for_label }}SourceModal">
                                                             <span class="file-input-proxy__button" aria-hidden="true"><i class="bi bi-image"></i></span>
                                                             <span class="file-input-proxy__text is-placeholder" data-inline-file-text>Pilih gambar</span>
-                                                        </label>
+                                                        </button>
                                                     </div>
                                                     <div class="upload-file-state upload-file-state--inline is-hidden" data-file-state data-inline-file-state>
                                                         <button type="button" class="upload-file-state__action upload-file-state__action--icon" data-file-state-action data-inline-file-clear data-mode="clear-selected" title="Batalkan Upload" aria-label="Batalkan Upload">
                                                             <i class="bi bi-x-lg"></i>
                                                         </button>
+                                                    </div>
+                                                </div>
+                                                <div class="delete-modal file-source-modal" id="{{ field.id_for_label }}SourceModal" data-file-source-modal>
+                                                    <div class="delete-modal-backdrop" data-file-source-close></div>
+                                                    <div class="delete-modal-card file-source-modal__card" role="dialog" aria-modal="true" aria-labelledby="{{ field.id_for_label }}SourceTitle">
+                                                        <div class="delete-modal-header">
+                                                            <h3 id="{{ field.id_for_label }}SourceTitle">Pilih Sumber Foto</h3>
+                                                            <button type="button" class="delete-modal-close" data-file-source-close aria-label="Tutup">&times;</button>
+                                                        </div>
+                                                        <div class="delete-modal-body">
+                                                            <div class="file-source-option" data-file-source-options>
+                                                                <button type="button" class="file-source-option__button" data-file-source-select="upload" data-file-source-target="{{ field.id_for_label }}">
+                                                                    <i class="bi bi-upload" aria-hidden="true"></i>
+                                                                    <span>Upload gambar</span>
+                                                                </button>
+                                                                <button type="button" class="file-source-option__button" data-file-source-select="camera" data-file-source-target="{{ field.id_for_label }}">
+                                                                    <i class="bi bi-camera" aria-hidden="true"></i>
+                                                                    <span>Kamera</span>
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                        <div class="delete-modal-actions">
+                                                            <button type="button" class="btn btn-secondary" data-file-source-close>Kembali</button>
+                                                        </div>
                                                     </div>
                                                 </div>
                                                 <p class="input-error-text" data-inline-file-error-node hidden></p>

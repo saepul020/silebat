@@ -15,6 +15,7 @@ from apps.core.permissions import (
 )
 from apps.operasional.models import TIM_LAYANAN_TEKNIS_NAME, TimKegiatan
 from apps.peminjaman.models import DecisionChoices, ReturnStepChoices, StepChoices
+from apps.pemeliharaan.models import StepPemeliharaanChoices
 
 from .models import Announcement, Notification, NotificationCategory
 
@@ -22,8 +23,8 @@ User = get_user_model()
 
 # Aturan masa tampil notifikasi status transaksi final.
 # Berlaku untuk:
-# - Peminjaman Disetujui
-# - Peminjaman Ditolak
+# - Peminjaman/Pemeliharaan Disetujui
+# - Peminjaman/Pemeliharaan Ditolak
 # - Pengembalian Selesai
 #
 # Durasi tampil:
@@ -52,6 +53,13 @@ def _transaction_status_notification_q():
                 Q(dedupe_key__startswith="pengembalian:")
                 & Q(dedupe_key__endswith=":status:completed")
             )
+            | (
+                Q(dedupe_key__startswith="pemeliharaan:")
+                & (
+                    Q(dedupe_key__endswith=f":status:{StepPemeliharaanChoices.SELESAI.value}")
+                    | Q(dedupe_key__endswith=f":status:{StepPemeliharaanChoices.DITOLAK.value}")
+                )
+            )
         )
     )
 
@@ -73,7 +81,8 @@ def visible_notifications(queryset=None, *, surface="page"):
     )
 
     # Khusus notifikasi status transaksi final:
-    # - Peminjaman Disetujui, Peminjaman Ditolak, dan Pengembalian Selesai
+    # - Peminjaman/Pemeliharaan Disetujui, Peminjaman/Pemeliharaan Ditolak,
+    #   dan Pengembalian Selesai
     #   tampil di dropdown navbar selama 1 x 24 jam;
     # - tetap bisa dilihat di halaman Notifikasi selama 7 x 24 jam.
     # Pengumuman tidak dibatasi aturan ini dan tetap mengikuti publish_start_at/publish_end_at.
@@ -133,6 +142,16 @@ def _get_return_pimpinan_user():
 
 
 def _verification_recipients(pengajuan):
+    if _is_pemeliharaan(pengajuan):
+        step = pengajuan.current_step
+        if step == StepPemeliharaanChoices.KEPALA_LAB:
+            return _merge_users(_users_by_role(ROLE_KEPALA_LAB), _super_admin_users())
+        if step == StepPemeliharaanChoices.PIMPINAN:
+            return _merge_users(_get_return_pimpinan_user(), _super_admin_users())
+        if step == StepPemeliharaanChoices.DIKEMBALIKAN:
+            return _merge_users(pengajuan.pemohon)
+        return []
+
     if pengajuan.return_current_step not in {ReturnStepChoices.NONE, ReturnStepChoices.COMPLETED}:
         step = pengajuan.return_current_step
         if step in {
@@ -168,10 +187,50 @@ CONTINUATION_ACTIONS = {"setujui", "selesai", "sesuai"}
 
 
 def _is_active_pengembalian(pengajuan):
+    if not hasattr(pengajuan, "return_current_step"):
+        return False
     return pengajuan.return_current_step not in {
         ReturnStepChoices.NONE,
         ReturnStepChoices.COMPLETED,
     }
+
+
+def _is_pemeliharaan(pengajuan):
+    return getattr(pengajuan, "verifikasi_kind", "") == "pemeliharaan"
+
+
+def _is_active_pemeliharaan(pengajuan):
+    return _is_pemeliharaan(pengajuan) and pengajuan.current_step in {
+        StepPemeliharaanChoices.KEPALA_LAB,
+        StepPemeliharaanChoices.PIMPINAN,
+        StepPemeliharaanChoices.DIKEMBALIKAN,
+    }
+
+
+def _source_filter(pengajuan):
+    if _is_pemeliharaan(pengajuan):
+        return {"source_pemeliharaan": pengajuan}
+    return {"source_pengajuan": pengajuan}
+
+
+def _source_defaults(pengajuan):
+    if _is_pemeliharaan(pengajuan):
+        return {"source_pemeliharaan": pengajuan}
+    return {"source_pengajuan": pengajuan}
+
+
+def _verification_link(pengajuan):
+    if _is_pemeliharaan(pengajuan):
+        if pengajuan.current_step == StepPemeliharaanChoices.DIKEMBALIKAN:
+            return reverse("pemeliharaan:detail", args=[pengajuan.pk])
+        return reverse("verifikasi:detail_pemeliharaan", args=[pengajuan.pk])
+    return reverse("verifikasi:detail", args=[pengajuan.pk])
+
+
+def _status_link(pengajuan):
+    if _is_pemeliharaan(pengajuan):
+        return reverse("pemeliharaan:detail", args=[pengajuan.pk])
+    return reverse("peminjaman:detail", args=[pengajuan.pk])
 
 
 def _safe_user_label(user):
@@ -199,6 +258,9 @@ def _short_note(note, max_length=170):
 def _is_revision_followup(pengajuan, source_action=None):
     if source_action in REVISION_ACTIONS:
         return True
+
+    if _is_pemeliharaan(pengajuan):
+        return pengajuan.current_step == StepPemeliharaanChoices.DIKEMBALIKAN
 
     if _is_active_pengembalian(pengajuan):
         return (
@@ -229,6 +291,16 @@ def _verification_flow_key(pengajuan, source_action=None):
 
 def _verification_title(pengajuan, source_action=None):
     nomor = pengajuan.nomor_pengajuan or ""
+    if _is_pemeliharaan(pengajuan):
+        flow_key = _verification_flow_key(pengajuan, source_action)
+        if flow_key == "revision":
+            prefix = "Perbaikan Pemeliharaan"
+        elif flow_key == "continuation":
+            prefix = "Lanjutan Verifikasi Pemeliharaan"
+        else:
+            prefix = "Verifikasi Pemeliharaan"
+        return f"{prefix} {nomor}".strip()
+
     is_return = _is_active_pengembalian(pengajuan)
     flow_key = _verification_flow_key(pengajuan, source_action)
 
@@ -243,6 +315,35 @@ def _verification_title(pengajuan, source_action=None):
 
 def _verification_message(pengajuan, actor=None, source_action=None, action_note=""):
     nomor = pengajuan.nomor_pengajuan or f"#{pengajuan.pk}"
+    if _is_pemeliharaan(pengajuan):
+        nama = pengajuan.nama_pemohon
+        step_label = pengajuan.get_current_step_display()
+        actor_label = _safe_user_label(actor)
+        note = _short_note(action_note)
+        note_text = f" Catatan: {note}" if note else ""
+
+        if _is_revision_followup(pengajuan, source_action):
+            return (
+                f"Jenis tindak lanjut: Perbaikan. Proses pemeliharaan {nomor} dari {nama} "
+                f"dikembalikan oleh {actor_label} untuk diperbaiki. "
+                f"Silakan cek catatan perbaikan dan tindak lanjuti pada tahap {step_label}."
+                f"{note_text}"
+            )
+
+        if _is_continuation_followup(source_action):
+            action_label = {
+                "setujui": "telah disetujui",
+                "selesai": "telah dilanjutkan",
+                "sesuai": "telah dinyatakan sesuai",
+            }.get(source_action, "telah dilanjutkan")
+            return (
+                f"Jenis tindak lanjut: Lanjutan proses. Proses pemeliharaan {nomor} dari {nama} "
+                f"{action_label} oleh {actor_label}. Menunggu tindak lanjut pada tahap {step_label}."
+                f"{note_text}"
+            )
+
+        return f"Pemeliharaan {nomor} dari {nama} menunggu proses {step_label}."
+
     nama = (
         pengajuan.nama_peminjam
         or getattr(pengajuan.peminjam, "get_full_name", lambda: "")()
@@ -287,12 +388,16 @@ def _verification_message(pengajuan, actor=None, source_action=None, action_note
 
 def _verification_dedupe_key(pengajuan, source_action=None):
     flow_key = _verification_flow_key(pengajuan, source_action)
+    if _is_pemeliharaan(pengajuan):
+        return f"pemeliharaan:{pengajuan.pk}:step:{pengajuan.current_step}:flow:{flow_key}"
     if _is_active_pengembalian(pengajuan):
         return f"pengembalian:{pengajuan.pk}:step:{pengajuan.return_current_step}:flow:{flow_key}"
     return f"peminjaman:{pengajuan.pk}:step:{pengajuan.current_step}:flow:{flow_key}"
 
 
 def _verification_step_key_prefix(pengajuan):
+    if _is_pemeliharaan(pengajuan):
+        return f"pemeliharaan:{pengajuan.pk}:step:{pengajuan.current_step}:flow:"
     if _is_active_pengembalian(pengajuan):
         return f"pengembalian:{pengajuan.pk}:step:{pengajuan.return_current_step}:flow:"
     return f"peminjaman:{pengajuan.pk}:step:{pengajuan.current_step}:flow:"
@@ -307,9 +412,9 @@ def _has_visible_current_step_notification(recipient, pengajuan):
     queryset = visible_notifications(
         Notification.objects.filter(
             recipient=recipient,
-            source_pengajuan=pengajuan,
             category=NotificationCategory.VERIFICATION,
             dedupe_key__startswith=step_key_prefix,
+            **_source_filter(pengajuan),
         )
     )
 
@@ -331,6 +436,7 @@ def _create_or_update_notification(
     category,
     link_url="",
     source_pengajuan=None,
+    source_pemeliharaan=None,
     dedupe_key="",
     visible_from=None,
     visible_until=None,
@@ -344,6 +450,7 @@ def _create_or_update_notification(
         "category": category,
         "link_url": link_url or "",
         "source_pengajuan": source_pengajuan,
+        "source_pemeliharaan": source_pemeliharaan,
         "visible_from": visible_from or timezone.now(),
         "visible_until": visible_until,
         "is_read": False,
@@ -368,8 +475,8 @@ def close_open_verification_notifications(pengajuan):
     now = timezone.now()
     expired_at = now - timedelta(seconds=1)
     Notification.objects.filter(
-        source_pengajuan=pengajuan,
         category=NotificationCategory.VERIFICATION,
+        **_source_filter(pengajuan),
     ).update(
         is_read=True,
         read_at=now,
@@ -386,12 +493,51 @@ def sync_transaction_notifications(
     previous_return_step=None,
     action_note="",
 ):
-    """Sinkronisasi notifikasi setiap kali tahap peminjaman/pengembalian berpindah."""
+    """Sinkronisasi notifikasi setiap kali tahap transaksi berpindah."""
     if not pengajuan or not getattr(pengajuan, "pk", None):
         return
 
     with transaction.atomic():
         close_open_verification_notifications(pengajuan)
+
+        if _is_pemeliharaan(pengajuan):
+            if _is_active_pemeliharaan(pengajuan):
+                for recipient in _verification_recipients(pengajuan):
+                    _create_or_update_notification(
+                        recipient,
+                        title=_verification_title(pengajuan, source_action),
+                        message=_verification_message(
+                            pengajuan,
+                            actor=actor,
+                            source_action=source_action,
+                            action_note=action_note,
+                        ),
+                        category=NotificationCategory.VERIFICATION,
+                        link_url=_verification_link(pengajuan),
+                        dedupe_key=_verification_dedupe_key(pengajuan, source_action),
+                        **_source_defaults(pengajuan),
+                    )
+                return
+
+            if pengajuan.current_step in {
+                StepPemeliharaanChoices.SELESAI,
+                StepPemeliharaanChoices.DITOLAK,
+            }:
+                status_label = pengajuan.get_current_step_display()
+                nomor = pengajuan.nomor_pengajuan or f"#{pengajuan.pk}"
+                status_visible_from = timezone.now()
+                _create_or_update_notification(
+                    pengajuan.pemohon,
+                    title=f"Pemeliharaan {status_label}",
+                    message=f"Proses pemeliharaan {nomor} telah {status_label.lower()}.",
+                    category=NotificationCategory.STATUS,
+                    link_url=_status_link(pengajuan),
+                    dedupe_key=f"pemeliharaan:{pengajuan.pk}:status:{pengajuan.current_step}",
+                    visible_from=status_visible_from,
+                    visible_until=status_visible_from + TRANSACTION_STATUS_PAGE_DURATION,
+                    **_source_defaults(pengajuan),
+                )
+            return
 
         is_active_pengembalian = _is_active_pengembalian(pengajuan)
         is_active_peminjaman = pengajuan.current_step not in {
@@ -411,9 +557,9 @@ def sync_transaction_notifications(
                         action_note=action_note,
                     ),
                     category=NotificationCategory.VERIFICATION,
-                    link_url=reverse("verifikasi:detail", args=[pengajuan.pk]),
-                    source_pengajuan=pengajuan,
+                    link_url=_verification_link(pengajuan),
                     dedupe_key=_verification_dedupe_key(pengajuan, source_action),
+                    **_source_defaults(pengajuan),
                 )
             return
 
@@ -431,11 +577,11 @@ def sync_transaction_notifications(
                 title=title,
                 message=message,
                 category=NotificationCategory.STATUS,
-                link_url=reverse("peminjaman:detail", args=[pengajuan.pk]),
-                source_pengajuan=pengajuan,
+                link_url=_status_link(pengajuan),
                 dedupe_key=f"peminjaman:{pengajuan.pk}:status:{pengajuan.current_step}",
                 visible_from=status_visible_from,
                 visible_until=status_visible_from + TRANSACTION_STATUS_PAGE_DURATION,
+                **_source_defaults(pengajuan),
             )
 
         if pengajuan.return_current_step == ReturnStepChoices.COMPLETED:
@@ -447,10 +593,10 @@ def sync_transaction_notifications(
                 message=f"Proses pengembalian {nomor} telah selesai/disetujui.",
                 category=NotificationCategory.STATUS,
                 link_url=reverse("peminjaman:pengembalian", args=[pengajuan.pk]),
-                source_pengajuan=pengajuan,
                 dedupe_key=f"pengembalian:{pengajuan.pk}:status:completed",
                 visible_from=status_visible_from,
                 visible_until=status_visible_from + TRANSACTION_STATUS_PAGE_DURATION,
+                **_source_defaults(pengajuan),
             )
 
 
@@ -480,6 +626,7 @@ def ensure_user_pending_notifications(user):
         return
 
     from apps.peminjaman.models import PeminjamanRequest
+    from apps.pemeliharaan.models import PemeliharaanPengajuan
 
     active_queryset = PeminjamanRequest.objects.select_related(
         "peminjam", "tim_kegiatan", "tim_kegiatan__ketua_tim"
@@ -515,9 +662,37 @@ def ensure_user_pending_notifications(user):
             title=_verification_title(pengajuan),
             message=_verification_message(pengajuan),
             category=NotificationCategory.VERIFICATION,
-            link_url=reverse("verifikasi:detail", args=[pengajuan.pk]),
-            source_pengajuan=pengajuan,
+            link_url=_verification_link(pengajuan),
             dedupe_key=dedupe_key,
+            **_source_defaults(pengajuan),
+        )
+
+    pemeliharaan_queryset = PemeliharaanPengajuan.objects.select_related(
+        "pemohon", "alat"
+    ).filter(
+        current_step__in=[
+            StepPemeliharaanChoices.KEPALA_LAB,
+            StepPemeliharaanChoices.PIMPINAN,
+            StepPemeliharaanChoices.DIKEMBALIKAN,
+        ]
+    ).distinct()
+
+    for pengajuan in pemeliharaan_queryset[:75]:
+        recipients = _verification_recipients(pengajuan)
+        if not any(getattr(recipient, "pk", None) == user.pk for recipient in recipients):
+            continue
+        if _has_visible_current_step_notification(user, pengajuan):
+            continue
+
+        dedupe_key = _verification_dedupe_key(pengajuan)
+        _create_or_update_notification(
+            user,
+            title=_verification_title(pengajuan),
+            message=_verification_message(pengajuan),
+            category=NotificationCategory.VERIFICATION,
+            link_url=_verification_link(pengajuan),
+            dedupe_key=dedupe_key,
+            **_source_defaults(pengajuan),
         )
 
 def get_navbar_notifications(user, limit=5):
