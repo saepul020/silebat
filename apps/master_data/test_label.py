@@ -178,8 +178,10 @@ class MasterLabelTests(TestCase):
 
         self.assertIn("@font-face", css)
         self.assertIn("SilebatLabel", css)
+        self.assertIn("montserrat-label.ttf", css)
         self.assertIn(LABEL_FONT_REGULAR.replace("fonts/", "../fonts/"), css)
         self.assertIn(LABEL_FONT_BOLD.replace("fonts/", "../fonts/"), css)
+        self.assertNotIn("poppins-label", css)
         self.assertIn("width: 50mm", css)
         self.assertIn("height: 20mm", css)
         self.assertIn("grid-template-columns: 30mm 20mm", css)
@@ -204,6 +206,8 @@ class MasterLabelTests(TestCase):
 
         self.assertTrue(regular_path.endswith(LABEL_FONT_REGULAR))
         self.assertTrue(bold_path.endswith(LABEL_FONT_BOLD))
+        self.assertIn("montserrat-label.ttf", regular_path)
+        self.assertIn("montserrat-label.ttf", bold_path)
 
     def test_bulk_label_download_rendered_as_pdf(self):
         self.client.force_login(self.admin)

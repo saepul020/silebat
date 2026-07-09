@@ -34,8 +34,8 @@ PDF_MARGIN_Y_MM = 8
 PDF_LABEL_WIDTH_MM = 50
 PDF_LABEL_HEIGHT_MM = 20
 PDF_SMALL_SCALE = 0.75
-LABEL_FONT_REGULAR = "fonts/poppins-label-regular.ttf"
-LABEL_FONT_BOLD = "fonts/poppins-label-700.ttf"
+LABEL_FONT_REGULAR = "fonts/montserrat-label.ttf"
+LABEL_FONT_BOLD = "fonts/montserrat-label.ttf"
 
 
 def _static_path(relative_path):
@@ -69,7 +69,13 @@ def _font(size, *, bold=False):
 
     for path in candidates:
         if path and Path(path).exists():
-            return ImageFont.truetype(path, size)
+            font = ImageFont.truetype(path, size)
+            if Path(path).name == "montserrat-label.ttf" and hasattr(font, "set_variation_by_axes"):
+                try:
+                    font.set_variation_by_axes([700 if bold else 400])
+                except (OSError, ValueError):
+                    pass
+            return font
     return ImageFont.load_default()
 
 
