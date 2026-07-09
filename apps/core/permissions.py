@@ -1,6 +1,7 @@
 from functools import wraps
 
 from django.contrib import messages
+from django.contrib.auth.views import redirect_to_login
 from django.shortcuts import redirect
 
 ROLE_SUPER_ADMIN = "Super Admin"
@@ -95,6 +96,8 @@ def user_passes_access(test_func, message):
     def decorator(view_func):
         @wraps(view_func)
         def _wrapped(request, *args, **kwargs):
+            if not getattr(request.user, "is_authenticated", False):
+                return redirect_to_login(request.get_full_path())
             if test_func(request.user):
                 return view_func(request, *args, **kwargs)
             return deny_access(request, message)

@@ -1,3 +1,17 @@
+@font-face {
+    font-family: "SilebatLabel";
+    font-style: normal;
+    font-weight: 400;
+    src: url("../fonts/poppins-label-regular.ttf") format("truetype");
+}
+
+@font-face {
+    font-family: "SilebatLabel";
+    font-style: normal;
+    font-weight: 700;
+    src: url("../fonts/poppins-label-700.ttf") format("truetype");
+}
+
 .asset-label,
 .asset-label * {
     box-sizing: border-box;
@@ -8,7 +22,7 @@
     color: #241f1f;
     display: grid;
     flex: 0 0 auto;
-    font-family: Arial, Helvetica, sans-serif;
+    font-family: "SilebatLabel", Arial, Helvetica, sans-serif;
     grid-template-columns: 30mm 20mm;
     height: 20mm;
     overflow: hidden;

@@ -20,11 +20,14 @@ from apps.master_data.models import (
     StatusBarangChoices,
 )
 from apps.master_data.label_utils import (
+    LABEL_FONT_BOLD,
+    LABEL_FONT_REGULAR,
     LEFT_WIDTH,
     PDF_LABEL_HEIGHT_MM,
     PDF_LABEL_WIDTH_MM,
     PX_PER_MM,
     QR_SIZE,
+    _font,
     build_label_pdf,
 )
 
@@ -173,6 +176,10 @@ class MasterLabelTests(TestCase):
     def test_label_css_uses_new_print_scale(self):
         css = Path("static/css/label.css").read_text()
 
+        self.assertIn("@font-face", css)
+        self.assertIn("SilebatLabel", css)
+        self.assertIn(LABEL_FONT_REGULAR.replace("fonts/", "../fonts/"), css)
+        self.assertIn(LABEL_FONT_BOLD.replace("fonts/", "../fonts/"), css)
         self.assertIn("width: 50mm", css)
         self.assertIn("height: 20mm", css)
         self.assertIn("grid-template-columns: 30mm 20mm", css)
@@ -190,6 +197,13 @@ class MasterLabelTests(TestCase):
         self.assertIn("vertical-align: middle", css)
         self.assertIn("min-height: 38px", css)
         self.assertNotIn(".master-preview__qr", css)
+
+    def test_label_generator_uses_bundled_font(self):
+        regular_path = Path(str(getattr(_font(21), "path", ""))).as_posix()
+        bold_path = Path(str(getattr(_font(21, bold=True), "path", ""))).as_posix()
+
+        self.assertTrue(regular_path.endswith(LABEL_FONT_REGULAR))
+        self.assertTrue(bold_path.endswith(LABEL_FONT_BOLD))
 
     def test_bulk_label_download_rendered_as_pdf(self):
         self.client.force_login(self.admin)

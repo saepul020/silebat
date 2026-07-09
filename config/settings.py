@@ -202,6 +202,10 @@ LOGIN_URL = "/login/"
 LOGIN_REDIRECT_URL = "/dashboard/"
 LOGOUT_REDIRECT_URL = "/"
 
+# Idle session timeout: sesi diperpanjang pada setiap request pengguna aktif.
+SESSION_COOKIE_AGE = 2 * 60 * 60
+SESSION_SAVE_EVERY_REQUEST = True
+
 if not DEBUG:
     SECURE_CONTENT_TYPE_NOSNIFF = True
     X_FRAME_OPTIONS = "DENY"

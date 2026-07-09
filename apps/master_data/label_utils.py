@@ -34,11 +34,25 @@ PDF_MARGIN_Y_MM = 8
 PDF_LABEL_WIDTH_MM = 50
 PDF_LABEL_HEIGHT_MM = 20
 PDF_SMALL_SCALE = 0.75
+LABEL_FONT_REGULAR = "fonts/poppins-label-regular.ttf"
+LABEL_FONT_BOLD = "fonts/poppins-label-700.ttf"
+
+
+def _static_path(relative_path):
+    found = finders.find(relative_path)
+    if found:
+        return found
+
+    root = Path(__file__).resolve().parents[2]
+    return str(root / "static" / relative_path)
 
 
 @lru_cache(maxsize=24)
 def _font(size, *, bold=False):
+    bundled = _static_path(LABEL_FONT_BOLD if bold else LABEL_FONT_REGULAR)
     candidates = []
+    if bundled:
+        candidates.append(bundled)
     if Path("C:/Windows/Fonts").exists():
         candidates.extend(
             [
