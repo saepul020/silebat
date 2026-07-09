@@ -1,0 +1,37 @@
+{% load static %}
+<section class="asset-label" aria-label="Label {{ label_data.nama_barang }}">
+    <div class="asset-label__left">
+        <header class="asset-label__header">
+            <div class="asset-label__logo">
+                <img src="{% static 'assets/img/logo-pu.png' %}" alt="Logo PU">
+            </div>
+            <div class="asset-label__agency">
+                <span>KEMENTERIAN PEKERJAAN UMUM</span>
+                <span>LABORATORIUM BALAI AIR TANAH</span>
+            </div>
+        </header>
+
+        <div class="asset-label__body">
+            <div class="asset-label__name">{{ label_data.nama_barang }}</div>
+            <div class="asset-label__type">{{ label_data.tipe_merek_barang }}</div>
+            <div class="asset-label__code">
+                <span>Kode BMN</span>
+                <span>:</span>
+                <span>{{ label_data.kode_aset_bmn }}</span>
+            </div>
+            <div class="asset-label__code">
+                <span>Kode Lab</span>
+                <span>:</span>
+                <span>{{ label_data.kode_laboratorium }}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="asset-label__qr">
+        {% if qr_code_url %}
+            <img src="{{ qr_code_url }}" alt="QR Code {{ label_data.nama_barang }}">
+        {% else %}
+            <span>-</span>
+        {% endif %}
+    </div>
+</section>

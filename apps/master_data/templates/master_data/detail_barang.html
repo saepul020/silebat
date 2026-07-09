@@ -3,6 +3,12 @@
 
 {% block title %}{{ page_title }}{% endblock %}
 
+{% block extra_css %}
+{% if label_url %}
+<link rel="stylesheet" href="{% static 'css/label.css' %}?v=20260709-label-v10">
+{% endif %}
+{% endblock %}
+
 {% block content %}
 <div class="page-header detail-header">
     <div>
@@ -37,26 +43,27 @@
         </div>
     </div>
 
-    {% if qr_code_url %}
-    <div class="detail-qr-panel">
-        <div class="detail-qr-image">
-            <img src="{{ qr_code_url }}" alt="QR Code {{ obj.nama_barang }}">
-        </div>
+    {% if label_url %}
+    <div class="detail-qr-panel detail-qr-panel--stack">
+        <div class="detail-qr-item detail-qr-item--label">
+            <div class="detail-label-preview">
+                {% include 'master_data/label_preview.html' %}
+            </div>
 
-        <div class="detail-qr-info">
-            <h3>QR-Code Barang</h3>
-            <p>Scan QR-Code ini untuk membuka halaman public detail barang.</p>
+            <div class="detail-qr-info">
+                <h3>Label Barang</h3>
+                <p>Preview label siap cetak ukuran 50 mm x 20 mm.</p>
 
-            <div class="detail-qr-actions">
-                <a href="{{ qr_code_url }}" download class="btn btn-secondary">
-                    <i class="bi bi-download"></i>&nbsp;Download QR
-                </a>
-
-                {% if public_detail_url %}
-                <a href="{{ public_detail_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-primary">
-                    <i class="bi bi-box-arrow-up-right"></i>&nbsp;Buka Halaman Public
-                </a>
-                {% endif %}
+                <div class="detail-qr-actions">
+                    <a href="{{ label_download_url }}" download class="btn btn-secondary">
+                        <i class="bi bi-download"></i>&nbsp;Download Label
+                    </a>
+                    {% if qr_code_url %}
+                    <a href="{{ qr_code_url }}" download class="btn btn-secondary">
+                        <i class="bi bi-download"></i>&nbsp;Download QR
+                    </a>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>

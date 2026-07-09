@@ -1,0 +1,63 @@
+<div class="delete-modal bulk-label-modal" id="bulkLabelModal" data-bulk-label-modal>
+    <div class="delete-modal-backdrop" data-bulk-label-close></div>
+
+    <div class="delete-modal-card bulk-label-modal__card" role="dialog" aria-modal="true" aria-labelledby="bulkLabelTitle">
+        <div class="delete-modal-header">
+            <h3 id="bulkLabelTitle">Download Label Barang</h3>
+            <button type="button" class="delete-modal-close" data-bulk-label-close aria-label="Tutup">&times;</button>
+        </div>
+
+        <form method="post" action="{{ bulk_label_url }}" data-bulk-label-form>
+            {% csrf_token %}
+            <div class="delete-modal-body bulk-label-modal__body">
+                <div class="bulk-label-toolbar">
+                    <label class="bulk-label-check">
+                        <input type="checkbox" data-bulk-label-check-all>
+                        <span>Pilih semua</span>
+                    </label>
+                </div>
+
+                <div class="bulk-label-table-wrap">
+                    <table class="table-data bulk-label-table">
+                        <thead>
+                            <tr>
+                                <th>Pilih</th>
+                                <th class="cell-wrap">Nama Barang</th>
+                                <th class="cell-wrap">Tipe / Merek Barang</th>
+                                <th>Ukuran</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in label_items %}
+                            <tr>
+                                <td class="cell-select">
+                                    <input type="checkbox" name="label_items" value="{{ item.pk }}" data-bulk-label-item>
+                                </td>
+                                <td class="cell-wrap">{{ item.nama_barang|default:"-" }}</td>
+                                <td class="cell-wrap">{{ item.tipe_merek_barang|default:"-" }}</td>
+                                <td>
+                                    <select name="label_size_{{ item.pk }}" class="bulk-label-size">
+                                        <option value="normal" selected>Normal</option>
+                                        <option value="kecil">Kecil</option>
+                                    </select>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4"><div class="empty-state">Belum ada data barang untuk dibuat label.</div></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="delete-modal-actions">
+                <button type="button" class="btn btn-secondary" data-bulk-label-close>Batal</button>
+                <button type="submit" class="btn btn-primary" data-bulk-label-submit>
+                    <i class="bi bi-download"></i>&nbsp;Download Label
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

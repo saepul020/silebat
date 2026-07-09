@@ -281,10 +281,14 @@ def build_dashboard_context(request=None, active_limit=None):
     current_year = now.year
     current_month = now.month
 
-    completed_count = approved_peminjaman_qs.filter(
+    current_year_peminjaman_qs = approved_peminjaman_qs.filter(
+        dashboard_approved_at__year=current_year,
+    )
+
+    completed_count = current_year_peminjaman_qs.filter(
         return_current_step=ReturnStepChoices.COMPLETED,
     ).count()
-    ongoing_count = approved_peminjaman_qs.exclude(
+    ongoing_count = current_year_peminjaman_qs.exclude(
         return_current_step=ReturnStepChoices.COMPLETED,
     ).count()
 

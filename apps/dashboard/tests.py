@@ -1,10 +1,11 @@
-from datetime import date
+from datetime import date, datetime
 from io import BytesIO
 import json
 from unittest.mock import patch
 
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 from openpyxl import load_workbook
 
 from apps.master_data.models import (
@@ -15,10 +16,19 @@ from apps.master_data.models import (
     KategoriBarangPenunjangChoices,
     StatusBarangChoices,
 )
-from apps.peminjaman.models import PeminjamanBarangLaboratorium, PeminjamanRequest, StepChoices
+from apps.peminjaman.models import (
+    PeminjamanBarangLaboratorium,
+    PeminjamanRequest,
+    ReturnStepChoices,
+    StepChoices,
+)
 from apps.pengguna.models import Role, User
 
-from apps.dashboard.views import build_inventory_chart_context, build_survey_equipment_chart
+from apps.dashboard.views import (
+    build_dashboard_context,
+    build_inventory_chart_context,
+    build_survey_equipment_chart,
+)
 
 
 class DashboardInventoryChartTests(TestCase):
@@ -175,6 +185,47 @@ class DashboardSurveyEquipmentChartTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'id="grafikPeralatanSurvei"')
         self.assertEqual(response.context["survey_equipment_chart"]["rows"][0]["total"], 1)
+
+
+class DashboardPeminjamanStatsTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="dashboard-stats-user",
+            password="test-pass-123",
+        )
+
+    def _approved_request(self, *, year, return_step=ReturnStepChoices.NONE):
+        approved_at = timezone.make_aware(datetime(year, 6, 1, 10, 0))
+        return PeminjamanRequest.objects.create(
+            peminjam=self.user,
+            nama_peminjam=f"Stats User {year}",
+            tanggal_mulai=date(year, 6, 1),
+            tanggal_selesai=date(year, 6, 2),
+            current_step=StepChoices.APPROVED,
+            pimpinan_at=approved_at,
+            return_current_step=return_step,
+        )
+
+    def test_dashboard_stats_hanya_menghitung_peminjaman_tahun_berjalan(self):
+        current_year = timezone.localtime().year
+        previous_year = current_year - 1
+
+        self._approved_request(
+            year=current_year,
+            return_step=ReturnStepChoices.COMPLETED,
+        )
+        self._approved_request(year=current_year)
+        self._approved_request(
+            year=previous_year,
+            return_step=ReturnStepChoices.COMPLETED,
+        )
+        self._approved_request(year=previous_year)
+
+        context = build_dashboard_context()
+
+        self.assertEqual(context["dashboard_stats"]["completed_count"], 1)
+        self.assertEqual(context["dashboard_stats"]["ongoing_count"], 1)
+        self.assertEqual(context["dashboard_stats"]["total_count"], 2)
 
 
 class DashboardChartExportTests(TestCase):

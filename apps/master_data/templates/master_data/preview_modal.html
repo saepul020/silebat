@@ -1,0 +1,59 @@
+{% load static %}
+<div class="delete-modal master-preview-modal" id="masterPreviewModal" data-master-preview-modal>
+    <div class="delete-modal-backdrop" data-master-preview-close></div>
+
+    <div class="delete-modal-card master-preview-modal__card" role="dialog" aria-modal="true" aria-labelledby="masterPreviewTitle">
+        <div class="delete-modal-header">
+            <h3 id="masterPreviewTitle" data-master-preview-title>Preview</h3>
+            <button type="button" class="delete-modal-close" data-master-preview-close aria-label="Tutup">&times;</button>
+        </div>
+
+        <div class="delete-modal-body master-preview-modal__body">
+            <div class="master-preview master-preview--label" data-master-preview-section="label">
+                <section class="asset-label" aria-label="Preview label barang">
+                    <div class="asset-label__left">
+                        <header class="asset-label__header">
+                            <div class="asset-label__logo">
+                                <img src="{% static 'assets/img/logo-pu.png' %}" alt="Logo PU">
+                            </div>
+                            <div class="asset-label__agency">
+                                <span>KEMENTERIAN PEKERJAAN UMUM</span>
+                                <span>LABORATORIUM BALAI AIR TANAH</span>
+                            </div>
+                        </header>
+
+                        <div class="asset-label__body">
+                            <div class="asset-label__name" data-master-label-name>-</div>
+                            <div class="asset-label__type" data-master-label-type>-</div>
+                            <div class="asset-label__code">
+                                <span>Kode BMN</span>
+                                <span>:</span>
+                                <span data-master-label-bmn>-</span>
+                            </div>
+                            <div class="asset-label__code">
+                                <span>Kode Lab</span>
+                                <span>:</span>
+                                <span data-master-label-lab>-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="asset-label__qr">
+                        <img src="" alt="" data-master-label-qr>
+                        <span data-master-label-qr-empty>-</span>
+                    </div>
+                </section>
+            </div>
+        </div>
+
+        <div class="delete-modal-actions">
+            <a href="#" download class="btn btn-secondary" data-master-preview-download>
+                <i class="bi bi-download"></i>&nbsp;<span data-master-preview-download-label>Download</span>
+            </a>
+            <a href="#" download class="btn btn-secondary" data-master-preview-qr-download>
+                <i class="bi bi-download"></i>&nbsp;Download QR
+            </a>
+            <button type="button" class="btn btn-primary" data-master-preview-close>Tutup</button>
+        </div>
+    </div>
+</div>

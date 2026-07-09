@@ -1,7 +1,11 @@
 {% extends 'base.html' %}
-{% load master_tags %}
+{% load static master_tags %}
 
 {% block title %}Data Sarana Prasarana Ruangan{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/label.css' %}?v=20260709-label-v10">
+{% endblock %}
 
 {% block content %}
 <div class="page-header">
@@ -13,6 +17,9 @@
     <div class="table-toolbar">
         <h3 class="table-title">Daftar Sarana Prasarana Ruangan</h3>
         <div class="table-toolbar-actions">
+            <button type="button" class="btn btn-secondary" data-bulk-label-open>
+                <i class="bi bi-tags"></i>&nbsp;Download Label
+            </button>
             {% if role_access.can_export_master_data %}
                 <a href="{% url 'master_data:export_fasilitas_ruangan' %}" class="btn btn-secondary">
                     <i class="bi bi-download"></i>&nbsp;Export Data
@@ -66,14 +73,13 @@
                     <td class="cell-wrap">{{ item.lokasi_barang|display_dash }}</td>
                     <td class="cell-action">
                         <div class="table-action-group">
-                            {% if item.qr_code %}
-                            <a href="{{ item.qr_code.url }}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" title="Lihat QR-Code">
-                                <i class="bi bi-qr-code"></i>
-                            </a>
-                            {% endif %}
                             <a href="{{ item.get_public_detail_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" title="Buka Detail Public">
                                 <i class="bi bi-box-arrow-up-right"></i>
                             </a>
+                            {% url 'master_data:label_fasilitas_ruangan' item.pk as label_url %}
+                            <button type="button" class="btn btn-secondary btn-sm" title="Lihat Label" data-master-preview-open="label" data-preview-title="Label {{ item.nama_barang|display_dash }}" data-preview-download="{{ label_url }}" data-label-name="{{ item.nama_barang|display_dash }}" data-label-type="{{ item.tipe_merek_barang|display_dash }}" data-label-bmn="{{ item.kode_aset_bmn|display_dash }}" data-label-lab="{{ item.kode_laboratorium|display_dash }}" data-label-qr="{% if item.qr_code %}{{ item.qr_code.url }}{% endif %}">
+                                <i class="bi bi-tag"></i>
+                            </button>
                             <a href="{% url 'master_data:detail_fasilitas_ruangan' item.pk %}" class="btn btn-secondary btn-sm"><i class="bi bi-eye-fill"></i></a>
                             {% if role_access.can_manage_master_data %}
                             <a href="{% url 'master_data:edit_fasilitas_ruangan' item.pk %}?next={{ request.get_full_path|urlencode }}" class="btn btn-warning btn-sm"><i class="bi bi-pencil-square"></i></a>
@@ -100,6 +106,9 @@
     {% url 'master_data:download_format_import_fasilitas_ruangan' as import_download_url %}
     {% include 'components/import_modal.html' with import_context=import_context import_modal_id='fasilitasRuanganImportModal' import_file_id='fasilitasRuanganImportFile' import_title='Import Data Sarana Prasarana Ruangan' import_action_url=import_action_url import_download_url=import_download_url import_help_text='Gunakan file .xlsx maksimal 7 MB. Data duplikat pada Kode Aset BMN dan Kode Laboratorium akan ditolak.' %}
 {% endif %}
+
+{% include 'master_data/preview_modal.html' %}
+{% include 'master_data/bulk_modal.html' %}
 
 {% if role_access.can_manage_master_data %}
 <div class="delete-modal" id="masterDeleteModal">
@@ -134,4 +143,8 @@
 </div>
 {% endif %}
 
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/label.js' %}?v=20260709-label-v4" defer></script>
 {% endblock %}

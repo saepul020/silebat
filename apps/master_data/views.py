@@ -23,7 +23,9 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.utils.formats import date_format
+from django.utils.text import slugify
 from django.urls import reverse
+from django.views.decorators.http import require_POST
 
 from .forms import (
     BahanOperasionalForm,
@@ -34,6 +36,7 @@ from .forms import (
     normalize_komponen,
     validate_komponen,
 )
+from .label_utils import build_label_pdf, build_label_png
 from .models import (
     BahanOperasional,
     BarangLaboratorium,
@@ -664,8 +667,10 @@ def _build_detail_context(
     loan_chart=None,
     top_icon="bi-box-seam",
     photo_attr="foto_barang",
+    label_url_name=None,
 ):
     ensure_master_qr_code(obj)
+    label_url = reverse(label_url_name, args=[obj.pk]) if label_url_name else None
     return {
         "obj": obj,
         "page_title": page_title,
@@ -685,7 +690,113 @@ def _build_detail_context(
         "public_detail_url": obj.get_public_detail_url()
         if hasattr(obj, "get_public_detail_url")
         else None,
+        "label_url": label_url,
+        "label_download_url": label_url,
+        "label_data": _build_label_data(obj) if label_url else None,
     }
+
+
+def _label_value(value):
+    text = str(value or "").strip()
+    return text if text else "-"
+
+
+def _build_label_data(obj):
+    return {
+        "nama_barang": _label_value(getattr(obj, "nama_barang", "")),
+        "tipe_merek_barang": _label_value(getattr(obj, "tipe_merek_barang", "")),
+        "kode_aset_bmn": _label_value(getattr(obj, "kode_aset_bmn", "")),
+        "kode_laboratorium": _label_value(getattr(obj, "kode_laboratorium", "")),
+    }
+
+
+def _label_download_filename(obj):
+    code = _label_value(getattr(obj, "kode_laboratorium", ""))
+    name = _label_value(getattr(obj, "nama_barang", ""))
+    slug = slugify(f"{code}-{name}") or f"barang-{obj.pk}"
+    return f"label-{slug}.png"
+
+
+def _render_label(request, *, obj):
+    ensure_master_qr_code(obj)
+    image_content = build_label_png(obj, _build_label_data(obj))
+    response = HttpResponse(image_content, content_type="image/png")
+    response["Content-Disposition"] = (
+        f'attachment; filename="{_label_download_filename(obj)}"'
+    )
+    return response
+
+
+def _bulk_label_filename(label):
+    slug = slugify(label) or "barang"
+    return f"label-{slug}.pdf"
+
+
+LABEL_ITEM_FIELDS = (
+    "id",
+    "nama_barang",
+    "tipe_merek_barang",
+    "kode_aset_bmn",
+    "kode_laboratorium",
+    "qr_code",
+    "qr_token",
+)
+
+
+def _label_item_queryset(queryset):
+    return queryset.only("id", "nama_barang", "tipe_merek_barang")
+
+
+def _label_download_queryset(queryset):
+    return queryset.only(*LABEL_ITEM_FIELDS)
+
+
+def _parse_label_selection(request, queryset):
+    selected_ids = []
+    for raw_value in request.POST.getlist("label_items"):
+        try:
+            selected_ids.append(int(raw_value))
+        except (TypeError, ValueError):
+            continue
+
+    if not selected_ids:
+        return []
+
+    objects = {
+        obj.pk: obj
+        for obj in queryset.filter(pk__in=selected_ids)
+    }
+    entries = []
+    for pk in selected_ids:
+        obj = objects.get(pk)
+        if obj is None:
+            continue
+
+        size = request.POST.get(f"label_size_{pk}", "normal")
+        if size not in {"normal", "kecil"}:
+            size = "normal"
+        ensure_master_qr_code(obj)
+        entries.append(
+            {
+                "obj": obj,
+                "size": size,
+                "image": build_label_png(obj, _build_label_data(obj)),
+            }
+        )
+    return entries
+
+
+def _render_bulk_label(request, *, queryset, label, redirect_to):
+    entries = _parse_label_selection(request, queryset)
+    if not entries:
+        messages.error(request, "Pilih minimal satu label barang untuk didownload.")
+        return redirect(redirect_to)
+
+    response = HttpResponse(build_label_pdf(entries), content_type="application/pdf")
+    response["Content-Disposition"] = (
+        f'attachment; filename="{_bulk_label_filename(label)}"'
+    )
+    return response
 
 
 def _render_public_master_detail(
@@ -740,6 +851,8 @@ def _render_barang_laboratorium_list(request, import_context=None):
             "page_title": "Data Peralatan Survei Lapangan",
             "page_subtitle": "Kelola peralatan survei lapangan.",
             "import_context": import_context or {},
+            "label_items": _label_item_queryset(queryset),
+            "bulk_label_url": reverse("master_data:bulk_label_barang_laboratorium"),
         }
     )
     return render(request, "master_data/survei_list.html", context)
@@ -748,6 +861,17 @@ def _render_barang_laboratorium_list(request, import_context=None):
 @login_required
 def data_barang_laboratorium(request):
     return _render_barang_laboratorium_list(request)
+
+
+@login_required
+@require_POST
+def bulk_label_barang_laboratorium(request):
+    return _render_bulk_label(
+        request,
+        queryset=_label_download_queryset(BarangLaboratorium.objects.order_by("nama_barang")),
+        label="peralatan-survei-lapangan",
+        redirect_to="master_data:data_barang_laboratorium",
+    )
 
 
 @login_required
@@ -2299,8 +2423,15 @@ def detail_barang_laboratorium(request, pk):
             label="Peralatan Survei Lapangan",
         ),
         top_icon="bi-tools",
+        label_url_name="master_data:label_barang_laboratorium",
     )
     return render(request, "master_data/detail_barang.html", context)
+
+
+@login_required
+def label_barang_laboratorium(request, pk):
+    obj = get_object_or_404(BarangLaboratorium, pk=pk)
+    return _render_label(request, obj=obj)
 
 
 @login_required
@@ -2488,6 +2619,8 @@ def _render_fasilitas_ruangan_list(request, import_context=None):
             "page_title": "Data Sarana Prasarana Ruangan",
             "page_subtitle": "Kelola sarana prasarana ruangan Laboratorium.",
             "import_context": import_context or {},
+            "label_items": _label_item_queryset(queryset),
+            "bulk_label_url": reverse("master_data:bulk_label_fasilitas_ruangan"),
         }
     )
     return render(request, "master_data/fasilitas_list.html", context)
@@ -2496,6 +2629,17 @@ def _render_fasilitas_ruangan_list(request, import_context=None):
 @login_required
 def data_fasilitas_ruangan(request):
     return _render_fasilitas_ruangan_list(request)
+
+
+@login_required
+@require_POST
+def bulk_label_fasilitas_ruangan(request):
+    return _render_bulk_label(
+        request,
+        queryset=_label_download_queryset(FasilitasRuangan.objects.order_by("nama_barang")),
+        label="sarana-prasarana-ruangan",
+        redirect_to="master_data:data_fasilitas_ruangan",
+    )
 
 
 @login_required
@@ -2546,8 +2690,15 @@ def detail_fasilitas_ruangan(request, pk):
             *([] if obj.volume_manual else [_komponen_detail_item(obj)]),
         ],
         top_icon="bi-building",
+        label_url_name="master_data:label_fasilitas_ruangan",
     )
     return render(request, "master_data/detail_barang.html", context)
+
+
+@login_required
+def label_fasilitas_ruangan(request, pk):
+    obj = get_object_or_404(FasilitasRuangan, pk=pk)
+    return _render_label(request, obj=obj)
 
 
 @login_required
@@ -2604,6 +2755,8 @@ def _render_peralatan_laboratorium_list(request, import_context=None):
             "page_title": "Data Peralatan Laboratorium",
             "page_subtitle": "Kelola peralatan laboratorium.",
             "import_context": import_context or {},
+            "label_items": _label_item_queryset(queryset),
+            "bulk_label_url": reverse("master_data:bulk_label_peralatan_laboratorium"),
         }
     )
     return render(request, "master_data/peralatan_list.html", context)
@@ -2612,6 +2765,17 @@ def _render_peralatan_laboratorium_list(request, import_context=None):
 @login_required
 def data_peralatan_laboratorium(request):
     return _render_peralatan_laboratorium_list(request)
+
+
+@login_required
+@require_POST
+def bulk_label_peralatan_laboratorium(request):
+    return _render_bulk_label(
+        request,
+        queryset=_label_download_queryset(PeralatanLaboratorium.objects.order_by("nama_barang")),
+        label="peralatan-laboratorium",
+        redirect_to="master_data:data_peralatan_laboratorium",
+    )
 
 
 @login_required
@@ -2637,8 +2801,15 @@ def detail_peralatan_laboratorium(request, pk):
             label="Peralatan Laboratorium",
         ),
         top_icon="bi-pc-display",
+        label_url_name="master_data:label_peralatan_laboratorium",
     )
     return render(request, "master_data/detail_barang.html", context)
+
+
+@login_required
+def label_peralatan_laboratorium(request, pk):
+    obj = get_object_or_404(PeralatanLaboratorium, pk=pk)
+    return _render_label(request, obj=obj)
 
 
 @login_required
