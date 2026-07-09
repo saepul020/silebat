@@ -26,6 +26,7 @@ BODY_PAD_BOTTOM = int(0.8 * PX_PER_MM)
 CODE_LABEL_WIDTH = 10 * PX_PER_MM
 CODE_COLON_WIDTH = int(1 * PX_PER_MM)
 CODE_GAP = int(0.3 * PX_PER_MM)
+CODE_ROW_GAP = int(0.35 * PX_PER_MM)
 LABELS_PER_PAGE = 40
 PDF_COLUMNS = 5
 PDF_ROWS = 8
@@ -209,13 +210,14 @@ def build_label_png(obj, label_data):
         "code": _font(21),
     }
     name_lines = _wrap_text(draw, label_data["nama_barang"], fonts["name"], text_max_width, 2)
+    code_line_height = 22
     code_rows = [
-        ("Kode BMN", label_data["kode_aset_bmn"], 22, 0),
-        ("Kode Lab", label_data["kode_laboratorium"], 22, 0),
+        ("Kode BMN", label_data["kode_aset_bmn"], code_line_height, CODE_ROW_GAP),
+        ("Kode Lab", label_data["kode_laboratorium"], code_line_height, 0),
     ]
     body_content_height = BODY_HEIGHT - BODY_PAD_TOP - BODY_PAD_BOTTOM
     title_height = 25 * len(name_lines)
-    total_text_height = title_height + 6 + 21 + 18 + 44
+    total_text_height = title_height + 6 + 21 + 18 + (code_line_height * len(code_rows)) + CODE_ROW_GAP
     text_y = body_top + BODY_PAD_TOP + max((body_content_height - total_text_height) // 2, 0)
     for line in name_lines:
         _draw_text_top(draw, (body_left, text_y), line, fill=black, font=fonts["name"])

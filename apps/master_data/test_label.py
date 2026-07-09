@@ -188,6 +188,7 @@ class MasterLabelTests(TestCase):
         self.assertIn("grid-template-rows: 6mm 14mm", css)
         self.assertIn("grid-template-columns: 5.2mm minmax(0, 1fr)", css)
         self.assertIn("grid-template-columns: 10mm 1mm minmax(0, 1fr)", css)
+        self.assertIn("margin-top: 0.35mm", css)
         self.assertIn("text-overflow: clip", css)
         self.assertIn("font-size: 3.5pt", css)
         self.assertIn("font-size: 5pt", css)
