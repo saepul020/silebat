@@ -850,6 +850,8 @@ class BarangLaboratoriumForm(KomponenFormMixin, AssetBaseForm):
 
 
 class VolumeBaikAssetFormMixin:
+    require_non_bmn_auto_metadata = True
+
     total_volume_info = forms.IntegerField(
         label="Total Volume", required=False, disabled=True, min_value=0
     )
@@ -1077,7 +1079,12 @@ class VolumeBaikAssetFormMixin:
         else:
             kondisi_field.widget.attrs.pop("required", None)
 
-        metadata_required = is_ready and not is_manual
+        non_bmn_auto_metadata_required = (
+            is_non_bmn
+            and volume_choice is False
+            and self.require_non_bmn_auto_metadata
+        )
+        metadata_required = is_bmn or non_bmn_auto_metadata_required
         self._set_required_state(
             ["kode_laboratorium", "lokasi_barang"], metadata_required
         )
@@ -1095,6 +1102,9 @@ class VolumeBaikAssetFormMixin:
             field = self.fields.get(field_name)
             if field:
                 field.widget.attrs["data-volume-metadata"] = "true"
+                field.widget.attrs["data-non-bmn-auto-required"] = (
+                    "true" if self.require_non_bmn_auto_metadata else "false"
+                )
 
     def clean(self):
         cleaned_data = super().clean()
@@ -1242,6 +1252,8 @@ class FasilitasRuanganForm(
 class PeralatanLaboratoriumForm(
     KomponenFormMixin, VolumeBaikAssetFormMixin, AssetBaseForm
 ):
+    require_non_bmn_auto_metadata = False
+
     total_volume_info = forms.IntegerField(
         label="Total Volume", required=False, disabled=True, min_value=0
     )

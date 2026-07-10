@@ -79,6 +79,41 @@ class VolumeAssetFormTests(TestCase):
             ["Pembersihan", "Pemeriksaan baut"],
         )
 
+    def test_edit_peralatan_lab_non_bmn_tidak_saves_without_manual_metadata(self):
+        obj = PeralatanLaboratorium.objects.create(
+            status_barang=StatusBarangChoices.NON_BMN,
+            bervolume=True,
+            nama_barang="Alat Manual Lama",
+            tipe_merek_barang="Merek Lama",
+            jenis_barang="Alat",
+            satuan="Unit",
+            volume=8,
+            volume_rusak=2,
+        )
+
+        form = PeralatanLaboratoriumForm(
+            data=self._base_data(
+                bervolume="false",
+                nama_barang=obj.nama_barang,
+                tipe_merek_barang=obj.tipe_merek_barang,
+                jenis_barang=obj.jenis_barang,
+                satuan=obj.satuan,
+                kondisi_barang=KondisiBarangChoices.RUSAK,
+                komponen_pemeliharaan=["Pemeriksaan"],
+            ),
+            instance=obj,
+        )
+
+        self.assertTrue(form.is_valid(), form.errors)
+        saved = form.save()
+        self.assertFalse(saved.bervolume)
+        self.assertEqual(saved.volume, 0)
+        self.assertEqual(saved.volume_rusak, 1)
+        self.assertEqual(saved.kondisi_barang, KondisiBarangChoices.RUSAK)
+        self.assertEqual(saved.kode_laboratorium, "")
+        self.assertEqual(saved.lokasi_barang, "")
+        self.assertEqual(saved.komponen_pemeliharaan, ["Pemeriksaan"])
+
     def test_bmn_menyimpan_komponen_pemeliharaan(self):
         form = PeralatanLaboratoriumForm(
             data=self._base_data(
