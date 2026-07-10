@@ -2237,8 +2237,7 @@ function initMasterDataFormBehavior() {
             }
             setFieldDisabledState(field, !isUnlocked || isManual || alwaysDisabledFieldIds.has(field.id));
             if (['id_kode_laboratorium', 'id_lokasi_barang'].includes(field.id)) {
-                const requiresNonBmnAutoMetadata = field.getAttribute('data-non-bmn-auto-required') === 'true';
-                field.required = isUnlocked && !isManual && (isBmnStatus() || requiresNonBmnAutoMetadata);
+                field.required = isUnlocked && !isManual && isBmnStatus();
                 field.toggleAttribute('required', field.required);
             }
         });

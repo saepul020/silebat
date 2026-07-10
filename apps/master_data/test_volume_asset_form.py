@@ -79,6 +79,34 @@ class VolumeAssetFormTests(TestCase):
             ["Pembersihan", "Pemeriksaan baut"],
         )
 
+    def test_tambah_non_bmn_tidak_saves_volume_choice_without_metadata(self):
+        cases = (
+            (FasilitasRuanganForm, {"kategori_barang": "Fasilitas Ruangan"}),
+            (PeralatanLaboratoriumForm, {}),
+        )
+
+        for form_class, extra_data in cases:
+            with self.subTest(form_class=form_class.__name__):
+                form = form_class(
+                    data=self._base_data(
+                        bervolume="false",
+                        kondisi_barang=KondisiBarangChoices.BAIK,
+                        komponen_pemeliharaan=["Pemeriksaan"],
+                        **extra_data,
+                    )
+                )
+
+                self.assertTrue(form.is_valid(), form.errors)
+                obj = form.save()
+                self.assertFalse(obj.bervolume)
+                self.assertEqual(obj.volume, 1)
+                self.assertEqual(obj.volume_rusak, 0)
+                self.assertEqual(obj.kondisi_barang, KondisiBarangChoices.BAIK)
+                self.assertEqual(obj.kode_laboratorium, "")
+                self.assertIsNone(obj.tahun_perolehan)
+                self.assertEqual(obj.lokasi_barang, "")
+                self.assertEqual(obj.komponen_pemeliharaan, ["Pemeriksaan"])
+
     def test_edit_peralatan_lab_non_bmn_tidak_saves_without_manual_metadata(self):
         obj = PeralatanLaboratorium.objects.create(
             status_barang=StatusBarangChoices.NON_BMN,
