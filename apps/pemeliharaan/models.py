@@ -22,6 +22,9 @@ class StepPemeliharaanChoices(models.TextChoices):
     DRAFT = "draft", "Draft"
     KEPALA_LAB = "kepala_lab", "Verifikasi Pemeliharaan - Kepala Lab"
     PIMPINAN = "pimpinan", "Verifikasi Pemeliharaan - Ketua Tim Layanan Teknis"
+    VENDOR_DRAFT = "vendor_draft", "Input Data Vendor"
+    VENDOR_KEPALA_LAB = "vendor_kepala_lab", "Verifikasi Data Vendor - Kepala Lab"
+    VENDOR_PIMPINAN = "vendor_pimpinan", "Verifikasi Data Vendor - Ketua Tim Layanan Teknis"
     SELESAI = "selesai", "Selesai"
     DITOLAK = "ditolak", "Ditolak"
     DIKEMBALIKAN = "dikembalikan", "Dikembalikan ke Pemohon"
@@ -31,6 +34,9 @@ ACTIVE_PEMELIHARAAN_STEPS = (
     StepPemeliharaanChoices.DRAFT,
     StepPemeliharaanChoices.KEPALA_LAB,
     StepPemeliharaanChoices.PIMPINAN,
+    StepPemeliharaanChoices.VENDOR_DRAFT,
+    StepPemeliharaanChoices.VENDOR_KEPALA_LAB,
+    StepPemeliharaanChoices.VENDOR_PIMPINAN,
     StepPemeliharaanChoices.DIKEMBALIKAN,
 )
 FINAL_PEMELIHARAAN_STEPS = (
@@ -179,7 +185,7 @@ class PemeliharaanPengajuan(models.Model):
 
     @property
     def jenis_pengajuan_label(self):
-        return "Pemeliharaan"
+        return "Perbaikan" if self.perlu_perbaikan else "Pemeliharaan"
 
     @property
     def status_label(self):
@@ -191,6 +197,9 @@ class PemeliharaanPengajuan(models.Model):
             StepPemeliharaanChoices.DRAFT: "badge-secondary",
             StepPemeliharaanChoices.KEPALA_LAB: "badge-warning",
             StepPemeliharaanChoices.PIMPINAN: "badge-warning",
+            StepPemeliharaanChoices.VENDOR_DRAFT: "badge-warning",
+            StepPemeliharaanChoices.VENDOR_KEPALA_LAB: "badge-warning",
+            StepPemeliharaanChoices.VENDOR_PIMPINAN: "badge-warning",
             StepPemeliharaanChoices.SELESAI: "badge-success",
             StepPemeliharaanChoices.DITOLAK: "badge-danger",
             StepPemeliharaanChoices.DIKEMBALIKAN: "badge-danger",
@@ -218,6 +227,11 @@ class PemeliharaanPengajuan(models.Model):
 
     @property
     def selesai_at(self):
+        try:
+            if self.vendor.pimpinan_at:
+                return self.vendor.pimpinan_at
+        except PemeliharaanVendor.DoesNotExist:
+            pass
         return self.pimpinan_at or self.kepala_lab_at or self.updated_at
 
     @property
@@ -251,9 +265,19 @@ class PemeliharaanPengajuan(models.Model):
         ).exists()
 
     @property
+    def has_vendor_data(self):
+        try:
+            return bool(self.vendor.pk)
+        except PemeliharaanVendor.DoesNotExist:
+            return False
+
+    @property
     def alur_label(self):
         if self.perlu_pimpinan:
-            return "Kepala Lab > Ketua Tim Layanan Teknis > Selesai"
+            return (
+                "Kepala Lab > Ketua Tim Layanan Teknis > Input Data Vendor > "
+                "Kepala Lab > Ketua Tim Layanan Teknis > Selesai"
+            )
         return "Kepala Lab > Selesai"
 
     @property
@@ -359,30 +383,44 @@ class PemeliharaanPengajuan(models.Model):
             self.tandai_alat_dalam_pemeliharaan()
             alat.refresh_from_db()
 
-        update_fields = ["tanggal_pemeliharaan"]
-        tanggal_pemeriksaan = self.tanggal_pemeriksaan or timezone.now()
-        alat.tanggal_pemeliharaan = timezone.localdate(tanggal_pemeriksaan)
-
-        has_repair = False
-        selesai_mandiri = []
         prefetched_items = getattr(self, "_prefetched_objects_cache", {}).get("items")
-        items = prefetched_items if prefetched_items is not None else self.items.all()
-        for item in items:
-            if item.perlu_perbaikan:
-                has_repair = True
-            if item.tindakan_perbaikan != TindakanPerbaikanChoices.MANDIRI:
-                continue
-            if item.tanggal_selesai_perbaikan:
-                selesai_mandiri.append(item.tanggal_selesai_perbaikan)
+        items = list(
+            prefetched_items if prefetched_items is not None else self.items.all()
+        )
+        repair_items = [
+            item
+            for item in items
+            if item.kondisi == KondisiPemeliharaanChoices.PERLU_PERBAIKAN
+        ]
+        if not repair_items:
+            tanggal_pemeriksaan = self.tanggal_pemeriksaan or timezone.now()
+            alat.tanggal_pemeliharaan = timezone.localdate(tanggal_pemeriksaan)
+            alat.save(update_fields=["tanggal_pemeliharaan"])
+            return
 
-        if selesai_mandiri:
-            alat.tanggal_perbaikan = timezone.localdate(max(selesai_mandiri))
-            update_fields.append("tanggal_perbaikan")
-        elif has_repair:
-            alat.tanggal_perbaikan = timezone.localdate()
-            update_fields.append("tanggal_perbaikan")
+        has_external = any(
+            item.tindakan_perbaikan == TindakanPerbaikanChoices.EKSTERNAL
+            for item in repair_items
+        )
+        tanggal_perbaikan = None
+        if has_external:
+            try:
+                tanggal_perbaikan = self.vendor.tanggal_selesai
+            except PemeliharaanVendor.DoesNotExist:
+                pass
+        else:
+            selesai_mandiri = [
+                timezone.localdate(item.tanggal_selesai_perbaikan)
+                for item in repair_items
+                if item.tindakan_perbaikan == TindakanPerbaikanChoices.MANDIRI
+                and item.tanggal_selesai_perbaikan
+            ]
+            if selesai_mandiri:
+                tanggal_perbaikan = max(selesai_mandiri)
 
-        alat.save(update_fields=update_fields)
+        if tanggal_perbaikan:
+            alat.tanggal_perbaikan = tanggal_perbaikan
+            alat.save(update_fields=["tanggal_perbaikan"])
 
     def pulihkan_data_alat_awal(self, alat=None):
         alat = alat or self.alat
@@ -461,6 +499,58 @@ class PemeliharaanItem(models.Model):
     @property
     def is_eksternal(self):
         return self.tindakan_perbaikan == TindakanPerbaikanChoices.EKSTERNAL
+
+
+class PemeliharaanVendor(models.Model):
+    pengajuan = models.OneToOneField(
+        PemeliharaanPengajuan,
+        on_delete=models.CASCADE,
+        related_name="vendor",
+    )
+    nama_vendor = models.CharField(max_length=200)
+    nama_pic = models.CharField(max_length=200)
+    nomor_hp_pic = models.CharField(max_length=30)
+    alamat = models.TextField()
+    tanggal_mulai = models.DateField()
+    tanggal_selesai = models.DateField()
+    submitted_at = models.DateTimeField(null=True, blank=True)
+    kepala_lab_status = models.CharField(
+        max_length=20,
+        choices=KeputusanPemeliharaanChoices.choices,
+        default=KeputusanPemeliharaanChoices.PENDING,
+    )
+    kepala_lab_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="kepala_lab_vendor_pemeliharaan_processed",
+    )
+    kepala_lab_at = models.DateTimeField(null=True, blank=True)
+    kepala_lab_note = models.TextField(blank=True)
+    pimpinan_status = models.CharField(
+        max_length=20,
+        choices=KeputusanPemeliharaanChoices.choices,
+        default=KeputusanPemeliharaanChoices.PENDING,
+    )
+    pimpinan_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="pimpinan_vendor_pemeliharaan_processed",
+    )
+    pimpinan_at = models.DateTimeField(null=True, blank=True)
+    pimpinan_note = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Data Vendor Perbaikan"
+        verbose_name_plural = "Data Vendor Perbaikan"
+
+    def __str__(self):
+        return f"{self.pengajuan} - {self.nama_vendor}"
 
 
 class PemeliharaanFoto(models.Model):

@@ -16,13 +16,19 @@ from apps.core.permissions import (
     get_role_name,
 )
 from apps.notifikasi.services import sync_transaction_notifications
-from .forms import PemeliharaanForm, format_display_date, get_available_alat_queryset
+from .forms import (
+    PemeliharaanForm,
+    PemeliharaanVendorForm,
+    format_display_date,
+    get_available_alat_queryset,
+)
 from .models import (
     ACTIVE_PEMELIHARAAN_STEPS,
     FINAL_PEMELIHARAAN_STEPS,
     JenisFotoPemeliharaanChoices,
     KeputusanPemeliharaanChoices,
     PemeliharaanPengajuan,
+    PemeliharaanVendor,
     StepPemeliharaanChoices,
 )
 from .pdf_utils import render_pemeliharaan_pdf
@@ -78,6 +84,21 @@ def _can_edit_pengajuan(user, obj):
     return _can_submit_pengajuan(user, obj)
 
 
+def _can_input_vendor(user, obj):
+    role_name = get_role_name(user)
+    if (
+        role_name not in PEMELIHARAAN_INPUT_ROLES
+        or obj.current_step != StepPemeliharaanChoices.VENDOR_DRAFT
+        or not obj.perlu_pimpinan
+    ):
+        return False
+    return role_name == ROLE_SUPER_ADMIN or obj.pemohon_id == getattr(user, "id", None)
+
+
+def _can_submit_vendor(user, obj):
+    return _can_input_vendor(user, obj) and obj.has_vendor_data
+
+
 def _get_pengajuan_queryset():
     return (
         PemeliharaanPengajuan.objects.select_related(
@@ -85,6 +106,9 @@ def _get_pengajuan_queryset():
             "alat",
             "kepala_lab_by",
             "pimpinan_by",
+            "vendor",
+            "vendor__kepala_lab_by",
+            "vendor__pimpinan_by",
         )
         .prefetch_related("items__fotos", "timeline_entries__actor")
         .order_by("-tanggal_pemeriksaan", "-id")
@@ -213,6 +237,8 @@ def daftar_pengajuan(request):
     for item in pagination_context["items"]:
         item.can_kirim = _can_submit_pengajuan(request.user, item)
         item.can_edit = _can_edit_pengajuan(request.user, item)
+        item.can_input_vendor = _can_input_vendor(request.user, item)
+        item.can_submit_vendor = _can_submit_vendor(request.user, item)
     return render(
         request,
         "pemeliharaan/pengajuan_list.html",
@@ -349,6 +375,59 @@ def detail_pengajuan(request, pk):
             "can_delete_pengajuan": _can_delete_pengajuan(request.user),
             "can_submit_pengajuan": _can_submit_pengajuan(request.user, obj),
             "can_edit_pengajuan": _can_edit_pengajuan(request.user, obj),
+            "can_input_vendor": _can_input_vendor(request.user, obj),
+            "can_submit_vendor": _can_submit_vendor(request.user, obj),
+        },
+    )
+
+
+@login_required
+def data_vendor(request, pk):
+    obj = get_object_or_404(_get_pengajuan_queryset(), pk=pk)
+    if not _can_input_vendor(request.user, obj):
+        return deny_access(
+            request,
+            "Data vendor hanya dapat diisi oleh pelaksana pemeliharaan pada tahap Input Data Vendor.",
+        )
+
+    vendor = PemeliharaanVendor.objects.filter(pengajuan=obj).first()
+    form = PemeliharaanVendorForm(
+        request.POST or None,
+        instance=vendor,
+        pengajuan=obj,
+    )
+    if request.method == "POST" and form.is_valid():
+        with transaction.atomic():
+            vendor = form.save(commit=False)
+            vendor.pengajuan = obj
+            vendor.kepala_lab_status = KeputusanPemeliharaanChoices.PENDING
+            vendor.kepala_lab_by = None
+            vendor.kepala_lab_at = None
+            vendor.kepala_lab_note = ""
+            vendor.pimpinan_status = KeputusanPemeliharaanChoices.PENDING
+            vendor.pimpinan_by = None
+            vendor.pimpinan_at = None
+            vendor.pimpinan_note = ""
+            vendor.submitted_at = None
+            vendor.save()
+            obj.add_timeline(
+                "Pelaksana Pemeliharaan",
+                "Data vendor perbaikan disimpan sebagai draft",
+                request.user,
+            )
+        messages.success(request, "Data vendor perbaikan berhasil disimpan sebagai draft.")
+        return redirect("pemeliharaan:detail", pk=obj.pk)
+
+    _items, repair_items, _pemeriksaan_fotos = _prepare_detail_items(obj)
+    return render(
+        request,
+        "pemeliharaan/vendor_form.html",
+        {
+            "obj": obj,
+            "form": form,
+            "external_items": [item for item in repair_items if item.is_eksternal],
+            "page_title": "Data Vendor Perbaikan",
+            "page_subtitle": "Lengkapi vendor pelaksana perbaikan eksternal dan simpan sebagai draft.",
         },
     )
 
@@ -438,6 +517,55 @@ def kirim_pengajuan(request, pk):
             request,
             "Pengajuan pemeliharaan berhasil dikirim ke Kepala Lab untuk verifikasi.",
         )
+    return redirect("pemeliharaan:list")
+
+
+@login_required
+def kirim_vendor(request, pk):
+    if request.method != "POST":
+        return redirect("pemeliharaan:detail", pk=pk)
+
+    with transaction.atomic():
+        obj = get_object_or_404(
+            PemeliharaanPengajuan.objects.select_for_update()
+            .prefetch_related("items"),
+            pk=pk,
+        )
+        if not _can_submit_vendor(request.user, obj):
+            return deny_access(
+                request,
+                "Data vendor belum lengkap atau Anda tidak memiliki akses untuk mengirimnya.",
+            )
+
+        vendor = get_object_or_404(
+            PemeliharaanVendor.objects.select_for_update(),
+            pengajuan=obj,
+        )
+        vendor.submitted_at = timezone.now()
+        vendor.kepala_lab_status = KeputusanPemeliharaanChoices.PENDING
+        vendor.kepala_lab_by = None
+        vendor.kepala_lab_at = None
+        vendor.kepala_lab_note = ""
+        vendor.pimpinan_status = KeputusanPemeliharaanChoices.PENDING
+        vendor.pimpinan_by = None
+        vendor.pimpinan_at = None
+        vendor.pimpinan_note = ""
+        vendor.save()
+        previous_step = obj.current_step
+        obj.current_step = StepPemeliharaanChoices.VENDOR_KEPALA_LAB
+        obj.save(update_fields=["current_step", "updated_at"])
+        obj.add_timeline(
+            "Pelaksana Pemeliharaan",
+            "Data vendor perbaikan dikirim ke Kepala Lab",
+            request.user,
+        )
+        sync_transaction_notifications(
+            obj,
+            actor=request.user,
+            previous_current_step=previous_step,
+        )
+
+    messages.success(request, "Data vendor berhasil dikirim ke Kepala Lab untuk verifikasi.")
     return redirect("pemeliharaan:list")
 
 

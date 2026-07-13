@@ -5,6 +5,7 @@ from .models import (
     PemeliharaanItem,
     PemeliharaanPengajuan,
     PemeliharaanTimeline,
+    PemeliharaanVendor,
 )
 
 
@@ -70,3 +71,20 @@ class PemeliharaanTimelineAdmin(admin.ModelAdmin):
     list_display = ("pengajuan", "stage", "action", "actor", "created_at")
     list_filter = ("stage", "created_at")
     search_fields = ("pengajuan__nomor_pengajuan", "action", "actor__username")
+
+
+@admin.register(PemeliharaanVendor)
+class PemeliharaanVendorAdmin(admin.ModelAdmin):
+    list_display = (
+        "pengajuan",
+        "nama_vendor",
+        "nama_pic",
+        "tanggal_mulai",
+        "tanggal_selesai",
+    )
+    search_fields = (
+        "pengajuan__nomor_pengajuan",
+        "nama_vendor",
+        "nama_pic",
+        "nomor_hp_pic",
+    )

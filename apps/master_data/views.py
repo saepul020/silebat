@@ -744,7 +744,7 @@ LABEL_ITEM_FIELDS = (
 
 
 def _label_item_queryset(queryset):
-    return queryset.only("id", "nama_barang", "tipe_merek_barang")
+    return queryset.only("id", "nama_barang", "tipe_merek_barang", "kode_laboratorium")
 
 
 def _label_download_queryset(queryset):

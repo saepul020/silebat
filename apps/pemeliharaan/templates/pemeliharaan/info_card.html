@@ -4,6 +4,7 @@
         <div class="detail-grid">
             <div class="detail-item"><label>Nama</label><p>{{ obj.nama_pelaksana }}</p></div>
             <div class="detail-item"><label>Jabatan</label><p>{{ obj.jabatan_pelaksana }}</p></div>
+            <div class="detail-item detail-item-full"><label>Kategori Pengajuan</label><p>{{ obj.jenis_pengajuan_label }}</p></div>
             <div class="detail-item"><label>Tanggal Pemeriksaan</label><p>{{ obj.tanggal_pemeriksaan|date:'d M Y' }}</p></div>
             <div class="detail-item"><label>Tanggal Kirim</label><p>{% if obj.submitted_at %}{{ obj.submitted_at|date:'d M Y H:i' }}{% else %}-{% endif %}</p></div>
         </div>

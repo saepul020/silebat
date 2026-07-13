@@ -1,0 +1,29 @@
+{% if can_delete_pengajuan %}
+<div class="delete-modal" id="pemeliharaanDeleteModal">
+    <div class="delete-modal-backdrop" id="pemeliharaanDeleteModalBackdrop"></div>
+
+    <div class="delete-modal-card" role="dialog" aria-modal="true" aria-labelledby="pemeliharaanDeleteModalTitle">
+        <div class="delete-modal-header">
+            <h3 id="pemeliharaanDeleteModalTitle">Konfirmasi Hapus Pengajuan</h3>
+            <button type="button" class="delete-modal-close" id="pemeliharaanDeleteModalClose" aria-label="Tutup">&times;</button>
+        </div>
+
+        <div class="delete-modal-body">
+            <p>Apakah Anda yakin ingin menghapus pengajuan pemeliharaan berikut?</p>
+            <div class="delete-user-info">
+                <p><strong>Nomor Pengajuan:</strong> <span id="pemeliharaanDeleteItemName">-</span></p>
+                <p><strong>Alat:</strong> <span id="pemeliharaanDeleteItemMeta">-</span></p>
+            </div>
+            <p class="delete-warning-text">Data pemeriksaan, perbaikan, vendor, dokumentasi, dan riwayat verifikasi terkait akan ikut dihapus.</p>
+        </div>
+
+        <div class="delete-modal-actions">
+            <button type="button" class="btn btn-secondary" id="pemeliharaanDeleteModalCancel">Batal</button>
+            <form method="post" id="pemeliharaanDeleteForm">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger">Ya, Hapus</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}

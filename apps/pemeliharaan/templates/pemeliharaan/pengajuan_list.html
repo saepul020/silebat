@@ -56,9 +56,9 @@
                     <td>{{ obj.pemohon.nama_lengkap|default:obj.pemohon.username }}</td>
                     <td>
                         {% if obj.perlu_perbaikan %}
-                            <span class="badge badge-warning">Perlu Perbaikan</span>
+                            <span class="status-badge badge-warning">Perlu Perbaikan</span>
                         {% else %}
-                            <span class="badge badge-success">Baik</span>
+                            <span class="status-badge badge-success">Baik</span>
                         {% endif %}
                     </td>
                     <td class="cell-status">
@@ -74,13 +74,22 @@
                             <a href="{% url 'pemeliharaan:laporan_detail' obj.pk %}" class="btn btn-secondary btn-sm" title="Detail laporan"><i class="bi bi-eye-fill"></i></a>
                             <a href="{% url 'pemeliharaan:download_pdf' obj.pk %}" class="btn btn-secondary btn-sm" title="Unduh PDF"><i class="bi bi-file-earmark-pdf-fill"></i></a>
                             {% if can_delete_pengajuan %}
-                            <form method="post" action="{% url 'pemeliharaan:hapus' obj.pk %}" data-confirm-submit="Hapus data laporan pemeliharaan ini?">
-                                {% csrf_token %}
-                                <button type="submit" class="btn btn-danger btn-sm" title="Hapus laporan"><i class="bi bi-trash3-fill"></i></button>
-                            </form>
+                            <button type="button" class="btn btn-danger btn-sm js-delete-btn" title="Hapus laporan" data-delete-modal="pemeliharaan" data-delete-url="{% url 'pemeliharaan:hapus' obj.pk %}" data-item-name="{{ obj.nomor_pengajuan|default:'-' }}" data-item-meta="{{ obj.alat_label }}"><i class="bi bi-trash3-fill"></i></button>
                             {% endif %}
                             {% else %}
-                            {% if obj.can_kirim %}
+                            {% if obj.can_submit_vendor %}
+                            <button
+                                type="button"
+                                class="btn btn-primary btn-sm"
+                                title="Kirim data vendor"
+                                data-maint-send-button
+                                data-send-url="{% url 'pemeliharaan:vendor_kirim' obj.pk %}"
+                                data-send-number="{{ obj.nomor_pengajuan|default:'-' }}"
+                                data-send-target="data vendor akan dikirim ke Kepala Lab untuk proses verifikasi"
+                            >
+                                <i class="bi bi-send-fill"></i>
+                            </button>
+                            {% elif obj.can_kirim %}
                             <button
                                 type="button"
                                 class="btn btn-primary btn-sm"
@@ -97,6 +106,9 @@
                                 <i class="bi bi-send-fill"></i>
                             </button>
                             {% endif %}
+                            {% if obj.can_input_vendor %}
+                            <a href="{% url 'pemeliharaan:vendor' obj.pk %}" class="btn btn-primary btn-sm" title="{% if obj.has_vendor_data %}Edit Data Vendor{% else %}Input Data Vendor{% endif %}"><i class="bi bi-building"></i></a>
+                            {% endif %}
                             {% if obj.can_edit %}
                             <a href="{% url 'pemeliharaan:edit' obj.pk %}" class="btn btn-warning btn-sm" title="Edit pengajuan"><i class="bi bi-pencil-square"></i></a>
                             {% else %}
@@ -104,10 +116,7 @@
                             {% endif %}
                             <a href="{% url 'pemeliharaan:detail' obj.pk %}" class="btn btn-secondary btn-sm"><i class="bi bi-eye-fill"></i></a>
                             {% if can_delete_pengajuan %}
-                            <form method="post" action="{% url 'pemeliharaan:hapus' obj.pk %}">
-                                {% csrf_token %}
-                                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Hapus pengajuan pemeliharaan ini?')"><i class="bi bi-trash3-fill"></i></button>
-                            </form>
+                            <button type="button" class="btn btn-danger btn-sm js-delete-btn" title="Hapus pengajuan" data-delete-modal="pemeliharaan" data-delete-url="{% url 'pemeliharaan:hapus' obj.pk %}" data-item-name="{{ obj.nomor_pengajuan|default:'-' }}" data-item-meta="{{ obj.alat_label }}"><i class="bi bi-trash3-fill"></i></button>
                             {% endif %}
                             {% endif %}
                         </div>
@@ -126,6 +135,7 @@
 </div>
 
 {% if not is_report %}{% include 'pemeliharaan/kirim_modal.html' %}{% endif %}
+{% include 'pemeliharaan/hapus_modal.html' %}
 {% endblock %}
 
 {% block extra_js %}

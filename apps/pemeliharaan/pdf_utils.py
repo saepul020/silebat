@@ -145,6 +145,7 @@ def render_pemeliharaan_pdf(target, obj, format_date):
         [
             ("Pelaksana Pemeliharaan", _user_name(obj.pemohon)),
             ("Jabatan", obj.jabatan_pelaksana),
+            ("Kategori Pengajuan", obj.jenis_pengajuan_label),
             ("Tanggal Pemeriksaan", format_date(obj.tanggal_pemeriksaan)),
             ("Tanggal Kirim", format_date(obj.submitted_at)),
         ],
@@ -221,6 +222,23 @@ def render_pemeliharaan_pdf(target, obj, format_date):
                 JenisFotoPemeliharaanChoices.KERUSAKAN,
                 format_date,
             )
+        )
+    if obj.has_vendor_data:
+        story.extend(
+            [
+                section("D. Data Vendor Perbaikan"),
+                info_table(
+                    [
+                        ("Nama Vendor", obj.vendor.nama_vendor),
+                        ("Nama PIC Vendor", obj.vendor.nama_pic),
+                        ("Nomor HP PIC Vendor", obj.vendor.nomor_hp_pic),
+                        ("Alamat Vendor", obj.vendor.alamat),
+                        ("Tanggal Perbaikan Mulai", format_date(obj.vendor.tanggal_mulai)),
+                        ("Tanggal Perbaikan Selesai", format_date(obj.vendor.tanggal_selesai)),
+                    ],
+                    valign="MIDDLE",
+                ),
+            ]
         )
     story.extend(
         signature_list(

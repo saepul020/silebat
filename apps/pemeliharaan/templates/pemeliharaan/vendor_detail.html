@@ -1,0 +1,13 @@
+{% if obj.has_vendor_data %}
+<section class="card">
+    <h2 class="card-title">Data Vendor Perbaikan</h2>
+    <div class="detail-grid pemeliharaan-vendor-grid">
+        <div class="detail-item pemeliharaan-vendor-grid__third"><label>Nama Vendor</label><p>{{ obj.vendor.nama_vendor }}</p></div>
+        <div class="detail-item pemeliharaan-vendor-grid__third"><label>Nama PIC Vendor</label><p>{{ obj.vendor.nama_pic }}</p></div>
+        <div class="detail-item pemeliharaan-vendor-grid__third"><label>Nomor HP PIC Vendor</label><p>{{ obj.vendor.nomor_hp_pic }}</p></div>
+        <div class="detail-item pemeliharaan-vendor-grid__full"><label>Alamat Vendor</label><p>{{ obj.vendor.alamat|linebreaksbr }}</p></div>
+        <div class="detail-item pemeliharaan-vendor-grid__half"><label>Tanggal Perbaikan Mulai</label><p>{{ obj.vendor.tanggal_mulai|date:'d M Y' }}</p></div>
+        <div class="detail-item pemeliharaan-vendor-grid__half"><label>Tanggal Perbaikan Selesai</label><p>{{ obj.vendor.tanggal_selesai|date:'d M Y' }}</p></div>
+    </div>
+</section>
+{% endif %}

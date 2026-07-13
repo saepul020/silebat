@@ -149,8 +149,20 @@
     gap: 10px;
 }
 
-.pemeliharaan-head-form {
-    display: contents;
+.pemeliharaan-vendor-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.pemeliharaan-vendor-grid__third {
+    grid-column: span 2;
+}
+
+.pemeliharaan-vendor-grid__half {
+    grid-column: span 3;
+}
+
+.pemeliharaan-vendor-grid__full {
+    grid-column: 1 / -1;
 }
 
 .pemeliharaan-head-btn {
@@ -441,6 +453,16 @@
 }
 
 @media (max-width: 768px) {
+    .pemeliharaan-vendor-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .pemeliharaan-vendor-grid__third,
+    .pemeliharaan-vendor-grid__half,
+    .pemeliharaan-vendor-grid__full {
+        grid-column: auto;
+    }
+
     .pemeliharaan-repair-list {
         gap: 16px;
     }

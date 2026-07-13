@@ -175,6 +175,16 @@ PEMELIHARAAN_ACTION_CHOICES = {
         ("perbaiki", "Perbaiki"),
         ("setujui", "Setujui"),
     ],
+    StepPemeliharaanChoices.VENDOR_KEPALA_LAB: [
+        ("tolak", "Tolak"),
+        ("perbaiki", "Perbaiki"),
+        ("setujui", "Setujui"),
+    ],
+    StepPemeliharaanChoices.VENDOR_PIMPINAN: [
+        ("tolak", "Tolak"),
+        ("perbaiki", "Perbaiki"),
+        ("setujui", "Setujui"),
+    ],
 }
 
 def _is_return_verification(obj):
@@ -314,20 +324,32 @@ def _get_pending_queryset(user):
 
 def _get_pending_pemeliharaan_queryset(user):
     role_name = get_role_name(user)
-    qs = PemeliharaanPengajuan.objects.select_related("pemohon", "alat").prefetch_related(
-        "items"
-    )
+    qs = PemeliharaanPengajuan.objects.select_related(
+        "pemohon", "alat", "vendor"
+    ).prefetch_related("items")
     if role_name == ROLE_SUPER_ADMIN:
         return qs.filter(
             current_step__in=[
                 StepPemeliharaanChoices.KEPALA_LAB,
                 StepPemeliharaanChoices.PIMPINAN,
+                StepPemeliharaanChoices.VENDOR_KEPALA_LAB,
+                StepPemeliharaanChoices.VENDOR_PIMPINAN,
             ]
         )
     if role_name == ROLE_KEPALA_LAB:
-        return qs.filter(current_step=StepPemeliharaanChoices.KEPALA_LAB)
+        return qs.filter(
+            current_step__in=[
+                StepPemeliharaanChoices.KEPALA_LAB,
+                StepPemeliharaanChoices.VENDOR_KEPALA_LAB,
+            ]
+        )
     if _is_return_pimpinan_actor(user):
-        return qs.filter(current_step=StepPemeliharaanChoices.PIMPINAN)
+        return qs.filter(
+            current_step__in=[
+                StepPemeliharaanChoices.PIMPINAN,
+                StepPemeliharaanChoices.VENDOR_PIMPINAN,
+            ]
+        )
     return qs.none()
 
 
@@ -471,9 +493,15 @@ def _user_can_act_pemeliharaan(user, obj):
     role_name = get_role_name(user)
     if role_name == ROLE_SUPER_ADMIN:
         return obj.current_step in PEMELIHARAAN_ACTION_CHOICES
-    if obj.current_step == StepPemeliharaanChoices.KEPALA_LAB:
+    if obj.current_step in {
+        StepPemeliharaanChoices.KEPALA_LAB,
+        StepPemeliharaanChoices.VENDOR_KEPALA_LAB,
+    }:
         return role_name == ROLE_KEPALA_LAB
-    if obj.current_step == StepPemeliharaanChoices.PIMPINAN:
+    if obj.current_step in {
+        StepPemeliharaanChoices.PIMPINAN,
+        StepPemeliharaanChoices.VENDOR_PIMPINAN,
+    }:
         return _is_return_pimpinan_actor(user)
     return False
 
@@ -874,7 +902,7 @@ def _get_pemeliharaan_detail_context(obj):
 @login_required
 def detail_pemeliharaan(request, pk):
     obj = get_object_or_404(
-        PemeliharaanPengajuan.objects.select_related("pemohon", "alat").prefetch_related(
+        PemeliharaanPengajuan.objects.select_related("pemohon", "alat", "vendor").prefetch_related(
             "items__fotos",
             "timeline_entries__actor",
         ),
@@ -1058,21 +1086,99 @@ def _process_pemeliharaan_action(request, obj, aksi, catatan):
             )
         elif aksi == "setujui":
             obj.pimpinan_status = KeputusanPemeliharaanChoices.APPROVED
-            obj.current_step = StepPemeliharaanChoices.SELESAI
-            obj.add_timeline(
-                "Ketua Tim Layanan Teknis",
-                "Pengajuan pemeliharaan disetujui Ketua Tim Layanan Teknis dan dinyatakan selesai",
-                user,
-                catatan,
-            )
-            messages.success(
-                request,
-                "Pengajuan pemeliharaan disetujui Ketua Tim Layanan Teknis dan proses selesai.",
-            )
+            if obj.perlu_pimpinan:
+                obj.current_step = StepPemeliharaanChoices.VENDOR_DRAFT
+                obj.add_timeline(
+                    "Ketua Tim Layanan Teknis",
+                    "Pengajuan pemeliharaan disetujui dan dilanjutkan ke input data vendor",
+                    user,
+                    catatan,
+                )
+                messages.success(
+                    request,
+                    "Pengajuan disetujui. Pelaksana pemeliharaan dapat menginput data vendor.",
+                )
+            else:
+                obj.current_step = StepPemeliharaanChoices.SELESAI
+                obj.add_timeline(
+                    "Ketua Tim Layanan Teknis",
+                    "Pengajuan pemeliharaan disetujui Ketua Tim Layanan Teknis dan dinyatakan selesai",
+                    user,
+                    catatan,
+                )
+                messages.success(
+                    request,
+                    "Pengajuan pemeliharaan disetujui Ketua Tim Layanan Teknis dan proses selesai.",
+                )
         else:
             messages.error(request, "Aksi verifikasi pemeliharaan tidak valid.")
             return
         obj.save()
+        if obj.current_step == StepPemeliharaanChoices.SELESAI:
+            obj.catat_riwayat_alat_disetujui()
+            obj.tandai_alat_baik_jika_selesai()
+        elif obj.current_step == StepPemeliharaanChoices.DITOLAK:
+            obj.pulihkan_kondisi_alat_awal()
+        return
+
+    if obj.current_step == StepPemeliharaanChoices.VENDOR_KEPALA_LAB:
+        vendor = obj.vendor
+        vendor.kepala_lab_by = user
+        vendor.kepala_lab_at = now
+        vendor.kepala_lab_note = catatan
+        if aksi == "tolak":
+            vendor.kepala_lab_status = KeputusanPemeliharaanChoices.REJECTED
+            obj.current_step = StepPemeliharaanChoices.DITOLAK
+            action = "Data vendor ditolak Kepala Lab dan proses pemeliharaan dinyatakan selesai"
+            message = "Data vendor ditolak dan proses pemeliharaan selesai."
+        elif aksi == "perbaiki":
+            vendor.kepala_lab_status = KeputusanPemeliharaanChoices.REVISION
+            obj.current_step = StepPemeliharaanChoices.VENDOR_DRAFT
+            action = "Data vendor dikembalikan oleh Kepala Lab untuk diperbaiki"
+            message = "Data vendor dikembalikan kepada pelaksana untuk diperbaiki."
+        elif aksi == "setujui":
+            vendor.kepala_lab_status = KeputusanPemeliharaanChoices.APPROVED
+            obj.current_step = StepPemeliharaanChoices.VENDOR_PIMPINAN
+            action = "Data vendor disetujui Kepala Lab dan diteruskan ke Ketua Tim Layanan Teknis"
+            message = "Data vendor disetujui dan diteruskan ke Ketua Tim Layanan Teknis."
+        else:
+            messages.error(request, "Aksi verifikasi data vendor tidak valid.")
+            return
+        vendor.save()
+        obj.save(update_fields=["current_step", "updated_at"])
+        obj.add_timeline("Kepala Lab", action, user, catatan)
+        messages.success(request, message)
+        if obj.current_step == StepPemeliharaanChoices.DITOLAK:
+            obj.pulihkan_kondisi_alat_awal()
+        return
+
+    if obj.current_step == StepPemeliharaanChoices.VENDOR_PIMPINAN:
+        vendor = obj.vendor
+        vendor.pimpinan_by = user
+        vendor.pimpinan_at = now
+        vendor.pimpinan_note = catatan
+        if aksi == "tolak":
+            vendor.pimpinan_status = KeputusanPemeliharaanChoices.REJECTED
+            obj.current_step = StepPemeliharaanChoices.DITOLAK
+            action = "Data vendor ditolak Ketua Tim Layanan Teknis dan proses pemeliharaan dinyatakan selesai"
+            message = "Data vendor ditolak Ketua Tim Layanan Teknis dan proses selesai."
+        elif aksi == "perbaiki":
+            vendor.pimpinan_status = KeputusanPemeliharaanChoices.REVISION
+            obj.current_step = StepPemeliharaanChoices.VENDOR_DRAFT
+            action = "Data vendor dikembalikan oleh Ketua Tim Layanan Teknis untuk diperbaiki"
+            message = "Data vendor dikembalikan kepada pelaksana untuk diperbaiki."
+        elif aksi == "setujui":
+            vendor.pimpinan_status = KeputusanPemeliharaanChoices.APPROVED
+            obj.current_step = StepPemeliharaanChoices.SELESAI
+            action = "Data vendor disetujui Ketua Tim Layanan Teknis dan proses pemeliharaan dinyatakan selesai"
+            message = "Data vendor disetujui dan proses pemeliharaan selesai."
+        else:
+            messages.error(request, "Aksi verifikasi data vendor tidak valid.")
+            return
+        vendor.save()
+        obj.save(update_fields=["current_step", "updated_at"])
+        obj.add_timeline("Ketua Tim Layanan Teknis", action, user, catatan)
+        messages.success(request, message)
         if obj.current_step == StepPemeliharaanChoices.SELESAI:
             obj.catat_riwayat_alat_disetujui()
             obj.tandai_alat_baik_jika_selesai()

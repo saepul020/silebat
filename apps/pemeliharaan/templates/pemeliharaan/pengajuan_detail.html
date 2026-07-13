@@ -4,7 +4,7 @@
 {% block title %}{% if is_report %}Detail Laporan Pemeliharaan{% else %}Detail Pengajuan Pemeliharaan{% endif %}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/pemeliharaan.css' %}?v=20260612-maintenance-detail-v8">
+<link rel="stylesheet" href="{% static 'css/pemeliharaan.css' %}?v=20260713-maintenance-detail-v9">
 {% endblock %}
 
 {% block content %}
@@ -29,6 +29,21 @@
             <a href="{% url 'pemeliharaan:download_pdf' obj.pk %}" class="btn btn-primary pemeliharaan-head-btn">Export PDF</a>
             {% endif %}
             {% if not is_report %}
+            {% if can_submit_vendor %}
+            <button
+                type="button"
+                class="btn btn-primary pemeliharaan-head-btn"
+                data-maint-send-button
+                data-send-url="{% url 'pemeliharaan:vendor_kirim' obj.pk %}"
+                data-send-number="{{ obj.nomor_pengajuan|default:'-' }}"
+                data-send-target="data vendor akan dikirim ke Kepala Lab untuk proses verifikasi"
+            >
+                Kirim Data Vendor
+            </button>
+            {% endif %}
+            {% if can_input_vendor %}
+            <a href="{% url 'pemeliharaan:vendor' obj.pk %}" class="btn btn-primary pemeliharaan-head-btn">{% if obj.has_vendor_data %}Edit Data Vendor{% else %}Input Data Vendor{% endif %}</a>
+            {% endif %}
             {% if can_submit_pengajuan %}
             <button
                 type="button"
@@ -42,17 +57,14 @@
             </button>
             {% endif %}
             {% if can_edit_pengajuan %}
-            <a href="{% url 'pemeliharaan:edit' obj.pk %}" class="btn btn-warning pemeliharaan-head-btn">Edit</a>
+            <a href="{% url 'pemeliharaan:edit' obj.pk %}" class="btn btn-warning pemeliharaan-head-btn">Edit Pengajuan</a>
             {% else %}
-            <button type="button" class="btn btn-secondary pemeliharaan-head-btn" title="Pengajuan tidak dapat diedit pada tahap ini" disabled>Edit</button>
+            <button type="button" class="btn btn-secondary pemeliharaan-head-btn" title="Pengajuan tidak dapat diedit pada tahap ini" disabled>Edit Pengajuan</button>
             {% endif %}
             {% endif %}
             <a href="{% if is_report %}{% url 'pemeliharaan:laporan' %}{% else %}{% url 'pemeliharaan:list' %}{% endif %}" class="btn btn-secondary pemeliharaan-head-btn">Kembali</a>
             {% if can_delete_pengajuan %}
-            <form method="post" action="{% url 'pemeliharaan:hapus' obj.pk %}" class="pemeliharaan-head-form">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-danger pemeliharaan-head-btn" onclick="return confirm('Hapus pengajuan pemeliharaan ini?')">Hapus</button>
-            </form>
+            <button type="button" class="btn btn-danger pemeliharaan-head-btn js-delete-btn" data-delete-modal="pemeliharaan" data-delete-url="{% url 'pemeliharaan:hapus' obj.pk %}" data-item-name="{{ obj.nomor_pengajuan|default:'-' }}" data-item-meta="{{ obj.alat_label }}">Hapus</button>
             {% endif %}
         </div>
     </div>
@@ -62,6 +74,7 @@
 {% include 'pemeliharaan/timeline.html' %}
 </div>
 {% include 'pemeliharaan/foto_modal.html' %}
+{% include 'pemeliharaan/hapus_modal.html' %}
 {% if not is_report %}{% include 'pemeliharaan/kirim_modal.html' %}{% endif %}
 {% endblock %}
 

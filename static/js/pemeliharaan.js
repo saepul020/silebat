@@ -115,6 +115,9 @@ function initPemeliharaanDatePickers(scope) {
         const nextButton = popup.querySelector('[data-maint-date-next]');
         const todayButton = popup.querySelector('[data-maint-date-today]');
         const clearButton = popup.querySelector('[data-maint-date-clear]');
+        const minSource = input.dataset.maintMinSource
+            ? document.getElementById(input.dataset.maintMinSource)
+            : null;
         const baseDate = initialDate || new Date();
         const state = { year: baseDate.getFullYear(), month: baseDate.getMonth() };
 
@@ -138,6 +141,14 @@ function initPemeliharaanDatePickers(scope) {
             const firstDay = new Date(state.year, state.month, 1, 12, 0, 0, 0);
             const startOffset = firstDay.getDay();
             const daysInMonth = new Date(state.year, state.month + 1, 0, 12, 0, 0, 0).getDate();
+            const minimumDate = minSource ? parseMaintDate(minSource.value) : null;
+            todayButton.disabled = Boolean(
+                minimumDate && createMaintDate(
+                    today.getFullYear(),
+                    today.getMonth(),
+                    today.getDate()
+                ).getTime() < minimumDate.getTime()
+            );
 
             for (let index = 0; index < 42; index += 1) {
                 const dayButton = document.createElement('button');
@@ -164,6 +175,13 @@ function initPemeliharaanDatePickers(scope) {
                 }
                 if (maintDateKey(candidate) === todayKey) {
                     dayButton.classList.add('is-today');
+                }
+                if (minimumDate && candidate.getTime() < minimumDate.getTime()) {
+                    dayButton.disabled = true;
+                    dayButton.classList.add('is-disabled');
+                    dayButton.setAttribute('aria-disabled', 'true');
+                    grid.appendChild(dayButton);
+                    continue;
                 }
                 dayButton.addEventListener('click', function () {
                     setInputDate(candidate);
@@ -220,6 +238,35 @@ function initPemeliharaanDatePickers(scope) {
             wrapper.classList.remove('is-open');
             popup.style.left = '';
             popup.style.right = '';
+        }
+
+        function syncMinSource() {
+            if (!minSource) {
+                return;
+            }
+
+            const minimumDate = parseMaintDate(minSource.value);
+            const locked = !minimumDate;
+            input.disabled = locked;
+            toggleButton.disabled = locked;
+            input.setAttribute('aria-disabled', String(locked));
+            toggleButton.setAttribute('aria-disabled', String(locked));
+
+            if (locked) {
+                input.value = '';
+                closePopup();
+                return;
+            }
+
+            const selectedDate = parseMaintDate(input.value);
+            if (selectedDate && selectedDate.getTime() < minimumDate.getTime()) {
+                input.value = '';
+            }
+            if (!selectedDate) {
+                state.year = minimumDate.getFullYear();
+                state.month = minimumDate.getMonth();
+            }
+            renderCalendar();
         }
 
         toggleButton.addEventListener('click', function (event) {
@@ -279,6 +326,22 @@ function initPemeliharaanDatePickers(scope) {
         });
 
         input.dataset.datePickerReady = 'true';
+        if (minSource) {
+            minSource.addEventListener('input', syncMinSource);
+            minSource.addEventListener('change', syncMinSource);
+            syncMinSource();
+        }
+    });
+}
+
+function initPemeliharaanDigits(scope) {
+    const inputs = (scope || document).querySelectorAll('[data-maint-digits="true"]');
+    inputs.forEach(function (input) {
+        function keepDigits() {
+            input.value = String(input.value || '').replace(/\D+/g, '');
+        }
+        input.addEventListener('input', keepDigits);
+        keepDigits();
     });
 }
 
@@ -821,6 +884,7 @@ function initPemeliharaanForm() {
     bindRepairRows(form);
     initPemeliharaanGallery(form);
     initPemeliharaanDatePickers(form);
+    initPemeliharaanDigits(form);
 }
 
 function initPemeliharaanGallery(scope) {

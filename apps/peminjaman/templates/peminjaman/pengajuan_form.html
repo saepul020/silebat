@@ -215,6 +215,7 @@
                     <colgroup>
                         <col class="col-select">
                         <col class="col-name">
+                        <col class="col-photo">
                         <col class="col-type">
                         <col class="col-code">
                         <col class="col-status">
@@ -225,9 +226,10 @@
                     <thead>
                         <tr>
                             <th>Pilih</th>
-                            <th>Nama Barang</th>
-                            <th>Tipe / Merek</th>
-                            <th>Kode Laboratorium</th>
+                            <th class="inventory-col inventory-col--fit">Nama Barang</th>
+                            <th class="inventory-col inventory-col--fit">Foto Barang</th>
+                            <th class="inventory-col inventory-col--fit">Tipe / Merek</th>
+                            <th class="inventory-col inventory-col--fit">Kode Laboratorium</th>
                             <th>Ketersediaan</th>
                             <th>Kondisi</th>
                             <th>Tgl Pemeliharaan</th>
@@ -237,7 +239,7 @@
                     <tbody data-lab-inventory-body>
                         {% for group in lab_item_groups %}
                         <tr data-inventory-group data-lab-category-group data-lab-category="{{ group.kategori_barang|default:'' }}" class="lab-category-row {% if not group.is_visible %}is-hidden{% endif %}">
-                            <td colspan="8">
+                            <td colspan="9">
                                 <strong class="lab-category-title">{{ group.kategori_barang|default:'Tanpa Kategori' }}</strong>
                             </td>
                         </tr>
@@ -246,9 +248,18 @@
                             <td data-label="Pilih" class="cell-select">
                                 <input type="checkbox" name="lab_item_ids" value="{{ item.id }}" data-base-disabled="{% if not item.is_available_for_selection %}true{% else %}false{% endif %}" {% if item.is_selected %}checked{% endif %} {% if not item.is_available_for_selection or not item.is_visible_by_survey %}disabled{% endif %}>
                             </td>
-                            <td data-label="Nama Barang" class="cell-wrap">{{ item.nama_barang }}</td>
-                            <td data-label="Tipe / Merek" class="cell-wrap">{{ item.tipe_merek_barang|default:'-' }}</td>
-                            <td data-label="Kode Lab">{{ item.kode_laboratorium|default:'-' }}</td>
+                            <td data-label="Nama Barang" class="cell-wrap inventory-col inventory-col--fit">{{ item.nama_barang }}</td>
+                            <td data-label="Foto Barang" class="cell-photo inventory-col inventory-col--fit">
+                                {% if item.foto_barang %}
+                                <button type="button" class="inventory-photo__trigger" data-inventory-photo-open data-photo-src="{{ item.foto_barang.url }}" data-photo-alt="Foto {{ item.nama_barang }}" data-photo-caption="{{ item.nama_barang }}{% if item.kode_laboratorium %} - {{ item.kode_laboratorium }}{% endif %}" aria-label="Preview foto {{ item.nama_barang }}" title="Preview foto barang">
+                                    <img src="{{ item.foto_barang.url }}" alt="Foto {{ item.nama_barang }}" class="inventory-photo__thumb" loading="lazy">
+                                </button>
+                                {% else %}
+                                <span class="inventory-photo__empty" aria-label="Foto barang belum tersedia">-</span>
+                                {% endif %}
+                            </td>
+                            <td data-label="Tipe / Merek" class="cell-wrap inventory-col inventory-col--fit">{{ item.tipe_merek_barang|default:'-' }}</td>
+                            <td data-label="Kode Lab" class="inventory-col inventory-col--fit">{{ item.kode_laboratorium|default:'-' }}</td>
                             <td data-label="Ketersediaan" class="cell-center"><span class="status-badge {{ item.selection_status_badge_class }}">{{ item.selection_ketersediaan }}</span></td>
                             <td data-label="Kondisi">{{ item.kondisi_barang|default:'-' }}</td>
                             <td data-label="Tgl Pemeliharaan">{{ item.tanggal_pemeliharaan|date:'d M Y'|default:'-' }}</td>
@@ -256,10 +267,10 @@
                         </tr>
                         {% endfor %}
                         {% empty %}
-                        <tr><td colspan="8"><div class="empty-state">Belum ada data peralatan survei lapangan.</div></td></tr>
+                        <tr><td colspan="9"><div class="empty-state">Belum ada data peralatan survei lapangan.</div></td></tr>
                         {% endfor %}
-                        <tr data-lab-filter-empty class="is-hidden"><td colspan="8"><div class="empty-state">Belum ada peralatan survei lapangan yang sesuai dengan pilihan Kegiatan Survei.</div></td></tr>
-                        <tr data-inventory-search-empty class="is-hidden"><td colspan="8"><div class="empty-state">Item barang yang dicari tidak ditemukan.</div></td></tr>
+                        <tr data-lab-filter-empty class="is-hidden"><td colspan="9"><div class="empty-state">Belum ada peralatan survei lapangan yang sesuai dengan pilihan Kegiatan Survei.</div></td></tr>
+                        <tr data-inventory-search-empty class="is-hidden"><td colspan="9"><div class="empty-state">Item barang yang dicari tidak ditemukan.</div></td></tr>
                     </tbody>
                 </table>
                 </div>
@@ -434,6 +445,22 @@
         </div>
     </form>
 
+</div>
+
+<div class="inventory-photo" id="inventoryPhotoModal" data-inventory-photo-modal hidden aria-hidden="true">
+    <div class="inventory-photo__backdrop" data-inventory-photo-close></div>
+    <div class="inventory-photo__card" role="dialog" aria-modal="true" aria-labelledby="inventoryPhotoTitle" tabindex="-1">
+        <div class="inventory-photo__head">
+            <h3 id="inventoryPhotoTitle">Preview Foto Barang</h3>
+            <button type="button" class="inventory-photo__close" data-inventory-photo-close aria-label="Tutup preview foto" title="Tutup">
+                <i class="bi bi-x-lg" aria-hidden="true"></i>
+            </button>
+        </div>
+        <div class="inventory-photo__stage">
+            <img src="" alt="" data-inventory-photo-image>
+        </div>
+        <p class="inventory-photo__caption" data-inventory-photo-caption></p>
+    </div>
 </div>
 
 {% if can_select_peminjam %}

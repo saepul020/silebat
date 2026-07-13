@@ -1,6 +1,7 @@
 from datetime import datetime, time
 
 from django import forms
+from django.core.validators import RegexValidator
 from django.db import transaction
 from django.utils import timezone
 
@@ -20,6 +21,7 @@ from .models import (
     PemeliharaanFoto,
     PemeliharaanItem,
     PemeliharaanPengajuan,
+    PemeliharaanVendor,
     TindakanPerbaikanChoices,
 )
 
@@ -57,6 +59,139 @@ def get_available_alat_queryset(instance=None):
         .exclude(pk__in=active_alat_ids.values("alat_id"))
         .order_by("nama_barang", "kode_laboratorium")
     )
+
+
+class PemeliharaanVendorForm(forms.ModelForm):
+    nomor_hp_pic = forms.CharField(
+        label="Nomor HP PIC Vendor",
+        max_length=30,
+        validators=[
+            RegexValidator(
+                regex=r"^[0-9]+$",
+                message="Nomor HP PIC Vendor hanya boleh berisi angka.",
+            )
+        ],
+        widget=forms.TextInput(
+            attrs={
+                "placeholder": "Masukan nomor HP PIC vendor",
+                "inputmode": "numeric",
+                "pattern": "[0-9]*",
+                "autocomplete": "tel",
+                "data-maint-digits": "true",
+            }
+        ),
+    )
+    tanggal_mulai = forms.CharField(
+        label="Tanggal Perbaikan Mulai",
+        widget=forms.TextInput(
+            attrs={
+                "class": "date-input pemeliharaan-date-input",
+                "placeholder": "Masukan tanggal sesuai format",
+                "autocomplete": "off",
+                "data-maint-date-picker": "true",
+            }
+        ),
+    )
+    tanggal_selesai = forms.CharField(
+        label="Tanggal Perbaikan Selesai",
+        widget=forms.TextInput(
+            attrs={
+                "class": "date-input pemeliharaan-date-input",
+                "placeholder": "Masukan tanggal sesuai format",
+                "autocomplete": "off",
+                "data-maint-date-picker": "true",
+                "data-maint-min-source": "id_tanggal_mulai",
+            }
+        ),
+    )
+
+    class Meta:
+        model = PemeliharaanVendor
+        fields = (
+            "nama_vendor",
+            "nama_pic",
+            "nomor_hp_pic",
+            "alamat",
+            "tanggal_mulai",
+            "tanggal_selesai",
+        )
+        labels = {
+            "nama_vendor": "Nama Vendor",
+            "nama_pic": "Nama PIC Vendor",
+            "nomor_hp_pic": "Nomor HP PIC Vendor",
+            "alamat": "Alamat Vendor",
+        }
+        widgets = {
+            "nama_vendor": forms.TextInput(attrs={"placeholder": "Masukan nama vendor"}),
+            "nama_pic": forms.TextInput(attrs={"placeholder": "Masukan nama PIC vendor"}),
+            "alamat": forms.Textarea(
+                attrs={"rows": 4, "placeholder": "Masukan alamat lengkap vendor"}
+            ),
+        }
+
+    def __init__(self, *args, **kwargs):
+        self.pengajuan = kwargs.pop("pengajuan")
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            current_class = field.widget.attrs.get("class", "")
+            field.widget.attrs["class"] = (current_class + " form-control").strip()
+            field.widget.attrs["required"] = "required"
+            field.error_messages["required"] = f"{field.label} wajib diisi."
+
+        if not self.is_bound and self.instance and self.instance.pk:
+            self.initial["tanggal_mulai"] = format_display_date(self.instance.tanggal_mulai)
+            self.initial["tanggal_selesai"] = format_display_date(self.instance.tanggal_selesai)
+
+        raw_mulai = (
+            self.data.get(self.add_prefix("tanggal_mulai"))
+            if self.is_bound
+            else self.initial.get("tanggal_mulai")
+        )
+        try:
+            mulai_terisi = bool(parse_flexible_date(raw_mulai))
+        except (TypeError, ValueError, forms.ValidationError):
+            mulai_terisi = False
+        if not mulai_terisi:
+            self.fields["tanggal_selesai"].widget.attrs.update(
+                {
+                    "disabled": "disabled",
+                    "aria-disabled": "true",
+                }
+            )
+
+    def _clean_date(self, field_name):
+        value = self.cleaned_data.get(field_name)
+        try:
+            parsed = parse_flexible_date(value)
+        except (TypeError, ValueError, forms.ValidationError):
+            parsed = None
+        if not parsed:
+            raise forms.ValidationError("Tanggal harus berupa tanggal yang valid.")
+        return parsed
+
+    def clean_tanggal_mulai(self):
+        return self._clean_date("tanggal_mulai")
+
+    def clean_tanggal_selesai(self):
+        return self._clean_date("tanggal_selesai")
+
+    def clean(self):
+        cleaned_data = super().clean()
+        tanggal_mulai = cleaned_data.get("tanggal_mulai")
+        tanggal_selesai = cleaned_data.get("tanggal_selesai")
+        tanggal_pemeriksaan = timezone.localdate(self.pengajuan.tanggal_pemeriksaan)
+
+        if tanggal_mulai and tanggal_mulai < tanggal_pemeriksaan:
+            self.add_error(
+                "tanggal_mulai",
+                "Tanggal perbaikan mulai tidak boleh lebih awal dari tanggal pemeriksaan.",
+            )
+        if tanggal_mulai and tanggal_selesai and tanggal_selesai < tanggal_mulai:
+            self.add_error(
+                "tanggal_selesai",
+                "Tanggal perbaikan selesai tidak boleh lebih awal dari tanggal perbaikan mulai.",
+            )
+        return cleaned_data
 
 
 class PemeliharaanAlatChoiceField(forms.ModelChoiceField):

@@ -144,11 +144,20 @@ def _get_return_pimpinan_user():
 def _verification_recipients(pengajuan):
     if _is_pemeliharaan(pengajuan):
         step = pengajuan.current_step
-        if step == StepPemeliharaanChoices.KEPALA_LAB:
+        if step in {
+            StepPemeliharaanChoices.KEPALA_LAB,
+            StepPemeliharaanChoices.VENDOR_KEPALA_LAB,
+        }:
             return _merge_users(_users_by_role(ROLE_KEPALA_LAB), _super_admin_users())
-        if step == StepPemeliharaanChoices.PIMPINAN:
+        if step in {
+            StepPemeliharaanChoices.PIMPINAN,
+            StepPemeliharaanChoices.VENDOR_PIMPINAN,
+        }:
             return _merge_users(_get_return_pimpinan_user(), _super_admin_users())
-        if step == StepPemeliharaanChoices.DIKEMBALIKAN:
+        if step in {
+            StepPemeliharaanChoices.DIKEMBALIKAN,
+            StepPemeliharaanChoices.VENDOR_DRAFT,
+        }:
             return _merge_users(pengajuan.pemohon)
         return []
 
@@ -203,6 +212,9 @@ def _is_active_pemeliharaan(pengajuan):
     return _is_pemeliharaan(pengajuan) and pengajuan.current_step in {
         StepPemeliharaanChoices.KEPALA_LAB,
         StepPemeliharaanChoices.PIMPINAN,
+        StepPemeliharaanChoices.VENDOR_DRAFT,
+        StepPemeliharaanChoices.VENDOR_KEPALA_LAB,
+        StepPemeliharaanChoices.VENDOR_PIMPINAN,
         StepPemeliharaanChoices.DIKEMBALIKAN,
     }
 
@@ -221,7 +233,10 @@ def _source_defaults(pengajuan):
 
 def _verification_link(pengajuan):
     if _is_pemeliharaan(pengajuan):
-        if pengajuan.current_step == StepPemeliharaanChoices.DIKEMBALIKAN:
+        if pengajuan.current_step in {
+            StepPemeliharaanChoices.DIKEMBALIKAN,
+            StepPemeliharaanChoices.VENDOR_DRAFT,
+        }:
             return reverse("pemeliharaan:detail", args=[pengajuan.pk])
         return reverse("verifikasi:detail_pemeliharaan", args=[pengajuan.pk])
     return reverse("verifikasi:detail", args=[pengajuan.pk])
@@ -260,7 +275,10 @@ def _is_revision_followup(pengajuan, source_action=None):
         return True
 
     if _is_pemeliharaan(pengajuan):
-        return pengajuan.current_step == StepPemeliharaanChoices.DIKEMBALIKAN
+        return pengajuan.current_step in {
+            StepPemeliharaanChoices.DIKEMBALIKAN,
+            StepPemeliharaanChoices.VENDOR_DRAFT,
+        }
 
     if _is_active_pengembalian(pengajuan):
         return (
@@ -673,6 +691,9 @@ def ensure_user_pending_notifications(user):
         current_step__in=[
             StepPemeliharaanChoices.KEPALA_LAB,
             StepPemeliharaanChoices.PIMPINAN,
+            StepPemeliharaanChoices.VENDOR_DRAFT,
+            StepPemeliharaanChoices.VENDOR_KEPALA_LAB,
+            StepPemeliharaanChoices.VENDOR_PIMPINAN,
             StepPemeliharaanChoices.DIKEMBALIKAN,
         ]
     ).distinct()

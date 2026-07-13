@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/pemeliharaan.css' %}?v=20260713-maintenance-vendor-v1">
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{{ page_title }}</h1>
+    <p>{{ page_subtitle }}</p>
+</div>
+
+<div class="form-card user-form-card master-data-form-card pemeliharaan-form-card">
+    <form method="post" class="pengguna-form master-data-form" data-pemeliharaan-form="true" autocomplete="off" novalidate>
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+        <div class="form-global-errors">
+            {% for error in form.non_field_errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
+        </div>
+        {% endif %}
+
+        <fieldset>
+            <legend>Perbaikan Eksternal</legend>
+            <div class="pemeliharaan-repair-detail-list">
+                {% for item in external_items %}
+                <div class="pemeliharaan-repair-row">
+                    <div class="pemeliharaan-repair-head">
+                        <h3>{{ item.komponen }}</h3>
+                        <span class="badge badge-warning">{{ item.tindakan_perbaikan }}</span>
+                    </div>
+                    <div class="pemeliharaan-note">
+                        <span>Uraian Kerusakan</span>
+                        <p>{{ item.uraian_kerusakan|linebreaksbr }}</p>
+                    </div>
+                    <div class="pemeliharaan-detail-block">
+                        <h3>Dokumentasi Kerusakan</h3>
+                        <div class="pemeliharaan-photo-strip">
+                            {% for foto in item.foto_kerusakan %}
+                            <a href="{{ foto.foto.url }}" target="_blank" rel="noopener" class="pemeliharaan-photo-link" data-maint-photo data-photo-group="vendor-kerusakan-{{ item.id }}" data-photo-src="{{ foto.foto.url }}" data-photo-alt="Dokumentasi kerusakan {{ item.komponen }} {{ forloop.counter }}" data-photo-caption="Dokumentasi Kerusakan {{ item.komponen }} {{ forloop.counter }}">
+                                <img src="{{ foto.foto.url }}" alt="Dokumentasi kerusakan {{ item.komponen }} {{ forloop.counter }}">
+                            </a>
+                            {% empty %}
+                            <span class="pemeliharaan-photo-empty">Belum ada foto</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="empty-state">Tidak ada detail perbaikan eksternal.</div>
+                {% endfor %}
+            </div>
+        </fieldset>
+
+        <fieldset>
+            <legend>Data Vendor</legend>
+            <div class="master-fieldset-stack">
+                <div class="form-row master-form-row master-form-row--2">
+                    <div class="form-group {% if form.nama_vendor.errors %}has-error{% endif %}">
+                        <label for="{{ form.nama_vendor.id_for_label }}">{{ form.nama_vendor.label }}</label>
+                        {{ form.nama_vendor }}
+                        {% for error in form.nama_vendor.errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
+                    </div>
+                    <div class="form-group {% if form.nama_pic.errors %}has-error{% endif %}">
+                        <label for="{{ form.nama_pic.id_for_label }}">{{ form.nama_pic.label }}</label>
+                        {{ form.nama_pic }}
+                        {% for error in form.nama_pic.errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
+                    </div>
+                </div>
+                <div class="form-row master-form-row master-form-row--1">
+                    <div class="form-group {% if form.nomor_hp_pic.errors %}has-error{% endif %}">
+                        <label for="{{ form.nomor_hp_pic.id_for_label }}">{{ form.nomor_hp_pic.label }}</label>
+                        {{ form.nomor_hp_pic }}
+                        {% for error in form.nomor_hp_pic.errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
+                    </div>
+                </div>
+                <div class="form-row master-form-row master-form-row--1">
+                    <div class="form-group {% if form.alamat.errors %}has-error{% endif %}">
+                        <label for="{{ form.alamat.id_for_label }}">{{ form.alamat.label }}</label>
+                        {{ form.alamat }}
+                        {% for error in form.alamat.errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
+                    </div>
+                </div>
+                <div class="form-row master-form-row master-form-row--2">
+                    <div class="form-group {% if form.tanggal_mulai.errors %}has-error{% endif %}">
+                        <label for="{{ form.tanggal_mulai.id_for_label }}">{{ form.tanggal_mulai.label }}</label>
+                        {{ form.tanggal_mulai }}
+                        {% for error in form.tanggal_mulai.errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
+                    </div>
+                    <div class="form-group {% if form.tanggal_selesai.errors %}has-error{% endif %}">
+                        <label for="{{ form.tanggal_selesai.id_for_label }}">{{ form.tanggal_selesai.label }}</label>
+                        {{ form.tanggal_selesai }}
+                        {% for error in form.tanggal_selesai.errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
+                    </div>
+                </div>
+            </div>
+        </fieldset>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Simpan</button>
+            <a href="{% url 'pemeliharaan:list' %}" class="btn btn-secondary">Kembali</a>
+        </div>
+    </form>
+</div>
+
+{% include 'pemeliharaan/foto_modal.html' %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/pemeliharaan.js' %}?v=20260713-maintenance-vendor-v2" defer></script>
+{% endblock %}

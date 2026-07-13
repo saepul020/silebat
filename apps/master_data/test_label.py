@@ -148,6 +148,16 @@ class MasterLabelTests(TestCase):
                 self.assertContains(list_response, 'name="label_items"')
                 self.assertContains(list_response, 'value="kecil"')
                 self.assertContains(list_response, obj.nama_barang)
+                self.assertContains(
+                    list_response,
+                    '<th class="cell-wrap">Kode Lab</th>',
+                    html=True,
+                )
+                bulk_markup = list_response.content.decode().split(
+                    'data-bulk-label-modal',
+                    maxsplit=1,
+                )[1]
+                self.assertIn(obj.kode_laboratorium, bulk_markup)
                 self.assertContains(list_response, 'id="masterPreviewModal"')
                 self.assertContains(list_response, 'data-master-preview-open="label"')
                 self.assertContains(list_response, 'data-master-preview-qr-download')

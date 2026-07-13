@@ -4534,11 +4534,16 @@ table td,
     transition: background 0.2s ease, color 0.2s ease;
 }
 
-.date-picker-toggle:hover,
-.date-picker-toggle:focus {
+.date-picker-toggle:not(:disabled):hover,
+.date-picker-toggle:not(:disabled):focus {
     background: var(--color-soft-gray);
     color: var(--color-primary-navy);
     outline: none;
+}
+
+.date-picker-toggle:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
 }
 
 .date-picker-popup {
@@ -7951,6 +7956,191 @@ select.return-status-select option:disabled {
         padding-right: 6px !important;
         scroll-padding-left: 8px;
     }
+}
+
+/* =========================
+   PEMINJAMAN - FOTO BARANG
+========================= */
+.peminjaman-form .table-mobile-scroll--lab col.col-photo,
+.peminjaman-form .table-mobile-scroll--lab > thead > tr > th:nth-child(3),
+.peminjaman-form .table-mobile-scroll--lab > tbody > tr > td.cell-photo {
+    text-align: center !important;
+    vertical-align: middle !important;
+}
+
+.peminjaman-form .table-mobile-scroll--lab col.col-name,
+.peminjaman-form .table-mobile-scroll--lab col.col-photo,
+.peminjaman-form .table-mobile-scroll--lab col.col-type,
+.peminjaman-form .table-mobile-scroll--lab col.col-code,
+.peminjaman-form .table-mobile-scroll--lab .inventory-col--fit {
+    width: 1% !important;
+    min-width: max-content !important;
+    max-width: none !important;
+    white-space: nowrap !important;
+}
+
+.peminjaman-form .table-mobile-scroll--lab col.col-status,
+.peminjaman-form .table-mobile-scroll--lab col.col-condition,
+.peminjaman-form .table-mobile-scroll--lab col.col-date {
+    width: auto !important;
+}
+
+.peminjaman-form .table-mobile-scroll--lab > tbody > tr > td.cell-photo {
+    padding: 4px 8px !important;
+}
+
+.inventory-photo__trigger {
+    display: inline-flex;
+    width: 36px;
+    height: 36px;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface-soft);
+    cursor: zoom-in;
+    vertical-align: middle;
+}
+
+.inventory-photo__trigger:hover,
+.inventory-photo__trigger:focus-visible {
+    border-color: var(--primary);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(16, 62, 111, 0.14);
+}
+
+.inventory-photo__thumb {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.inventory-photo__empty {
+    color: var(--text-soft);
+}
+
+.inventory-photo[hidden] {
+    display: none !important;
+}
+
+.inventory-photo {
+    position: fixed;
+    inset: 0;
+    z-index: 1500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+}
+
+.inventory-photo__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.76);
+}
+
+.inventory-photo__card {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    width: min(920px, 100%);
+    max-height: calc(100vh - 48px);
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 8px;
+    background: #fff;
+    box-shadow: 0 26px 70px rgba(15, 23, 42, 0.34);
+}
+
+.inventory-photo__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--border);
+}
+
+.inventory-photo__head h3 {
+    margin: 0;
+    font-size: 1rem;
+}
+
+.inventory-photo__close {
+    display: inline-flex;
+    width: 34px;
+    height: 34px;
+    flex: 0 0 34px;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+}
+
+.inventory-photo__close:hover,
+.inventory-photo__close:focus-visible {
+    background: var(--surface-soft);
+    outline: none;
+}
+
+.inventory-photo__stage {
+    position: relative;
+    display: flex;
+    min-height: 360px;
+    align-items: center;
+    justify-content: center;
+    background: #0f172a;
+}
+
+.inventory-photo__stage img {
+    display: block;
+    max-width: 100%;
+    max-height: min(68vh, 620px);
+    object-fit: contain;
+}
+
+.inventory-photo__caption {
+    margin: 0;
+    padding: 14px 18px 16px;
+    color: var(--text-main);
+    font-size: 0.9rem;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 768px) {
+    .inventory-photo {
+        padding: 12px;
+    }
+
+    .inventory-photo__card {
+        max-height: calc(100vh - 24px);
+    }
+
+    .inventory-photo__head {
+        padding: 12px 14px;
+    }
+
+    .inventory-photo__stage {
+        min-height: 300px;
+    }
+
+    .inventory-photo__stage img {
+        max-height: 62vh;
+    }
+
+    .inventory-photo__caption {
+        padding: 12px 14px;
+        font-size: 0.84rem;
+    }
+
 }
 
 /* =========================

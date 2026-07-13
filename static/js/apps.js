@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', function () {
         initBarangLaboratoriumImportModal,
         initOperasionalDeleteModal,
         initPeminjamanDeleteModal,
+        initPemeliharaanDeleteModal,
         initVerificationActionModal,
         typeof initPengembalianFormBehavior === 'function' ? initPengembalianFormBehavior : null,
         initUploadPreviewControls,
@@ -27,6 +28,7 @@ document.addEventListener('DOMContentLoaded', function () {
         initPenggunaCreateFormValidation,
         initPelatihanFormBehavior,
         initGlobalQtyStepperBehavior,
+        initInventoryPhotoPreview,
         initPeminjamanFormBehavior,
         initNotificationAnnouncementFormBehavior,
         initConfirmSubmitForms,
@@ -50,6 +52,62 @@ document.addEventListener('DOMContentLoaded', function () {
 
 function normalizeSearchText(value) {
     return String(value || '').trim().toLocaleLowerCase('id-ID').replace(/\s+/g, ' ');
+}
+
+function initInventoryPhotoPreview() {
+    const modal = document.querySelector('[data-inventory-photo-modal]');
+    const image = modal?.querySelector('[data-inventory-photo-image]');
+    const caption = modal?.querySelector('[data-inventory-photo-caption]');
+    const card = modal?.querySelector('.inventory-photo__card');
+    const triggers = document.querySelectorAll('[data-inventory-photo-open]');
+    let activeTrigger = null;
+
+    if (!modal || !image || !caption || !card || !triggers.length) {
+        return;
+    }
+
+    function closeModal() {
+        modal.hidden = true;
+        modal.setAttribute('aria-hidden', 'true');
+        image.removeAttribute('src');
+        image.alt = '';
+        caption.textContent = '';
+        document.body.classList.remove('is-scroll-locked');
+        activeTrigger?.focus();
+        activeTrigger = null;
+    }
+
+    function openModal(trigger) {
+        const src = trigger.getAttribute('data-photo-src');
+        if (!src) {
+            return;
+        }
+
+        activeTrigger = trigger;
+        image.src = src;
+        image.alt = trigger.getAttribute('data-photo-alt') || 'Foto barang';
+        caption.textContent = trigger.getAttribute('data-photo-caption') || '';
+        modal.hidden = false;
+        modal.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('is-scroll-locked');
+        card.focus();
+    }
+
+    triggers.forEach(function (trigger) {
+        trigger.addEventListener('click', function () {
+            openModal(trigger);
+        });
+    });
+
+    modal.querySelectorAll('[data-inventory-photo-close]').forEach(function (button) {
+        button.addEventListener('click', closeModal);
+    });
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape' && !modal.hidden) {
+            closeModal();
+        }
+    });
 }
 
 function initSuccessPopups() {
@@ -3149,6 +3207,21 @@ function initPeminjamanDeleteModal() {
         formId: 'peminjamanDeleteForm',
         primaryFieldId: 'peminjamanDeleteItemName',
         secondaryFieldId: 'peminjamanDeleteItemMeta',
+        primaryDataAttr: 'data-item-name',
+        secondaryDataAttr: 'data-item-meta'
+    });
+}
+
+function initPemeliharaanDeleteModal() {
+    bindDeleteModal({
+        type: 'pemeliharaan',
+        modalId: 'pemeliharaanDeleteModal',
+        backdropId: 'pemeliharaanDeleteModalBackdrop',
+        closeId: 'pemeliharaanDeleteModalClose',
+        cancelId: 'pemeliharaanDeleteModalCancel',
+        formId: 'pemeliharaanDeleteForm',
+        primaryFieldId: 'pemeliharaanDeleteItemName',
+        secondaryFieldId: 'pemeliharaanDeleteItemMeta',
         primaryDataAttr: 'data-item-name',
         secondaryDataAttr: 'data-item-meta'
     });

@@ -1,6 +1,11 @@
+import shutil
+import tempfile
 from datetime import date
 
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
+from django.test.utils import override_settings
+from django.urls import reverse
 
 from apps.master_data.models import (
     BarangLaboratorium,
@@ -8,7 +13,7 @@ from apps.master_data.models import (
     PeralatanLaboratorium,
     StatusBarangChoices,
 )
-from apps.pengguna.models import User
+from apps.pengguna.models import Role, User
 
 from .inventory import sync_active_inventory
 from .models import (
@@ -112,3 +117,69 @@ class InventoryAvailabilitySyncTests(TestCase):
 
         self.assertFalse(item.sedang_dipinjam)
         self.assertEqual(item.ketersediaan, KetersediaanChoices.TERSEDIA)
+
+
+class PeminjamanPhotoFormTests(TestCase):
+    def setUp(self):
+        self.media_root = tempfile.mkdtemp()
+        self.media_override = override_settings(MEDIA_ROOT=self.media_root)
+        self.media_override.enable()
+        self.addCleanup(self.media_override.disable)
+        self.addCleanup(shutil.rmtree, self.media_root, True)
+
+        role, _ = Role.objects.get_or_create(nama="User")
+        self.user = User.objects.create_user(
+            username="peminjaman-foto-user",
+            password="test-pass-123",
+        )
+        self.user.safe_profile.role = role
+        self.user.safe_profile.save(update_fields=["role"])
+
+        self.item_foto = BarangLaboratorium.objects.create(
+            nama_barang="Drone dengan Foto",
+            tipe_merek_barang="DJI Foto",
+            jenis_barang="Drone",
+            status_barang=StatusBarangChoices.NON_BMN,
+            kode_laboratorium="LAB-FOTO-001",
+            lokasi_barang="Gudang",
+            foto_barang=SimpleUploadedFile(
+                "drone.jpg",
+                b"test-image-content",
+                content_type="image/jpeg",
+            ),
+        )
+        BarangLaboratorium.objects.create(
+            nama_barang="Drone tanpa Foto",
+            tipe_merek_barang="DJI Kosong",
+            jenis_barang="Drone",
+            status_barang=StatusBarangChoices.NON_BMN,
+            kode_laboratorium="LAB-FOTO-002",
+            lokasi_barang="Gudang",
+        )
+        self.client.force_login(self.user)
+
+    def test_form_tambah_menampilkan_thumbnail_dan_modal_preview_foto(self):
+        response = self.client.get(reverse("peminjaman:tambah"))
+
+        self.assertEqual(response.status_code, 200)
+        response_html = response.content.decode()
+        survey_start = response_html.index('id="inventorySectionSurvey"')
+        name_header = response_html.index(">Nama Barang</th>", survey_start)
+        photo_header = response_html.index(">Foto Barang</th>", survey_start)
+        type_header = response_html.index(">Tipe / Merek</th>", survey_start)
+        code_header = response_html.index(">Kode Laboratorium</th>", survey_start)
+        self.assertLess(name_header, photo_header)
+        self.assertLess(photo_header, type_header)
+        self.assertLess(type_header, code_header)
+        self.assertContains(response, 'class="inventory-col inventory-col--fit"')
+        self.assertContains(response, 'class="col-photo"')
+        self.assertContains(response, 'colspan="9"')
+        self.assertContains(response, "data-inventory-photo-open", count=1)
+        self.assertContains(
+            response,
+            f'data-photo-src="{self.item_foto.foto_barang.url}"',
+        )
+        self.assertContains(response, 'class="inventory-photo__thumb"')
+        self.assertContains(response, 'class="inventory-photo__empty"')
+        self.assertContains(response, 'id="inventoryPhotoModal"', count=1)
+        self.assertContains(response, "Preview Foto Barang")

@@ -24,6 +24,7 @@
                                 <th>Pilih</th>
                                 <th class="cell-wrap">Nama Barang</th>
                                 <th class="cell-wrap">Tipe / Merek Barang</th>
+                                <th class="cell-wrap">Kode Lab</th>
                                 <th>Ukuran</th>
                             </tr>
                         </thead>
@@ -35,6 +36,7 @@
                                 </td>
                                 <td class="cell-wrap">{{ item.nama_barang|default:"-" }}</td>
                                 <td class="cell-wrap">{{ item.tipe_merek_barang|default:"-" }}</td>
+                                <td class="cell-wrap">{{ item.kode_laboratorium|default:"-" }}</td>
                                 <td>
                                     <select name="label_size_{{ item.pk }}" class="bulk-label-size">
                                         <option value="normal" selected>Normal</option>
@@ -44,7 +46,7 @@
                             </tr>
                             {% empty %}
                             <tr>
-                                <td colspan="4"><div class="empty-state">Belum ada data barang untuk dibuat label.</div></td>
+                                <td colspan="5"><div class="empty-state">Belum ada data barang untuk dibuat label.</div></td>
                             </tr>
                             {% endfor %}
                         </tbody>
