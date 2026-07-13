@@ -69,6 +69,12 @@ class PemeliharaanAlatChoiceField(forms.ModelChoiceField):
 class PemeliharaanForm(forms.Form):
     komponen_validasi = forms.CharField(required=False, widget=forms.HiddenInput())
     dokumentasi_pemeriksaan = forms.CharField(required=False, widget=forms.HiddenInput())
+    hapus_foto_ids = forms.MultipleChoiceField(
+        required=False,
+        error_messages={
+            "invalid_choice": "Foto yang dipilih untuk dihapus tidak valid.",
+        },
+    )
     pilih_alat = PemeliharaanAlatChoiceField(
         label="Pilih Alat",
         queryset=BarangLaboratorium.objects.none(),
@@ -97,6 +103,7 @@ class PemeliharaanForm(forms.Form):
         self.cleaned_items = []
         self.pemeriksaan_files = []
         self.component_errors = {}
+        self._setup_photo_delete_field()
         self.fields["pilih_alat"].queryset = get_available_alat_queryset(self.instance)
         if self.instance and self.instance.alat_id:
             self.fields["pilih_alat"].initial = self.instance.alat
@@ -113,6 +120,37 @@ class PemeliharaanForm(forms.Form):
                 ).strip(),
             }
         )
+
+    def _setup_photo_delete_field(self):
+        photo_ids = []
+        if self.instance and self.instance.pk:
+            photo_ids = list(
+                PemeliharaanFoto.objects.filter(
+                    item__pengajuan=self.instance,
+                ).values_list("pk", flat=True)
+            )
+
+        valid_ids = {str(photo_id) for photo_id in photo_ids}
+        self.fields["hapus_foto_ids"].choices = [
+            (str(photo_id), str(photo_id)) for photo_id in photo_ids
+        ]
+        raw_delete_ids = []
+        if self.is_bound:
+            field_name = self.add_prefix("hapus_foto_ids")
+            if hasattr(self.data, "getlist"):
+                raw_delete_ids = self.data.getlist(field_name)
+            else:
+                raw_delete_ids = self.data.get(field_name, [])
+                if not isinstance(raw_delete_ids, (list, tuple)):
+                    raw_delete_ids = [raw_delete_ids]
+        self.deleted_photo_ids = {
+            str(photo_id) for photo_id in raw_delete_ids if str(photo_id).strip()
+        }
+        self.photo_delete_ids = {
+            int(photo_id)
+            for photo_id in self.deleted_photo_ids
+            if photo_id in valid_ids
+        }
 
     def _set_common_widget_style(self):
         for field in self.fields.values():
@@ -207,7 +245,9 @@ class PemeliharaanForm(forms.Form):
         return queryset.order_by("urutan", "id")
 
     def _existing_photo_count(self, jenis, component=None):
-        return self._existing_photo_queryset(jenis, component).count()
+        return self._existing_photo_queryset(jenis, component).exclude(
+            pk__in=self.photo_delete_ids
+        ).count()
 
     def _existing_photo_data(self, jenis, component=None):
         photos = []
@@ -219,6 +259,7 @@ class PemeliharaanForm(forms.Form):
                 continue
             photos.append(
                 {
+                    "id": photo.pk,
                     "url": photo.foto.url,
                     "name": photo.foto.name.rsplit("/", 1)[-1],
                     "label": f"{photo.get_jenis_display()} {index}",
@@ -551,6 +592,7 @@ class PemeliharaanForm(forms.Form):
                 item.komponen: item
                 for item in pengajuan.items.all()
             }
+            self._delete_photos(pengajuan)
             used_components = set()
             for row in self.cleaned_items:
                 item = item_map.get(row["komponen"])
@@ -599,6 +641,29 @@ class PemeliharaanForm(forms.Form):
                         update_fields.extend(["tanggal_pemeliharaan", "tanggal_perbaikan"])
                     old_alat.save(update_fields=update_fields)
         return pengajuan
+
+    def _delete_photos(self, pengajuan):
+        delete_ids = {
+            int(photo_id)
+            for photo_id in self.cleaned_data.get("hapus_foto_ids") or []
+        }
+        if not delete_ids:
+            return
+
+        photos = PemeliharaanFoto.objects.filter(
+            item__pengajuan=pengajuan,
+            pk__in=delete_ids,
+        )
+        groups = set(photos.values_list("item_id", "jenis"))
+        photos.delete()
+
+        for item_id, jenis in groups:
+            remaining_ids = PemeliharaanFoto.objects.filter(
+                item_id=item_id,
+                jenis=jenis,
+            ).order_by("urutan", "id").values_list("pk", flat=True)
+            for order, photo_id in enumerate(remaining_ids, start=1):
+                PemeliharaanFoto.objects.filter(pk=photo_id).update(urutan=order)
 
     def _save_photos(self, item, jenis, files):
         start_order = PemeliharaanFoto.objects.filter(item=item, jenis=jenis).count() + 1

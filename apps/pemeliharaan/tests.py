@@ -252,9 +252,98 @@ class PemeliharaanVerifikasiTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "data-gallery-existing-item")
+        self.assertContains(response, "data-gallery-remove")
+        self.assertContains(response, 'title="Hapus foto"')
+        self.assertContains(response, f'value="{foto.pk}"')
         self.assertContains(response, foto.foto.url)
         self.assertContains(response, "edit-pemeriksaan")
         self.assertContains(response, 'data-gallery-empty hidden', html=False)
+
+    def test_edit_form_menghapus_dokumentasi_tersimpan(self):
+        pengajuan = self._create_pengajuan_baik()
+        item = pengajuan.items.get()
+        foto_hapus = PemeliharaanFoto.objects.create(
+            item=item,
+            jenis=JenisFotoPemeliharaanChoices.PEMERIKSAAN,
+            foto=self._image_upload("hapus-pemeriksaan.png"),
+            urutan=1,
+        )
+        foto_sisa = PemeliharaanFoto.objects.create(
+            item=item,
+            jenis=JenisFotoPemeliharaanChoices.PEMERIKSAAN,
+            foto=self._image_upload("sisa-pemeriksaan.png"),
+            urutan=2,
+        )
+        deleted_name = foto_hapus.foto.name
+        storage = foto_hapus.foto.storage
+
+        self._login("Admin Lab")
+        response = self.client.post(
+            reverse("pemeliharaan:edit", args=[pengajuan.pk]),
+            {
+                "pilih_alat": str(self.alat.pk),
+                "komponen_0": "Kamera",
+                "kondisi_0": KondisiPemeliharaanChoices.BAIK,
+                "hapus_foto_ids": str(foto_hapus.pk),
+            },
+        )
+
+        self.assertRedirects(
+            response,
+            reverse("pemeliharaan:detail", args=[pengajuan.pk]),
+            fetch_redirect_response=False,
+        )
+        self.assertFalse(PemeliharaanFoto.objects.filter(pk=foto_hapus.pk).exists())
+        foto_sisa.refresh_from_db()
+        self.assertEqual(foto_sisa.urutan, 1)
+        self.assertFalse(storage.exists(deleted_name))
+
+    def test_edit_form_menolak_hapus_foto_di_luar_pengajuan(self):
+        pengajuan = self._create_pengajuan_baik()
+        item = pengajuan.items.get()
+        PemeliharaanFoto.objects.create(
+            item=item,
+            jenis=JenisFotoPemeliharaanChoices.PEMERIKSAAN,
+            foto=self._image_upload("pemeriksaan-valid.png"),
+        )
+        form = PemeliharaanForm(
+            data={
+                "pilih_alat": str(self.alat.pk),
+                "komponen_0": "Kamera",
+                "kondisi_0": KondisiPemeliharaanChoices.BAIK,
+                "hapus_foto_ids": ["999999999"],
+            },
+            actor=self.users["Admin Lab"],
+            instance=pengajuan,
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertIn("tidak valid", str(form.errors["hapus_foto_ids"]))
+
+    def test_edit_form_mewajibkan_pengganti_foto_terakhir_yang_dihapus(self):
+        pengajuan = self._create_pengajuan_baik()
+        item = pengajuan.items.get()
+        foto = PemeliharaanFoto.objects.create(
+            item=item,
+            jenis=JenisFotoPemeliharaanChoices.PEMERIKSAAN,
+            foto=self._image_upload("pemeriksaan-terakhir.png"),
+        )
+        form = PemeliharaanForm(
+            data={
+                "pilih_alat": str(self.alat.pk),
+                "komponen_0": "Kamera",
+                "kondisi_0": KondisiPemeliharaanChoices.BAIK,
+                "hapus_foto_ids": [str(foto.pk)],
+            },
+            actor=self.users["Admin Lab"],
+            instance=pengajuan,
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertIn(
+            "wajib diupload",
+            str(form.errors["dokumentasi_pemeriksaan"]),
+        )
 
     def test_edit_form_menolak_total_dokumentasi_lebih_dari_tiga(self):
         pengajuan = self._create_pengajuan_baik()

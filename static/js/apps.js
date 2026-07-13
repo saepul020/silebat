@@ -11,7 +11,6 @@ document.addEventListener('DOMContentLoaded', function () {
         initDigitsOnlyInputs,
         initDeleteUserModal,
         initMasterDataDeleteModal,
-        initMasterReturnNavigation,
         initAnnouncementDeleteModal,
         initBarangLaboratoriumImportModal,
         initOperasionalDeleteModal,
@@ -34,6 +33,7 @@ document.addEventListener('DOMContentLoaded', function () {
         initSortableListTables,
         initLocalListSearch,
         initMasterShowEntriesControl,
+        initListNavigationState,
         initUnsavedFormGuard,
     ].forEach(function (initializer) {
         if (typeof initializer !== 'function') {
@@ -462,55 +462,197 @@ function initMasterDataDeleteModal() {
     });
 }
 
-function initMasterReturnNavigation() {
-    const list = document.querySelector('.table-scroll--list');
-    const storagePrefix = 'master-list-position:';
-
-    function keyFor(url) {
-        const parsed = new URL(url, window.location.href);
-        return storagePrefix + parsed.pathname + parsed.search;
+/* ========================================
+   GLOBAL LIST STATE
+   Memulihkan filter, urutan, dan posisi daftar setelah aksi data.
+======================================== */
+function initListNavigationState() {
+    const listSelector = '.table-scroll--list, .notif-list-card';
+    if (!document.querySelector(listSelector)) {
+        return;
     }
 
-    function savePosition(returnUrl) {
-        if (!returnUrl || !list) {
+    const storageKey = 'list-state:' + window.location.pathname;
+    const currentUrl = window.location.pathname + window.location.search;
+    let restoring = false;
+
+    function readState() {
+        try {
+            return JSON.parse(sessionStorage.getItem(storageKey) || 'null');
+        } catch (error) {
+            sessionStorage.removeItem(storageKey);
+            console.error('State daftar tidak dapat dibaca.', error);
+            return null;
+        }
+    }
+
+    function writeState(state) {
+        try {
+            sessionStorage.setItem(storageKey, JSON.stringify(state));
+        } catch (error) {
+            console.error('State daftar tidak dapat disimpan.', error);
+        }
+    }
+
+    function getSortState() {
+        return Array.from(document.querySelectorAll('.table-scroll--list .table-data')).flatMap(function (table, tableIndex) {
+            const active = table.querySelector('.table-sort-button[data-sort-direction="asc"], .table-sort-button[data-sort-direction="desc"]');
+            if (!active) {
+                return [];
+            }
+            return [{
+                table: tableIndex,
+                column: Number(active.dataset.columnIndex || 0),
+                direction: active.dataset.sortDirection,
+            }];
+        });
+    }
+
+    function getSearchState() {
+        return Array.from(document.querySelectorAll('[data-local-list-search-input]')).map(function (input) {
+            return input.value;
+        });
+    }
+
+    function getLists() {
+        return Array.from(document.querySelectorAll(listSelector));
+    }
+
+    function buildState(pending) {
+        return {
+            url: window.location.pathname + window.location.search,
+            top: window.scrollY,
+            left: getLists().map(function (list) { return list.scrollLeft; }),
+            sort: getSortState(),
+            search: getSearchState(),
+            pending: Boolean(pending),
+        };
+    }
+
+    function saveState(pending) {
+        if (!restoring) {
+            writeState(buildState(pending));
+        }
+    }
+
+    function sameListPath(url) {
+        try {
+            return new URL(url, window.location.origin).pathname === window.location.pathname;
+        } catch (error) {
+            return false;
+        }
+    }
+
+    function getNoticeMarkup() {
+        return Array.from(document.querySelectorAll('.message-wrapper, [data-success-popup-stack]')).map(function (node) {
+            return node.outerHTML;
+        }).join('');
+    }
+
+    function restoreNotice(markup) {
+        const content = document.querySelector('.app-content');
+        if (!markup || !content || content.querySelector('.message-wrapper, [data-success-popup-stack]')) {
             return;
         }
-        sessionStorage.setItem(keyFor(returnUrl), JSON.stringify({
-            top: window.scrollY,
-            left: list.scrollLeft,
-        }));
+        content.insertAdjacentHTML('afterbegin', markup);
+        initSuccessPopups();
     }
 
-    if (list) {
-        const key = keyFor(window.location.href);
-        const saved = sessionStorage.getItem(key);
-        if (saved) {
-            sessionStorage.removeItem(key);
-            try {
-                const position = JSON.parse(saved);
-                window.requestAnimationFrame(function () {
-                    list.scrollLeft = Number(position.left || 0);
-                    window.scrollTo(0, Number(position.top || 0));
-                });
-            } catch (error) {
-                console.error('Posisi daftar master data tidak dapat dipulihkan.', error);
+    function restoreState(state) {
+        restoring = true;
+        restoreNotice(state.notice);
+        (state.search || []).forEach(function (value, index) {
+            const input = document.querySelectorAll('[data-local-list-search-input]')[index];
+            if (input) {
+                input.value = value;
+                input.dispatchEvent(new Event('input', { bubbles: true }));
             }
-        }
+        });
+
+        const tables = document.querySelectorAll('.table-scroll--list .table-data');
+        (state.sort || []).forEach(function (sort) {
+            const table = tables[Number(sort.table)];
+            const button = table?.querySelector('.table-sort-button[data-column-index="' + Number(sort.column) + '"]');
+            if (!button) {
+                return;
+            }
+            button.click();
+            if (sort.direction === 'desc') {
+                button.click();
+            }
+        });
+
+        window.requestAnimationFrame(function () {
+            window.requestAnimationFrame(function () {
+                getLists().forEach(function (list, index) {
+                    list.scrollLeft = Number((state.left || [])[index] || 0);
+                });
+                window.scrollTo(0, Number(state.top || 0));
+                restoring = false;
+                writeState(buildState(false));
+            });
+        });
+    }
+
+    const saved = readState();
+    if (saved?.pending && saved.url && sameListPath(saved.url) && saved.url !== currentUrl) {
+        saved.notice = getNoticeMarkup();
+        writeState(saved);
+        window.location.replace(saved.url);
+        return;
+    }
+
+    if (saved?.pending && saved.url === currentUrl) {
+        restoreState(saved);
+    } else {
+        writeState(buildState(false));
     }
 
     document.addEventListener('click', function (event) {
-        const editLink = event.target.closest?.('.table-scroll--list a.btn-warning');
-        if (editLink) {
-            const target = new URL(editLink.href, window.location.href);
-            savePosition(target.searchParams.get('next') || window.location.href);
+        const sortButton = event.target.closest?.('.table-sort-button');
+        if (sortButton) {
+            window.requestAnimationFrame(function () { saveState(false); });
             return;
         }
 
+        const link = event.target.closest?.('a[href]');
+        const linkLabel = String(link?.getAttribute('title') || link?.textContent || '').toLowerCase();
+        if (
+            !link
+            || event.defaultPrevented
+            || !link.closest(listSelector)
+            || link.target === '_blank'
+            || link.hasAttribute('download')
+            || /unduh|download|export|pdf/.test(linkLabel)
+            || event.button !== 0
+            || event.ctrlKey
+            || event.metaKey
+            || event.shiftKey
+            || event.altKey
+        ) {
+            return;
+        }
+
+        const target = new URL(link.href, window.location.href);
+        if (target.origin === window.location.origin && target.pathname !== window.location.pathname) {
+            saveState(true);
+        }
     });
 
-    document.getElementById('masterDeleteForm')?.addEventListener('submit', function (event) {
-        const action = new URL(event.currentTarget.action, window.location.href);
-        savePosition(action.searchParams.get('next') || window.location.href);
+    document.addEventListener('submit', function (event) {
+        const form = event.target;
+        if (event.defaultPrevented || !(form instanceof HTMLFormElement)) {
+            return;
+        }
+        const method = String(form.method || 'get').toLowerCase();
+        const action = new URL(form.action || window.location.href, window.location.href);
+        saveState(method !== 'get' || action.pathname !== window.location.pathname);
+    });
+
+    document.addEventListener('input', function (event) {
+        if (event.target.matches?.('[data-local-list-search-input]')) {
+            saveState(false);
+        }
     });
 }
 

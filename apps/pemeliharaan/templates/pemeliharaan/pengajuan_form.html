@@ -4,7 +4,7 @@
 {% block title %}{{ page_title }}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/landing_manage.css' %}?v=20260713-maintenance-existing-v1">
+<link rel="stylesheet" href="{% static 'css/landing_manage.css' %}?v=20260713-maintenance-delete-v1">
 <link rel="stylesheet" href="{% static 'css/pemeliharaan.css' %}?v=20260612-maintenance-form-v5">
 {% endblock %}
 
@@ -77,14 +77,21 @@
                         </div>
                         <p class="input-error-text" data-gallery-error hidden></p>
                         {% for error in form.dokumentasi_pemeriksaan.errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
+                        {% for error in form.hapus_foto_ids.errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
                         <div class="landing-gallery-strip" data-gallery-strip>
                             {% if form.existing_pemeriksaan_fotos %}
                             <div class="landing-gallery-existing" data-gallery-existing>
                                 {% for foto in form.existing_pemeriksaan_fotos %}
-                                <a href="{{ foto.url }}" target="_blank" rel="noopener" class="landing-gallery-thumb landing-gallery-thumb--stored" data-gallery-existing-item>
-                                    <img src="{{ foto.url }}" alt="{{ foto.label }}">
+                                <div class="landing-gallery-thumb" data-gallery-existing-item>
+                                    <a href="{{ foto.url }}" target="_blank" rel="noopener" class="landing-gallery-thumb__view">
+                                        <img src="{{ foto.url }}" alt="{{ foto.label }}">
+                                    </a>
+                                    <label class="landing-gallery-remove" title="Hapus foto" aria-label="Hapus {{ foto.name }}">
+                                        <input type="checkbox" name="{{ form.hapus_foto_ids.html_name }}" value="{{ foto.id }}" {% if foto.id|stringformat:"s" in form.deleted_photo_ids %}checked{% endif %} data-gallery-remove>
+                                        <span><i class="bi bi-x-lg"></i></span>
+                                    </label>
                                     <span class="landing-gallery-name">{{ foto.name }}</span>
-                                </a>
+                                </div>
                                 {% endfor %}
                             </div>
                             {% endif %}
@@ -143,5 +150,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/pemeliharaan.js' %}?v=20260713-maintenance-flow-v1" defer></script>
+<script src="{% static 'js/pemeliharaan.js' %}?v=20260713-maintenance-delete-v1" defer></script>
 {% endblock %}

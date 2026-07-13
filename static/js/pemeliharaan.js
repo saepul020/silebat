@@ -831,7 +831,7 @@ function initPemeliharaanGallery(scope) {
 
         const input = control.querySelector('[data-gallery-input]');
         const preview = control.querySelector('[data-gallery-new]');
-        const existing = control.querySelector('[data-gallery-existing]');
+        const removeInputs = Array.from(control.querySelectorAll('[data-gallery-remove]'));
         const empty = control.querySelector('[data-gallery-empty]');
         const trigger = control.querySelector('[data-gallery-trigger]');
         const status = control.querySelector('[data-gallery-status]');
@@ -840,12 +840,19 @@ function initPemeliharaanGallery(scope) {
         const label = String(control.getAttribute('data-gallery-label') || 'Foto');
         const maxSize = 7 * 1024 * 1024;
         const allowed = ['jpg', 'jpeg', 'png'];
-        const existingCount = existing ? existing.querySelectorAll('[data-gallery-existing-item]').length : 0;
         let selectedFiles = [];
         let previewUrls = [];
 
         if (!input || !preview || !empty || !trigger || !status || !error) {
             return;
+        }
+
+        function activeExistingCount() {
+            return removeInputs.filter(function (item) { return !item.checked; }).length;
+        }
+
+        function selectedCount() {
+            return activeExistingCount() + selectedFiles.length;
         }
 
         function clearPreviewUrls() {
@@ -877,7 +884,7 @@ function initPemeliharaanGallery(scope) {
         }
 
         function updateState() {
-            const count = existingCount + selectedFiles.length;
+            const count = selectedCount();
             const isFull = count >= maxFiles;
             status.textContent = count + '/' + maxFiles + ' foto dipilih' + (isFull ? ' \u00b7 Batas maksimal tercapai' : ' \u00b7 Tambah foto');
             control.classList.toggle('is-full', isFull);
@@ -889,7 +896,7 @@ function initPemeliharaanGallery(scope) {
         }
 
         function validateFiles(files) {
-            if (existingCount + selectedFiles.length + files.length > maxFiles) {
+            if (selectedCount() + files.length > maxFiles) {
                 return label + ' maksimal ' + maxFiles + ' foto.';
             }
             for (const file of files) {
@@ -950,9 +957,15 @@ function initPemeliharaanGallery(scope) {
             renderSelection();
         });
         input.addEventListener('click', function (event) {
-            if (existingCount + selectedFiles.length >= maxFiles) {
+            if (selectedCount() >= maxFiles) {
                 event.preventDefault();
             }
+        });
+        removeInputs.forEach(function (checkbox) {
+            checkbox.addEventListener('change', function () {
+                clearError();
+                updateState();
+            });
         });
 
         renderSelection();
