@@ -158,13 +158,23 @@ class PemeliharaanForm(forms.Form):
         )
         error_data.setdefault(area, []).append(message)
 
-    def _validate_photos(self, field_name, label, *, required=True, add_error):
+    def _validate_photos(
+        self,
+        field_name,
+        label,
+        *,
+        required=True,
+        existing_count=0,
+        add_error,
+    ):
         files = self._get_files(field_name)
         if required and not files:
             add_error(f"{label} wajib diupload.")
             return []
-        if len(files) > MAX_PEMELIHARAAN_PHOTOS:
-            add_error(f"{label} maksimal {MAX_PEMELIHARAAN_PHOTOS} foto.")
+        if existing_count + len(files) > MAX_PEMELIHARAAN_PHOTOS:
+            add_error(
+                f"{label} maksimal {MAX_PEMELIHARAAN_PHOTOS} foto termasuk foto yang sudah tersimpan."
+            )
             return []
 
         cleaned = []
@@ -184,16 +194,44 @@ class PemeliharaanForm(forms.Form):
                     add_error(message)
         return cleaned
 
-    def _has_existing_item_photos(self, component, jenis):
-        return bool(
-            self.instance
-            and self.instance.pk
-            and PemeliharaanFoto.objects.filter(
-                item__pengajuan=self.instance,
-                item__komponen=component,
-                jenis=jenis,
-            ).exists()
+    def _existing_photo_queryset(self, jenis, component=None):
+        if not self.instance or not self.instance.pk:
+            return PemeliharaanFoto.objects.none()
+
+        queryset = PemeliharaanFoto.objects.filter(
+            item__pengajuan=self.instance,
+            jenis=jenis,
         )
+        if component is not None:
+            queryset = queryset.filter(item__komponen=component)
+        return queryset.order_by("urutan", "id")
+
+    def _existing_photo_count(self, jenis, component=None):
+        return self._existing_photo_queryset(jenis, component).count()
+
+    def _existing_photo_data(self, jenis, component=None):
+        photos = []
+        for index, photo in enumerate(
+            self._existing_photo_queryset(jenis, component),
+            start=1,
+        ):
+            if not photo.foto:
+                continue
+            photos.append(
+                {
+                    "url": photo.foto.url,
+                    "name": photo.foto.name.rsplit("/", 1)[-1],
+                    "label": f"{photo.get_jenis_display()} {index}",
+                }
+            )
+        return photos
+
+    def _has_existing_item_photos(self, component, jenis):
+        return self._existing_photo_count(jenis, component) > 0
+
+    @property
+    def existing_pemeriksaan_fotos(self):
+        return self._existing_photo_data(JenisFotoPemeliharaanChoices.PEMERIKSAAN)
 
     def _parse_datetime(self, index, field_name, label):
         value = self._get_value(field_name)
@@ -232,6 +270,14 @@ class PemeliharaanForm(forms.Form):
                     "uraian_perbaikan": self._get_value(f"uraian_perbaikan_{index}"),
                     "tanggal_selesai_perbaikan": self._get_value(f"tanggal_selesai_perbaikan_{index}"),
                     "uraian_kerusakan": self._get_value(f"uraian_kerusakan_{index}"),
+                    "existing_perbaikan_fotos": self._existing_photo_data(
+                        JenisFotoPemeliharaanChoices.PERBAIKAN,
+                        component,
+                    ),
+                    "existing_kerusakan_fotos": self._existing_photo_data(
+                        JenisFotoPemeliharaanChoices.KERUSAKAN,
+                        component,
+                    ),
                     "errors": self.component_errors.get(index, {}).get("komponen", []),
                     "repair_errors": self.component_errors.get(index, {}).get("perbaikan", []),
                 }
@@ -257,6 +303,14 @@ class PemeliharaanForm(forms.Form):
                     if item and item.tanggal_selesai_perbaikan
                     else "",
                     "uraian_kerusakan": getattr(item, "uraian_kerusakan", "") if item else "",
+                    "existing_perbaikan_fotos": self._existing_photo_data(
+                        JenisFotoPemeliharaanChoices.PERBAIKAN,
+                        component,
+                    ),
+                    "existing_kerusakan_fotos": self._existing_photo_data(
+                        JenisFotoPemeliharaanChoices.KERUSAKAN,
+                        component,
+                    ),
                     "errors": self.component_errors.get(index, {}).get("komponen", []),
                     "repair_errors": self.component_errors.get(index, {}).get("perbaikan", []),
                 }
@@ -282,6 +336,8 @@ class PemeliharaanForm(forms.Form):
                 "uraian_perbaikan": "",
                 "tanggal_selesai_perbaikan": "",
                 "uraian_kerusakan": "",
+                "existing_perbaikan_fotos": [],
+                "existing_kerusakan_fotos": [],
                 "errors": [],
                 "repair_errors": [],
             }
@@ -326,18 +382,14 @@ class PemeliharaanForm(forms.Form):
         condition_values = {choice[0] for choice in KondisiPemeliharaanChoices.choices}
         action_values = {choice[0] for choice in TindakanPerbaikanChoices.choices}
         pemeriksaan_errors = []
-        has_existing_pemeriksaan = bool(
-            self.instance
-            and self.instance.pk
-            and PemeliharaanFoto.objects.filter(
-                item__pengajuan=self.instance,
-                jenis=JenisFotoPemeliharaanChoices.PEMERIKSAAN,
-            ).exists()
+        existing_pemeriksaan_count = self._existing_photo_count(
+            JenisFotoPemeliharaanChoices.PEMERIKSAAN
         )
         self.pemeriksaan_files = self._validate_photos(
             "dokumentasi_pemeriksaan",
             "Dokumentasi Pemeriksaan",
-            required=not has_existing_pemeriksaan,
+            required=existing_pemeriksaan_count == 0,
+            existing_count=existing_pemeriksaan_count,
             add_error=pemeriksaan_errors.append,
         )
         for message in pemeriksaan_errors:
@@ -405,6 +457,10 @@ class PemeliharaanForm(forms.Form):
                                     component,
                                     JenisFotoPemeliharaanChoices.PERBAIKAN,
                                 ),
+                                existing_count=self._existing_photo_count(
+                                    JenisFotoPemeliharaanChoices.PERBAIKAN,
+                                    component,
+                                ),
                                 add_error=lambda message, row_index=index: self._add_component_error(
                                     row_index,
                                     message,
@@ -430,6 +486,10 @@ class PemeliharaanForm(forms.Form):
                                 required=not self._has_existing_item_photos(
                                     component,
                                     JenisFotoPemeliharaanChoices.KERUSAKAN,
+                                ),
+                                existing_count=self._existing_photo_count(
+                                    JenisFotoPemeliharaanChoices.KERUSAKAN,
+                                    component,
                                 ),
                                 add_error=lambda message, row_index=index: self._add_component_error(
                                     row_index,
@@ -541,7 +601,8 @@ class PemeliharaanForm(forms.Form):
         return pengajuan
 
     def _save_photos(self, item, jenis, files):
-        for order, file_obj in enumerate(files or [], start=1):
+        start_order = PemeliharaanFoto.objects.filter(item=item, jenis=jenis).count() + 1
+        for order, file_obj in enumerate(files or [], start=start_order):
             PemeliharaanFoto.objects.create(
                 item=item,
                 jenis=jenis,

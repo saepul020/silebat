@@ -4,7 +4,7 @@
 {% block title %}{{ page_title }}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/landing_manage.css' %}?v=20260610-maintenance-upload-v1">
+<link rel="stylesheet" href="{% static 'css/landing_manage.css' %}?v=20260713-maintenance-existing-v1">
 <link rel="stylesheet" href="{% static 'css/pemeliharaan.css' %}?v=20260612-maintenance-form-v5">
 {% endblock %}
 
@@ -78,8 +78,18 @@
                         <p class="input-error-text" data-gallery-error hidden></p>
                         {% for error in form.dokumentasi_pemeriksaan.errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
                         <div class="landing-gallery-strip" data-gallery-strip>
+                            {% if form.existing_pemeriksaan_fotos %}
+                            <div class="landing-gallery-existing" data-gallery-existing>
+                                {% for foto in form.existing_pemeriksaan_fotos %}
+                                <a href="{{ foto.url }}" target="_blank" rel="noopener" class="landing-gallery-thumb landing-gallery-thumb--stored" data-gallery-existing-item>
+                                    <img src="{{ foto.url }}" alt="{{ foto.label }}">
+                                    <span class="landing-gallery-name">{{ foto.name }}</span>
+                                </a>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
                             <div class="landing-gallery-new" data-gallery-new></div>
-                            <div class="landing-gallery-empty" data-gallery-empty>
+                            <div class="landing-gallery-empty" data-gallery-empty {% if form.existing_pemeriksaan_fotos %}hidden{% endif %}>
                                 <i class="bi bi-images"></i>
                                 <span>Belum ada foto dipilih</span>
                             </div>
@@ -133,5 +143,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/pemeliharaan.js' %}?v=20260612-maintenance-form-v4" defer></script>
+<script src="{% static 'js/pemeliharaan.js' %}?v=20260713-maintenance-flow-v1" defer></script>
 {% endblock %}

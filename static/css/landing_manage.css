@@ -197,7 +197,8 @@
     background: #f8fafc;
 }
 
-.landing-gallery-new {
+.landing-gallery-new,
+.landing-gallery-existing {
     display: contents;
 }
 

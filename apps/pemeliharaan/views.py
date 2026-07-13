@@ -129,6 +129,71 @@ def _prepare_detail_items(obj):
     return items, repair_items, pemeriksaan_fotos
 
 
+def _reset_verifikasi_pemeliharaan(obj):
+    obj.kepala_lab_status = KeputusanPemeliharaanChoices.PENDING
+    obj.kepala_lab_by = None
+    obj.kepala_lab_at = None
+    obj.kepala_lab_note = ""
+    obj.pimpinan_status = KeputusanPemeliharaanChoices.PENDING
+    obj.pimpinan_by = None
+    obj.pimpinan_at = None
+    obj.pimpinan_note = ""
+
+
+def _finalkan_pengajuan_baik(obj, user, submitted_at):
+    obj.current_step = StepPemeliharaanChoices.SELESAI
+    obj.submitted_at = submitted_at
+    _reset_verifikasi_pemeliharaan(obj)
+    obj.save(
+        update_fields=[
+            "current_step",
+            "submitted_at",
+            "kepala_lab_status",
+            "kepala_lab_by",
+            "kepala_lab_at",
+            "kepala_lab_note",
+            "pimpinan_status",
+            "pimpinan_by",
+            "pimpinan_at",
+            "pimpinan_note",
+            "updated_at",
+        ]
+    )
+    obj.add_timeline(
+        "Pelaksana Pemeliharaan",
+        "Pengajuan pemeliharaan semua komponen baik dan dinyatakan selesai",
+        user,
+    )
+    obj.catat_riwayat_alat_disetujui()
+    obj.tandai_alat_baik_jika_selesai()
+
+
+def _kirim_pengajuan_ke_kepala_lab(obj, user, submitted_at):
+    obj.current_step = StepPemeliharaanChoices.KEPALA_LAB
+    obj.submitted_at = submitted_at
+    _reset_verifikasi_pemeliharaan(obj)
+    obj.save(
+        update_fields=[
+            "current_step",
+            "submitted_at",
+            "kepala_lab_status",
+            "kepala_lab_by",
+            "kepala_lab_at",
+            "kepala_lab_note",
+            "pimpinan_status",
+            "pimpinan_by",
+            "pimpinan_at",
+            "pimpinan_note",
+            "updated_at",
+        ]
+    )
+    obj.add_timeline(
+        "Pelaksana Pemeliharaan",
+        "Pengajuan pemeliharaan dikirim ke Kepala Lab",
+        user,
+    )
+
+
 @login_required
 def index(request):
     return redirect("pemeliharaan:list")
@@ -354,43 +419,25 @@ def kirim_pengajuan(request, pk):
             "Anda tidak memiliki akses untuk mengirim pengajuan pemeliharaan ini.",
         )
 
+    langsung_selesai = not obj.perlu_perbaikan
     with transaction.atomic():
-        obj.current_step = StepPemeliharaanChoices.KEPALA_LAB
-        obj.submitted_at = timezone.now()
-        obj.kepala_lab_status = KeputusanPemeliharaanChoices.PENDING
-        obj.kepala_lab_by = None
-        obj.kepala_lab_at = None
-        obj.kepala_lab_note = ""
-        obj.pimpinan_status = KeputusanPemeliharaanChoices.PENDING
-        obj.pimpinan_by = None
-        obj.pimpinan_at = None
-        obj.pimpinan_note = ""
-        obj.save(
-            update_fields=[
-                "current_step",
-                "submitted_at",
-                "kepala_lab_status",
-                "kepala_lab_by",
-                "kepala_lab_at",
-                "kepala_lab_note",
-                "pimpinan_status",
-                "pimpinan_by",
-                "pimpinan_at",
-                "pimpinan_note",
-                "updated_at",
-            ]
-        )
-        obj.add_timeline(
-            "Pelaksana Pemeliharaan",
-            "Pengajuan pemeliharaan dikirim ke Kepala Lab",
-            request.user,
-        )
+        submitted_at = timezone.now()
+        if langsung_selesai:
+            _finalkan_pengajuan_baik(obj, request.user, submitted_at)
+        else:
+            _kirim_pengajuan_ke_kepala_lab(obj, request.user, submitted_at)
         sync_transaction_notifications(obj, actor=request.user)
 
-    messages.success(
-        request,
-        "Pengajuan pemeliharaan berhasil dikirim ke Kepala Lab untuk verifikasi.",
-    )
+    if langsung_selesai:
+        messages.success(
+            request,
+            "Pengajuan pemeliharaan semua komponen baik dan langsung dinyatakan selesai.",
+        )
+    else:
+        messages.success(
+            request,
+            "Pengajuan pemeliharaan berhasil dikirim ke Kepala Lab untuk verifikasi.",
+        )
     return redirect("pemeliharaan:list")
 
 

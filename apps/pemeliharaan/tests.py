@@ -90,6 +90,20 @@ class PemeliharaanVerifikasiTests(TestCase):
         pengajuan.tandai_alat_dalam_pemeliharaan()
         return pengajuan
 
+    def _create_pengajuan_baik(self):
+        self.alat.refresh_from_db()
+        pengajuan = PemeliharaanPengajuan.objects.create(
+            pemohon=self.users["Admin Lab"],
+            alat=self.alat,
+        )
+        PemeliharaanItem.objects.create(
+            pengajuan=pengajuan,
+            komponen="Kamera",
+            kondisi=KondisiPemeliharaanChoices.BAIK,
+        )
+        pengajuan.tandai_alat_dalam_pemeliharaan()
+        return pengajuan
+
     def _master_form_data(self, alat, components):
         data = QueryDict(mutable=True)
         data.update(
@@ -224,6 +238,54 @@ class PemeliharaanVerifikasiTests(TestCase):
         self.assertEqual(selesai.hour, 23)
         self.assertEqual(selesai.minute, 59)
 
+    def test_edit_form_menampilkan_dokumentasi_tersimpan(self):
+        pengajuan = self._create_pengajuan_baik()
+        item = pengajuan.items.get()
+        foto = PemeliharaanFoto.objects.create(
+            item=item,
+            jenis=JenisFotoPemeliharaanChoices.PEMERIKSAAN,
+            foto=self._image_upload("edit-pemeriksaan.png"),
+        )
+
+        self._login("Admin Lab")
+        response = self.client.get(reverse("pemeliharaan:edit", args=[pengajuan.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "data-gallery-existing-item")
+        self.assertContains(response, foto.foto.url)
+        self.assertContains(response, "edit-pemeriksaan")
+        self.assertContains(response, 'data-gallery-empty hidden', html=False)
+
+    def test_edit_form_menolak_total_dokumentasi_lebih_dari_tiga(self):
+        pengajuan = self._create_pengajuan_baik()
+        item = pengajuan.items.get()
+        for index in range(3):
+            PemeliharaanFoto.objects.create(
+                item=item,
+                jenis=JenisFotoPemeliharaanChoices.PEMERIKSAAN,
+                foto=self._image_upload(f"pemeriksaan-lama-{index}.png"),
+            )
+
+        form = PemeliharaanForm(
+            data={
+                "pilih_alat": str(self.alat.pk),
+                "komponen_0": "Kamera",
+                "kondisi_0": KondisiPemeliharaanChoices.BAIK,
+            },
+            files=MultiValueDict(
+                {
+                    "dokumentasi_pemeriksaan": [
+                        self._image_upload("pemeriksaan-baru.png")
+                    ],
+                }
+            ),
+            actor=self.users["Admin Lab"],
+            instance=pengajuan,
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertIn("maksimal 3 foto", str(form.errors["dokumentasi_pemeriksaan"]))
+
     def test_master_data_menolak_hapus_komponen_dan_barang_aktif(self):
         pengajuan = self._create_pengajuan(TindakanPerbaikanChoices.MANDIRI)
         pengajuan.tandai_alat_dalam_pemeliharaan()
@@ -319,6 +381,43 @@ class PemeliharaanVerifikasiTests(TestCase):
             reverse("verifikasi:detail_pemeliharaan", args=[pengajuan.pk]),
         )
         self.assertFalse(notification.is_read)
+
+    def test_kirim_pengajuan_semua_baik_langsung_selesai(self):
+        pengajuan = self._create_pengajuan_baik()
+
+        self._login("Admin Lab")
+        response = self.client.post(reverse("pemeliharaan:kirim", args=[pengajuan.pk]))
+
+        self.assertRedirects(
+            response,
+            reverse("pemeliharaan:list"),
+            fetch_redirect_response=False,
+        )
+        pengajuan.refresh_from_db()
+        self.assertEqual(pengajuan.current_step, StepPemeliharaanChoices.SELESAI)
+        self.assertIsNotNone(pengajuan.submitted_at)
+        self.assertFalse(
+            Notification.objects.filter(
+                recipient=self.users["Kepala Lab"],
+                source_pemeliharaan=pengajuan,
+                category=NotificationCategory.VERIFICATION,
+            ).exists()
+        )
+        self.assertTrue(
+            Notification.objects.filter(
+                recipient=self.users["Admin Lab"],
+                source_pemeliharaan=pengajuan,
+                category=NotificationCategory.STATUS,
+                dedupe_key=(
+                    f"pemeliharaan:{pengajuan.pk}:"
+                    f"status:{StepPemeliharaanChoices.SELESAI.value}"
+                ),
+            ).exists()
+        )
+        self.alat.refresh_from_db()
+        self.assertEqual(self.alat.kondisi_barang, KondisiBarangChoices.BAIK)
+        self.assertIsNotNone(self.alat.tanggal_pemeliharaan)
+        self.assertIsNone(self.alat.tanggal_perbaikan)
 
     def test_persetujuan_final_menutup_notifikasi_lama_dan_mengabari_pemohon(self):
         pengajuan = self._create_pengajuan(TindakanPerbaikanChoices.MANDIRI)

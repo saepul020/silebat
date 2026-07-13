@@ -36,6 +36,7 @@
                 data-maint-send-button
                 data-send-url="{% url 'pemeliharaan:kirim' obj.pk %}"
                 data-send-number="{{ obj.nomor_pengajuan|default:'-' }}"
+                data-send-target="{% if obj.perlu_perbaikan %}akan dikirim ke Kepala Lab untuk proses verifikasi{% else %}akan langsung dinyatakan selesai karena semua komponen baik{% endif %}"
             >
                 Kirim
             </button>
@@ -65,5 +66,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/pemeliharaan.js' %}?v=20260612-maintenance-detail-v7" defer></script>
+<script src="{% static 'js/pemeliharaan.js' %}?v=20260713-maintenance-flow-v1" defer></script>
 {% endblock %}

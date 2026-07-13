@@ -55,8 +55,18 @@
                 </div>
                 <p class="input-error-text" data-gallery-error hidden></p>
                 <div class="landing-gallery-strip" data-gallery-strip>
+                    {% if row.existing_perbaikan_fotos %}
+                    <div class="landing-gallery-existing" data-gallery-existing>
+                        {% for foto in row.existing_perbaikan_fotos %}
+                        <a href="{{ foto.url }}" target="_blank" rel="noopener" class="landing-gallery-thumb landing-gallery-thumb--stored" data-gallery-existing-item>
+                            <img src="{{ foto.url }}" alt="{{ foto.label }}">
+                            <span class="landing-gallery-name">{{ foto.name }}</span>
+                        </a>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
                     <div class="landing-gallery-new" data-gallery-new></div>
-                    <div class="landing-gallery-empty" data-gallery-empty>
+                    <div class="landing-gallery-empty" data-gallery-empty {% if row.existing_perbaikan_fotos %}hidden{% endif %}>
                         <i class="bi bi-images"></i>
                         <span>Belum ada foto dipilih</span>
                     </div>
@@ -87,8 +97,18 @@
                 </div>
                 <p class="input-error-text" data-gallery-error hidden></p>
                 <div class="landing-gallery-strip" data-gallery-strip>
+                    {% if row.existing_kerusakan_fotos %}
+                    <div class="landing-gallery-existing" data-gallery-existing>
+                        {% for foto in row.existing_kerusakan_fotos %}
+                        <a href="{{ foto.url }}" target="_blank" rel="noopener" class="landing-gallery-thumb landing-gallery-thumb--stored" data-gallery-existing-item>
+                            <img src="{{ foto.url }}" alt="{{ foto.label }}">
+                            <span class="landing-gallery-name">{{ foto.name }}</span>
+                        </a>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
                     <div class="landing-gallery-new" data-gallery-new></div>
-                    <div class="landing-gallery-empty" data-gallery-empty>
+                    <div class="landing-gallery-empty" data-gallery-empty {% if row.existing_kerusakan_fotos %}hidden{% endif %}>
                         <i class="bi bi-images"></i>
                         <span>Belum ada foto dipilih</span>
                     </div>

@@ -939,9 +939,12 @@ class VolumeBaikAssetFormMixin:
                 }
             ),
         )
-        bervolume_field.initial = (
+        volume_choice_initial = (
             None if volume_choice is None else str(volume_choice).lower()
         )
+        bervolume_field.initial = volume_choice_initial
+        if volume_choice_initial is not None:
+            self.initial["bervolume"] = volume_choice_initial
         bervolume_field.error_messages["required"] = (
             "Pilih Ya atau Tidak untuk status barang ber-volume."
         )

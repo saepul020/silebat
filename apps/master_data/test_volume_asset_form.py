@@ -206,6 +206,31 @@ class VolumeAssetFormTests(TestCase):
             [("true", "Ya"), ("false", "Tidak")],
         )
 
+    def test_edit_form_checks_saved_volume_choice(self):
+        cases = (
+            (FasilitasRuanganForm, FasilitasRuangan, True, "id_bervolume_0"),
+            (FasilitasRuanganForm, FasilitasRuangan, False, "id_bervolume_1"),
+            (PeralatanLaboratoriumForm, PeralatanLaboratorium, True, "id_bervolume_0"),
+            (PeralatanLaboratoriumForm, PeralatanLaboratorium, False, "id_bervolume_1"),
+        )
+
+        for index, (form_class, model_class, bervolume, checked_id) in enumerate(cases):
+            with self.subTest(form_class=form_class.__name__, bervolume=bervolume):
+                obj = model_class.objects.create(
+                    status_barang=StatusBarangChoices.NON_BMN,
+                    bervolume=bervolume,
+                    nama_barang=f"Alat Edit {index}",
+                    tipe_merek_barang="Merek A",
+                    jenis_barang="Alat",
+                    satuan="Unit",
+                    volume=8,
+                    volume_rusak=2,
+                )
+
+                html = str(form_class(instance=obj)["bervolume"])
+
+                self.assertIn(f'id="{checked_id}" checked', html)
+
     def test_kode_laboratorium_initial_increments_last_trailing_number(self):
         PeralatanLaboratorium.objects.create(
             status_barang=StatusBarangChoices.NON_BMN,
