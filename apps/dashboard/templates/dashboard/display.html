@@ -4,7 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="silebat-cache-version" content="{{ app_cache_version }}">
     <title>Display Dashboard Laboratorium | SILEBAT</title>
+    <script src="{% static 'js/cache.js' %}?v={{ app_cache_version|urlencode }}" defer></script>
     <link rel="stylesheet" href="{% static 'css/base.css' %}?v=20260505-pelatihan-v3">
     <link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=20260505-dashboard-items-v2">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">

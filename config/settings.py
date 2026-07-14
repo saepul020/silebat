@@ -73,6 +73,9 @@ ALLOWED_HOSTS = env_list("ALLOWED_HOSTS", DEFAULT_HOSTS)
 
 PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "http://127.0.0.1:8000")
 DASHBOARD_TV_SLUG = os.getenv("DASHBOARD_TV_SLUG", "lab-tv-realtime-silebat-7q4m2x9v")
+APP_CACHE_VERSION = os.getenv("APP_CACHE_VERSION", "20260714-cache-v1").strip()
+APP_CACHE_COOKIE = "silebat_cache_version"
+APP_CACHE_COOKIE_AGE = 365 * 24 * 60 * 60
 
 CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS")
 if PUBLIC_BASE_URL.startswith(("http://", "https://")):
@@ -103,6 +106,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "apps.core.middleware.PortalCacheMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -123,6 +127,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "apps.core.context_processors.app_cache",
                 "apps.core.context_processors.role_access",
                 "apps.notifikasi.context_processors.navbar_notifications",
             ],

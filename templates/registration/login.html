@@ -4,7 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="silebat-cache-version" content="{{ app_cache_version }}">
     <title>Login SILEBAT</title>
+    <script src="{% static 'js/cache.js' %}?v={{ app_cache_version|urlencode }}" defer></script>
     <link rel="stylesheet" href="{% static 'css/base.css' %}?v=20260428-green-success-v1">
     <link rel="stylesheet" href="{% static 'css/loading.css' %}?v=20260612-global-loading-v1">
     <link rel="stylesheet" href="{% static 'css/login.css' %}?v=20260428-green-success-v1">

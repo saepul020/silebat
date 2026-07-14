@@ -4,7 +4,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="silebat-cache-version" content="{{ app_cache_version }}" />
   <title>SILEBAT - Sistem Elektronik Laboratorium Balai Air Tanah</title>
+  <script src="{% static 'js/cache.js' %}?v={{ app_cache_version|urlencode }}" defer></script>
   <meta name="description" content="SILEBAT menyediakan informasi layanan, kegiatan survei, data operasional, dan peralatan Laboratorium Balai Air Tanah." />
   <meta name="theme-color" content="#103e6f" />
   <meta name="robots" content="index, follow" />
