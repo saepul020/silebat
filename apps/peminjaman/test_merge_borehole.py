@@ -8,7 +8,7 @@ from django.test import TestCase
 
 from apps.operasional.forms import SurveiKegiatanForm
 from apps.operasional.models import SurveiKegiatan
-from apps.peminjaman.import_riwayat import _get_or_create_survei
+from apps.peminjaman.import_riwayat import _find_survei
 from apps.peminjaman.models import PeminjamanRequest
 from apps.pengguna.models import User
 
@@ -119,7 +119,7 @@ class MergeBoreholeSurveiTests(TestCase):
             jenis_survei="Borehole Camera"
         )
 
-        result = _get_or_create_survei(["Borehole"])
+        result = _find_survei(["Borehole"])
 
         self.assertEqual(result, [target])
         self.assertEqual(SurveiKegiatan.objects.count(), 1)

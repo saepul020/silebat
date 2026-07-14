@@ -9,7 +9,7 @@
         </select>
 
         {% if show_report_year_filter %}
-        <select id="reportYearSelect" name="tahun" class="master-entries-select master-year-select js-master-filter-select" data-skip-placeholder="true" aria-label="Filter tahun laporan peminjaman" title="Filter tahun laporan">
+        <select id="reportYearSelect" name="tahun" class="master-entries-select master-year-select js-master-filter-select" data-skip-placeholder="true" aria-label="{{ report_year_aria_label|default:'Filter tahun laporan' }}" title="Filter tahun laporan">
             <option value="all" {% if selected_report_year == 'all' %}selected{% endif %}>Semua</option>
             {% for year in report_year_options %}
                 <option value="{{ year }}" {% if selected_report_year == year|stringformat:'s' %}selected{% endif %}>{{ year }}</option>

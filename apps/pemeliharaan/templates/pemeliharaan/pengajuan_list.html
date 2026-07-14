@@ -4,7 +4,7 @@
 {% block title %}{{ page_title }}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/pemeliharaan.css' %}?v=20260714-image-ratio-v1">
+<link rel="stylesheet" href="{% static 'css/pemeliharaan.css' %}?v=20260714-report-layout-v1">
 {% endblock %}
 
 {% block content %}
@@ -18,11 +18,13 @@
         <div>
             <h2 class="table-title">{% if is_report %}Daftar Laporan Pemeliharaan{% else %}Daftar Pemeliharaan Berjalan{% endif %}</h2>
         </div>
-        {% if not is_report %}
         <div class="table-toolbar-actions">
+            {% if is_report and role_access.is_super_admin %}
+            <a href="{% url 'pemeliharaan:laporan_export' %}?tahun={{ selected_report_year|urlencode }}" class="btn btn-secondary"><i class="bi bi-download"></i>&nbsp;Export Laporan</a>
+            {% elif not is_report %}
             <a href="{% url 'pemeliharaan:tambah' %}" class="btn btn-primary"><i class="bi bi-plus-circle"></i>&nbsp;Tambah Pengajuan</a>
+            {% endif %}
         </div>
-        {% endif %}
     </div>
 
     {% include 'components/entry_control.html' %}

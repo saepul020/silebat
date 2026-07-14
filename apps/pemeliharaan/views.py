@@ -1,11 +1,13 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
+from django.db.models.functions import Coalesce, ExtractYear
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
 from apps.core.list_pagination import paginate_list
+from apps.core.excel_utils import build_excel_response
 from apps.core.permissions import (
     ROLE_ADMIN_LAB,
     ROLE_KEPALA_LAB,
@@ -57,6 +59,9 @@ PEMELIHARAAN_INPUT_ROLES = {
     ROLE_ADMIN_LAB,
     ROLE_TEKNISI_LAB,
 }
+REPORT_YEAR_ALL = "all"
+
+
 def _can_view_pengajuan(user, obj):
     if get_role_name(user) in PEMELIHARAAN_ADMIN_ROLES:
         return True
@@ -113,6 +118,55 @@ def _get_pengajuan_queryset():
         .prefetch_related("items__fotos", "timeline_entries__actor")
         .order_by("-tanggal_pemeriksaan", "-id")
     )
+
+
+def _get_report_queryset(user):
+    queryset = _get_pengajuan_queryset().filter(current_step__in=FINAL_PEMELIHARAAN_STEPS)
+    if get_role_name(user) not in PEMELIHARAAN_ADMIN_ROLES:
+        queryset = queryset.filter(pemohon=user)
+    return queryset.annotate(
+        report_at=Coalesce(
+            "vendor__pimpinan_at",
+            "pimpinan_at",
+            "kepala_lab_at",
+            "updated_at",
+        )
+    )
+
+
+def _get_report_year_options(queryset):
+    current_year = timezone.localdate().year
+    years = {current_year}
+    db_years = (
+        queryset.annotate(report_year=ExtractYear("report_at"))
+        .values_list("report_year", flat=True)
+        .distinct()
+    )
+    years.update(year for year in db_years if year)
+    return sorted(years, reverse=True)
+
+
+def _normalize_report_year_filter(raw_value, year_options):
+    value = str(raw_value or "").strip().lower()
+    if value == REPORT_YEAR_ALL:
+        return REPORT_YEAR_ALL
+    current_year = timezone.localdate().year
+    if not value:
+        return str(current_year)
+    try:
+        selected_year = int(value)
+    except (TypeError, ValueError):
+        return str(current_year)
+    return str(selected_year) if selected_year in year_options else str(current_year)
+
+
+def _filter_report_queryset_by_year(queryset, selected_year):
+    if str(selected_year).lower() == REPORT_YEAR_ALL:
+        return queryset
+    try:
+        return queryset.filter(report_at__year=int(selected_year))
+    except (TypeError, ValueError):
+        return queryset.filter(report_at__year=timezone.localdate().year)
 
 
 def _build_alat_components(instance=None):
@@ -253,9 +307,12 @@ def daftar_pengajuan(request):
 
 @login_required
 def laporan_pemeliharaan(request):
-    queryset = _get_pengajuan_queryset().filter(current_step__in=FINAL_PEMELIHARAAN_STEPS)
-    if get_role_name(request.user) not in PEMELIHARAAN_ADMIN_ROLES:
-        queryset = queryset.filter(pemohon=request.user)
+    base_queryset = _get_report_queryset(request.user)
+    report_year_options = _get_report_year_options(base_queryset)
+    selected_report_year = _normalize_report_year_filter(
+        request.GET.get("tahun"), report_year_options
+    )
+    queryset = _filter_report_queryset_by_year(base_queryset, selected_report_year)
 
     pagination_context = paginate_list(
         request,
@@ -271,7 +328,131 @@ def laporan_pemeliharaan(request):
             "page_subtitle": "Riwayat pengajuan pemeliharaan yang sudah selesai disetujui atau ditolak.",
             "can_delete_pengajuan": _can_delete_pengajuan(request.user),
             "is_report": True,
+            "show_report_year_filter": True,
+            "report_year_options": report_year_options,
+            "selected_report_year": selected_report_year,
+            "report_year_aria_label": "Filter tahun laporan pemeliharaan",
         },
+    )
+
+
+@login_required
+def export_laporan_pemeliharaan(request):
+    if get_role_name(request.user) != ROLE_SUPER_ADMIN:
+        return deny_access(
+            request,
+            "Fitur export laporan pemeliharaan hanya dapat diakses oleh Super Admin.",
+        )
+
+    export_queryset = _get_report_queryset(request.user)
+    report_year_options = _get_report_year_options(export_queryset)
+    selected_report_year = _normalize_report_year_filter(
+        request.GET.get("tahun"), report_year_options
+    )
+    queryset = list(
+        _filter_report_queryset_by_year(export_queryset, selected_report_year)
+    )
+
+    laporan_rows = []
+    komponen_rows = []
+    vendor_rows = []
+    for obj in queryset:
+        laporan_rows.append([
+            obj.nomor_pengajuan,
+            obj.tanggal_pemeriksaan,
+            obj.report_at,
+            obj.nama_pelaksana,
+            obj.jabatan_pelaksana,
+            obj.snapshot_nama_barang or "-",
+            obj.snapshot_kode_laboratorium or "-",
+            obj.snapshot_tipe_merek_barang or "-",
+            obj.status_barang_label,
+            obj.jenis_pengajuan_label,
+            obj.kondisi_ringkas,
+            obj.hasil_label,
+            obj.status_label,
+            getattr(obj.kepala_lab_by, "nama_lengkap", "") or getattr(obj.kepala_lab_by, "username", "") or "-",
+            obj.get_kepala_lab_status_display(),
+            obj.kepala_lab_note or "-",
+            getattr(obj.pimpinan_by, "nama_lengkap", "") or getattr(obj.pimpinan_by, "username", "") or "-",
+            obj.get_pimpinan_status_display(),
+            obj.pimpinan_note or "-",
+        ])
+
+        for item in obj.items.all():
+            photo_counts = {
+                JenisFotoPemeliharaanChoices.PEMERIKSAAN: 0,
+                JenisFotoPemeliharaanChoices.PERBAIKAN: 0,
+                JenisFotoPemeliharaanChoices.KERUSAKAN: 0,
+            }
+            for foto in item.fotos.all():
+                photo_counts[foto.jenis] = photo_counts.get(foto.jenis, 0) + 1
+            komponen_rows.append([
+                obj.nomor_pengajuan,
+                item.komponen,
+                item.get_kondisi_display(),
+                item.get_tindakan_perbaikan_display() if item.tindakan_perbaikan else "-",
+                item.uraian_perbaikan or "-",
+                item.tanggal_mulai_perbaikan,
+                item.tanggal_selesai_perbaikan,
+                item.uraian_kerusakan or "-",
+                photo_counts[JenisFotoPemeliharaanChoices.PEMERIKSAAN],
+                photo_counts[JenisFotoPemeliharaanChoices.PERBAIKAN],
+                photo_counts[JenisFotoPemeliharaanChoices.KERUSAKAN],
+            ])
+
+        vendor = getattr(obj, "vendor", None)
+        if vendor:
+            vendor_rows.append([
+                obj.nomor_pengajuan,
+                vendor.nama_vendor,
+                vendor.nama_pic,
+                vendor.nomor_hp_pic,
+                vendor.alamat,
+                vendor.tanggal_mulai,
+                vendor.tanggal_selesai,
+                vendor.get_kepala_lab_status_display(),
+                vendor.kepala_lab_note or "-",
+                vendor.get_pimpinan_status_display(),
+                vendor.pimpinan_note or "-",
+            ])
+
+    return build_excel_response(
+        "export_laporan_pemeliharaan.xlsx",
+        [
+            {
+                "title": "Laporan Pemeliharaan",
+                "headers": [
+                    "Nomor Pengajuan", "Tanggal Pemeriksaan", "Tanggal Selesai",
+                    "Pelaksana Pemeliharaan", "Jabatan", "Nama Alat",
+                    "Kode Laboratorium", "Tipe / Merek", "Status Barang",
+                    "Jenis", "Kondisi", "Hasil", "Proses",
+                    "Kepala Lab", "Status Kepala Lab", "Catatan Kepala Lab",
+                    "Pimpinan", "Status Pimpinan", "Catatan Pimpinan",
+                ],
+                "rows": laporan_rows,
+            },
+            {
+                "title": "Detail Komponen",
+                "headers": [
+                    "Nomor Pengajuan", "Komponen", "Kondisi", "Tindakan Perbaikan",
+                    "Uraian Perbaikan", "Mulai Perbaikan", "Selesai Perbaikan",
+                    "Uraian Kerusakan", "Foto Pemeriksaan", "Foto Perbaikan",
+                    "Foto Kerusakan",
+                ],
+                "rows": komponen_rows,
+            },
+            {
+                "title": "Data Vendor",
+                "headers": [
+                    "Nomor Pengajuan", "Nama Vendor", "Nama PIC", "Nomor HP PIC",
+                    "Alamat", "Tanggal Mulai", "Tanggal Selesai",
+                    "Status Kepala Lab", "Catatan Kepala Lab", "Status Pimpinan",
+                    "Catatan Pimpinan",
+                ],
+                "rows": vendor_rows,
+            },
+        ],
     )
 
 

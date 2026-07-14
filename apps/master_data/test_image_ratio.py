@@ -74,3 +74,21 @@ class ImageRatioStyleTests(SimpleTestCase):
             self.maintenance_css,
             ".pemeliharaan-photo-modal__stage img",
         )
+
+    def test_spasi_preview_pemeliharaan_dan_fieldset_pelatihan_seragam(self):
+        gallery_rule = self._rule(
+            self.maintenance_css,
+            ".pemeliharaan-form-card .landing-gallery-strip",
+        )
+        self.assertIn("min-height: 0", gallery_rule)
+
+        fieldset_rule = self._rule(
+            self.base_css,
+            ".pelatihan-form-card .master-fieldset-stack > fieldset",
+        )
+        self.assertIn("margin-bottom: 0", fieldset_rule)
+        stack_rule = self._rule(
+            self.base_css,
+            ".master-fieldset-stack",
+        )
+        self.assertIn("gap: 18px", stack_rule)

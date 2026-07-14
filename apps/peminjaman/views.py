@@ -829,6 +829,7 @@ def laporan_peminjaman(request):
         "show_report_year_filter": True,
         "report_year_options": report_year_options,
         "selected_report_year": selected_report_year,
+        "report_year_aria_label": "Filter tahun laporan peminjaman",
     }
     context.update(pagination_context)
     return render(request, "peminjaman/pengajuan_list.html", context)
@@ -843,27 +844,34 @@ def _export_transfer_target_number(item):
 
 def _export_survei_labels(obj):
     labels = [item.jenis_survei for item in obj.kegiatan_survei.all()]
-    return "; ".join(labels) if labels else "-"
-
-
-def _export_instansi_name(obj):
-    if obj.instansi_tujuan_lainnya:
-        return obj.instansi_tujuan_lainnya
-    return str(obj.instansi_tujuan) if obj.instansi_tujuan else "-"
-
-
-def _export_layanan_name(obj):
-    return obj.layanan_kegiatan_label
+    return "; ".join(labels)
 
 
 def _export_tim_name(obj):
     return normalize_tim_kegiatan_name(obj.tim_kegiatan) if obj.tim_kegiatan else "-"
 
 
+def _export_borrowed_volume(return_item, borrowed_items, relation_field):
+    relation_id = getattr(return_item, f"{relation_field}_id", None)
+    return_name = (getattr(return_item, "snapshot_nama_barang", "") or "").strip().casefold()
+    for borrowed in borrowed_items:
+        if relation_id and getattr(borrowed, f"{relation_field}_id", None) == relation_id:
+            return borrowed.volume
+        borrowed_name = (getattr(borrowed, "snapshot_nama_barang", "") or "").strip().casefold()
+        if return_name and borrowed_name == return_name:
+            return borrowed.volume
+    return 0
+
+
 def _export_report_queryset(user):
     return (
         _get_pengajuan_list_queryset(user, is_report=True)
-        .prefetch_related("kegiatan_survei")
+        .prefetch_related(
+            "kegiatan_survei",
+            "barang_penunjang_items",
+            "bahan_operasional_items",
+            "peralatan_laboratorium_items",
+        )
         .order_by("-return_completed_at", "-submitted_at", "-id")
     )
 
@@ -885,34 +893,40 @@ def export_laporan_peminjaman(request):
     peralatan_lab_rows = []
 
     for obj in queryset:
+        borrowed_penunjang = list(obj.barang_penunjang_items.all())
+        borrowed_bahan = list(obj.bahan_operasional_items.all())
+        borrowed_peralatan_lab = list(obj.peralatan_laboratorium_items.all())
         peminjaman_rows.append([
             obj.nomor_pengajuan,
-            obj.peminjam.username if obj.peminjam else "-",
+            obj.peminjam.username if obj.peminjam else "",
             obj.nama_peminjam,
             obj.no_hp_peminjam,
             obj.email_peminjam,
             obj.nip_peminjam,
             obj.alamat_peminjam,
-            _export_layanan_name(obj),
+            str(obj.layanan_kegiatan) if obj.layanan_kegiatan else "",
+            obj.layanan_kegiatan_lainnya or "",
             _export_tim_name(obj),
-            _export_instansi_name(obj),
-            getattr(obj.instansi_tujuan, "organisasi", "") or "-",
+            str(obj.instansi_tujuan) if obj.instansi_tujuan else "",
+            obj.instansi_tujuan_lainnya or "",
+            getattr(obj.instansi_tujuan, "organisasi", "") or "",
+            getattr(obj.instansi_tujuan, "alamat_instansi", "") or "",
             obj.tanggal_mulai,
             obj.tanggal_selesai,
             obj.return_completed_at,
             obj.total_hari,
             _export_survei_labels(obj),
-            obj.survei_lainnya or "-",
-            format_optional_numeric_display(obj.titik_geolistrik_1d),
-            format_optional_numeric_display(obj.lintasan_geolistrik_2d),
-            format_optional_numeric_display(obj.titik_kualitas_air),
-            format_optional_numeric_display(obj.titik_mat),
-            format_optional_numeric_display(obj.titik_pumping_test),
-            format_optional_numeric_display(obj.titik_infiltrasi),
-            format_optional_numeric_display(obj.titik_debit_air),
-            format_optional_numeric_display(obj.lokasi_topografi),
-            format_optional_numeric_display(obj.titik_borehole),
-            format_optional_numeric_display(obj.titik_logging),
+            obj.survei_lainnya or "",
+            obj.titik_geolistrik_1d if obj.titik_geolistrik_1d is not None else "",
+            obj.lintasan_geolistrik_2d if obj.lintasan_geolistrik_2d is not None else "",
+            obj.titik_kualitas_air if obj.titik_kualitas_air is not None else "",
+            obj.titik_mat if obj.titik_mat is not None else "",
+            obj.titik_pumping_test if obj.titik_pumping_test is not None else "",
+            obj.titik_infiltrasi if obj.titik_infiltrasi is not None else "",
+            obj.titik_debit_air if obj.titik_debit_air is not None else "",
+            obj.lokasi_topografi if obj.lokasi_topografi is not None else "",
+            obj.titik_borehole if obj.titik_borehole is not None else "",
+            obj.titik_logging if obj.titik_logging is not None else "",
             obj.get_current_step_display(),
             obj.get_return_current_step_display(),
         ])
@@ -941,6 +955,7 @@ def export_laporan_peminjaman(request):
                 item.snapshot_nama_barang,
                 item.snapshot_tipe_merek_barang,
                 item.snapshot_kategori_barang,
+                _export_borrowed_volume(item, borrowed_penunjang, "barang"),
                 item.snapshot_satuan,
                 item.qty_dikembalikan,
                 item.qty_rusak,
@@ -956,6 +971,7 @@ def export_laporan_peminjaman(request):
                 obj.nomor_pengajuan,
                 item.snapshot_nama_barang,
                 item.snapshot_kategori_barang,
+                _export_borrowed_volume(item, borrowed_bahan, "bahan"),
                 item.snapshot_satuan,
                 item.qty_sisa,
                 item.qty_transfer,
@@ -973,7 +989,7 @@ def export_laporan_peminjaman(request):
                 item.snapshot_status_barang,
                 item.snapshot_kode_aset_bmn,
                 item.snapshot_kode_laboratorium,
-                item.snapshot_volume,
+                _export_borrowed_volume(item, borrowed_peralatan_lab, "barang"),
                 item.snapshot_satuan,
                 item.snapshot_kondisi_barang,
                 item.snapshot_tahun_perolehan,
@@ -1000,9 +1016,12 @@ def export_laporan_peminjaman(request):
                     "NIP / NIK",
                     "Alamat",
                     "Layanan Kegiatan",
+                    "Layanan Kegiatan Lainnya",
                     "Tim Kegiatan",
                     "Instansi Tujuan",
+                    "Instansi Tujuan Lainnya",
                     "Organisasi Instansi",
+                    "Alamat Instansi",
                     "Tanggal Mulai",
                     "Tanggal Selesai",
                     "Tanggal Pengembalian",
@@ -1051,6 +1070,7 @@ def export_laporan_peminjaman(request):
                     "Nama Barang",
                     "Tipe / Merek Barang",
                     "Kategori Barang",
+                    "Volume Dipinjam",
                     "Satuan",
                     "Dikembalikan",
                     "Rusak",
@@ -1068,6 +1088,7 @@ def export_laporan_peminjaman(request):
                     "Nomor Pengajuan",
                     "Nama Barang",
                     "Kategori Barang",
+                    "Volume Dipinjam",
                     "Satuan",
                     "Sisa",
                     "Transfer",
@@ -1087,7 +1108,7 @@ def export_laporan_peminjaman(request):
                     "Status Barang",
                     "Kode Aset BMN",
                     "Kode Laboratorium",
-                    "Volume",
+                    "Volume Dipinjam",
                     "Satuan",
                     "Kondisi Barang",
                     "Tahun Perolehan",

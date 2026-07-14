@@ -17,6 +17,10 @@
     background: #f8fafc;
 }
 
+.pemeliharaan-form-card .landing-gallery-strip {
+    min-height: 0;
+}
+
 .pemeliharaan-detail-head,
 .pemeliharaan-detail,
 .pemeliharaan-timeline {

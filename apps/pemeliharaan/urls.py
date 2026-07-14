@@ -12,6 +12,7 @@ urlpatterns = [
     path("", pemeliharaan_guard(views.index), name="index"),
     path("list/", pemeliharaan_guard(views.daftar_pengajuan), name="list"),
     path("laporan/", pemeliharaan_guard(views.laporan_pemeliharaan), name="laporan"),
+    path("laporan/export/", pemeliharaan_guard(views.export_laporan_pemeliharaan), name="laporan_export"),
     path("laporan/<int:pk>/", pemeliharaan_guard(views.detail_laporan), name="laporan_detail"),
     path("laporan/<int:pk>/pdf/", pemeliharaan_guard(views.download_pdf), name="download_pdf"),
     path("tambah/", pemeliharaan_guard(views.tambah_pengajuan), name="tambah"),

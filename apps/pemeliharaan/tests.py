@@ -9,6 +9,7 @@ from django.urls import reverse
 from django.utils.datastructures import MultiValueDict
 from django.utils import timezone
 from PIL import Image
+from openpyxl import load_workbook
 
 from apps.master_data.forms import BarangLaboratoriumForm
 from apps.master_data.models import (
@@ -38,6 +39,62 @@ from apps.pemeliharaan.pdf_utils import (
     _signers,
     render_pemeliharaan_pdf,
 )
+
+
+class LaporanPemeliharaanExportTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        role, _ = Role.objects.get_or_create(nama="Super Admin")
+        cls.user = User.objects.create_user(
+            username="super-admin-report-pemeliharaan",
+            password="test-pass-123",
+        )
+        cls.user.safe_profile.role = role
+        cls.user.safe_profile.save(update_fields=["role"])
+        with patch("apps.master_data.signals.ensure_master_qr_code"):
+            cls.alat = BarangLaboratorium.objects.create(
+                nama_barang="Alat Laporan Pemeliharaan",
+                tipe_merek_barang="Tipe Laporan",
+                jenis_barang="Alat Uji",
+                status_barang=StatusBarangChoices.NON_BMN,
+                kategori_barang=KategoriBarangLaboratoriumChoices.DRONE,
+            )
+        cls.pengajuan = PemeliharaanPengajuan.objects.create(
+            pemohon=cls.user,
+            alat=cls.alat,
+            current_step=StepPemeliharaanChoices.SELESAI,
+            kepala_lab_at=timezone.now(),
+        )
+        PemeliharaanItem.objects.create(
+            pengajuan=cls.pengajuan,
+            komponen="Kamera",
+            kondisi=KondisiPemeliharaanChoices.BAIK,
+        )
+
+    def setUp(self):
+        self.client.force_login(self.user)
+
+    def test_filter_default_tahun_berjalan_dan_export_workbook(self):
+        current_year = str(timezone.localdate().year)
+        response = self.client.get(reverse("pemeliharaan:laporan"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["selected_report_year"], current_year)
+        self.assertContains(response, self.pengajuan.nomor_pengajuan)
+
+        export_response = self.client.get(
+            reverse("pemeliharaan:laporan_export"),
+            {"tahun": current_year},
+        )
+        self.assertEqual(export_response.status_code, 200)
+        workbook = load_workbook(BytesIO(export_response.content), data_only=True)
+        self.assertEqual(
+            workbook.sheetnames,
+            ["Laporan Pemeliharaan", "Detail Komponen", "Data Vendor"],
+        )
+        self.assertEqual(
+            workbook["Laporan Pemeliharaan"].cell(row=2, column=1).value,
+            self.pengajuan.nomor_pengajuan,
+        )
 
 
 class PemeliharaanVerifikasiTests(TestCase):

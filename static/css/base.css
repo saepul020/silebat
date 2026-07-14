@@ -9283,6 +9283,10 @@ select.return-status-select option:disabled {
     gap: 18px;
 }
 
+.pelatihan-form-card .master-fieldset-stack > fieldset {
+    margin-bottom: 0;
+}
+
 .pelatihan-form-card .form-row--date-range {
     align-items: start;
 }

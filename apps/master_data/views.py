@@ -1124,6 +1124,7 @@ IMPORT_BAHAN_OPERASIONAL_REQUIRED_HEADERS = IMPORT_BAHAN_OPERASIONAL_HEADERS[:]
 
 IMPORT_FASILITAS_RUANGAN_HEADERS = [
     "Status Barang",
+    "Barang Ber-volume",
     "Nama Barang",
     "Tipe / Merek Barang",
     "Jenis Barang",
@@ -1146,15 +1147,13 @@ IMPORT_FASILITAS_RUANGAN_REQUIRED_HEADERS = [
     "Nama Barang",
     "Tipe / Merek Barang",
     "Jenis Barang",
-    "Kode Laboratorium",
     "Satuan",
-    "Tahun Perolehan",
     "Kategori Barang",
-    "Lokasi Barang",
 ]
 
 HEADER_IMPOR_PERALATAN = [
     "Status Barang",
+    "Barang Ber-volume",
     "Nama Barang",
     "Tipe / Merek Barang",
     "Jenis Barang",
@@ -1176,10 +1175,7 @@ HEADER_WAJIB_PERALATAN = [
     "Nama Barang",
     "Tipe / Merek Barang",
     "Jenis Barang",
-    "Kode Laboratorium",
     "Satuan",
-    "Tahun Perolehan",
-    "Lokasi Barang",
 ]
 
 
@@ -1206,6 +1202,17 @@ def _positive_int_import_cell(value, label, min_value=0):
     if number < min_value:
         raise ValueError(f'{label} minimal {min_value}.')
     return number
+
+
+def _boolean_import_cell(value, label):
+    raw_value = str(value if value is not None else '').strip().lower()
+    if not raw_value:
+        return None
+    if raw_value in {'ya', 'true', '1'}:
+        return True
+    if raw_value in {'tidak', 'false', '0'}:
+        return False
+    raise ValueError(f'{label} harus diisi Ya atau Tidak.')
 
 
 def _validate_unique_import_value(*, row_errors, seen, value, excel_row_number, duplicate_message):
@@ -1418,6 +1425,14 @@ def _validate_asset_status_import(
             'lokasi_barang': cell(row, 'Lokasi Barang'),
             'catatan': cell(row, 'Catatan'),
         }
+        try:
+            data['bervolume'] = _boolean_import_cell(
+                cell(row, 'Barang Ber-volume'),
+                'Barang Ber-volume',
+            )
+        except ValueError as exc:
+            row_errors.append(str(exc))
+            data['bervolume'] = None
         if include_kategori:
             data['kategori_barang'] = cell(row, 'Kategori Barang')
         components, component_errors = validate_komponen(
@@ -1470,8 +1485,15 @@ def _validate_asset_status_import(
                 data[field_name] = None
 
         if data['status_barang'] == StatusBarangChoices.BMN:
+            data['bervolume'] = False
             if not data['kode_aset_bmn']:
                 row_errors.append(bmn_required_message)
+            if not data['kode_laboratorium']:
+                row_errors.append('Kode Laboratorium wajib diisi untuk barang berstatus BMN.')
+            if data['tahun_perolehan'] is None:
+                row_errors.append('Tahun Perolehan wajib diisi untuk barang berstatus BMN.')
+            if not data['lokasi_barang']:
+                row_errors.append('Lokasi Barang wajib diisi untuk barang berstatus BMN.')
             if not data['kondisi_barang']:
                 row_errors.append('Kondisi Barang wajib diisi untuk barang berstatus BMN.')
             elif data['kondisi_barang'] not in kondisi_choices:
@@ -1486,13 +1508,38 @@ def _validate_asset_status_import(
                 data['volume'] = 0
                 data['volume_rusak'] = 1
         elif data['status_barang'] == StatusBarangChoices.NON_BMN:
-            data['bervolume'] = True
-            if data['volume'] is None:
-                row_errors.append('Volume Baik wajib diisi untuk barang berstatus Non BMN.')
-            if data['volume_rusak'] is None:
-                row_errors.append('Volume Rusak wajib diisi untuk barang berstatus Non BMN.')
             data['kode_aset_bmn'] = None
-            data['kondisi_barang'] = KondisiBarangChoices.BAIK
+            if data['bervolume'] is None:
+                row_errors.append(
+                    'Barang Ber-volume wajib diisi Ya atau Tidak untuk barang berstatus Non BMN.'
+                )
+            elif data['bervolume']:
+                if data['volume'] is None:
+                    row_errors.append('Volume Baik wajib diisi untuk barang Non BMN ber-volume.')
+                if data['volume_rusak'] is None:
+                    row_errors.append('Volume Rusak wajib diisi untuk barang Non BMN ber-volume.')
+                data['kode_laboratorium'] = None
+                data['tahun_perolehan'] = None
+                data['lokasi_barang'] = ''
+                data['tanggal_pemeliharaan'] = None
+                data['tanggal_perbaikan'] = None
+                data['kondisi_barang'] = KondisiBarangChoices.BAIK
+            else:
+                if not data['kondisi_barang']:
+                    row_errors.append(
+                        'Kondisi Barang wajib diisi untuk barang Non BMN yang tidak ber-volume.'
+                    )
+                elif data['kondisi_barang'] not in kondisi_choices:
+                    row_errors.append('Kondisi Barang tidak sesuai pilihan yang tersedia.')
+                elif data['kondisi_barang'] == KondisiBarangChoices.BAIK:
+                    data['volume'] = 1
+                    data['volume_rusak'] = 0
+                elif data['kondisi_barang'] == KondisiBarangChoices.HILANG:
+                    data['volume'] = 0
+                    data['volume_rusak'] = 0
+                else:
+                    data['volume'] = 0
+                    data['volume_rusak'] = 1
         elif data['kondisi_barang'] and data['kondisi_barang'] not in kondisi_choices:
             row_errors.append('Kondisi Barang tidak sesuai pilihan yang tersedia.')
 
@@ -2060,6 +2107,7 @@ def download_format_import_fasilitas_ruangan(request):
         headers=IMPORT_FASILITAS_RUANGAN_HEADERS,
         sample=[
             'BMN',
+            'Tidak',
             'Meja Laboratorium',
             'Meja Uji Beton',
             'Fasilitas Ruangan',
@@ -2079,12 +2127,14 @@ def download_format_import_fasilitas_ruangan(request):
         ],
         references=[
             ('Status Barang', status_values),
+            ('Barang Ber-volume', ['Ya', 'Tidak']),
             ('Satuan', satuan_values),
             ('Kategori Barang', kategori_values),
             ('Kondisi Barang', kondisi_values),
         ],
         validations={
             'Status Barang': status_values,
+            'Barang Ber-volume': ['Ya', 'Tidak'],
             'Satuan': satuan_values,
             'Kategori Barang': kategori_values,
             'Kondisi Barang': kondisi_values,
@@ -3017,6 +3067,7 @@ def download_format_import_peralatan_laboratorium(request):
         headers=HEADER_IMPOR_PERALATAN,
         sample=[
             'BMN',
+            'Tidak',
             'Mikroskop Laboratorium',
             'Olympus CX23',
             'Peralatan Laboratorium',
@@ -3035,11 +3086,13 @@ def download_format_import_peralatan_laboratorium(request):
         ],
         references=[
             ('Status Barang', status_values),
+            ('Barang Ber-volume', ['Ya', 'Tidak']),
             ('Satuan', satuan_values),
             ('Kondisi Barang', kondisi_values),
         ],
         validations={
             'Status Barang': status_values,
+            'Barang Ber-volume': ['Ya', 'Tidak'],
             'Satuan': satuan_values,
             'Kondisi Barang': kondisi_values,
         },

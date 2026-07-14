@@ -118,8 +118,10 @@ PEMINJAMAN_HEADERS = [
     "NIP / NIK",
     "Alamat",
     "Layanan Kegiatan",
+    "Layanan Kegiatan Lainnya",
     "Tim Kegiatan",
     "Instansi Tujuan",
+    "Instansi Tujuan Lainnya",
     "Organisasi Instansi",
     "Alamat Instansi",
     "Tanggal Mulai",
@@ -492,8 +494,10 @@ def _validate_peminjaman_sheet(workbook):
             "nip_peminjam": cell(row, "NIP / NIK"),
             "alamat_peminjam": cell(row, "Alamat"),
             "layanan_kegiatan": cell(row, "Layanan Kegiatan"),
+            "layanan_kegiatan_lainnya": cell(row, "Layanan Kegiatan Lainnya"),
             "tim_kegiatan": normalize_tim_kegiatan_name(cell(row, "Tim Kegiatan")),
             "instansi_tujuan": cell(row, "Instansi Tujuan"),
+            "instansi_tujuan_lainnya": cell(row, "Instansi Tujuan Lainnya"),
             "organisasi_instansi": cell(row, "Organisasi Instansi") or InstansiKlien.OrganisasiChoices.EKSTERNAL_PU,
             "alamat_instansi": cell(row, "Alamat Instansi"),
             "kegiatan_survei": _split_list(cell(row, "Kegiatan Survei")),
@@ -515,6 +519,32 @@ def _validate_peminjaman_sheet(workbook):
 
         if data["username_peminjam"] and not user_model.objects.filter(username__iexact=data["username_peminjam"]).exists():
             row_errors.append("Username Peminjam tidak ditemukan di database. Kosongkan kolom ini jika peminjam historis belum memiliki akun.")
+
+        if bool(data["layanan_kegiatan"]) == bool(data["layanan_kegiatan_lainnya"]):
+            row_errors.append("Isi tepat salah satu antara Layanan Kegiatan dan Layanan Kegiatan Lainnya.")
+        elif data["layanan_kegiatan"] and not LayananKegiatan.objects.filter(
+            jenis_layanan__iexact=data["layanan_kegiatan"]
+        ).exists():
+            row_errors.append("Layanan Kegiatan tidak ditemukan di master data.")
+
+        if not data["tim_kegiatan"]:
+            row_errors.append("Tim Kegiatan wajib diisi.")
+        elif not TimKegiatan.objects.filter(nama_tim__iexact=data["tim_kegiatan"]).exists():
+            row_errors.append("Tim Kegiatan tidak ditemukan di master data.")
+
+        if bool(data["instansi_tujuan"]) == bool(data["instansi_tujuan_lainnya"]):
+            row_errors.append("Isi tepat salah satu antara Instansi Tujuan dan Instansi Tujuan Lainnya.")
+        elif data["instansi_tujuan"] and not InstansiKlien.objects.filter(
+            nama_instansi__iexact=data["instansi_tujuan"]
+        ).exists():
+            row_errors.append("Instansi Tujuan tidak ditemukan di master data.")
+
+        if not data["kegiatan_survei"] and not data["survei_lainnya"]:
+            row_errors.append("Kegiatan Survei atau Survei Lainnya wajib diisi.")
+        for label in data["kegiatan_survei"]:
+            normalized_label = normalize_survei_name(label)
+            if not SurveiKegiatan.objects.filter(jenis_survei__iexact=normalized_label).exists():
+                row_errors.append(f'Kegiatan Survei "{label}" tidak ditemukan di master data.')
 
         if data["organisasi_instansi"] and data["organisasi_instansi"] not in organisasi_values:
             row_errors.append("Organisasi Instansi tidak sesuai pilihan yang tersedia.")
@@ -810,52 +840,34 @@ def _get_user_for_row(row, fallback_user):
     return fallback_user
 
 
-def _get_or_create_layanan(name):
+def _find_layanan(name):
     if not name:
         return None
-    obj, _created = LayananKegiatan.objects.get_or_create(jenis_layanan=name)
-    return obj
+    return LayananKegiatan.objects.filter(jenis_layanan__iexact=name).first()
 
 
-def _get_or_create_tim(name):
+def _find_tim(name):
     if not name:
         return None
     normalized = normalize_tim_kegiatan_name(name)
-    obj, _created = TimKegiatan.objects.get_or_create(nama_tim=normalized)
-    return obj
+    return TimKegiatan.objects.filter(nama_tim__iexact=normalized).first()
 
 
-def _get_or_create_instansi(name, organisasi, alamat=None):
+def _find_instansi(name):
     if not name:
         return None
-    alamat_bersih = (alamat or "").strip() or "-"
-    obj, created = InstansiKlien.objects.get_or_create(
-        nama_instansi=name,
-        defaults={
-            "alamat_instansi": alamat_bersih,
-            "organisasi": organisasi or InstansiKlien.OrganisasiChoices.EKSTERNAL_PU,
-        },
-    )
-    update_fields = []
-    if not created and organisasi and obj.organisasi != organisasi:
-        obj.organisasi = organisasi
-        update_fields.append("organisasi")
-    if not created and alamat and obj.alamat_instansi in ("", "-"):
-        obj.alamat_instansi = alamat_bersih
-        update_fields.append("alamat_instansi")
-    if update_fields:
-        obj.save(update_fields=update_fields)
-    return obj
+    return InstansiKlien.objects.filter(nama_instansi__iexact=name).first()
 
 
-def _get_or_create_survei(labels):
+def _find_survei(labels):
     objects = []
     for label in labels or []:
         label = normalize_survei_name(label)
         if not label:
             continue
-        obj, _created = SurveiKegiatan.objects.get_or_create(jenis_survei=label)
-        objects.append(obj)
+        obj = SurveiKegiatan.objects.filter(jenis_survei__iexact=label).first()
+        if obj:
+            objects.append(obj)
     return objects
 
 
@@ -975,10 +987,10 @@ def _build_report_snapshot(row, lab_items, penunjang_items, bahan_items, peralat
             "alamat": row.get("alamat_peminjam") or "-",
         },
         "kegiatan": {
-            "layanan_kegiatan": row.get("layanan_kegiatan") or "-",
+            "layanan_kegiatan": row.get("layanan_kegiatan") or row.get("layanan_kegiatan_lainnya") or "-",
             "kegiatan_survei": list(row.get("kegiatan_survei") or []) + ([f"Lainnya: {row.get('survei_lainnya')}"] if row.get("survei_lainnya") else []),
             "tim_kegiatan": row.get("tim_kegiatan") or "-",
-            "instansi_tujuan": row.get("instansi_tujuan") or "-",
+            "instansi_tujuan": row.get("instansi_tujuan") or row.get("instansi_tujuan_lainnya") or "-",
             "alamat_instansi": row.get("alamat_instansi") or "-",
             "organisasi_instansi": row.get("organisasi_instansi") or "-",
             "mulai_tanggal": format_date_id(mulai),
@@ -1313,14 +1325,11 @@ def _save_import_payload(payload, actor):
                 email_peminjam=row.get("email_peminjam") or "",
                 alamat_peminjam=row.get("alamat_peminjam") or "",
                 nip_peminjam=row.get("nip_peminjam") or "",
-                layanan_kegiatan=_get_or_create_layanan(row.get("layanan_kegiatan")),
-                tim_kegiatan=_get_or_create_tim(row.get("tim_kegiatan")),
-                instansi_tujuan=_get_or_create_instansi(
-                    row.get("instansi_tujuan"),
-                    row.get("organisasi_instansi"),
-                    row.get("alamat_instansi"),
-                ),
-                instansi_tujuan_lainnya="" if row.get("instansi_tujuan") else row.get("instansi_tujuan", ""),
+                layanan_kegiatan=_find_layanan(row.get("layanan_kegiatan")),
+                layanan_kegiatan_lainnya=row.get("layanan_kegiatan_lainnya") or "",
+                tim_kegiatan=_find_tim(row.get("tim_kegiatan")),
+                instansi_tujuan=_find_instansi(row.get("instansi_tujuan")),
+                instansi_tujuan_lainnya=row.get("instansi_tujuan_lainnya") or "",
                 tanggal_mulai=date.fromisoformat(row["tanggal_mulai"]),
                 tanggal_selesai=date.fromisoformat(row["tanggal_selesai"]),
                 total_hari=row.get("total_hari") or 1,
@@ -1359,7 +1368,7 @@ def _save_import_payload(payload, actor):
                 titik_logging=row.get("titik_logging"),
             )
             PeminjamanRequest.objects.filter(pk=pengajuan.pk).update(submitted_at=submitted_at)
-            pengajuan.kegiatan_survei.set(_get_or_create_survei(row.get("kegiatan_survei")))
+            pengajuan.kegiatan_survei.set(_find_survei(row.get("kegiatan_survei")))
 
             nomor = row["nomor_pengajuan"]
             lab_report = _create_lab_items(pengajuan, grouped["lab"].get(nomor, []))
@@ -1534,8 +1543,10 @@ def download_format_import_riwayat_peminjaman(request):
             "199001012020011001",
             "Jl. Contoh No. 1",
             "Layanan Survei Air Tanah",
+            "",
             "Tim Layanan Teknis",
             "Dinas PUPR Kabupaten Contoh",
+            "",
             "Eksternal PU",
             "Jl. Contoh Instansi No. 10",
             "2025-01-15",
