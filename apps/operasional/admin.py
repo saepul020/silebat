@@ -1,5 +1,6 @@
 from django.contrib import admin
 
+from .forms import SurveiKegiatanForm
 from .models import DataKopDokumen, InstansiKlien, LayananKegiatan, SurveiKegiatan, TimKegiatan
 
 
@@ -25,6 +26,7 @@ class InstansiKlienAdmin(admin.ModelAdmin):
 
 @admin.register(SurveiKegiatan)
 class SurveiKegiatanAdmin(admin.ModelAdmin):
+    form = SurveiKegiatanForm
     list_display = ('jenis_survei',)
     search_fields = ('jenis_survei',)
 

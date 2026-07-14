@@ -16,7 +16,7 @@ from apps.core.import_utils import (
     string_cell as _string_cell,
 )
 from django.db import transaction
-from django.db.models import Count, Q
+from django.db.models import Count, F, Q
 from django.db.models.deletion import ProtectedError
 from django.db.models.functions import Coalesce, ExtractYear, TruncMonth
 from django.http import HttpResponse, JsonResponse
@@ -88,7 +88,7 @@ IMPORT_BARANG_LAB_REQUIRED_HEADERS = [
 IMPORT_BARANG_LAB_MAX_SIZE = 7 * 1024 * 1024
 
 FORM_TEMPLATE = "master_data/master_form.html"
-PINJAM_YEAR_ALL = "all"
+CHART_YEAR_ALL = "all"
 ASSET_LIST_SEARCH_FIELDS = (
     "nama_barang",
     "tipe_merek_barang",
@@ -538,13 +538,13 @@ def _mark_delete_blocks(context):
         item.delete_block_message = _get_active_transaksi_delete_block_message(item)
 
 
-def _get_pinjam_year(request, available_years):
+def _get_chart_year(request, available_years, param):
     current_year = timezone.localdate().year
-    raw_year = (request.GET.get("tahun_pinjam") or "").strip().lower()
+    raw_year = (request.GET.get(param) or "").strip().lower()
     valid_years = {int(year) for year in available_years if year}
 
-    if raw_year == PINJAM_YEAR_ALL:
-        return PINJAM_YEAR_ALL
+    if raw_year == CHART_YEAR_ALL:
+        return CHART_YEAR_ALL
     try:
         requested_year = int(raw_year)
     except (TypeError, ValueError):
@@ -586,35 +586,34 @@ def _snapshot_asset_q(obj):
     return query
 
 
-def _build_pinjam_chart(request, obj, *, item_model, label):
-    try:
-        from apps.peminjaman.models import StepChoices
-    except Exception:
-        return None
-
+def _build_chart_data(
+    request,
+    queryset,
+    *,
+    date_expr,
+    key,
+    title,
+    switch_label,
+    dataset_label,
+    chart_title,
+    filter_param,
+    empty_text,
+    tooltip_label,
+    colors,
+):
     current_year = timezone.localdate().year
-    date_expr = Coalesce(
-        "pengajuan__pimpinan_at",
-        "pengajuan__return_completed_at",
-        "pengajuan__submitted_at",
-        "pengajuan__updated_at",
-    )
-    base_qs = item_model.objects.filter(
-        _snapshot_asset_q(obj),
-        pengajuan__current_step=StepChoices.APPROVED,
-    )
     monthly_rows = list(
-        base_qs.annotate(pinjam_at=date_expr)
-        .annotate(month=TruncMonth("pinjam_at"))
+        queryset.annotate(chart_at=date_expr)
+        .annotate(month=TruncMonth("chart_at"))
         .values("month")
-        .annotate(total=Count("id"))
+        .annotate(total=Count("id", distinct=True))
         .order_by("month")
     )
     year_rows = list(
-        base_qs.annotate(pinjam_at=date_expr)
-        .annotate(year=ExtractYear("pinjam_at"))
+        queryset.annotate(chart_at=date_expr)
+        .annotate(year=ExtractYear("chart_at"))
         .values("year")
-        .annotate(total=Count("id"))
+        .annotate(total=Count("id", distinct=True))
         .order_by("year")
     )
     available_years = sorted(
@@ -625,16 +624,22 @@ def _build_pinjam_chart(request, obj, *, item_model, label):
         }
         | {current_year}
     )
-    selected_year = _get_pinjam_year(request, available_years)
     return {
-        "title": f"Riwayat Peminjaman {label}",
-        "datasetLabel": "Jumlah Peminjaman",
-        "chartTitle": "Rekap Peminjaman Alat",
+        "key": key,
+        "title": title,
+        "switchLabel": switch_label,
+        "datasetLabel": dataset_label,
+        "chartTitle": chart_title,
+        "filterParam": filter_param,
+        "emptyText": empty_text,
+        "tooltipLabel": tooltip_label,
+        "backgroundColor": colors[0],
+        "borderColor": colors[1],
         "scrollMobile": True,
         "availableYears": available_years,
-        "selectedYear": selected_year,
+        "selectedYear": _get_chart_year(request, available_years, filter_param),
         "currentYear": current_year,
-        "allValue": PINJAM_YEAR_ALL,
+        "allValue": CHART_YEAR_ALL,
         "monthLabels": MONTH_LABELS_ID,
         "rows": [
             {
@@ -653,6 +658,131 @@ def _build_pinjam_chart(request, obj, *, item_model, label):
     }
 
 
+def _build_pinjam_chart(request, obj, *, item_model, label, title=None):
+    try:
+        from apps.peminjaman.models import StepChoices
+    except Exception:
+        return None
+
+    date_expr = Coalesce(
+        "pengajuan__pimpinan_at",
+        "pengajuan__return_completed_at",
+        "pengajuan__submitted_at",
+        "pengajuan__updated_at",
+    )
+    base_qs = item_model.objects.filter(
+        _snapshot_asset_q(obj),
+        pengajuan__current_step=StepChoices.APPROVED,
+    )
+    return _build_chart_data(
+        request,
+        base_qs,
+        date_expr=date_expr,
+        key="pinjam",
+        title=title or f"Riwayat Peminjaman {label}",
+        switch_label="Peminjaman",
+        dataset_label="Jumlah Peminjaman",
+        chart_title="Rekap Peminjaman Alat",
+        filter_param="tahun_pinjam",
+        empty_text="Belum ada data peminjaman untuk filter ini.",
+        tooltip_label="Jumlah peminjaman",
+        colors=("rgba(16, 62, 111, 0.82)", "rgba(16, 62, 111, 1)"),
+    )
+
+
+def _maintenance_asset_q(obj):
+    query = Q(alat=obj)
+    null_fk = Q(alat__isnull=True)
+
+    kode_lab = _clean_match_value(getattr(obj, "kode_laboratorium", ""))
+    if kode_lab:
+        query |= null_fk & Q(snapshot_kode_laboratorium__iexact=kode_lab)
+
+    nama = _clean_match_value(getattr(obj, "nama_barang", ""))
+    tipe = _clean_match_value(getattr(obj, "tipe_merek_barang", ""))
+    if nama and tipe:
+        query |= (
+            null_fk
+            & Q(snapshot_nama_barang__iexact=nama)
+            & Q(snapshot_tipe_merek_barang__iexact=tipe)
+        )
+    return query
+
+
+def _build_maintenance_charts(request, obj):
+    try:
+        from apps.pemeliharaan.models import (
+            KondisiPemeliharaanChoices,
+            PemeliharaanPengajuan,
+            StepPemeliharaanChoices,
+        )
+    except Exception:
+        return []
+
+    repair_q = Q(
+        items__kondisi=KondisiPemeliharaanChoices.PERLU_PERBAIKAN
+    )
+    completed = PemeliharaanPengajuan.objects.filter(
+        _maintenance_asset_q(obj),
+        current_step=StepPemeliharaanChoices.SELESAI,
+    )
+    maintenance = completed.exclude(repair_q).distinct()
+    repairs = completed.filter(repair_q).distinct()
+    date_expr = F("tanggal_pemeriksaan")
+
+    return [
+        _build_chart_data(
+            request,
+            maintenance,
+            date_expr=date_expr,
+            key="pemeliharaan",
+            title="Riwayat Pemeliharaan Alat",
+            switch_label="Pemeliharaan",
+            dataset_label="Jumlah Pemeliharaan",
+            chart_title="Rekap Pemeliharaan Alat",
+            filter_param="tahun_pemeliharaan",
+            empty_text="Belum ada data pemeliharaan untuk filter ini.",
+            tooltip_label="Jumlah pemeliharaan",
+            colors=("rgba(13, 148, 136, 0.82)", "rgba(13, 148, 136, 1)"),
+        ),
+        _build_chart_data(
+            request,
+            repairs,
+            date_expr=date_expr,
+            key="perbaikan",
+            title="Riwayat Perbaikan Alat",
+            switch_label="Perbaikan",
+            dataset_label="Jumlah Perbaikan",
+            chart_title="Rekap Perbaikan Alat",
+            filter_param="tahun_perbaikan",
+            empty_text="Belum ada data perbaikan untuk filter ini.",
+            tooltip_label="Jumlah perbaikan",
+            colors=("rgba(217, 119, 6, 0.82)", "rgba(217, 119, 6, 1)"),
+        ),
+    ]
+
+
+def _pack_charts(*charts):
+    items = [chart for chart in charts if chart]
+    if not items:
+        return None
+    return {
+        "items": items,
+        "scrollMobile": any(chart.get("scrollMobile") for chart in items),
+    }
+
+
+def _build_asset_history_charts(request, obj, *, item_model):
+    loan = _build_pinjam_chart(
+        request,
+        obj,
+        item_model=item_model,
+        label="Peralatan Survei Lapangan",
+        title="Riwayat Peminjaman Alat",
+    )
+    return _pack_charts(loan, *_build_maintenance_charts(request, obj))
+
+
 def _build_detail_context(
     *,
     obj,
@@ -664,7 +794,7 @@ def _build_detail_context(
     top_meta,
     chips,
     detail_items,
-    loan_chart=None,
+    asset_charts=None,
     top_icon="bi-box-seam",
     photo_attr="foto_barang",
     label_url_name=None,
@@ -681,7 +811,7 @@ def _build_detail_context(
         "top_meta": _display_value(top_meta),
         "chips": [chip for chip in chips if chip],
         "detail_items": detail_items,
-        "loan_chart": loan_chart,
+        "asset_charts": asset_charts,
         "photo_url": _safe_file_url(getattr(obj, photo_attr, None))
         if photo_attr
         else None,
@@ -808,7 +938,7 @@ def _render_public_master_detail(
     top_meta,
     chips,
     detail_items,
-    loan_chart=None,
+    asset_charts=None,
     top_icon="bi-box-seam",
     photo_attr="foto_barang",
 ):
@@ -822,7 +952,7 @@ def _render_public_master_detail(
             "top_meta": _display_value(top_meta),
             "chips": [chip for chip in chips if chip],
             "detail_items": detail_items,
-            "loan_chart": loan_chart,
+            "asset_charts": asset_charts,
             "photo_url": _safe_file_url(getattr(obj, photo_attr, None))
             if photo_attr
             else None,
@@ -2281,11 +2411,10 @@ def public_barang_laboratorium(request, token):
         top_meta=obj.kode_laboratorium,
         chips=[obj.status_barang, obj.ketersediaan],
         detail_items=_get_barang_laboratorium_detail_items(obj),
-        loan_chart=_build_pinjam_chart(
+        asset_charts=_build_asset_history_charts(
             request,
             obj,
             item_model=PeminjamanBarangLaboratorium,
-            label="Peralatan Survei Lapangan",
         ),
         top_icon="bi-tools",
     )
@@ -2390,11 +2519,13 @@ def public_peralatan_laboratorium(request, token):
         top_meta=obj.kode_laboratorium,
         chips=[obj.status_barang, obj.ketersediaan],
         detail_items=_get_peralatan_laboratorium_detail_items(obj),
-        loan_chart=_build_pinjam_chart(
-            request,
-            obj,
-            item_model=PeminjamanPeralatanLaboratorium,
-            label="Peralatan Laboratorium",
+        asset_charts=_pack_charts(
+            _build_pinjam_chart(
+                request,
+                obj,
+                item_model=PeminjamanPeralatanLaboratorium,
+                label="Peralatan Laboratorium",
+            )
         ),
         top_icon="bi-pc-display",
     )
@@ -2416,11 +2547,10 @@ def detail_barang_laboratorium(request, pk):
         top_meta=obj.kode_laboratorium,
         chips=[obj.status_barang, obj.ketersediaan],
         detail_items=_get_barang_laboratorium_detail_items(obj),
-        loan_chart=_build_pinjam_chart(
+        asset_charts=_build_asset_history_charts(
             request,
             obj,
             item_model=PeminjamanBarangLaboratorium,
-            label="Peralatan Survei Lapangan",
         ),
         top_icon="bi-tools",
         label_url_name="master_data:label_barang_laboratorium",
@@ -2794,11 +2924,13 @@ def detail_peralatan_laboratorium(request, pk):
         top_meta=obj.kode_laboratorium,
         chips=[obj.status_barang, obj.ketersediaan],
         detail_items=_get_peralatan_laboratorium_detail_items(obj),
-        loan_chart=_build_pinjam_chart(
-            request,
-            obj,
-            item_model=PeminjamanPeralatanLaboratorium,
-            label="Peralatan Laboratorium",
+        asset_charts=_pack_charts(
+            _build_pinjam_chart(
+                request,
+                obj,
+                item_model=PeminjamanPeralatanLaboratorium,
+                label="Peralatan Laboratorium",
+            )
         ),
         top_icon="bi-pc-display",
         label_url_name="master_data:label_peralatan_laboratorium",

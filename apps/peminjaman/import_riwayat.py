@@ -29,6 +29,7 @@ from apps.operasional.models import (
     LayananKegiatan,
     SurveiKegiatan,
     TimKegiatan,
+    normalize_survei_name,
     normalize_tim_kegiatan_name,
 )
 
@@ -850,6 +851,7 @@ def _get_or_create_instansi(name, organisasi, alamat=None):
 def _get_or_create_survei(labels):
     objects = []
     for label in labels or []:
+        label = normalize_survei_name(label)
         if not label:
             continue
         obj, _created = SurveiKegiatan.objects.get_or_create(jenis_survei=label)

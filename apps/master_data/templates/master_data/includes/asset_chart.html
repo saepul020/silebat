@@ -1,0 +1,47 @@
+{% if asset_charts %}
+{% with active_chart=asset_charts.items.0 %}
+<section class="asset-chart-card{% if public_chart %} asset-chart-card--public{% endif %}{% if asset_charts.scrollMobile %} asset-chart-card--scroll{% endif %}" data-asset-chart-card aria-label="{{ active_chart.title }}">
+    <div class="asset-chart-head">
+        <div class="asset-chart-title">
+            <div>
+                <h3 data-asset-chart-title>{{ active_chart.title }}</h3>
+            </div>
+        </div>
+
+        <div class="asset-chart-filter">
+            <select id="assetChartYear" data-asset-year-filter aria-label="Filter tahun {{ active_chart.title|lower }}">
+                <option value="{{ active_chart.allValue }}" {% if active_chart.selectedYear == active_chart.allValue %}selected{% endif %}>All</option>
+                {% for year in active_chart.availableYears %}
+                    <option value="{{ year }}" {% if year == active_chart.selectedYear %}selected{% endif %}>{{ year }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+
+    <div class="asset-chart-area{% if asset_charts.scrollMobile %} asset-chart-area--scroll{% endif %}" data-asset-chart-wrap>
+        <div class="asset-chart-plot" data-asset-chart-plot>
+            <canvas id="assetHistoryChart" data-asset-chart-canvas aria-label="Grafik {{ active_chart.title|lower }} {{ obj.nama_barang }}"></canvas>
+        </div>
+        <div class="asset-chart-empty is-hidden" data-asset-chart-empty>
+            {{ active_chart.emptyText }}
+        </div>
+    </div>
+
+    {% if asset_charts.items|length > 1 %}
+    <div class="asset-chart-switch" role="group" aria-label="Pilih grafik riwayat alat">
+        {% for chart in asset_charts.items %}
+        <button
+            type="button"
+            class="asset-chart-switch__button{% if forloop.first %} asset-chart-switch__button--active{% endif %}"
+            data-asset-chart-switch="{{ chart.key }}"
+            aria-controls="assetHistoryChart"
+            aria-pressed="{% if forloop.first %}true{% else %}false{% endif %}"
+        >{{ chart.switchLabel }}</button>
+        {% endfor %}
+    </div>
+    {% endif %}
+</section>
+
+{{ asset_charts|json_script:"asset-chart-data" }}
+{% endwith %}
+{% endif %}

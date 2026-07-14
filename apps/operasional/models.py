@@ -3,16 +3,26 @@ from django.db import models
 
 TIM_LAYANAN_TEKNIS_NAME = "Tim Layanan Teknis"
 TIM_PENGEMBANGAN_PENERAPAN_NAME = "Tim Pengembangan Penerapan"
+SURVEI_BOREHOLE_CAMERA_NAME = "Borehole Camera"
 
 TIM_KEGIATAN_RENAME_MAP = {
     "Sub Koordinator Layanan Teknis": TIM_LAYANAN_TEKNIS_NAME,
     "Sub Koordinator Pengembangan Penerapan": TIM_PENGEMBANGAN_PENERAPAN_NAME,
 }
 
+SURVEI_KEGIATAN_RENAME_MAP = {
+    "borehole": SURVEI_BOREHOLE_CAMERA_NAME,
+}
+
 
 def normalize_tim_kegiatan_name(nama_tim):
     nama = (str(nama_tim or "")).strip()
     return TIM_KEGIATAN_RENAME_MAP.get(nama, nama)
+
+
+def normalize_survei_name(jenis_survei):
+    nama = (str(jenis_survei or "")).strip()
+    return SURVEI_KEGIATAN_RENAME_MAP.get(nama.casefold(), nama)
 
 
 def format_ketua_tim_title(nama_tim):
@@ -95,4 +105,3 @@ class DataKopDokumen(models.Model):
 
     def __str__(self):
         return 'Kop Dokumen'
-

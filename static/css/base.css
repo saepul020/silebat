@@ -9390,8 +9390,8 @@ select.return-status-select option:disabled {
 }
 
 /* =========================
-   DETAIL BARANG - GRAFIK PEMINJAMAN
-   Bar chart riwayat peminjaman alat.
+   DETAIL BARANG - GRAFIK RIWAYAT
+   Bar chart transaksi alat dengan switch.
 ========================= */
 .asset-chart-card {
     margin: 24px 0 22px;
@@ -9493,6 +9493,41 @@ select.return-status-select option:disabled {
     display: none;
 }
 
+.asset-chart-switch {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 14px;
+}
+
+.asset-chart-switch__button {
+    min-height: 42px;
+    padding: 9px 14px;
+    border: 1px solid var(--border-strong);
+    border-radius: 12px;
+    background: var(--color-white);
+    color: var(--color-primary-navy);
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
+}
+
+.asset-chart-switch__button:hover,
+.asset-chart-switch__button:focus-visible {
+    border-color: var(--color-primary-navy);
+    background: rgba(16, 62, 111, 0.08);
+    outline: none;
+}
+
+.asset-chart-switch__button--active,
+.asset-chart-switch__button--active:hover,
+.asset-chart-switch__button--active:focus-visible {
+    border-color: var(--color-primary-navy);
+    background: var(--color-primary-navy);
+    color: var(--color-white);
+}
+
 @media (max-width: 680px) {
     .asset-chart-card {
         padding: 16px;
@@ -9521,8 +9556,12 @@ select.return-status-select option:disabled {
     }
 
     .asset-chart-area--scroll .asset-chart-plot {
-        width: var(--loan-chart-width, 100%);
-        min-width: var(--loan-chart-width, 100%);
+        width: var(--asset-chart-width, 100%);
+        min-width: var(--asset-chart-width, 100%);
+    }
+
+    .asset-chart-switch {
+        grid-template-columns: 1fr;
     }
 
     .asset-chart-area--scroll::-webkit-scrollbar {

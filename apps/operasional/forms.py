@@ -9,7 +9,14 @@ from apps.core.upload_validation import (
 )
 from apps.pengguna.models import User
 
-from .models import DataKopDokumen, InstansiKlien, LayananKegiatan, SurveiKegiatan, TimKegiatan
+from .models import (
+    DataKopDokumen,
+    InstansiKlien,
+    LayananKegiatan,
+    SurveiKegiatan,
+    TimKegiatan,
+    normalize_survei_name,
+)
 
 class OperasionalBaseForm(forms.ModelForm):
     required_message = "Kolom ini wajib diisi."
@@ -124,7 +131,7 @@ class SurveiKegiatanForm(OperasionalBaseForm):
         self._apply_common_style()
 
     def clean_jenis_survei(self):
-        jenis_survei = (self.cleaned_data.get("jenis_survei") or "").strip()
+        jenis_survei = normalize_survei_name(self.cleaned_data.get("jenis_survei"))
         if not jenis_survei:
             raise forms.ValidationError("Kolom ini wajib diisi.")
 
