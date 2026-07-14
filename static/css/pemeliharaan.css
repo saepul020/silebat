@@ -2,6 +2,21 @@
     max-width: 1040px;
 }
 
+.pemeliharaan-form-card .landing-gallery-thumb {
+    width: 120px;
+    height: auto;
+    flex: 0 0 120px;
+    aspect-ratio: 4 / 3;
+}
+
+.pemeliharaan-form-card .landing-gallery-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    object-position: center;
+    background: #f8fafc;
+}
+
 .pemeliharaan-detail-head,
 .pemeliharaan-detail,
 .pemeliharaan-timeline {
@@ -292,17 +307,12 @@
     gap: 10px;
 }
 
-.pemeliharaan-photo-strip--large a,
-.pemeliharaan-photo-strip--large .pemeliharaan-photo-empty {
-    width: 132px;
-    height: 132px;
-}
-
 .pemeliharaan-photo-strip a,
 .pemeliharaan-photo-empty {
     display: inline-flex;
     width: 108px;
-    height: 108px;
+    height: auto;
+    aspect-ratio: 4 / 3;
     align-items: center;
     justify-content: center;
     overflow: hidden;
@@ -315,6 +325,11 @@
     text-align: center;
 }
 
+.pemeliharaan-photo-strip--large a,
+.pemeliharaan-photo-strip--large .pemeliharaan-photo-empty {
+    width: 132px;
+}
+
 .pemeliharaan-photo-link {
     cursor: zoom-in;
 }
@@ -322,7 +337,9 @@
 .pemeliharaan-photo-strip img {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
+    object-position: center;
+    background: #f8fafc;
 }
 
 .pemeliharaan-photo-modal {
@@ -352,7 +369,8 @@
     width: min(920px, 100%);
     max-height: calc(100vh - 48px);
     flex-direction: column;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
     border-radius: 8px;
     background: #fff;
     box-shadow: 0 26px 70px rgba(15, 23, 42, 0.34);
@@ -406,17 +424,22 @@
 .pemeliharaan-photo-modal__stage {
     position: relative;
     display: flex;
-    min-height: 360px;
+    width: 100%;
+    min-height: 0;
+    flex: 0 0 auto;
+    aspect-ratio: 4 / 3;
     align-items: center;
     justify-content: center;
+    overflow: hidden;
     background: #0f172a;
 }
 
 .pemeliharaan-photo-modal__stage img {
     display: block;
-    max-width: 100%;
-    max-height: min(68vh, 620px);
+    width: 100%;
+    height: 100%;
     object-fit: contain;
+    object-position: center;
 }
 
 .pemeliharaan-photo-modal__nav {
@@ -488,7 +511,11 @@
     .pemeliharaan-photo-strip a,
     .pemeliharaan-photo-empty {
         width: 94px;
-        height: 94px;
+    }
+
+    .pemeliharaan-form-card .landing-gallery-thumb {
+        width: 104px;
+        flex-basis: 104px;
     }
 
     .pemeliharaan-head-actions {
@@ -515,14 +542,6 @@
 
     .pemeliharaan-photo-modal__head {
         padding: 12px 14px;
-    }
-
-    .pemeliharaan-photo-modal__stage {
-        min-height: 300px;
-    }
-
-    .pemeliharaan-photo-modal__stage img {
-        max-height: 62vh;
     }
 
     .pemeliharaan-photo-modal__nav {
