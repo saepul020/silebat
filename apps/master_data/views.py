@@ -871,6 +871,8 @@ LABEL_ITEM_FIELDS = (
     "qr_code",
     "qr_token",
 )
+LABEL_QUANTITY_MAX = 500
+LABEL_TOTAL_MAX = 2000
 
 
 def _label_item_queryset(queryset):
@@ -883,20 +885,26 @@ def _label_download_queryset(queryset):
 
 def _parse_label_selection(request, queryset):
     selected_ids = []
+    seen_ids = set()
     for raw_value in request.POST.getlist("label_items"):
         try:
-            selected_ids.append(int(raw_value))
+            item_id = int(raw_value)
         except (TypeError, ValueError):
             continue
+        if item_id not in seen_ids:
+            selected_ids.append(item_id)
+            seen_ids.add(item_id)
 
     if not selected_ids:
-        return []
+        return [], []
 
     objects = {
         obj.pk: obj
         for obj in queryset.filter(pk__in=selected_ids)
     }
-    entries = []
+    selections = []
+    errors = []
+    total_quantity = 0
     for pk in selected_ids:
         obj = objects.get(pk)
         if obj is None:
@@ -905,19 +913,45 @@ def _parse_label_selection(request, queryset):
         size = request.POST.get(f"label_size_{pk}", "normal")
         if size not in {"normal", "kecil"}:
             size = "normal"
+        raw_quantity = str(request.POST.get(f"label_quantity_{pk}", "1") or "").strip()
+        try:
+            quantity = int(raw_quantity)
+        except (TypeError, ValueError):
+            quantity = 0
+        if quantity < 1 or quantity > LABEL_QUANTITY_MAX:
+            errors.append(
+                f'Jumlah label "{obj.nama_barang}" harus antara 1 sampai {LABEL_QUANTITY_MAX}.'
+            )
+            continue
+        total_quantity += quantity
+        if total_quantity > LABEL_TOTAL_MAX:
+            errors.append(
+                f"Total label yang dicetak maksimal {LABEL_TOTAL_MAX}."
+            )
+            break
+        selections.append((obj, size, quantity))
+
+    if errors:
+        return [], errors
+
+    entries = []
+    for obj, size, quantity in selections:
         ensure_master_qr_code(obj)
-        entries.append(
-            {
-                "obj": obj,
-                "size": size,
-                "image": build_label_png(obj, _build_label_data(obj)),
-            }
-        )
-    return entries
+        entry = {
+            "obj": obj,
+            "size": size,
+            "image": build_label_png(obj, _build_label_data(obj)),
+        }
+        entries.extend([entry] * quantity)
+    return entries, errors
 
 
 def _render_bulk_label(request, *, queryset, label, redirect_to):
-    entries = _parse_label_selection(request, queryset)
+    entries, errors = _parse_label_selection(request, queryset)
+    if errors:
+        for error in errors:
+            messages.error(request, error)
+        return redirect(redirect_to)
     if not entries:
         messages.error(request, "Pilih minimal satu label barang untuk didownload.")
         return redirect(redirect_to)
@@ -983,6 +1017,7 @@ def _render_barang_laboratorium_list(request, import_context=None):
             "import_context": import_context or {},
             "label_items": _label_item_queryset(queryset),
             "bulk_label_url": reverse("master_data:bulk_label_barang_laboratorium"),
+            "label_quantity_max": LABEL_QUANTITY_MAX,
         }
     )
     return render(request, "master_data/survei_list.html", context)
@@ -2801,6 +2836,7 @@ def _render_fasilitas_ruangan_list(request, import_context=None):
             "import_context": import_context or {},
             "label_items": _label_item_queryset(queryset),
             "bulk_label_url": reverse("master_data:bulk_label_fasilitas_ruangan"),
+            "label_quantity_max": LABEL_QUANTITY_MAX,
         }
     )
     return render(request, "master_data/fasilitas_list.html", context)
@@ -2937,6 +2973,7 @@ def _render_peralatan_laboratorium_list(request, import_context=None):
             "import_context": import_context or {},
             "label_items": _label_item_queryset(queryset),
             "bulk_label_url": reverse("master_data:bulk_label_peralatan_laboratorium"),
+            "label_quantity_max": LABEL_QUANTITY_MAX,
         }
     )
     return render(request, "master_data/peralatan_list.html", context)

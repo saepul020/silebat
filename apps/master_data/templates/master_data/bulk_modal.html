@@ -26,6 +26,7 @@
                                 <th class="cell-wrap">Tipe / Merek Barang</th>
                                 <th class="cell-wrap">Kode Lab</th>
                                 <th>Ukuran</th>
+                                <th>Jumlah</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -43,10 +44,13 @@
                                         <option value="kecil">Kecil</option>
                                     </select>
                                 </td>
+                                <td>
+                                    <input type="number" name="label_quantity_{{ item.pk }}" class="bulk-label-quantity" value="1" min="1" max="{{ label_quantity_max }}" step="1" inputmode="numeric" aria-label="Jumlah label {{ item.nama_barang }}">
+                                </td>
                             </tr>
                             {% empty %}
                             <tr>
-                                <td colspan="5"><div class="empty-state">Belum ada data barang untuk dibuat label.</div></td>
+                                <td colspan="6"><div class="empty-state">Belum ada data barang untuk dibuat label.</div></td>
                             </tr>
                             {% endfor %}
                         </tbody>

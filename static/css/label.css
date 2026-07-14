@@ -278,7 +278,7 @@
 
 .bulk-label-table {
     margin: 0;
-    min-width: 680px;
+    min-width: 790px;
 }
 
 .bulk-label-table th,
@@ -298,7 +298,8 @@
     width: 52px;
 }
 
-.bulk-label-size {
+.bulk-label-size,
+.bulk-label-quantity {
     background: var(--color-white, #ffffff);
     border: 1px solid var(--border-strong, #dbe4ea);
     border-radius: 12px;
@@ -312,8 +313,15 @@
     width: 128px;
 }
 
+.bulk-label-quantity {
+    cursor: text;
+    width: 92px;
+}
+
 .bulk-label-size:hover,
-.bulk-label-size:focus {
+.bulk-label-size:focus,
+.bulk-label-quantity:hover,
+.bulk-label-quantity:focus {
     border-color: var(--color-soft-blue, #64cdd1);
     box-shadow: 0 0 0 3px rgba(100, 205, 209, 0.12);
 }

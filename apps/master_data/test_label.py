@@ -3,6 +3,7 @@ import tempfile
 from io import BytesIO
 from pathlib import Path
 import re
+from unittest.mock import patch
 
 from django.test import TestCase, override_settings
 from django.urls import reverse
@@ -147,6 +148,13 @@ class MasterLabelTests(TestCase):
                 self.assertNotContains(list_response, "Download PDF")
                 self.assertContains(list_response, 'name="label_items"')
                 self.assertContains(list_response, 'value="kecil"')
+                self.assertContains(list_response, "<th>Jumlah</th>", html=True)
+                self.assertContains(
+                    list_response,
+                    f'name="label_quantity_{obj.pk}"',
+                )
+                self.assertContains(list_response, 'value="1"')
+                self.assertContains(list_response, 'max="500"')
                 self.assertContains(list_response, obj.nama_barang)
                 self.assertContains(
                     list_response,
@@ -237,6 +245,43 @@ class MasterLabelTests(TestCase):
         self.assertIn(".pdf", response["Content-Disposition"])
         self.assertEqual(response.content[:4], b"%PDF")
         self.assertIn(b"/MediaBox", response.content)
+
+    @patch("apps.master_data.views.build_label_pdf", return_value=b"%PDF-label-test")
+    def test_bulk_label_quantity_duplicates_selected_label(self, build_pdf_mock):
+        self.client.force_login(self.admin)
+
+        response = self.client.post(
+            reverse("master_data:bulk_label_barang_laboratorium"),
+            data={
+                "label_items": [str(self.survei.pk)],
+                f"label_size_{self.survei.pk}": "normal",
+                f"label_quantity_{self.survei.pk}": "3",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        entries = build_pdf_mock.call_args.args[0]
+        self.assertEqual(len(entries), 3)
+        self.assertTrue(all(entry["obj"].pk == self.survei.pk for entry in entries))
+        self.assertTrue(all(entry["size"] == "normal" for entry in entries))
+
+    @patch("apps.master_data.views.build_label_pdf")
+    def test_bulk_label_rejects_invalid_quantity(self, build_pdf_mock):
+        self.client.force_login(self.admin)
+
+        response = self.client.post(
+            reverse("master_data:bulk_label_barang_laboratorium"),
+            data={
+                "label_items": [str(self.survei.pk)],
+                f"label_quantity_{self.survei.pk}": "0",
+            },
+        )
+
+        self.assertRedirects(
+            response,
+            reverse("master_data:data_barang_laboratorium"),
+        )
+        build_pdf_mock.assert_not_called()
 
     def test_bulk_label_pdf_uses_forty_labels_per_page(self):
         image = Image.new("RGB", (600, 240), "white")
