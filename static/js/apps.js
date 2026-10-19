@@ -3320,11 +3320,7 @@ function bindQtyStepper(stepper) {
         input.value = String(nextValue);
         input.dispatchEvent(new Event('input', { bubbles: true }));
         input.dispatchEvent(new Event('change', { bubbles: true }));
-        if (window.matchMedia('(max-width: 768px)').matches) {
-            input.blur();
-        } else {
-            input.focus({ preventScroll: true });
-        }
+        input.blur();
     });
 }
 
