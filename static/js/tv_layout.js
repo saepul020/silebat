@@ -114,7 +114,7 @@ function initTvLayout() {
         setValue(root, '--tv-height', `${size.height}px`);
         setValue(root, '--tv-left', `${size.left}px`);
         setValue(root, '--tv-top', `${size.top}px`);
-        const base = 16 * Math.min(size.width / 1920, size.height / 1080);
+        const base = Math.min(16, Math.max(10, 16 * Math.min(size.width / 1920, size.height / 1080)));
         if (changed || dirty) {
             fontSize = base;
         }

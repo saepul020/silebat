@@ -16,6 +16,9 @@ Mode tidak ditentukan dari user agent atau resolusi fisik TV.
   dan `innerHeight`. Ukuran dihitung ulang pada resize, perubahan visual viewport,
   perubahan ukuran halaman, pemuatan font/gambar, dan pembaruan data.
   Ukuran 1920×1080 di JS hanya acuan proporsi font, bukan ukuran viewport atau canvas paksa.
+  Skala font awal dibatasi 10–16 px agar tampilan kecil tetap terbaca dan viewport 4K
+  tidak membesarkan seluruh tipografi. Padding dan tinggi baris mengikuti proporsi tampilan normal;
+  penyesuaian tambahan hanya dilakukan jika konten memang tidak muat.
 - Layout mengisi viewport aktual dengan ukuran CSS biasa, tanpa CSS `zoom` atau
   `transform: scale()` pada dashboard. Foto tetap berasio 4:3; pada rasio layar yang
   sangat lebar, frame foto dapat mengecil secara proporsional untuk memberi ruang informasi.
