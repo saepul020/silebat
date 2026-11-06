@@ -79,8 +79,8 @@ class SurveiKegiatan(models.Model):
 
 class InstansiKlien(models.Model):
     class OrganisasiChoices(models.TextChoices):
-        INTERNAL_PU = 'Internal PU', 'Internal PU'
-        EKSTERNAL_PU = 'Eksternal PU', 'Eksternal PU'
+        INTERNAL_SDA = 'Internal SDA', 'Internal SDA'
+        EKSTERNAL_SDA = 'Eksternal SDA', 'Eksternal SDA'
         INTERNAL_BAT = 'Internal BAT', 'Internal BAT'
 
     nama_instansi = models.CharField(max_length=200, unique=True)

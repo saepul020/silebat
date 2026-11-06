@@ -7,8 +7,11 @@ from django import forms
 from django.contrib.auth import password_validation
 from django.contrib.auth.forms import UserCreationForm
 from django.core.files.base import ContentFile
+from django.db import transaction
+from django.db.models import Q
 
 from apps.core.file_cleanup import delete_file_if_unused
+from apps.core.permissions import is_super_admin
 from apps.core.upload_validation import (
     MAX_UPLOAD_SIZE_BYTES,
     apply_upload_widget_validation_attrs,
@@ -18,7 +21,7 @@ from apps.core.upload_validation import (
 from apps.operasional.models import TimKegiatan
 
 
-from .models import Pelatihan, User, UserProfile, get_default_role_queryset
+from .models import Pelatihan, PesertaPelatihan, User, UserProfile, get_default_role_queryset, get_sdm_users
 
 try:
     from PIL import Image
@@ -929,7 +932,6 @@ class PelatihanForm(forms.ModelForm):
             "tanggal_selesai",
             "lokasi_pelatihan",
             "uraian_pelatihan",
-            "file_sertifikat",
             "file_materi",
         ]
         labels = {
@@ -938,7 +940,6 @@ class PelatihanForm(forms.ModelForm):
             "nama_pelatihan": "Nama Pelatihan",
             "lokasi_pelatihan": "Lokasi Pelatihan",
             "uraian_pelatihan": "Uraian Pelatihan",
-            "file_sertifikat": "File Sertifikat",
             "file_materi": "File Materi",
         }
         widgets = {
@@ -968,16 +969,6 @@ class PelatihanForm(forms.ModelForm):
                     "autocomplete": "off",
                 }
             ),
-            "file_sertifikat": forms.FileInput(
-                attrs={
-                    "accept": ".jpg,.jpeg,.png,.pdf",
-                    "class": "input-file--proxy",
-                    "data-inline-file-input": "true",
-                    "data-inline-file-placeholder": "Pilih file sertifikat",
-                    "data-inline-file-extensions": "jpg,jpeg,png,pdf",
-                    "data-inline-file-error": "File Sertifikat hanya boleh berupa file JPG, JPEG, PNG, atau PDF.",
-                }
-            ),
             "file_materi": forms.FileInput(
                 attrs={
                     "accept": ".pdf,.zip,.rar",
@@ -1002,7 +993,7 @@ class PelatihanForm(forms.ModelForm):
 
         for field_name, field in self.fields.items():
             field.help_text = ""
-            if field_name not in {"file_sertifikat", "file_materi"}:
+            if field_name != "file_materi":
                 field.required = True
                 field.widget.attrs["required"] = "required"
 
@@ -1012,33 +1003,15 @@ class PelatihanForm(forms.ModelForm):
         self.fields["jenis_pelatihan"].choices = [("", "Pilih jenis pelatihan")] + list(
             Pelatihan.JENIS_CHOICES
         )
-        self.fields["file_sertifikat"].required = False
         self.fields["file_materi"].required = False
-        self.fields["file_sertifikat"].widget.attrs.pop("required", None)
         self.fields["file_materi"].widget.attrs.pop("required", None)
 
-        apply_upload_widget_validation_attrs(
-            self.fields["file_sertifikat"],
-            allowed_extensions="jpg,jpeg,png,pdf",
-            invalid_extension_message="File Sertifikat hanya boleh berupa file JPG, JPEG, PNG, atau PDF.",
-            max_size_bytes=MAX_UPLOAD_SIZE_BYTES,
-            max_size_message=build_max_upload_size_message("File Sertifikat"),
-        )
         apply_upload_widget_validation_attrs(
             self.fields["file_materi"],
             allowed_extensions="pdf,zip,rar",
             invalid_extension_message="File Materi hanya boleh berupa file PDF, ZIP, atau RAR.",
             max_size_bytes=MAX_UPLOAD_SIZE_BYTES,
             max_size_message=build_max_upload_size_message("File Materi"),
-        )
-
-    def clean_file_sertifikat(self):
-        return validate_uploaded_file(
-            self.cleaned_data.get("file_sertifikat"),
-            allowed_extensions={".jpg", ".jpeg", ".png", ".pdf"},
-            invalid_extension_message="File Sertifikat hanya boleh berupa file JPG, JPEG, PNG, atau PDF.",
-            max_size_bytes=MAX_UPLOAD_SIZE_BYTES,
-            max_size_message=build_max_upload_size_message("File Sertifikat"),
         )
 
     def clean_file_materi(self):
@@ -1062,3 +1035,133 @@ class PelatihanForm(forms.ModelForm):
             )
 
         return cleaned_data
+
+
+class SertifikatField(forms.FileField):
+    def clean(self, data, initial=None):
+        if data is initial and initial:
+            return initial
+        file = super().clean(data, initial)
+        if file is initial:
+            return file
+        return validate_uploaded_file(
+            file,
+            allowed_extensions={".jpg", ".jpeg", ".png", ".pdf"},
+            invalid_extension_message="File Sertifikat hanya boleh berupa file JPG, JPEG, PNG, atau PDF.",
+            max_size_bytes=MAX_UPLOAD_SIZE_BYTES,
+            max_size_message=build_max_upload_size_message("File Sertifikat"),
+        )
+
+
+class PesertaAdminForm(forms.ModelForm):
+    class Meta:
+        model = PesertaPelatihan
+        fields = ["user", "file_sertifikat"]
+        field_classes = {"file_sertifikat": SertifikatField}
+
+
+class PesertaForm(forms.Form):
+    user = forms.ModelChoiceField(
+        queryset=User.objects.none(), label="Nama Peserta", empty_label="Pilih user",
+    )
+    file_sertifikat = SertifikatField(
+        required=False, label="File Sertifikat",
+        widget=forms.FileInput(attrs={
+            "accept": ".jpg,.jpeg,.png,.pdf",
+            "class": "input-file--proxy",
+            "data-inline-file-input": "true",
+            "data-inline-file-placeholder": "Pilih file sertifikat",
+            "data-inline-file-extensions": "jpg,jpeg,png,pdf",
+            "data-inline-file-error": "File Sertifikat hanya boleh berupa file JPG, JPEG, PNG, atau PDF.",
+        }),
+    )
+
+    def __init__(self, *args, users, can_remove=False, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["user"].queryset = users
+        self.locked = bool(self.initial.get("user"))
+        self.removable = not self.initial.get("primary") and (not self.locked or can_remove)
+        self.fields["user"].disabled = self.locked
+        for field in self.fields.values():
+            if field.disabled:
+                field.widget.attrs["data-training-locked"] = "true"
+        apply_upload_widget_validation_attrs(
+            self.fields["file_sertifikat"], allowed_extensions="jpg,jpeg,png,pdf",
+            invalid_extension_message="File Sertifikat hanya boleh berupa file JPG, JPEG, PNG, atau PDF.",
+            max_size_bytes=MAX_UPLOAD_SIZE_BYTES,
+            max_size_message=build_max_upload_size_message("File Sertifikat"),
+        )
+
+
+class BasePesertaSet(forms.BaseFormSet):
+    def __init__(self, *args, actor, pelatihan=None, **kwargs):
+        is_admin = is_super_admin(actor)
+        self.can_delete = bool(pelatihan and is_admin)
+        self.rows = list(pelatihan.peserta.select_related("user")) if pelatihan else []
+        self.rows.sort(key=lambda row: row.user_id != actor.pk)
+        if pelatihan:
+            initial = [
+                {"user": row.user_id, "file_sertifikat": row.file_sertifikat}
+                for row in self.rows
+            ]
+        else:
+            initial = [{"primary": True}]
+            if not is_admin:
+                initial[0]["user"] = actor.pk
+        self.expected_initial = len(initial)
+        users = get_sdm_users()
+        users = User.objects.filter(
+            Q(pk__in=users.values("pk")) | Q(pk__in=[item["user"] for item in initial if item.get("user")])
+        ).order_by("first_name", "username")
+        super().__init__(
+            *args, initial=initial, prefix="peserta",
+            form_kwargs={"users": users, "can_remove": self.can_delete}, **kwargs,
+        )
+
+    def clean(self):
+        super().clean()
+        if self.initial_form_count() != self.expected_initial or self.total_form_count() < self.expected_initial:
+            raise forms.ValidationError("Data peserta berubah. Muat ulang halaman dan coba kembali.")
+        if any(self.errors):
+            return
+        seen = set()
+        for form in self.forms:
+            if self.can_delete and self._should_delete_form(form):
+                continue
+            user = form.cleaned_data.get("user")
+            if not user:
+                continue
+            if user.pk in seen:
+                form.add_error("user", "Peserta yang sama hanya boleh dipilih satu kali.")
+            seen.add(user.pk)
+        if not seen:
+            raise forms.ValidationError("Minimal satu peserta pelatihan wajib diisi.")
+
+    def save(self, pelatihan):
+        for index, form in enumerate(self.forms):
+            if self.can_delete and self._should_delete_form(form):
+                if index < len(self.rows):
+                    self.rows[index].delete()
+                continue
+            user = form.cleaned_data.get("user")
+            if not user:
+                continue
+            if index < len(self.rows):
+                row = self.rows[index]
+                if "file_sertifikat" not in form.changed_data:
+                    continue
+                old_file = row.file_sertifikat
+                row.file_sertifikat = form.cleaned_data["file_sertifikat"]
+                row.save(update_fields=["file_sertifikat"])
+                if old_file and old_file.name != row.file_sertifikat.name:
+                    transaction.on_commit(lambda file=old_file: delete_file_if_unused(
+                        PesertaPelatihan, "file_sertifikat", file,
+                    ))
+            else:
+                PesertaPelatihan.objects.create(
+                    pelatihan=pelatihan, user=user,
+                    file_sertifikat=form.cleaned_data.get("file_sertifikat"),
+                )
+
+
+PesertaFormSet = forms.formset_factory(PesertaForm, formset=BasePesertaSet, extra=0, can_delete=True)

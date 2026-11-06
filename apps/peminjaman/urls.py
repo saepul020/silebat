@@ -3,6 +3,7 @@ from django.urls import path
 from . import views
 from . import pengembalian_views
 from . import import_riwayat
+from . import koreksi_views
 
 app_name = 'peminjaman'
 
@@ -21,5 +22,6 @@ urlpatterns = [
     path('laporan/import-riwayat/', import_riwayat.import_riwayat_peminjaman, name='import_riwayat_peminjaman'),
     path('laporan/import-riwayat/download-format/', import_riwayat.download_format_import_riwayat_peminjaman, name='download_format_import_riwayat_peminjaman'),
     path('laporan/<int:pk>/', views.detail_laporan, name='laporan_detail'),
+    path('laporan/<int:pk>/koreksi/', koreksi_views.koreksi_laporan, name='laporan_koreksi'),
     path('laporan/<int:pk>/pdf/', views.download_laporan_pdf, name='download_laporan_pdf'),
 ]

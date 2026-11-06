@@ -2,7 +2,7 @@ from io import BytesIO
 
 from django.contrib import messages
 from django.db import transaction
-from django.db.models import Count
+from django.db.models import Count, Exists, OuterRef
 from django.db.models.functions import ExtractYear
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
@@ -13,7 +13,7 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
-from apps.core.file_cleanup import delete_file_if_unused, delete_instance_files
+from apps.core.file_cleanup import delete_file_if_unused
 from apps.core.list_pagination import paginate_list
 from apps.core.navigation import get_next_url, redirect_next
 from apps.core.excel_utils import build_excel_response
@@ -37,8 +37,8 @@ from apps.core.permissions import (
     is_super_admin,
 )
 
-from .forms import PelatihanForm, UserForm, UserProfileForm, UserUpdateForm
-from .models import Pelatihan, Role, User, UserProfile, get_default_role_queryset
+from .forms import PelatihanForm, PesertaFormSet, UserForm, UserProfileForm, UserUpdateForm
+from .models import Pelatihan, PesertaPelatihan, Role, User, UserProfile, get_default_role_queryset, get_sdm_users
 
 IMPORT_PENGGUNA_SESSION_KEY = "pengguna_import_validated_rows"
 IMPORT_PENGGUNA_HEADERS = [
@@ -655,18 +655,13 @@ def detail_pengguna(request, pk):
 
 
 def _get_sdm_user_options():
-    users = (
-        User.objects.select_related('profile', 'profile__role')
-        .exclude(profile__role__nama=ROLE_SUPER_ADMIN)
-        .order_by('first_name', 'username')
-    )
     return [
         {
             'id': str(user.pk),
             'name': user.get_full_name() or user.username,
             'user': user,
         }
-        for user in users
+        for user in get_sdm_users()
     ]
 
 
@@ -702,11 +697,12 @@ def dashboard_sdm(request):
     pelatihan_qs = Pelatihan.objects.select_related('user', 'user__profile', 'user__profile__role')
 
     if can_filter_sdm:
-        pelatihan_qs = pelatihan_qs.exclude(user__profile__role__nama=ROLE_SUPER_ADMIN)
+        participants = PesertaPelatihan.objects.filter(user__in=get_sdm_users())
         if selected_user is not None:
-            pelatihan_qs = pelatihan_qs.filter(user=selected_user)
+            participants = participants.filter(user=selected_user)
+        pelatihan_qs = pelatihan_qs.filter(pk__in=participants.values('pelatihan_id'))
     else:
-        pelatihan_qs = pelatihan_qs.filter(user=request.user)
+        pelatihan_qs = pelatihan_qs.filter(peserta__user=request.user)
 
     total_pelatihan = pelatihan_qs.count()
     pelatihan_terbaru = pelatihan_qs.order_by('-tanggal_mulai', '-created_at')[:5]
@@ -783,14 +779,27 @@ def dashboard_sdm(request):
 
 
 def _get_pelatihan_queryset_for_user(user):
-    queryset = Pelatihan.objects.select_related('user', 'user__profile', 'user__profile__role')
+    queryset = Pelatihan.objects.select_related('user', 'user__profile', 'user__profile__role').annotate(
+        is_peserta=Exists(PesertaPelatihan.objects.filter(pelatihan_id=OuterRef('pk'), user=user)),
+    )
     if is_super_admin(user):
         return queryset.order_by('-tanggal_mulai', '-created_at')
-    return queryset.filter(user=user).order_by('-tanggal_mulai', '-created_at')
+    return queryset.filter(is_peserta=True).order_by('-tanggal_mulai', '-created_at')
 
 
-def _get_pelatihan_for_user_or_404(request, pk):
-    return get_object_or_404(_get_pelatihan_queryset_for_user(request.user), pk=pk)
+def _get_pelatihan_for_user_or_404(request, pk, *, lock=False):
+    queryset = _get_pelatihan_queryset_for_user(request.user)
+    if lock:
+        queryset = queryset.select_for_update(of=('self',))
+    return get_object_or_404(queryset, pk=pk)
+
+
+def _get_pelatihan_forms(request, pelatihan=None):
+    data = request.POST if request.method == 'POST' else None
+    files = request.FILES if request.method == 'POST' else None
+    form = PelatihanForm(data, files, instance=pelatihan)
+    peserta = PesertaFormSet(data, files, actor=request.user, pelatihan=pelatihan)
+    return form, peserta
 
 
 @login_required
@@ -806,23 +815,25 @@ def daftar_pelatihan(request):
 
 
 @login_required
+@transaction.atomic
 def tambah_pelatihan(request):
+    form, peserta = _get_pelatihan_forms(request)
     if request.method == 'POST':
-        form = PelatihanForm(request.POST, request.FILES)
-        if form.is_valid():
+        valid_form = form.is_valid()
+        if peserta.is_valid() and valid_form:
             pelatihan = form.save(commit=False)
             pelatihan.user = request.user
             pelatihan.save()
+            peserta.save(pelatihan)
             messages.success(request, 'Data pelatihan berhasil ditambahkan.')
             return redirect('pengguna:pelatihan_daftar')
-    else:
-        form = PelatihanForm()
 
     return render(
         request,
         'pengguna/pelatihan_form.html',
         {
             'form': form,
+            'peserta': peserta,
             'page_title': 'Tambah Pelatihan',
             'page_subtitle': 'Masukkan data pelatihan pengguna.',
             'submit_label': 'Simpan',
@@ -833,33 +844,30 @@ def tambah_pelatihan(request):
 
 
 @login_required
+@transaction.atomic
 def edit_pelatihan(request, pk):
-    pelatihan = _get_pelatihan_for_user_or_404(request, pk)
-    old_file_sertifikat = pelatihan.file_sertifikat
+    pelatihan = _get_pelatihan_for_user_or_404(request, pk, lock=request.method == 'POST')
     old_file_materi = pelatihan.file_materi
+    form, peserta = _get_pelatihan_forms(request, pelatihan)
 
     if request.method == 'POST':
-        form = PelatihanForm(request.POST, request.FILES, instance=pelatihan)
-        if form.is_valid():
-            updated = form.save(commit=False)
-            updated.user = pelatihan.user
-            updated.save()
+        valid_form = form.is_valid()
+        if peserta.is_valid() and valid_form:
+            updated = form.save()
+            peserta.save(updated)
 
-            if old_file_sertifikat and getattr(old_file_sertifikat, 'name', '') != getattr(updated.file_sertifikat, 'name', ''):
-                delete_file_if_unused(Pelatihan, 'file_sertifikat', old_file_sertifikat, exclude_pk=updated.pk)
             if old_file_materi and getattr(old_file_materi, 'name', '') != getattr(updated.file_materi, 'name', ''):
-                delete_file_if_unused(Pelatihan, 'file_materi', old_file_materi, exclude_pk=updated.pk)
+                transaction.on_commit(lambda: delete_file_if_unused(Pelatihan, 'file_materi', old_file_materi))
 
             messages.success(request, 'Data pelatihan berhasil diperbarui.')
             return redirect_next(request, 'pengguna:pelatihan_detail', pk=updated.pk)
-    else:
-        form = PelatihanForm(instance=pelatihan)
 
     return render(
         request,
         'pengguna/pelatihan_form.html',
         {
             'form': form,
+            'peserta': peserta,
             'page_title': 'Edit Pelatihan',
             'page_subtitle': 'Perbarui data pelatihan pengguna.',
             'submit_label': 'Update',
@@ -878,19 +886,28 @@ def detail_pelatihan(request, pk):
         'pengguna/detail_pelatihan.html',
         {
             'obj': pelatihan,
+            'peserta': pelatihan.peserta.select_related('user'),
+            'keikutsertaan': pelatihan.peserta.filter(user=request.user).first(),
             'can_view_all_pelatihan': is_super_admin(request.user),
         },
     )
 
 
 @login_required
+@transaction.atomic
 def hapus_pelatihan(request, pk):
-    pelatihan = _get_pelatihan_for_user_or_404(request, pk)
+    pelatihan = _get_pelatihan_for_user_or_404(request, pk, lock=request.method == 'POST')
     if request.method == 'POST':
         nama_pelatihan = pelatihan.nama_pelatihan
-        delete_instance_files(pelatihan, ['file_sertifikat', 'file_materi'])
-        pelatihan.delete()
-        messages.success(request, f'Data pelatihan "{nama_pelatihan}" berhasil dihapus.')
+        if is_super_admin(request.user):
+            pelatihan.delete()
+            messages.success(request, f'Data pelatihan "{nama_pelatihan}" beserta seluruh pesertanya berhasil dihapus.')
+        else:
+            peserta = get_object_or_404(pelatihan.peserta, user=request.user)
+            peserta.delete()
+            if not pelatihan.peserta.exists():
+                pelatihan.delete()
+            messages.success(request, f'Keikutsertaan Anda pada pelatihan "{nama_pelatihan}" berhasil dihapus.')
         return redirect('pengguna:pelatihan_daftar')
 
     return redirect('pengguna:pelatihan_daftar')

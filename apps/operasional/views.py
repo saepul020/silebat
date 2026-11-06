@@ -321,7 +321,7 @@ def download_format_import_instansi(request):
         sample=[
             'Dinas PUPR Provinsi Nusa Tenggara Timur',
             'Jl. Contoh No. 1, Kupang',
-            'Eksternal PU',
+            InstansiKlien.OrganisasiChoices.EKSTERNAL_SDA,
         ],
         references=[
             ('Organisasi', organisasi_values),

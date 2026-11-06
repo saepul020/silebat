@@ -3,10 +3,40 @@
    Validasi realtime form konten peralatan landing page.
 ======================================== */
 document.addEventListener('DOMContentLoaded', function () {
+    initTvChoices();
     initLandingEquipmentOrderValidation();
     initLandingEquipmentGalleryUpload();
     initLandingSpecInput();
 });
+
+function initTvChoices() {
+    const form = document.querySelector('[data-tv-config]');
+    const selects = Array.from(form?.querySelectorAll('select') || []);
+    if (!selects.length) {
+        return;
+    }
+
+    const options = Array.from(selects[0].options, option => option.cloneNode(true));
+
+    function syncChoices() {
+        const selected = new Set(selects.map(select => select.value).filter(Boolean));
+        selects.forEach(function (select) {
+            const value = select.value;
+            select.replaceChildren(...options
+                .filter(option => !option.value || option.value === value || !selected.has(option.value))
+                .map(option => option.cloneNode(true)));
+            select.value = value;
+            select.classList.toggle('is-placeholder-state', !value);
+        });
+    }
+
+    form.addEventListener('change', function (event) {
+        if (selects.includes(event.target)) {
+            syncChoices();
+        }
+    });
+    syncChoices();
+}
 
 function initLandingSpecInput() {
     const control = document.querySelector('[data-landing-spec]');

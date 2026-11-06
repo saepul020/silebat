@@ -43,6 +43,16 @@ def get_peminjam_dropdown_queryset():
     )
 
 
+def apply_peminjam_snapshot(pengajuan, peminjam):
+    profile = peminjam.safe_profile
+    pengajuan.peminjam = peminjam
+    pengajuan.nama_peminjam = peminjam.get_full_name() or peminjam.username
+    pengajuan.no_hp_peminjam = peminjam.no_hp or ""
+    pengajuan.email_peminjam = peminjam.email or ""
+    pengajuan.alamat_peminjam = profile.alamat or ""
+    pengajuan.nip_peminjam = peminjam.nip or ""
+
+
 DATE_INPUT_FORMATS = ["%d/%m/%Y", "%d-%m-%Y", "%Y-%m-%d", "%d %b %Y", "%d %B %Y"]
 MONTH_LOOKUP = {
     "jan": 1,

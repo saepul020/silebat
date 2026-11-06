@@ -67,6 +67,7 @@ const tvZeroDashPlugin = {
 function initTvActiveTable() {
     const wrapper = document.querySelector('[data-tv-active-url]');
     const body = document.querySelector('[data-tv-active-body]');
+    const equipment = document.querySelector('[data-tv-equipment]');
     if (!wrapper || !body) {
         return;
     }
@@ -99,6 +100,9 @@ function initTvActiveTable() {
             const payload = await response.json();
             if (typeof payload.html === 'string') {
                 body.innerHTML = payload.html;
+            }
+            if (equipment && typeof payload.equipmentHtml === 'string' && equipment.innerHTML !== payload.equipmentHtml) {
+                equipment.innerHTML = payload.equipmentHtml;
             }
         } catch (error) {
             console.error('Gagal memuat data kegiatan aktif display TV.', error);
@@ -139,7 +143,15 @@ function initTvClock() {
 
 function initTvSlides() {
     const slides = Array.from(document.querySelectorAll('[data-tv-slide]'));
-    const dots = Array.from(document.querySelectorAll('[data-tv-dot]'));
+    const dotsContainer = document.querySelector('[data-tv-dots]');
+    const dots = slides.map(function () {
+        const dot = document.createElement('span');
+        dot.setAttribute('data-tv-dot', '');
+        return dot;
+    });
+    if (dotsContainer) {
+        dotsContainer.replaceChildren(...dots);
+    }
     const title = document.querySelector('[data-tv-slide-title]');
     if (slides.length <= 1) {
         return;
@@ -187,7 +199,9 @@ function initTvCharts() {
         createTvPengukuranChart(),
         createTvGroupedChart('tvTimChart', 'data-tim', 'timId', 'teams', true),
         createTvCategoryChart('tvSurveiChart', 'data-survei', 'surveiId', 'Total Peminjaman', 10, 50, true),
-        createTvCategoryChart('tvInstansiChart', 'data-instansi', 'instansiId', 'Total Peminjaman', 10, 50),
+        ...Array.from(document.querySelectorAll('[data-instansi-chart]'), function (canvas) {
+            return createTvCategoryChart(canvas.id, 'data-' + canvas.dataset.instansiChart, 'instansiId', 'Total Peminjaman', 10, 50);
+        }),
     ].filter(Boolean);
 }
 
@@ -524,7 +538,7 @@ function createTvCategoryChart(canvasId, scriptId, idKey, datasetLabel, wrapWidt
     const maxValue = Math.max.apply(null, data.concat([0]));
     const options = createTvBaseOptions(maxValue, wrapWidth, rotation);
     options.plugins.legend.display = false;
-    if (canvasId === 'tvInstansiChart') {
+    if (idKey === 'instansiId') {
         applyTvInstansiAxis(options, {
             width: window.innerWidth,
             height: window.innerHeight,

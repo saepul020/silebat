@@ -1,0 +1,133 @@
+.koreksi__section {
+    align-items: start;
+}
+
+.koreksi__caption {
+    display: inline-block;
+    margin-bottom: 12px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    background: var(--color-soft-blue);
+    color: var(--color-primary-navy);
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.koreksi__caption--edit {
+    background: var(--color-primary-navy);
+    color: var(--color-white);
+}
+
+.koreksi .koreksi__section--fields {
+    grid-template-rows: repeat(var(--koreksi-rows), auto);
+    align-items: stretch;
+    row-gap: 18px;
+}
+
+.koreksi__column {
+    display: grid;
+    grid-template-rows: subgrid;
+    grid-row: 1 / span var(--koreksi-rows);
+    grid-column: 2;
+    align-items: start;
+    row-gap: 18px;
+}
+
+.koreksi__column.koreksi__previous {
+    grid-column: 1;
+}
+
+.koreksi__column > .form-group,
+.koreksi__alat .form-group,
+.koreksi__intro p:last-child {
+    margin-bottom: 0;
+}
+
+.koreksi__heading .card-title {
+    margin-bottom: 0;
+}
+
+.koreksi input.text-input,
+.koreksi .select-input,
+.koreksi .date-input {
+    height: 44px;
+}
+
+.koreksi__locked-control {
+    background: var(--color-soft-gray);
+    color: var(--text-soft);
+    text-overflow: ellipsis;
+    cursor: default;
+}
+
+.koreksi .text-input:disabled,
+.koreksi .select-input:disabled {
+    background: var(--color-soft-gray);
+    color: var(--text-soft);
+    cursor: not-allowed;
+}
+
+.koreksi .koreksi__survei {
+    grid-template-columns: minmax(0, 1fr);
+    margin-bottom: 0;
+}
+
+.koreksi__items {
+    display: contents;
+}
+
+.koreksi__alat {
+    min-width: 0;
+}
+
+.koreksi__add {
+    grid-row: var(--koreksi-rows);
+}
+
+.koreksi__alat--deleted .form-group {
+    opacity: 0.5;
+}
+
+.koreksi__delete {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 14px;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+.koreksi__delete input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    flex: 0 0 18px;
+    accent-color: var(--color-primary-navy);
+}
+
+.koreksi__history {
+    margin-top: 20px;
+}
+
+.koreksi__history pre {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+@media (max-width: 1100px) {
+    .koreksi .koreksi__section {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: none;
+    }
+
+    .koreksi__column {
+        grid-column: 1;
+        grid-row: auto;
+        grid-template-rows: none;
+    }
+
+    .koreksi__add {
+        grid-row: auto;
+    }
+}

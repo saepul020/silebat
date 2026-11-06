@@ -9,7 +9,59 @@ from apps.core.upload_validation import (
 )
 from apps.master_data.models import BarangLaboratorium, KategoriBarangLaboratoriumChoices
 
-from .models import MAX_EQUIPMENT_PHOTOS, LandingPeralatanCard, LandingPeralatanFoto
+from .models import MAX_EQUIPMENT_PHOTOS, TV_SLOT_COUNT, KontenAlatTV, LandingPeralatanCard, LandingPeralatanFoto
+
+
+class KontenAlatTVForm(forms.Form):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        selected = dict(KontenAlatTV.objects.values_list("nomor", "alat_id"))
+        queryset = BarangLaboratorium.objects.order_by("nama_barang", "kode_laboratorium", "pk")
+        choices = [("", "Tidak ditampilkan")]
+        choices.extend(
+            (alat.pk, f"{alat.nama_barang} - {alat.tipe_merek_barang} ({alat.kode_aset_bmn or alat.kode_laboratorium or '-'})")
+            for alat in queryset
+        )
+        for nomor in range(1, TV_SLOT_COUNT + 1):
+            field = forms.ModelChoiceField(
+                queryset=queryset,
+                required=False,
+                label="Peralatan Survei Lapangan",
+                initial=selected.get(nomor),
+                widget=forms.Select(attrs={
+                    "class": "form-control",
+                    "aria-label": f"Peralatan Survei Lapangan kolom {nomor}",
+                }),
+            )
+            field.choices = choices
+            self.fields[f"alat_{nomor}"] = field
+
+    def clean(self):
+        cleaned_data = super().clean()
+        selected = {}
+        for nomor in range(1, TV_SLOT_COUNT + 1):
+            field_name = f"alat_{nomor}"
+            alat = cleaned_data.get(field_name)
+            if alat is None:
+                continue
+            if alat.pk in selected:
+                self.add_error(
+                    field_name,
+                    f"Alat sudah dipilih pada kolom {selected[alat.pk]}. Pilih alat yang berbeda.",
+                )
+            else:
+                selected[alat.pk] = nomor
+        return cleaned_data
+
+    def save(self):
+        if not self.is_valid():
+            raise ValueError("Konfigurasi alat TV belum valid.")
+        with transaction.atomic():
+            for nomor in range(1, TV_SLOT_COUNT + 1):
+                KontenAlatTV.objects.update_or_create(
+                    nomor=nomor,
+                    defaults={"alat": self.cleaned_data[f"alat_{nomor}"]},
+                )
 
 
 def normalize_points(value):

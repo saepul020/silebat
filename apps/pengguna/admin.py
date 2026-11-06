@@ -1,7 +1,8 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 
-from .models import Pelatihan, Role, User, UserProfile
+from .forms import PesertaAdminForm
+from .models import Pelatihan, PesertaPelatihan, Role, User, UserProfile
 
 
 @admin.register(User)
@@ -27,8 +28,16 @@ class UserProfileAdmin(admin.ModelAdmin):
     list_select_related = ('user', 'role', 'nama_tim')
 
 
+class PesertaInline(admin.TabularInline):
+    model = PesertaPelatihan
+    form = PesertaAdminForm
+    extra = 0
+    autocomplete_fields = ('user',)
+
+
 @admin.register(Pelatihan)
 class PelatihanAdmin(admin.ModelAdmin):
+    inlines = (PesertaInline,)
     list_display = (
         'nama_pelatihan',
         'user',

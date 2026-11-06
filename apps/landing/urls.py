@@ -9,6 +9,7 @@ urlpatterns = [
     path("robots.txt", views.robots_txt, name="robots_txt"),
     path("sitemap.xml", views.sitemap_xml, name="sitemap_xml"),
     path("landing/peralatan/", views.equipment_list, name="equipment_list"),
+    path("landing/konten-tv/", views.konten_tv, name="konten_tv"),
     path("landing/peralatan/cek-urutan/", views.equipment_order_check, name="equipment_order_check"),
     path("landing/peralatan/tambah/", views.equipment_create, name="equipment_create"),
     path("landing/peralatan/<int:pk>/edit/", views.equipment_update, name="equipment_update"),

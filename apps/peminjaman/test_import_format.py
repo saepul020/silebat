@@ -25,7 +25,7 @@ class PeminjamanImportFormatTests(TestCase):
         cls.tim = TimKegiatan.objects.create(nama_tim="Tim Layanan Teknis")
         cls.instansi = InstansiKlien.objects.create(
             nama_instansi="Instansi Uji",
-            organisasi=InstansiKlien.OrganisasiChoices.EKSTERNAL_PU,
+            organisasi=InstansiKlien.OrganisasiChoices.EKSTERNAL_SDA,
             alamat_instansi="Alamat Uji",
         )
         cls.survei = SurveiKegiatan.objects.create(jenis_survei="Borehole Camera")
@@ -60,6 +60,23 @@ class PeminjamanImportFormatTests(TestCase):
         self.assertEqual(rows[0]["layanan_kegiatan"], self.layanan.jenis_layanan)
         self.assertEqual(rows[0]["layanan_kegiatan_lainnya"], "")
         self.assertEqual(rows[0]["instansi_tujuan_lainnya"], "")
+
+    def test_organisasi_baru_dan_default_impor(self):
+        for organisasi in ("Internal SDA", "Eksternal SDA", "Internal BAT", ""):
+            with self.subTest(organisasi=organisasi):
+                values = self._base_values()
+                values["Organisasi Instansi"] = organisasi
+                rows, errors = _validate_peminjaman_sheet(self._workbook(values))
+                self.assertEqual(errors, [])
+                self.assertEqual(rows[0]["organisasi_instansi"], organisasi or "Eksternal SDA")
+
+    def test_organisasi_lama_ditolak_impor(self):
+        for organisasi in ("Internal PU", "Eksternal PU"):
+            with self.subTest(organisasi=organisasi):
+                values = self._base_values()
+                values["Organisasi Instansi"] = organisasi
+                _rows, errors = _validate_peminjaman_sheet(self._workbook(values))
+                self.assertTrue(any("Organisasi Instansi tidak sesuai" in error for error in errors))
 
     def test_pilihan_master_dan_lainnya_tidak_boleh_diisi_bersamaan(self):
         values = self._base_values()

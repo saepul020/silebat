@@ -27,6 +27,7 @@ from apps.core.permissions import (
     ROLE_USER,
     deny_access,
     get_role_name,
+    is_super_admin,
 )
 from apps.notifikasi.services import sync_transaction_notifications
 from apps.master_data.models import (
@@ -44,6 +45,7 @@ from apps.master_data.models import (
 from .forms import (
     PENGAJUAN_CREATOR_ROLES,
     PeminjamanRequestForm,
+    apply_peminjam_snapshot,
 )
 from .models import (
     PeminjamanBahanOperasional,
@@ -1180,16 +1182,6 @@ def _build_peminjam_select_context(form, fallback_user):
     }
 
 
-def _apply_peminjam_snapshot(pengajuan, peminjam):
-    profile = peminjam.safe_profile
-    pengajuan.peminjam = peminjam
-    pengajuan.nama_peminjam = peminjam.get_full_name() or peminjam.username
-    pengajuan.no_hp_peminjam = peminjam.no_hp or ""
-    pengajuan.email_peminjam = peminjam.email or ""
-    pengajuan.alamat_peminjam = profile.alamat or ""
-    pengajuan.nip_peminjam = peminjam.nip or ""
-
-
 def _user_label(user):
     if not user:
         return "-"
@@ -1231,7 +1223,7 @@ def tambah_pengajuan(request):
                 with transaction.atomic():
                     peminjam = form.cleaned_data.get("peminjam_user") or request.user
                     pengajuan = form.save(commit=False)
-                    _apply_peminjam_snapshot(pengajuan, peminjam)
+                    apply_peminjam_snapshot(pengajuan, peminjam)
                     pengajuan.current_step = StepChoices.ADMIN_LAB
                     pengajuan.save()
                     form.save_m2m()
@@ -1339,7 +1331,7 @@ def edit_pengajuan(request, pk):
                         and peminjam
                         and peminjam_lama.pk != peminjam.pk
                     )
-                    _apply_peminjam_snapshot(pengajuan, peminjam)
+                    apply_peminjam_snapshot(pengajuan, peminjam)
                     pengajuan.save()
                     form.save_m2m()
 
@@ -1561,6 +1553,7 @@ def detail_laporan(request, pk):
             "report_peralatan_lab_items": report_items.get("peralatan_lab", []),
             "report_bahan_items": report_items.get("bahan", []),
             "can_delete_pengajuan": _can_delete_pengajuan(request.user),
+            "can_correct_report": is_super_admin(request.user),
         },
     )
 

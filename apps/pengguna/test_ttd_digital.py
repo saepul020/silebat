@@ -7,8 +7,8 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from PIL import Image
 
-from .forms import UserProfileForm
-from .models import Role, User
+from apps.pengguna.forms import UserProfileForm
+from apps.pengguna.models import Role, User
 
 
 def image_upload(name, size):

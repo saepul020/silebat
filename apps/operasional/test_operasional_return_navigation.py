@@ -78,7 +78,7 @@ class EditReturnNavigationTests(TestCase):
         instansi = InstansiKlien.objects.create(
             nama_instansi="Instansi Uji",
             alamat_instansi="Alamat Uji",
-            organisasi=InstansiKlien.OrganisasiChoices.EKSTERNAL_PU,
+            organisasi=InstansiKlien.OrganisasiChoices.EKSTERNAL_SDA,
         )
         today = timezone.localdate()
         pengajuan = PeminjamanRequest.objects.create(
@@ -107,7 +107,7 @@ class EditReturnNavigationTests(TestCase):
         instansi = InstansiKlien.objects.create(
             nama_instansi="Instansi Uji",
             alamat_instansi="Alamat Uji",
-            organisasi=InstansiKlien.OrganisasiChoices.EKSTERNAL_PU,
+            organisasi=InstansiKlien.OrganisasiChoices.EKSTERNAL_SDA,
         )
         today = timezone.localdate()
         PeminjamanRequest.objects.create(

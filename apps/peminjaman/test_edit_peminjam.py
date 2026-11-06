@@ -27,9 +27,9 @@ from .models import (
 
 class EditPeminjamPengajuanTests(TestCase):
     def setUp(self):
-        self.role_user = Role.objects.create(nama="User")
-        self.role_admin = Role.objects.create(nama="Admin Lab")
-        self.role_teknisi = Role.objects.create(nama="Teknisi Lab")
+        self.role_user, _ = Role.objects.get_or_create(nama="User")
+        self.role_admin, _ = Role.objects.get_or_create(nama="Admin Lab")
+        self.role_teknisi, _ = Role.objects.get_or_create(nama="Teknisi Lab")
         self.user_lama = self._user("lama", "User Lama", self.role_user)
         self.user_baru = self._user("baru", "User Baru", self.role_user)
         self.admin = self._user("admin", "Admin", self.role_admin)
@@ -40,7 +40,7 @@ class EditPeminjamPengajuanTests(TestCase):
         self.instansi = InstansiKlien.objects.create(
             nama_instansi="Instansi A",
             alamat_instansi="Bandung",
-            organisasi=InstansiKlien.OrganisasiChoices.INTERNAL_PU,
+            organisasi=InstansiKlien.OrganisasiChoices.INTERNAL_SDA,
         )
         self.barang = BarangPenunjangOperasional.objects.create(
             nama_barang="Tripod",

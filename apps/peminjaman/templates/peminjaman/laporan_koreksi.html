@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Koreksi Laporan Peminjaman - SILEBAT{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/laporan_koreksi.css' %}?v=20261106-5">
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Koreksi Laporan Peminjaman</h1>
+    <p>{{ obj.nomor_pengajuan }} &mdash; bandingkan data sebelumnya di kiri dengan perubahan di kanan.</p>
+</div>
+<form method="post" enctype="multipart/form-data" class="detail-card-stack koreksi" data-koreksi-form>
+    {% csrf_token %}
+    {{ form.versi }}
+    <div class="card koreksi__intro">
+        <p>Koreksi memperbarui laporan dan rekap terkait. Status peminjaman tetap selesai; stok barang tidak berubah.</p>
+        {% if form.non_field_errors or form.versi.errors or formset.non_form_errors %}
+        <div class="form-global-errors" role="alert">
+            {% for error in form.non_field_errors %}<p class="input-error-text">{{ error }}</p>{% endfor %}
+            {% for error in form.versi.errors %}<p class="input-error-text">{{ error }}</p>{% endfor %}
+            {% for error in formset.non_form_errors %}<p class="input-error-text">{{ error }}</p>{% endfor %}
+        </div>
+        {% endif %}
+    </div>
+    {% for section in sections %}
+    <section class="detail-layout-grid koreksi__section koreksi__section--fields" style="--koreksi-rows: {{ section.rows|length|add:'1' }}" aria-label="Perbandingan {{ section.title|lower }}">
+        <div class="card koreksi__column koreksi__previous">
+            <div class="koreksi__heading">
+                <span class="koreksi__caption">Data Sebelumnya</span>
+                <h3 class="card-title">{{ section.title }}</h3>
+            </div>
+            {% for row in section.rows %}
+                {% include 'peminjaman/partials/koreksi_previous.html' with row=row.previous %}
+            {% endfor %}
+        </div>
+        <div class="card koreksi__column">
+            <div class="koreksi__heading">
+                <span class="koreksi__caption koreksi__caption--edit">Perubahan</span>
+                <h3 class="card-title">{{ section.title }}</h3>
+            </div>
+            {% for row in section.rows %}
+                {% include 'peminjaman/partials/koreksi_field.html' with field=row.field %}
+            {% endfor %}
+        </div>
+    </section>
+    {% endfor %}
+    <section class="detail-layout-grid koreksi__section koreksi__section--fields" style="--koreksi-rows: {{ alat_rows }}" data-alat-section aria-label="Perbandingan peralatan survei lapangan">
+        <div class="card koreksi__column koreksi__previous">
+            <div class="koreksi__heading">
+                <span class="koreksi__caption">Data Sebelumnya</span>
+                <h3 class="card-title">Data Peralatan Survei Lapangan yang Dipinjam</h3>
+            </div>
+            {% for item in previous_alat %}
+            <div class="form-group koreksi__locked" data-previous-alat>
+                <label for="previous-alat-{{ forloop.counter0 }}">Peralatan Survei Lapangan {{ forloop.counter }}</label>
+                <input type="text" id="previous-alat-{{ forloop.counter0 }}" class="text-input koreksi__locked-control" value="{{ item.label }}" title="{{ item.label }}" readonly tabindex="-1">
+            </div>
+            {% empty %}<p class="input-help-text">Belum ada peralatan pada laporan ini.</p>{% endfor %}
+        </div>
+        <div class="card koreksi__column">
+            <div class="koreksi__heading">
+                <span class="koreksi__caption koreksi__caption--edit">Perubahan</span>
+                <h3 class="card-title">Data Peralatan Survei Lapangan yang Dipinjam</h3>
+            </div>
+            {{ formset.management_form }}
+            <div class="koreksi__items" data-alat-list>
+                {% for alat_form in formset %}
+                    {% include 'peminjaman/partials/koreksi_alat.html' %}
+                {% endfor %}
+            </div>
+            <div class="koreksi__add">
+                <button type="button" class="btn btn-secondary" data-alat-add><i class="bi bi-plus-lg" aria-hidden="true"></i> Tambah Alat</button>
+                <p class="input-help-text">Biarkan kosong untuk mempertahankan catatan sebelumnya, atau pilih alat pengganti.</p>
+            </div>
+            <template data-alat-template>
+                {% include 'peminjaman/partials/koreksi_alat.html' with alat_form=formset.empty_form %}
+            </template>
+        </div>
+    </section>
+    <div class="card">
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary"><i class="bi bi-floppy" aria-hidden="true"></i> Simpan Koreksi</button>
+            <a class="btn btn-secondary" href="{% url 'peminjaman:laporan_detail' obj.pk %}">Kembali</a>
+        </div>
+    </div>
+</form>
+{% if riwayat_koreksi %}
+<div class="card koreksi__history">
+    <h3 class="card-title">Riwayat Koreksi</h3>
+    {% for entry in riwayat_koreksi %}
+    <details>
+        <summary>{{ entry.created_at|date:'d M Y H:i' }} &mdash; {% if entry.actor %}{{ entry.actor.get_full_name|default:entry.actor.username }}{% else %}Pengguna dihapus{% endif %}</summary>
+        <pre>{{ entry.note }}</pre>
+    </details>
+    {% endfor %}
+</div>
+{% endif %}
+{% endblock %}
+{% block extra_js %}
+<script src="{% static 'js/pemeliharaan.js' %}?v=20260713-maintenance-vendor-v2" defer></script>
+<script src="{% static 'js/laporan_koreksi.js' %}?v=20261106-5" defer></script>
+{% endblock %}

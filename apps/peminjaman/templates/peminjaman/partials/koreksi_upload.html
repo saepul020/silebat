@@ -1,0 +1,18 @@
+<div class="upload-input-wrap upload-input-wrap--inline upload-input-wrap--file-proxy" data-inline-file-proxy>
+    <div class="upload-input-wrap__field">
+        <input type="{{ widget.type }}" name="{{ widget.name }}"{% include 'django/forms/widgets/attrs.html' %}>
+        <label for="{{ widget.attrs.id }}" class="file-input-proxy">
+            <span class="file-input-proxy__button" aria-hidden="true"><i class="bi bi-upload"></i></span>
+            <span class="file-input-proxy__text is-placeholder" data-inline-file-text>Pilih file PDF</span>
+        </label>
+    </div>
+    <div class="upload-file-state upload-file-state--inline is-hidden" data-inline-file-state>
+        <button type="button" class="upload-file-state__action upload-file-state__action--icon" data-inline-file-clear title="Batalkan Upload" aria-label="Batalkan Upload"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+    </div>
+</div>
+{% if widget.is_initial and not widget.required %}
+<label class="koreksi__delete" for="{{ widget.checkbox_id }}">
+    <input type="checkbox" name="{{ widget.checkbox_name }}" id="{{ widget.checkbox_id }}"{% if widget.attrs.checked %} checked{% endif %}>
+    Hapus berkas pendukung sebelumnya
+</label>
+{% endif %}

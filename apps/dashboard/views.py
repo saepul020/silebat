@@ -15,6 +15,7 @@ from django.views.decorators.http import require_POST
 
 from apps.core.excel_utils import build_excel_response
 from apps.core.permissions import can_access_master_data, get_role_name
+from apps.landing.services import get_tv_slots
 from apps.master_data.models import BahanOperasional, BarangLaboratorium, BarangPenunjangOperasional
 from apps.operasional.models import InstansiKlien, LayananKegiatan, SurveiKegiatan, TimKegiatan
 from apps.peminjaman.constants import PENGUKURAN_FIELD_CONFIG
@@ -36,43 +37,27 @@ MONTH_LABELS_ID = {
     12: "Des",
 }
 
-TIM_COLOR_PALETTE = [
-    {"background": "rgba(16, 62, 111, 0.82)", "border": "rgba(16, 62, 111, 1)"},
-    {"background": "rgba(100, 205, 209, 0.82)", "border": "rgba(100, 205, 209, 1)"},
-    {"background": "rgba(184, 225, 242, 0.95)", "border": "rgba(16, 62, 111, 0.42)"},
-    {"background": "rgba(255, 193, 7, 0.86)", "border": "rgba(255, 193, 7, 1)"},
-    {"background": "rgba(16, 62, 111, 0.62)", "border": "rgba(16, 62, 111, 0.88)"},
-    {"background": "rgba(220, 53, 69, 0.76)", "border": "rgba(220, 53, 69, 1)"},
-]
+TIM_COLORS = {
+    "Satuan Kerja": "#2CA02C",
+    "Sub Bagian Umum dan Tata Usaha": "#9467BD",
+    "Tim Layanan Teknis": "#103e6f",
+    "Tim Pengembangan Penerapan": "#FFC107",
+}
 
-LAYANAN_COLOR_PALETTE = [
-    "rgba(16, 62, 111, 0.82)",
-    "rgba(100, 205, 209, 0.82)",
-    "rgba(184, 225, 242, 0.95)",
-    "rgba(255, 193, 7, 0.86)",
-    "rgba(16, 62, 111, 0.62)",
-    "rgba(100, 205, 209, 0.62)",
-    "rgba(184, 225, 242, 0.76)",
-    "rgba(220, 53, 69, 0.76)",
-]
+CHART_BAR_COLOR = "rgba(16, 62, 111, 0.82)"
 
-
-SURVEI_COLOR_PALETTE = [
-    "rgba(16, 62, 111, 0.82)",
-    "rgba(100, 205, 209, 0.82)",
-    "rgba(184, 225, 242, 0.95)",
-    "rgba(255, 193, 7, 0.86)",
-    "rgba(16, 62, 111, 0.64)",
-    "rgba(100, 205, 209, 0.64)",
-    "rgba(184, 225, 242, 0.78)",
-    "rgba(220, 53, 69, 0.76)",
-    "rgba(16, 62, 111, 0.50)",
-    "rgba(100, 205, 209, 0.50)",
-    "rgba(255, 193, 7, 0.62)",
-    "rgba(220, 53, 69, 0.58)",
-]
-
-INSTANSI_COLOR_PALETTE = SURVEI_COLOR_PALETTE
+PENGUKURAN_COLORS = {
+    "titik_geolistrik_1d": "#1F77B4",
+    "lintasan_geolistrik_2d": "#FF7F0E",
+    "titik_kualitas_air": "#2CA02C",
+    "titik_mat": "#9467BD",
+    "titik_pumping_test": "#D62728",
+    "titik_infiltrasi": "#17BECF",
+    "titik_debit_air": "#E377C2",
+    "lokasi_topografi": "#BCBD22",
+    "titik_borehole": "#8C564B",
+    "titik_logging": "#7F7F7F",
+}
 
 
 
@@ -197,6 +182,7 @@ def build_inventory_chart_context():
 
     return {
         "bahan_chart": {
+            "backgroundColor": CHART_BAR_COLOR,
             "items": [
                 {
                     "id": row["id"],
@@ -256,9 +242,9 @@ def build_survey_equipment_chart(current_year):
                 "id": item["id"],
                 "label": item["nama_barang"],
                 "code": item["kode_laboratorium"] or "",
-                "backgroundColor": SURVEI_COLOR_PALETTE[index % len(SURVEI_COLOR_PALETTE)],
+                "backgroundColor": CHART_BAR_COLOR,
             }
-            for index, item in enumerate(equipment_list)
+            for item in equipment_list
         ],
         "rows": [
             {
@@ -272,6 +258,71 @@ def build_survey_equipment_chart(current_year):
         "availableYears": available_years,
         "defaultYear": current_year,
     }
+
+
+def build_instansi_charts(queryset, current_year):
+    instansi_list = list(
+        InstansiKlien.objects.order_by("nama_instansi").values("id", "nama_instansi", "organisasi")
+    )
+    instansi_rows = list(
+        queryset.filter(instansi_tujuan__isnull=False)
+        .annotate(year=ExtractYear("dashboard_approved_at"))
+        .values("year", "instansi_tujuan_id")
+        .annotate(total=Count("id"))
+        .order_by("year", "instansi_tujuan__nama_instansi")
+    )
+    lainnya_rows = list(
+        queryset.filter(instansi_tujuan__isnull=True)
+        .annotate(
+            year=ExtractYear("dashboard_approved_at"),
+            instansi_lainnya=Trim("instansi_tujuan_lainnya"),
+        )
+        .exclude(instansi_lainnya="")
+        .values("year")
+        .annotate(total=Count("id"))
+        .order_by("year")
+    )
+    organisasi = InstansiKlien.OrganisasiChoices
+    groups = (
+        ("instansi-internal", "Internal SDA", (organisasi.INTERNAL_SDA,)),
+        ("instansi-gabungan", "Gabungan (Eksternal SDA, Internal BAT, dan Lainnya)",
+         (organisasi.EKSTERNAL_SDA, organisasi.INTERNAL_BAT)),
+    )
+    charts = []
+    for key, label, choices in groups:
+        categories = [
+            {
+                "id": item["id"],
+                "label": item["nama_instansi"],
+                "backgroundColor": CHART_BAR_COLOR,
+            }
+            for item in instansi_list if item["organisasi"] in choices
+        ]
+        instansi_ids = {item["id"] for item in categories}
+        rows = [
+            {"year": int(row["year"]), "instansiId": row["instansi_tujuan_id"], "total": row["total"]}
+            for row in instansi_rows
+            if row.get("year") and row["instansi_tujuan_id"] in instansi_ids
+        ]
+        if key == "instansi-gabungan" and lainnya_rows:
+            categories.append({
+                "id": "lainnya",
+                "label": "Instansi Tujuan Lainnya",
+                "backgroundColor": CHART_BAR_COLOR,
+            })
+            rows.extend(
+                {"year": int(row["year"]), "instansiId": "lainnya", "total": row["total"]}
+                for row in lainnya_rows if row.get("year")
+            )
+        charts.append({
+            "key": key,
+            "title": f"Instansi Tujuan Kegiatan - {label}",
+            "categories": categories,
+            "rows": rows,
+            "availableYears": sorted({row["year"] for row in rows} | {current_year}),
+            "defaultYear": current_year,
+        })
+    return charts
 
 
 def build_dashboard_context(request=None, active_limit=None):
@@ -315,10 +366,10 @@ def build_dashboard_context(request=None, active_limit=None):
             {
                 "id": tim["id"],
                 "label": tim["nama_tim"],
-                "backgroundColor": TIM_COLOR_PALETTE[index % len(TIM_COLOR_PALETTE)]["background"],
-                "borderColor": TIM_COLOR_PALETTE[index % len(TIM_COLOR_PALETTE)]["border"],
+                "backgroundColor": TIM_COLORS.get(tim["nama_tim"], CHART_BAR_COLOR),
+                "borderColor": TIM_COLORS.get(tim["nama_tim"], CHART_BAR_COLOR),
             }
-            for index, tim in enumerate(tim_list)
+            for tim in tim_list
         ],
         "rows": [
             {
@@ -369,9 +420,9 @@ def build_dashboard_context(request=None, active_limit=None):
         {
             "id": layanan["id"],
             "label": layanan["jenis_layanan"],
-            "backgroundColor": LAYANAN_COLOR_PALETTE[index % len(LAYANAN_COLOR_PALETTE)],
+            "backgroundColor": CHART_BAR_COLOR,
         }
-        for index, layanan in enumerate(layanan_list)
+        for layanan in layanan_list
     ]
     layanan_lainnya_total = sum(int(row.get("total") or 0) for row in layanan_lainnya_rows)
     if layanan_lainnya_total:
@@ -379,7 +430,7 @@ def build_dashboard_context(request=None, active_limit=None):
             {
                 "id": "lainnya",
                 "label": "Lainnya",
-                "backgroundColor": LAYANAN_COLOR_PALETTE[len(layanan_categories) % len(LAYANAN_COLOR_PALETTE)],
+                "backgroundColor": CHART_BAR_COLOR,
             }
         )
 
@@ -439,9 +490,9 @@ def build_dashboard_context(request=None, active_limit=None):
         {
             "id": survei["id"],
             "label": survei["jenis_survei"],
-            "backgroundColor": SURVEI_COLOR_PALETTE[index % len(SURVEI_COLOR_PALETTE)],
+            "backgroundColor": CHART_BAR_COLOR,
         }
-        for index, survei in enumerate(survei_list)
+        for survei in survei_list
     ]
     survei_available_years = sorted(
         {
@@ -462,7 +513,7 @@ def build_dashboard_context(request=None, active_limit=None):
             {
                 "id": "lainnya",
                 "label": "Lainnya",
-                "backgroundColor": SURVEI_COLOR_PALETTE[len(survei_chart_categories) % len(SURVEI_COLOR_PALETTE)],
+                "backgroundColor": CHART_BAR_COLOR,
             }
         )
 
@@ -490,87 +541,11 @@ def build_dashboard_context(request=None, active_limit=None):
         "defaultYear": current_year,
     }
 
-    instansi_list = list(
-        InstansiKlien.objects.order_by("nama_instansi").values("id", "nama_instansi")
-    )
-    instansi_rows = list(
-        approved_peminjaman_qs.filter(instansi_tujuan__isnull=False)
-        .annotate(year=ExtractYear("dashboard_approved_at"))
-        .values("year", "instansi_tujuan_id")
-        .annotate(total=Count("id"))
-        .order_by("year", "instansi_tujuan__nama_instansi")
-    )
-    instansi_lainnya_rows = list(
-        approved_peminjaman_qs.filter(instansi_tujuan_lainnya__isnull=False)
-        .annotate(
-            year=ExtractYear("dashboard_approved_at"),
-            instansi_lainnya_value=Trim("instansi_tujuan_lainnya"),
-        )
-        .exclude(instansi_lainnya_value="")
-        .values("year")
-        .annotate(total=Count("id"))
-        .order_by("year")
-    )
-    instansi_chart_categories = [
-        {
-            "id": instansi["id"],
-            "label": instansi["nama_instansi"],
-            "backgroundColor": INSTANSI_COLOR_PALETTE[index % len(INSTANSI_COLOR_PALETTE)],
-        }
-        for index, instansi in enumerate(instansi_list)
-    ]
-    instansi_available_years = sorted(
-        {
-            int(row["year"])
-            for row in instansi_rows
-            if row.get("year")
-        }
-        | {
-            int(row["year"])
-            for row in instansi_lainnya_rows
-            if row.get("year")
-        }
-        | {current_year}
-    )
-    instansi_lainnya_total = sum(int(row.get("total") or 0) for row in instansi_lainnya_rows)
-    if instansi_lainnya_total:
-        instansi_chart_categories.append(
-            {
-                "id": "lainnya",
-                "label": "Lainnya",
-                "backgroundColor": INSTANSI_COLOR_PALETTE[len(instansi_chart_categories) % len(INSTANSI_COLOR_PALETTE)],
-            }
-        )
-
-    instansi_chart = {
-        "categories": instansi_chart_categories,
-        "rows": [
-            {
-                "year": int(row["year"]),
-                "instansiId": row["instansi_tujuan_id"],
-                "total": row["total"],
-            }
-            for row in instansi_rows
-            if row.get("year") and row.get("instansi_tujuan_id")
-        ]
-        + [
-            {
-                "year": int(row["year"]),
-                "instansiId": "lainnya",
-                "total": row["total"],
-            }
-            for row in instansi_lainnya_rows
-            if row.get("year")
-        ],
-        "availableYears": instansi_available_years,
-        "defaultYear": current_year,
-    }
-
     pengukuran_available_years = {current_year}
     pengukuran_chart_rows = []
     pengukuran_year_rows = []
     pengukuran_chart_categories = []
-    for index, field_config in enumerate(PENGUKURAN_FIELD_CONFIG):
+    for field_config in PENGUKURAN_FIELD_CONFIG:
         row_key = field_config["key"]
         monthly_rows = build_sum_rows_by_month(
             pengukuran_lapangan_qs,
@@ -592,8 +567,8 @@ def build_dashboard_context(request=None, active_limit=None):
             {
                 "id": row_key,
                 "label": field_config["label"],
-                "backgroundColor": TIM_COLOR_PALETTE[index % len(TIM_COLOR_PALETTE)]["background"],
-                "borderColor": TIM_COLOR_PALETTE[index % len(TIM_COLOR_PALETTE)]["border"],
+                "backgroundColor": PENGUKURAN_COLORS[row_key],
+                "borderColor": PENGUKURAN_COLORS[row_key],
             }
         )
 
@@ -651,7 +626,7 @@ def build_dashboard_context(request=None, active_limit=None):
         "approved_peminjaman_chart": approved_peminjaman_chart,
         "survei_chart": survei_chart,
         "survey_equipment_chart": survey_equipment_chart,
-        "instansi_chart": instansi_chart,
+        "instansi_charts": build_instansi_charts(approved_peminjaman_qs, current_year),
         "month_choices": [
             {"value": month_number, "label": month_label}
             for month_number, month_label in MONTH_LABELS_ID.items()
@@ -757,6 +732,7 @@ def display(request, portal_slug):
 
     context = build_dashboard_context(active_limit=8)
     context["tv_slug"] = portal_slug
+    context["tv_slots"] = get_tv_slots()
     return render(request, "dashboard/display.html", context)
 
 
@@ -770,8 +746,14 @@ def display_active_data(request, portal_slug):
         {"active_peminjaman": active_peminjaman},
         request=request,
     )
+    equipment_html = render_to_string(
+        "dashboard/partials/tv_equipment.html",
+        {"tv_slots": get_tv_slots()},
+        request=request,
+    )
     response = JsonResponse({
         "html": html,
+        "equipmentHtml": equipment_html,
         "updatedAt": timezone.localtime().isoformat(),
     })
     response["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"

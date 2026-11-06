@@ -3,6 +3,7 @@ from io import BytesIO
 import json
 from unittest.mock import patch
 
+from django.conf import settings
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
@@ -23,11 +24,14 @@ from apps.peminjaman.models import (
     StepChoices,
 )
 from apps.pengguna.models import Role, User
+from apps.operasional.models import InstansiKlien
 
 from apps.dashboard.views import (
     build_dashboard_context,
     build_inventory_chart_context,
+    build_instansi_charts,
     build_survey_equipment_chart,
+    get_approved_peminjaman_queryset,
 )
 
 
@@ -253,7 +257,7 @@ class DashboardChartExportTests(TestCase):
         response = self.client.get(reverse("dashboard:index"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.content.count(b'data-chart-download="xlsx"'), 9)
+        self.assertEqual(response.content.count(b'data-chart-download="xlsx"'), 10)
         self.assertContains(response, "Download Excel")
 
     def test_export_excel_berisi_data_dan_chart(self):
@@ -295,3 +299,136 @@ class DashboardChartExportTests(TestCase):
             content_type="application/json",
         )
         self.assertEqual(invalid_response.status_code, 400)
+
+
+class DashboardInstansiChartTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user(username="dashboard-instansi-user")
+        role, _ = Role.objects.get_or_create(nama="Admin Lab")
+        cls.user.safe_profile.role = role
+        cls.user.safe_profile.save(update_fields=["role"])
+        cls.internal = InstansiKlien.objects.create(
+            nama_instansi="Instansi Internal", alamat_instansi="Alamat Internal",
+            organisasi=InstansiKlien.OrganisasiChoices.INTERNAL_SDA,
+        )
+        cls.eksternal = InstansiKlien.objects.create(
+            nama_instansi="Instansi Eksternal", alamat_instansi="Alamat Eksternal",
+            organisasi=InstansiKlien.OrganisasiChoices.EKSTERNAL_SDA,
+        )
+        cls.bat = InstansiKlien.objects.create(
+            nama_instansi="Instansi BAT", alamat_instansi="Alamat BAT",
+            organisasi=InstansiKlien.OrganisasiChoices.INTERNAL_BAT,
+        )
+
+    def _pengajuan(self, year, instansi=None, lainnya="", step=StepChoices.APPROVED):
+        return PeminjamanRequest.objects.create(
+            peminjam=self.user, nama_peminjam="Pengguna Uji",
+            instansi_tujuan=instansi, instansi_tujuan_lainnya=lainnya,
+            tanggal_mulai=date(year, 6, 1), tanggal_selesai=date(year, 6, 2),
+            current_step=step,
+            pimpinan_at=timezone.make_aware(datetime(year, 6, 1, 10, 0)),
+        )
+
+    def _charts(self):
+        return build_instansi_charts(get_approved_peminjaman_queryset(), 2026)
+
+    def test_kategori_terpisah_dan_input_manual_masuk_gabungan(self):
+        self._pengajuan(2025, self.internal)
+        self._pengajuan(2025, self.internal)
+        self._pengajuan(2026, self.eksternal)
+        self._pengajuan(2026, self.bat)
+        self._pengajuan(2026, lainnya="Instansi Manual A")
+        self._pengajuan(2026, lainnya="Instansi Manual B")
+
+        with self.assertNumQueries(3):
+            internal, gabungan = self._charts()
+
+        self.assertEqual([item["id"] for item in internal["categories"]], [self.internal.pk])
+        self.assertEqual(
+            {item["id"] for item in gabungan["categories"]},
+            {self.eksternal.pk, self.bat.pk, "lainnya"},
+        )
+        self.assertEqual(internal["rows"], [
+            {"year": 2025, "instansiId": self.internal.pk, "total": 2},
+        ])
+        self.assertEqual({row["instansiId"]: row["total"] for row in gabungan["rows"]}, {
+            self.eksternal.pk: 1, self.bat.pk: 1, "lainnya": 2,
+        })
+        self.assertEqual(internal["availableYears"], [2025, 2026])
+        self.assertEqual(gabungan["availableYears"], [2026])
+        self.assertEqual(internal["defaultYear"], 2026)
+        self.assertEqual(gabungan["defaultYear"], 2026)
+
+    def test_status_tidak_disetujui_dan_input_kosong_tidak_dihitung(self):
+        self._pengajuan(2024, self.internal, step=StepChoices.ADMIN_LAB)
+        self._pengajuan(2024, self.eksternal, step=StepChoices.REJECTED)
+        self._pengajuan(2024, lainnya="Instansi Ditolak", step=StepChoices.REJECTED)
+        self._pengajuan(2023, lainnya="   ")
+        self._pengajuan(2023)
+
+        for chart in self._charts():
+            self.assertEqual(chart["rows"], [])
+            self.assertEqual(chart["availableYears"], [2026])
+            self.assertNotIn("lainnya", [item["id"] for item in chart["categories"]])
+
+    def test_data_lama_dengan_relasi_dan_manual_tidak_dihitung_ganda(self):
+        self._pengajuan(2026, self.internal, lainnya="Sisa Isian Manual")
+        internal, gabungan = self._charts()
+        self.assertEqual(sum(row["total"] for row in internal["rows"]), 1)
+        self.assertEqual(gabungan["rows"], [])
+
+    def test_tahun_memakai_updated_at_jika_tanggal_persetujuan_kosong(self):
+        pengajuan = self._pengajuan(2022, self.bat)
+        PeminjamanRequest.objects.filter(pk=pengajuan.pk).update(
+            pimpinan_at=None, updated_at=timezone.make_aware(datetime(2023, 1, 1, 10, 0)),
+        )
+        _internal, gabungan = self._charts()
+        self.assertEqual(gabungan["rows"], [
+            {"year": 2023, "instansiId": self.bat.pk, "total": 1},
+        ])
+        self.assertEqual(gabungan["availableYears"], [2023, 2026])
+
+    def test_dashboard_dan_tv_memuat_kedua_chart_dengan_data_terpisah(self):
+        self._pengajuan(2026, self.internal)
+        self._pengajuan(2026, lainnya="Instansi Manual")
+        self.client.force_login(self.user)
+
+        dashboard = self.client.get(reverse("dashboard:index"))
+        display = self.client.get(reverse("dashboard:display", args=[settings.DASHBOARD_TV_SLUG]))
+        for response, prefix in ((dashboard, "grafik"), (display, "tv")):
+            self.assertEqual(response.status_code, 200)
+            self.assertContains(response, f'id="{prefix}-instansi-internal"')
+            self.assertContains(response, f'id="{prefix}-instansi-gabungan"')
+            self.assertContains(response, 'id="data-instansi-internal"')
+            self.assertContains(response, 'id="data-instansi-gabungan"')
+            self.assertNotIn("instansi_chart", response.context)
+            self.assertEqual(len(response.context["instansi_charts"]), 2)
+        self.assertContains(dashboard, 'id="tahun-instansi-internal"')
+        self.assertContains(dashboard, 'id="tahun-instansi-gabungan"')
+        self.assertContains(dashboard, 'data-chart-target="grafik-instansi-internal"', count=2)
+        self.assertContains(dashboard, 'data-chart-target="grafik-instansi-gabungan"', count=2)
+        self.assertEqual(display.content.count(b" data-tv-slide "), 8)
+        self.assertContains(display, 'data-tv-dots')
+
+    def test_export_excel_masing_masing_kelompok(self):
+        self._pengajuan(2026, self.internal)
+        self._pengajuan(2026, self.eksternal)
+        self._pengajuan(2026, lainnya="Instansi Manual")
+        self.client.force_login(self.user)
+        for chart in self._charts():
+            with self.subTest(chart=chart["key"]):
+                totals = {row["instansiId"]: row["total"] for row in chart["rows"]}
+                labels = [item["label"] for item in chart["categories"]]
+                data = [totals.get(item["id"], 0) for item in chart["categories"]]
+                response = self.client.post(
+                    reverse("dashboard:export_chart"),
+                    data=json.dumps({
+                        "title": chart["title"], "labels": labels,
+                        "datasets": [{"label": "Total Peminjaman", "data": data}],
+                    }),
+                    content_type="application/json",
+                )
+                self.assertEqual(response.status_code, 200)
+                workbook = load_workbook(BytesIO(response.content))
+                self.assertEqual(list(workbook["Data Grafik"].values)[1:], list(zip(labels, data)))

@@ -22,7 +22,7 @@
         <table class="table-data list-table--pengguna list-table--pelatihan">
             <thead>
                 <tr>
-                    {% if can_view_all_pelatihan %}<th class="cell-wrap">Pengguna</th>{% endif %}
+                    {% if can_view_all_pelatihan %}<th class="cell-wrap">Penginput</th>{% endif %}
                     <th class="cell-wrap">Nama Pelatihan</th>
                     <th>Tipe Pelatihan</th>
                     <th>Jenis Pelatihan</th>
@@ -35,7 +35,9 @@
             <tbody>
                 {% for item in items %}
                 <tr>
-                    {% if can_view_all_pelatihan %}<td class="cell-wrap">{{ item.user.get_full_name|default:item.user.username }}</td>{% endif %}
+                    {% if can_view_all_pelatihan %}
+                    <td class="cell-wrap">{% if item.user %}{{ item.user.get_full_name|default:item.user.username }}{% else %}-{% endif %}</td>
+                    {% endif %}
                     <td class="cell-wrap">{{ item.nama_pelatihan }}</td>
                     <td>{{ item.tipe_pelatihan }}</td>
                     <td>{{ item.jenis_pelatihan }}</td>
@@ -85,14 +87,22 @@
         </div>
 
         <div class="delete-modal-body">
-            <p>Apakah Anda yakin ingin menghapus data pelatihan berikut?</p>
+            {% if can_view_all_pelatihan %}
+            <p>Apakah Anda yakin ingin menghapus seluruh data pelatihan berikut?</p>
+            {% else %}
+            <p>Apakah Anda yakin ingin menghapus keikutsertaan Anda pada pelatihan berikut?</p>
+            {% endif %}
 
             <div class="delete-user-info">
                 <p><strong>Nama Pelatihan:</strong> <span id="operasionalDeleteItemName">-</span></p>
                 <p><strong>Info:</strong> <span id="operasionalDeleteItemMeta">-</span></p>
             </div>
 
-            <p class="delete-warning-text">Tindakan ini tidak dapat dibatalkan.</p>
+            {% if can_view_all_pelatihan %}
+            <p class="delete-warning-text">Pelatihan beserta seluruh peserta dan dokumennya akan dihapus dari semua akun peserta.</p>
+            {% else %}
+            <p class="delete-warning-text">Pelatihan akan dihapus dari akun Anda. Data peserta lain tetap tersimpan.</p>
+            {% endif %}
         </div>
 
         <div class="delete-modal-actions">

@@ -1,4 +1,46 @@
 /* Landing page management helpers */
+.table-scroll--list .tv-config {
+    width: 100%;
+    table-layout: fixed;
+}
+
+.tv-config__number {
+    width: 140px;
+}
+
+.tv-config__badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 38px;
+    padding: 6px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--color-soft-blue);
+    color: var(--color-primary-navy);
+    font-weight: 700;
+}
+
+.tv-config select {
+    font-size: inherit;
+}
+
+.tv-config__field {
+    margin-bottom: 0;
+}
+
+.table-scroll--list .tv-config th,
+.tv-config__field {
+    white-space: normal;
+}
+
+@media (max-width: 768px) {
+    .tv-config__number {
+        width: 110px;
+    }
+}
+
 .list-table--landing-equipment {
     min-width: 1180px;
 }

@@ -135,10 +135,13 @@ class Pelatihan(models.Model):
         (JENIS_NON_LABORATORIUM, JENIS_NON_LABORATORIUM),
     ]
 
+    # Penginput disimpan sebagai atribusi; akses pelatihan mengikuti relasi peserta.
     user = models.ForeignKey(
         User,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         related_name="data_pelatihan",
+        null=True,
+        blank=True,
     )
     tipe_pelatihan = models.CharField(max_length=30, choices=TIPE_CHOICES)
     jenis_pelatihan = models.CharField(max_length=30, choices=JENIS_CHOICES)
@@ -147,11 +150,6 @@ class Pelatihan(models.Model):
     tanggal_selesai = models.DateField()
     lokasi_pelatihan = models.CharField(max_length=255)
     uraian_pelatihan = models.TextField(default="")
-    file_sertifikat = models.FileField(
-        upload_to="pengguna/pelatihan/sertifikat/",
-        blank=True,
-        null=True,
-    )
     file_materi = models.FileField(
         upload_to="pengguna/pelatihan/materi/",
         blank=True,
@@ -175,3 +173,28 @@ class Pelatihan(models.Model):
         if self.tanggal_mulai == self.tanggal_selesai:
             return self.tanggal_mulai
         return f"{self.tanggal_mulai} - {self.tanggal_selesai}"
+
+
+class PesertaPelatihan(models.Model):
+    pelatihan = models.ForeignKey(Pelatihan, on_delete=models.CASCADE, related_name="peserta")
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="pelatihan_diikuti")
+    file_sertifikat = models.FileField(
+        upload_to="pengguna/pelatihan/sertifikat/", blank=True, null=True,
+    )
+
+    class Meta:
+        ordering = ["pk"]
+        constraints = [
+            models.UniqueConstraint(fields=["pelatihan", "user"], name="pelatihan_user_unik"),
+        ]
+
+    def __str__(self):
+        return self.user.get_full_name() or self.user.username
+
+
+def get_sdm_users():
+    return (
+        User.objects.select_related("profile", "profile__role")
+        .exclude(profile__role__nama="Super Admin")
+        .order_by("first_name", "username")
+    )

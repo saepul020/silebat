@@ -3,12 +3,13 @@ from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.templatetags.static import static
+from django.views.decorators.http import require_http_methods
 
 from apps.core.list_pagination import paginate_list
 from apps.core.navigation import get_next_url, redirect_next
 from apps.core.permissions import is_super_admin, user_passes_access
 
-from .forms import LandingPeralatanCardForm
+from .forms import KontenAlatTVForm, LandingPeralatanCardForm
 from .models import LandingPeralatanCard
 from .services import get_public_landing_context, invalidate_public_landing_cache
 
@@ -27,6 +28,18 @@ EQUIPMENT_LIST_SEARCH_FIELDS = (
     "spesifikasi_alat",
     "ringkasan_alat",
 )
+
+
+@login_required
+@landing_manage_required
+@require_http_methods(["GET", "POST"])
+def konten_tv(request):
+    form = KontenAlatTVForm(request.POST if request.method == "POST" else None)
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        messages.success(request, "Konten alat TV berhasil disimpan.")
+        return redirect("landing:konten_tv")
+    return render(request, "landing/konten_tv.html", {"form": form})
 
 
 def public_home(request):

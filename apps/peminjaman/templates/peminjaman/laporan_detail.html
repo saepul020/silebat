@@ -51,6 +51,9 @@
             </div>
 
             <div class="detail-action-row">
+                {% if can_correct_report %}
+                <a href="{% url 'peminjaman:laporan_koreksi' obj.pk %}" class="btn btn-secondary detail-action-btn">Koreksi Data</a>
+                {% endif %}
                 <a href="{% url 'peminjaman:download_laporan_pdf' obj.pk %}" class="btn btn-primary detail-action-btn">Export PDF</a>
                 {% if obj.can_download_berita_acara %}
                 <a href="{% url 'peminjaman:download_berita_acara_pdf' obj.pk %}" class="btn btn-warning detail-action-btn">Berita Acara PDF</a>

@@ -464,42 +464,44 @@
     </div>
 </section>
 
-<section class="card dashboard-chart dashboard-chart--full">
+{% for chart in instansi_charts %}
+<section class="card dashboard-chart dashboard-chart--full" data-instansi-chart="{{ chart.key }}">
     <div class="dashboard-chart__header">
         <div class="dashboard-chart__top">
-            <h3 class="card-title">Instansi Tujuan Kegiatan</h3>
+            <h3 class="card-title">{{ chart.title }}</h3>
             <div class="chart-download">
-                <button type="button" class="chart-download__toggle" aria-label="Download chart Instansi Tujuan Kegiatan" aria-expanded="false" data-chart-menu-toggle>
+                <button type="button" class="chart-download__toggle" aria-label="Download chart {{ chart.title }}" aria-expanded="false" data-chart-menu-toggle>
                     <i class="bi bi-three-dots-vertical"></i>
                 </button>
                 <div class="chart-download__menu" data-chart-menu>
-                    <button type="button" data-chart-download="jpg" data-chart-target="grafikInstansi" data-chart-title="Instansi Tujuan Kegiatan"><i class="bi bi-filetype-jpg" aria-hidden="true"></i><span>Download JPG</span></button>
-                    <button type="button" data-chart-download="xlsx" data-chart-target="grafikInstansi" data-chart-title="Instansi Tujuan Kegiatan" data-chart-export-url="{{ chart_export_url }}"><i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i><span>Download Excel</span></button>
+                    <button type="button" data-chart-download="jpg" data-chart-target="grafik-{{ chart.key }}" data-chart-title="{{ chart.title }}"><i class="bi bi-filetype-jpg" aria-hidden="true"></i><span>Download JPG</span></button>
+                    <button type="button" data-chart-download="xlsx" data-chart-target="grafik-{{ chart.key }}" data-chart-title="{{ chart.title }}" data-chart-export-url="{{ chart_export_url }}"><i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i><span>Download Excel</span></button>
                 </div>
             </div>
         </div>
         <div class="dashboard-chart__filters">
             <div class="chart-filter">
-                <select id="tahunInstansi" aria-label="Filter tahun instansi tujuan kegiatan" title="Filter tahun">
+                <select id="tahun-{{ chart.key }}" aria-label="Filter tahun {{ chart.title }}" title="Filter tahun">
                     <option value="all">All</option>
-                    {% for year in instansi_chart.availableYears %}
-                        <option value="{{ year }}" {% if year == instansi_chart.defaultYear %}selected{% endif %}>{{ year }}</option>
+                    {% for year in chart.availableYears %}
+                        <option value="{{ year }}" {% if year == chart.defaultYear %}selected{% endif %}>{{ year }}</option>
                     {% endfor %}
                 </select>
             </div>
         </div>
     </div>
-    <div class="dashboard-chart__area chart-area--scroll" data-chart-wrapper="instansi">
-        <div class="dashboard-chart__scroll" data-chart-scroll="instansi">
-            <div class="dashboard-chart__holder" data-chart-holder="instansi">
-                <canvas id="grafikInstansi" aria-label="Grafik Instansi Tujuan Kegiatan"></canvas>
+    <div class="dashboard-chart__area chart-area--scroll" data-chart-wrapper="{{ chart.key }}">
+        <div class="dashboard-chart__scroll" data-chart-scroll="{{ chart.key }}">
+            <div class="dashboard-chart__holder" data-chart-holder="{{ chart.key }}">
+                <canvas id="grafik-{{ chart.key }}" aria-label="Grafik {{ chart.title }}"></canvas>
             </div>
         </div>
-        <div class="dashboard-chart__empty is-hidden" data-chart-empty="instansi">
-            -
+        <div class="dashboard-chart__empty is-hidden" data-chart-empty="{{ chart.key }}">
+            Belum ada peminjaman yang disetujui pada tahun yang dipilih.
         </div>
     </div>
 </section>
+{% endfor %}
 
 
 {% if role_access.show_master_data %}
@@ -564,7 +566,9 @@
 {{ approved_peminjaman_chart|json_script:"data-pinjam" }}
 {{ survei_chart|json_script:"data-survei" }}
 {{ survey_equipment_chart|json_script:"data-peralatan-survei" }}
-{{ instansi_chart|json_script:"data-instansi" }}
+{% for chart in instansi_charts %}
+{% with script_id="data-"|add:chart.key %}{{ chart|json_script:script_id }}{% endwith %}
+{% endfor %}
 {% if role_access.show_master_data %}
 {{ bahan_chart|json_script:"data-bahan" }}
 {{ penunjang_chart|json_script:"data-penunjang" }}
@@ -573,5 +577,5 @@
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
-<script src="{% static 'js/dashboard.js' %}?v=20260703-chart-excel-v1" defer></script>
+<script src="{% static 'js/dashboard.js' %}?v=20261105-chart-color-v1" defer></script>
 {% endblock %}

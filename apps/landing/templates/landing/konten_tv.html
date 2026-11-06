@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Konten Alat TV{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/landing_manage.css' %}?v=20261106-konten-tv-v4">
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Konten Alat TV</h1>
+    <p>Pilih peralatan survei lapangan untuk enam kolom pada slide pertama TV realtime.</p>
+</div>
+<form method="post" class="table-wrapper table-panel" data-tv-config>
+    {% csrf_token %}
+    <div class="table-toolbar">
+        <h3 class="table-title">Daftar Konten Alat TV</h3>
+        <div class="table-toolbar-actions">
+            <button type="submit" class="btn btn-primary"><i class="bi bi-floppy" aria-hidden="true"></i>&nbsp;Simpan Perubahan</button>
+        </div>
+    </div>
+    {% if form.non_field_errors %}
+    <div class="form-global-errors">
+        {% for error in form.non_field_errors %}<p class="input-error-text">{{ error }}</p>{% endfor %}
+    </div>
+    {% endif %}
+    <div class="table-scroll-area table-scroll--list" tabindex="0" aria-label="Scroll tabel konten alat TV">
+        <table class="table-data tv-config">
+            <thead>
+                <tr>
+                    <th class="tv-config__number" scope="col" data-sortable="false">Nomor Kolom</th>
+                    <th scope="col" data-sortable="false">Peralatan Survei Lapangan</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for field in form %}
+                <tr>
+                    <td><span class="tv-config__badge">{{ forloop.counter }}</span></td>
+                    <td>
+                        <div class="form-group tv-config__field {% if field.errors %}has-error{% endif %}">
+                            {{ field }}
+                            {% for error in field.errors %}<p class="input-error-text">{{ error }}</p>{% endfor %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/landing_manage.js' %}?v=20261106-tv-choices-v1" defer></script>
+{% endblock %}

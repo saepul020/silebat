@@ -10,14 +10,14 @@
     <link rel="stylesheet" href="{% static 'css/base.css' %}?v=20260505-pelatihan-v3">
     <link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=20260505-dashboard-items-v2">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
-    <link rel="stylesheet" href="{% static 'css/dashboard_display.css' %}?v=20260508-tv-full-v1">
+    <link rel="stylesheet" href="{% static 'css/dashboard_display.css' %}?v=20261106-alat-tv-v3">
     <link rel="stylesheet" href="{% static 'css/loading.css' %}?v=20260612-global-loading-v1">
 </head>
 <body class="tv-body">
     <main class="tv-page" aria-label="Display realtime laboratorium SILEBAT">
         <header class="page-header dashboard-header tv-head">
             <div class="tv-head__title">
-                <h1>Dashboard Laboratorium</h1>
+                <h1>Dashboard Laboratorium - Kegiatan Tahun {{ display_generated_at|date:'Y' }}</h1>
                 <p>Informasi realtime kegiatan peminjaman dan layanan Laboratorium.</p>
             </div>
             <div class="tv-head__meta" aria-label="Waktu display">
@@ -74,22 +74,20 @@
             </div>
         </section>
 
-        <section class="card dashboard-chart dashboard-chart--full tv-chart-card" aria-label="Slide grafik dashboard">
+        <section class="card dashboard-chart dashboard-chart--full tv-chart-card" aria-label="Slide peralatan dan grafik dashboard">
             <div class="dashboard-chart__header tv-chart-head">
                 <div class="dashboard-chart__top tv-chart-top">
-                    <h3 class="card-title" data-tv-slide-title>Rekap Peminjaman</h3>
-                    <div class="tv-dots" aria-hidden="true">
-                        <span class="is-active" data-tv-dot></span>
-                        <span data-tv-dot></span>
-                        <span data-tv-dot></span>
-                        <span data-tv-dot></span>
-                        <span data-tv-dot></span>
-                        <span data-tv-dot></span>
-                    </div>
+                    <h3 class="card-title" data-tv-slide-title>Peralatan Survei Lapangan</h3>
+                    <div class="tv-dots" data-tv-dots aria-hidden="true"></div>
                 </div>
             </div>
             <div class="dashboard-chart__area tv-chart-stage">
-                <article class="tv-chart-slide is-active" data-tv-slide data-title="Rekap Peminjaman">
+                <article class="tv-chart-slide is-active" data-tv-slide data-title="Peralatan Survei Lapangan">
+                    <div class="tv-equipment" data-tv-equipment aria-live="polite">
+                        {% include 'dashboard/partials/tv_equipment.html' %}
+                    </div>
+                </article>
+                <article class="tv-chart-slide" data-tv-slide data-title="Rekap Peminjaman">
                     <canvas id="tvApprovedChart" aria-label="Grafik rekap peminjaman"></canvas>
                 </article>
                 <article class="tv-chart-slide" data-tv-slide data-title="Layanan Kegiatan">
@@ -104,9 +102,11 @@
                 <article class="tv-chart-slide" data-tv-slide data-title="Kegiatan Survei">
                     <canvas id="tvSurveiChart" aria-label="Grafik kegiatan survei"></canvas>
                 </article>
-                <article class="tv-chart-slide" data-tv-slide data-title="Instansi Tujuan Kegiatan">
-                    <canvas id="tvInstansiChart" aria-label="Grafik instansi tujuan kegiatan"></canvas>
+                {% for chart in instansi_charts %}
+                <article class="tv-chart-slide" data-tv-slide data-title="{{ chart.title }}">
+                    <canvas id="tv-{{ chart.key }}" data-instansi-chart="{{ chart.key }}" aria-label="Grafik {{ chart.title }}"></canvas>
                 </article>
+                {% endfor %}
                 <div class="tv-chart-empty is-hidden" data-tv-chart-empty>-</div>
             </div>
         </section>
@@ -117,11 +117,13 @@
     {{ pengukuran_chart|json_script:"data-ukur" }}
     {{ approved_peminjaman_chart|json_script:"data-pinjam" }}
     {{ survei_chart|json_script:"data-survei" }}
-    {{ instansi_chart|json_script:"data-instansi" }}
+    {% for chart in instansi_charts %}
+    {% with script_id="data-"|add:chart.key %}{{ chart|json_script:script_id }}{% endwith %}
+    {% endfor %}
 
     {% include 'partials/loading.html' %}
     <script src="{% static 'js/loading.js' %}?v=20260612-global-loading-v1" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
-    <script src="{% static 'js/dashboard_display.js' %}?v=20260606-tv-instansi-axis-v3" defer></script>
+    <script src="{% static 'js/dashboard_display.js' %}?v=20261106-alat-tv-v1" defer></script>
 </body>
 </html>

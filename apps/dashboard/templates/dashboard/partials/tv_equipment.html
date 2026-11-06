@@ -1,0 +1,26 @@
+{% for slot in tv_slots %}
+<article class="tv-equipment__card{% if not slot.alat %} tv-equipment__card--empty{% endif %}" aria-label="Kolom {{ slot.nomor }}">
+    <div class="tv-equipment__photo">
+        {% if slot.alat.foto_barang %}
+        <img src="{{ slot.alat.foto_barang.url }}" alt="{{ slot.alat.nama_barang }}" decoding="async">
+        {% else %}
+        <i class="bi bi-tools" aria-hidden="true"></i>
+        <span>{% if slot.alat %}Foto belum tersedia{% else %}Kolom {{ slot.nomor }}{% endif %}</span>
+        {% endif %}
+    </div>
+    <div class="tv-equipment__body">
+        {% if slot.alat %}
+        <h4 class="tv-equipment__name">{{ slot.alat.nama_barang }}</h4>
+        <p class="tv-equipment__brand">{{ slot.alat.tipe_merek_barang|default:'-' }}</p>
+        <dl class="tv-equipment__meta">
+            <div class="tv-equipment__code"><dt>Kode Barang <span>:</span></dt><dd title="{{ slot.alat.kode_aset_bmn|default:slot.alat.kode_laboratorium|default:'-' }}">{{ slot.alat.kode_aset_bmn|default:slot.alat.kode_laboratorium|default:'-' }}</dd></div>
+            <div><dt>Tahun Perolehan <span>:</span></dt><dd>{{ slot.alat.tahun_perolehan|default:'-' }}</dd></div>
+            <div><dt>Asal Perolehan <span>:</span></dt><dd>{{ slot.alat.asal_perolehan|default:'-' }}</dd></div>
+            <div><dt>Kondisi <span>:</span></dt><dd>{{ slot.alat.kondisi_barang|default:'-' }}</dd></div>
+        </dl>
+        {% else %}
+        <h4 class="tv-equipment__name">Belum dipilih</h4>
+        {% endif %}
+    </div>
+</article>
+{% endfor %}

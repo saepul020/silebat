@@ -1,0 +1,9 @@
+<div class="koreksi__alat" data-alat-row>
+    {% for hidden in alat_form.hidden_fields %}{{ hidden }}{% for error in hidden.errors %}<p class="input-error-text">{{ error }}</p>{% endfor %}{% endfor %}
+    {% for error in alat_form.non_field_errors %}<p class="input-error-text" role="alert">{{ error }}</p>{% endfor %}
+    {% include 'peminjaman/partials/koreksi_field.html' with field=alat_form.barang %}
+    {% if alat_form.is_protected %}
+    <p class="input-help-text">Relasi alat ini dipertahankan karena terkait barang rusak/hilang atau transfer.</p>
+    {% endif %}
+    <label class="koreksi__delete">{{ alat_form.DELETE }} Hapus dari daftar peminjaman</label>
+</div>

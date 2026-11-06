@@ -1442,14 +1442,17 @@ function initUploadPreviewControls() {
 }
 
 
-function initInlineFileProxyControls() {
-    const controls = document.querySelectorAll('[data-inline-file-proxy]');
+function initInlineFileProxyControls(root = document) {
+    const controls = root.querySelectorAll('[data-inline-file-proxy]');
 
     if (!controls.length) {
         return;
     }
 
     controls.forEach(function (control) {
+        if (control.dataset.inlineFileReady === 'true') {
+            return;
+        }
         const input = control.querySelector('[data-inline-file-input]');
         const textNode = control.querySelector('[data-inline-file-text]');
         const stateNode = control.querySelector('[data-inline-file-state]');
@@ -1458,6 +1461,7 @@ function initInlineFileProxyControls() {
         if (!input || !textNode) {
             return;
         }
+        control.dataset.inlineFileReady = 'true';
 
         const placeholder = String(input.getAttribute('data-inline-file-placeholder') || 'Pilih file').trim() || 'Pilih file';
         const initialText = String(textNode.textContent || '').trim();
@@ -1794,18 +1798,6 @@ function initPelatihanFormBehavior() {
         des: 11, desember: 11, dec: 11, december: 11,
     };
 
-    const dependentFields = [];
-    dependentGroups.forEach(function (group) {
-        group.querySelectorAll('input, select, textarea, button').forEach(function (field) {
-            if (field.type === 'hidden') {
-                return;
-            }
-            if (!dependentFields.includes(field)) {
-                dependentFields.push(field);
-            }
-        });
-    });
-
     function getFormGroup(element) {
         return element ? element.closest('.form-group') : null;
     }
@@ -1841,8 +1833,8 @@ function initPelatihanFormBehavior() {
         if (!field) {
             return;
         }
-        field.disabled = disabled;
-        if (disabled) {
+        field.disabled = disabled || field.dataset.trainingLocked === 'true';
+        if (field.disabled) {
             field.setAttribute('aria-disabled', 'true');
         } else {
             field.removeAttribute('aria-disabled');
@@ -1858,11 +1850,91 @@ function initPelatihanFormBehavior() {
         dependentGroups.forEach(function (group) {
             group.classList.toggle('is-locked', !unlocked);
             group.setAttribute('aria-disabled', unlocked ? 'false' : 'true');
-        });
-        dependentFields.forEach(function (field) {
-            setFieldDisabledState(field, !unlocked);
+            group.querySelectorAll('input, select, textarea, button').forEach(function (field) {
+                if (field.type !== 'hidden') {
+                    setFieldDisabledState(field, !unlocked);
+                }
+            });
         });
         setFieldDisabledState(typeField, false);
+    }
+
+    const pesertaGroup = form.querySelector('[data-peserta-group]');
+    const pesertaList = pesertaGroup?.querySelector('[data-peserta-list]');
+    const pesertaTemplate = pesertaGroup?.querySelector('[data-peserta-template]');
+    const pesertaTotal = form.querySelector('[name="peserta-TOTAL_FORMS"]');
+    const pesertaSelect = pesertaTemplate?.content.querySelector('select') || pesertaList?.querySelector('select');
+    const pesertaOptions = Array.from(pesertaSelect?.options || []).map(option => option.cloneNode(true));
+
+    function syncPesertaOptions() {
+        if (!pesertaList) {
+            return;
+        }
+        const selects = Array.from(pesertaList.querySelectorAll('[data-peserta-row]:not([data-peserta-deleted]) select[name$="-user"]'));
+        const selected = new Set(selects.map(select => select.value).filter(Boolean));
+        selects.forEach(function (select) {
+            const value = select.value;
+            const options = pesertaOptions
+                .filter(option => !option.value || option.value === value || !selected.has(option.value))
+                .map(option => option.cloneNode(true));
+            select.replaceChildren(...options);
+            select.value = value;
+            select.classList.toggle('is-placeholder-state', !value);
+        });
+    }
+
+    function syncPesertaRows() {
+        const rows = pesertaList.querySelectorAll('[data-peserta-row]');
+        rows.forEach(function (row, index) {
+            row.querySelectorAll('[name], [id], label[for]').forEach(function (element) {
+                ['name', 'id', 'for'].forEach(function (attribute) {
+                    const value = element.getAttribute(attribute);
+                    if (value) {
+                        element.setAttribute(attribute, value.replace(/peserta-(?:\d+|__prefix__)-/g, 'peserta-' + index + '-'));
+                    }
+                });
+            });
+        });
+        pesertaTotal.value = rows.length;
+        syncPesertaOptions();
+        syncDependentLock();
+    }
+
+    syncPesertaOptions();
+    pesertaList?.addEventListener('change', function (event) {
+        if (event.target.matches('select[name$="-user"]')) {
+            syncPesertaOptions();
+        }
+    });
+
+    if (pesertaList && pesertaTemplate && pesertaTotal) {
+        pesertaGroup.querySelector('[data-peserta-add]').addEventListener('click', function () {
+            const fragment = pesertaTemplate.content.cloneNode(true);
+            const row = fragment.querySelector('[data-peserta-row]');
+            pesertaList.appendChild(fragment);
+            syncPesertaRows();
+            initInlineFileProxyControls(row);
+            row.querySelector('select')?.focus();
+        });
+        pesertaList.addEventListener('click', function (event) {
+            const button = event.target.closest('[data-peserta-remove]');
+            if (!button || button.disabled) {
+                return;
+            }
+            const row = button.closest('[data-peserta-row]');
+            const deleteField = row.querySelector('input[name$="-DELETE"]');
+            const initialCount = Number(form.querySelector('[name="peserta-INITIAL_FORMS"]').value);
+            const index = Array.from(pesertaList.children).indexOf(row);
+            if (deleteField && index < initialCount) {
+                deleteField.value = 'on';
+                row.dataset.pesertaDeleted = 'true';
+                row.hidden = true;
+                row.querySelector('input[type="file"]').value = '';
+            } else {
+                row.remove();
+            }
+            syncPesertaRows();
+        });
     }
 
     function createDateAtMidday(year, monthIndex, day) {
@@ -1952,6 +2024,9 @@ function initPelatihanFormBehavior() {
         toggleButton.type = 'button';
         toggleButton.className = 'date-picker-toggle';
         toggleButton.setAttribute('aria-label', `Pilih ${input.getAttribute('placeholder') || 'tanggal'}`);
+        if (input.dataset.trainingLocked === 'true') {
+            toggleButton.dataset.trainingLocked = 'true';
+        }
         toggleButton.innerHTML = '<i class="bi bi-calendar3"></i>';
         wrapper.appendChild(toggleButton);
 

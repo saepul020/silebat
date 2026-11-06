@@ -1,0 +1,5 @@
+<div class="form-group koreksi__locked">
+    <label for="previous-{{ row.name }}">{{ row.label }}</label>
+    <input type="text" id="previous-{{ row.name }}" class="text-input koreksi__locked-control" value="{{ row.value|default_if_none:'-' }}" title="{{ row.value|default_if_none:'-' }}" readonly tabindex="-1">
+    {% if row.url %}<a href="{{ row.url }}" target="_blank" rel="noopener" class="input-help-text">Buka dokumen sebelumnya</a>{% endif %}
+</div>

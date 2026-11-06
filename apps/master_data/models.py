@@ -174,6 +174,7 @@ class AssetBaseModel(QRCodeMixin):
         editable=False,
     )
     tahun_perolehan = models.PositiveIntegerField(null=True, blank=True)
+    asal_perolehan = models.CharField("Asal Perolehan", max_length=200, blank=True)
     kondisi_barang = models.CharField(
         max_length=30,
         choices=KondisiBarangChoices.choices,
@@ -497,6 +498,7 @@ class VolumeBaikAssetMixin(models.Model):
         self.kode_aset_bmn = None
         self.kode_laboratorium = None
         self.tahun_perolehan = None
+        self.asal_perolehan = ""
         self.lokasi_barang = ""
         self.ik_alat = None
         self.tanggal_pemeliharaan = None
@@ -541,6 +543,7 @@ class VolumeBaikAssetMixin(models.Model):
             self.kode_aset_bmn = None
             self.kode_laboratorium = None
             self.tahun_perolehan = None
+            self.asal_perolehan = ""
             self.lokasi_barang = ""
             self.ik_alat = None
             self.tanggal_pemeliharaan = None
@@ -571,6 +574,7 @@ class VolumeBaikAssetMixin(models.Model):
                     {
                         "kode_laboratorium",
                         "tahun_perolehan",
+                        "asal_perolehan",
                         "lokasi_barang",
                         "ik_alat",
                         "tanggal_pemeliharaan",

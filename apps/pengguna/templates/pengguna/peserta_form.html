@@ -1,0 +1,33 @@
+<div class="peserta-form__row" data-peserta-row{% if row.cleaned_data.DELETE %} hidden data-peserta-deleted="true"{% endif %}>
+    {{ row.DELETE.as_hidden }}
+    <div class="form-group {% if row.user.errors %}has-error{% endif %}">
+        <label for="{{ row.user.id_for_label }}">{{ row.user.label }}</label>
+        {{ row.user }}
+        {% for error in row.user.errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
+    </div>
+    <div class="form-group {% if row.file_sertifikat.errors %}has-error{% endif %}">
+        <label for="{{ row.file_sertifikat.id_for_label }}">{{ row.file_sertifikat.label }}</label>
+        <div class="peserta-form__files">
+            <div class="upload-input-wrap upload-input-wrap--inline upload-input-wrap--file-proxy" data-inline-file-proxy>
+                <div class="upload-input-wrap__field">
+                    {{ row.file_sertifikat }}
+                    <label for="{{ row.file_sertifikat.id_for_label }}" class="file-input-proxy">
+                        <span class="file-input-proxy__button" aria-hidden="true"><i class="bi bi-upload"></i></span>
+                        <span class="file-input-proxy__text is-placeholder" data-inline-file-text>Pilih file sertifikat</span>
+                    </label>
+                </div>
+                <div class="upload-file-state upload-file-state--inline is-hidden" data-inline-file-state>
+                    <button type="button" class="upload-file-state__action upload-file-state__action--icon" data-inline-file-clear title="Batalkan Upload" aria-label="Batalkan Upload"><i class="bi bi-x-lg"></i></button>
+                </div>
+            </div>
+            {% if row.initial.file_sertifikat %}
+            <a href="{{ row.initial.file_sertifikat.url }}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm peserta-form__preview" title="Lihat sertifikat tersimpan" aria-label="Lihat sertifikat tersimpan"><i class="bi bi-eye-fill" aria-hidden="true"></i></a>
+            {% endif %}
+            <button type="button" class="btn btn-danger btn-sm peserta-form__remove" data-peserta-remove title="{% if row.removable %}Hapus baris peserta{% else %}Baris peserta ini terkunci{% endif %}" aria-label="Hapus baris peserta"{% if not row.removable %} disabled data-training-locked="true"{% endif %}><i class="bi bi-trash3-fill" aria-hidden="true"></i></button>
+        </div>
+        <p class="input-help-text">JPG, PNG, atau PDF. Maksimal 7 MB.</p>
+        <p class="input-error-text" data-inline-file-error-node hidden></p>
+        {% for error in row.file_sertifikat.errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
+    </div>
+    {% for error in row.non_field_errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
+</div>

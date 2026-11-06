@@ -140,7 +140,9 @@ function initDashboardCharts() {
     initApprovedPeminjamanChart();
     initSurveiKegiatanChart();
     initPeralatanSurveiChart();
-    initInstansiTujuanChart();
+    document.querySelectorAll('[data-instansi-chart]').forEach(function (section) {
+        initInstansiTujuanChart(section.dataset.instansiChart);
+    });
     initInventoryCharts();
     initSdmCharts();
 }
@@ -1107,11 +1109,11 @@ function initSurveiKegiatanChart() {
     renderChart();
 }
 
-function initInstansiTujuanChart() {
-    const canvas = document.getElementById('grafikInstansi');
-    const source = readDashboardChartData('data-instansi');
-    const holder = document.querySelector('[data-chart-holder="instansi"]');
-    const yearFilter = document.getElementById('tahunInstansi');
+function initInstansiTujuanChart(key) {
+    const canvas = document.getElementById('grafik-' + key);
+    const source = readDashboardChartData('data-' + key);
+    const holder = document.querySelector('[data-chart-holder="' + key + '"]');
+    const yearFilter = document.getElementById('tahun-' + key);
 
     if (!canvas || !source || !holder || !yearFilter) {
         return;
@@ -1128,6 +1130,7 @@ function initInstansiTujuanChart() {
             'scrollable',
         );
         updateScrollableChartWidth(holder, chartData.labels.length, isSmallMobileViewport() ? 56 : (isMobileViewport() ? 66 : 136));
+        updateChartEmptyState(key, chartData.datasets[0].data.some(function (total) { return total > 0; }));
         const options = createSingleSeriesChartOptions(chartData.maxValue, isMobileViewport() ? 12 : 18, isMobileViewport() ? 58 : 46);
         chartInstance = upsertBarChart(chartInstance, canvas, chartData.labels, chartData.datasets, options, updateMode);
     }
@@ -1198,9 +1201,6 @@ function createInventoryChartOptions(maxValue, units, stacked) {
 
 function buildBahanChartData(source) {
     const items = getInventoryItems(source);
-    const colors = items.map(function (_, index) {
-        return getChartPalette(index);
-    });
     const data = items.map(function (item) {
         return Number(item.stock || 0);
     });
@@ -1213,8 +1213,8 @@ function buildBahanChartData(source) {
             {
                 label: 'Stok',
                 data: data,
-                backgroundColor: colors.map(function (color) { return color.background; }),
-                borderColor: colors.map(function (color) { return color.border; }),
+                backgroundColor: source.backgroundColor,
+                borderColor: source.backgroundColor,
                 borderWidth: 1,
                 borderRadius: 8,
                 borderSkipped: false,

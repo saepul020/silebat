@@ -1,9 +1,41 @@
 from django.db import models
+from django.core.validators import MinValueValidator, MaxValueValidator
 
 from apps.master_data.models import KategoriBarangLaboratoriumChoices
 
 
 MAX_EQUIPMENT_PHOTOS = 5
+TV_SLOT_COUNT = 6
+
+
+class KontenAlatTV(models.Model):
+    nomor = models.PositiveSmallIntegerField(
+        primary_key=True,
+        validators=[MinValueValidator(1), MaxValueValidator(TV_SLOT_COUNT)],
+        verbose_name="Nomor Kolom",
+    )
+    alat = models.ForeignKey(
+        "master_data.BarangLaboratorium",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="konten_tv",
+        verbose_name="Peralatan Survei Lapangan",
+    )
+
+    class Meta:
+        ordering = ["nomor"]
+        verbose_name = "Konten Alat TV"
+        verbose_name_plural = "Konten Alat TV"
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(nomor__gte=1, nomor__lte=TV_SLOT_COUNT),
+                name="tv_nomor_range",
+            ),
+        ]
+
+    def __str__(self):
+        return f"Kolom {self.nomor}"
 
 
 class LandingPeralatanCard(models.Model):

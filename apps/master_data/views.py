@@ -65,6 +65,7 @@ IMPORT_BARANG_LAB_HEADERS = [
     "Kode Laboratorium",
     "Satuan",
     "Tahun Perolehan",
+    "Asal Perolehan",
     "Kondisi Barang",
     "Lokasi Barang",
     "Kategori Barang",
@@ -138,7 +139,7 @@ ASSET_FIELD_GROUPS = [
             ["nama_barang", "tipe_merek_barang", "jenis_barang"],
             ["kode_aset_bmn", "kode_laboratorium"],
             ["volume", "satuan", "ketersediaan_info"],
-            ["tahun_perolehan", "kondisi_barang"],
+            ["tahun_perolehan", "asal_perolehan", "kondisi_barang"],
             ["lokasi_barang"],
         ],
     ),
@@ -158,7 +159,7 @@ BARANG_LAB_FIELD_GROUPS = [
             ["nama_barang", "tipe_merek_barang", "jenis_barang"],
             ["kode_aset_bmn", "kode_laboratorium"],
             ["volume", "satuan", "ketersediaan_info"],
-            ["tahun_perolehan", "kondisi_barang"],
+            ["tahun_perolehan", "asal_perolehan", "kondisi_barang"],
             ["kategori_barang", "lokasi_barang"],
         ],
     ),
@@ -202,8 +203,8 @@ SARANA_FIELD_GROUPS = [
             ["kode_aset_bmn", "kode_laboratorium"],
             ["volume", "volume_rusak", "total_volume_info"],
             ["satuan", "ketersediaan_info"],
-            ["tahun_perolehan", "kategori_barang"],
-            ["kondisi_barang", "lokasi_barang"],
+            ["tahun_perolehan", "asal_perolehan", "kondisi_barang"],
+            ["kategori_barang", "lokasi_barang"],
         ],
     ),
     ("Lampiran", [["foto_barang", "ik_alat"]]),
@@ -224,7 +225,7 @@ PERALATAN_LAB_FIELD_GROUPS = [
             ["kode_aset_bmn", "kode_laboratorium"],
             ["volume", "volume_rusak", "total_volume_info"],
             ["satuan", "ketersediaan_info"],
-            ["tahun_perolehan", "kondisi_barang"],
+            ["tahun_perolehan", "asal_perolehan", "kondisi_barang"],
             ["lokasi_barang"],
         ],
     ),
@@ -1052,6 +1053,7 @@ def export_barang_laboratorium(request):
         "Volume",
         "Satuan",
         "Tahun Perolehan",
+        "Asal Perolehan",
         "Kondisi Barang",
         "Kategori Barang",
         "Ketersediaan",
@@ -1081,6 +1083,7 @@ def export_barang_laboratorium(request):
             obj.volume,
             obj.satuan,
             obj.tahun_perolehan,
+            obj.asal_perolehan,
             obj.kondisi_barang,
             obj.kategori_barang,
             obj.ketersediaan,
@@ -1169,6 +1172,7 @@ IMPORT_FASILITAS_RUANGAN_HEADERS = [
     "Volume Rusak",
     "Satuan",
     "Tahun Perolehan",
+    "Asal Perolehan",
     "Kategori Barang",
     "Kondisi Barang",
     "Lokasi Barang",
@@ -1198,6 +1202,7 @@ HEADER_IMPOR_PERALATAN = [
     "Volume Rusak",
     "Satuan",
     "Tahun Perolehan",
+    "Asal Perolehan",
     "Kondisi Barang",
     "Lokasi Barang",
     "Tanggal Pemeliharaan",
@@ -1457,6 +1462,7 @@ def _validate_asset_status_import(
             'kode_laboratorium': cell(row, 'Kode Laboratorium'),
             'satuan': cell(row, 'Satuan'),
             'kondisi_barang': cell(row, 'Kondisi Barang'),
+            'asal_perolehan': cell(row, 'Asal Perolehan'),
             'lokasi_barang': cell(row, 'Lokasi Barang'),
             'catatan': cell(row, 'Catatan'),
         }
@@ -1555,6 +1561,7 @@ def _validate_asset_status_import(
                     row_errors.append('Volume Rusak wajib diisi untuk barang Non BMN ber-volume.')
                 data['kode_laboratorium'] = None
                 data['tahun_perolehan'] = None
+                data['asal_perolehan'] = ''
                 data['lokasi_barang'] = ''
                 data['tanggal_pemeliharaan'] = None
                 data['tanggal_perbaikan'] = None
@@ -1582,6 +1589,9 @@ def _validate_asset_status_import(
             data['volume'] = 0
         if data['volume_rusak'] is None:
             data['volume_rusak'] = 0
+
+        if len(data['asal_perolehan']) > model._meta.get_field('asal_perolehan').max_length:
+            row_errors.append('Asal Perolehan maksimal 200 karakter.')
 
         enforce_asset_code_unique = model in (BarangLaboratorium, PeralatanLaboratorium)
         if enforce_asset_code_unique:
@@ -1886,6 +1896,7 @@ def _validate_barang_laboratorium_import(file_obj):
             'kode_laboratorium': cell(row, 'Kode Laboratorium'),
             'satuan': cell(row, 'Satuan'),
             'kondisi_barang': cell(row, 'Kondisi Barang'),
+            'asal_perolehan': cell(row, 'Asal Perolehan'),
             'lokasi_barang': cell(row, 'Lokasi Barang'),
             'kategori_barang': cell(row, 'Kategori Barang'),
             'catatan': cell(row, 'Catatan'),
@@ -1895,6 +1906,9 @@ def _validate_barang_laboratorium_import(file_obj):
         )
         data['komponen_pemeliharaan'] = components
         row_errors.extend(component_errors)
+
+        if len(data['asal_perolehan']) > BarangLaboratorium._meta.get_field('asal_perolehan').max_length:
+            row_errors.append('Asal Perolehan maksimal 200 karakter.')
 
         for header in IMPORT_BARANG_LAB_REQUIRED_HEADERS:
             if not cell(row, header):
@@ -2004,6 +2018,7 @@ def download_format_import_barang_laboratorium(request):
             'LAB-TS-0001',
             'Unit',
             2026,
+            'Pengadaan',
             'Baik',
             'Gudang Laboratorium',
             'Topografi (TS)',
@@ -2152,6 +2167,7 @@ def download_format_import_fasilitas_ruangan(request):
             0,
             'Unit',
             2026,
+            'Pengadaan',
             'Fasilitas Ruangan',
             'Baik',
             'Ruang Laboratorium 1',
@@ -2265,6 +2281,7 @@ def export_fasilitas_ruangan(request):
         "Total Volume",
         "Satuan",
         "Tahun Perolehan",
+        "Asal Perolehan",
         "Kondisi Barang",
         "Ketersediaan",
         "Sedang Dipinjam",
@@ -2297,6 +2314,7 @@ def export_fasilitas_ruangan(request):
             obj.total_volume,
             obj.satuan,
             obj.tahun_perolehan,
+            obj.asal_perolehan,
             obj.kondisi_barang,
             obj.ketersediaan,
             _boolean_display(obj.sedang_dipinjam),
@@ -2329,6 +2347,7 @@ def export_peralatan_laboratorium(request):
         "Sisa Stok",
         "Satuan",
         "Tahun Perolehan",
+        "Asal Perolehan",
         "Kondisi Barang",
         "Ketersediaan",
         "Sedang Dipinjam",
@@ -2362,6 +2381,7 @@ def export_peralatan_laboratorium(request):
             obj.sisa_volume,
             obj.satuan,
             obj.tahun_perolehan,
+            obj.asal_perolehan,
             obj.kondisi_barang,
             obj.ketersediaan,
             _boolean_display(obj.sedang_dipinjam),
@@ -2419,6 +2439,7 @@ def _get_barang_laboratorium_detail_items(obj):
         {"label": "Satuan", "value": _display_value(obj.satuan)},
         {"label": "Ketersediaan", "value": _display_value(obj.ketersediaan)},
         {"label": "Tahun Perolehan", "value": _display_value(obj.tahun_perolehan)},
+        {"label": "Asal Perolehan", "value": _display_value(obj.asal_perolehan)},
         {"label": "Kondisi Barang", "value": _display_value(obj.kondisi_barang)},
         {"label": "Lokasi Barang", "value": _display_value(obj.lokasi_barang)},
         {"label": "Kategori Barang", "value": _display_value(obj.kategori_barang)},
@@ -2461,6 +2482,7 @@ def _get_peralatan_laboratorium_detail_items(obj):
         {"label": "Satuan", "value": _display_value(obj.satuan)},
         {"label": "Ketersediaan", "value": _display_value(obj.ketersediaan)},
         {"label": "Tahun Perolehan", "value": _display_value(obj.tahun_perolehan)},
+        {"label": "Asal Perolehan", "value": _display_value(obj.asal_perolehan)},
         {
             "label": "Kondisi Barang",
             "value": _display_value(
@@ -2578,6 +2600,7 @@ def public_fasilitas_ruangan(request, token):
             {"label": "Satuan", "value": _display_value(obj.satuan)},
             {"label": "Ketersediaan", "value": _display_value(obj.ketersediaan)},
             {"label": "Tahun Perolehan", "value": _display_value(obj.tahun_perolehan)},
+            {"label": "Asal Perolehan", "value": _display_value(obj.asal_perolehan)},
             {"label": "Kondisi Barang", "value": _display_value(obj.kondisi_barang if _show_asset_condition(obj) else None)},
             {"label": "Lokasi Barang", "value": _display_value(obj.lokasi_barang)},
             {"label": "Pemeliharaan Terakhir", "value": _display_date(obj.tanggal_pemeliharaan)},
@@ -2891,6 +2914,7 @@ def detail_fasilitas_ruangan(request, pk):
             {"label": "Satuan", "value": _display_value(obj.satuan)},
             {"label": "Ketersediaan", "value": _display_value(obj.ketersediaan)},
             {"label": "Tahun Perolehan", "value": _display_value(obj.tahun_perolehan)},
+            {"label": "Asal Perolehan", "value": _display_value(obj.asal_perolehan)},
             {"label": "Kondisi Barang", "value": _display_value(obj.kondisi_barang if _show_asset_condition(obj) else None)},
             {"label": "Lokasi Barang", "value": _display_value(obj.lokasi_barang)},
             {
@@ -3114,6 +3138,7 @@ def download_format_import_peralatan_laboratorium(request):
             0,
             'Unit',
             2026,
+            'Pengadaan',
             'Baik',
             'Ruang Laboratorium 1',
             '2026-03-01',

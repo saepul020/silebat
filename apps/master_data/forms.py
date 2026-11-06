@@ -274,6 +274,7 @@ class AssetBaseForm(BaseMasterDataForm):
             "volume",
             "satuan",
             "tahun_perolehan",
+            "asal_perolehan",
             "kondisi_barang",
             "lokasi_barang",
             "foto_barang",
@@ -341,6 +342,11 @@ class AssetBaseForm(BaseMasterDataForm):
                 "tahun_perolehan": {
                     "placeholder": "Contoh: 2026",
                     "min": "1900",
+                    "data-status-dependent": "true",
+                },
+                "asal_perolehan": {
+                    "placeholder": "Masukkan asal perolehan barang",
+                    "autocomplete": "off",
                     "data-status-dependent": "true",
                 },
                 "kondisi_barang": {"data-status-dependent": "true"},
@@ -1090,6 +1096,7 @@ class VolumeBaikAssetFormMixin:
         for field_name in (
             "kode_laboratorium",
             "tahun_perolehan",
+            "asal_perolehan",
             "lokasi_barang",
             "ik_alat",
             "tanggal_pemeliharaan_info",
@@ -1098,6 +1105,7 @@ class VolumeBaikAssetFormMixin:
             field = self.fields.get(field_name)
             if field:
                 field.widget.attrs["data-volume-metadata"] = "true"
+        self.fields["asal_perolehan"].disabled = is_manual
 
     def clean(self):
         cleaned_data = super().clean()
@@ -1152,6 +1160,7 @@ class VolumeBaikAssetFormMixin:
         cleaned_data["kode_aset_bmn"] = None
         cleaned_data["kode_laboratorium"] = None
         cleaned_data["tahun_perolehan"] = None
+        cleaned_data["asal_perolehan"] = ""
         cleaned_data["lokasi_barang"] = ""
         cleaned_data["ik_alat"] = None
         cleaned_data["kondisi_barang"] = KondisiBarangChoices.BAIK
@@ -1179,6 +1188,7 @@ class VolumeBaikAssetFormMixin:
             instance.kode_aset_bmn = None
             instance.kode_laboratorium = None
             instance.tahun_perolehan = None
+            instance.asal_perolehan = ""
             instance.lokasi_barang = ""
             instance.ik_alat = None
             instance.tanggal_pemeliharaan = None

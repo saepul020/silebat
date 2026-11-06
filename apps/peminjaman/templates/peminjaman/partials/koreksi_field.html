@@ -1,0 +1,12 @@
+<div class="form-group{% if field.errors %} has-error{% endif %}">
+    <label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} *{% endif %}</label>
+    {% if field.name == 'kegiatan_survei' %}
+    <div class="survey-choice-grid choice-grid-list koreksi__survei">
+        {% for checkbox in field %}
+        <label class="survey-choice-card">{{ checkbox.tag }}<span>{{ checkbox.choice_label }}</span></label>
+        {% empty %}<p class="input-help-text">Belum ada kegiatan survei.</p>{% endfor %}
+    </div>
+    {% else %}{{ field }}{% endif %}
+    {% if field.help_text %}<p class="input-help-text">{{ field.help_text }}</p>{% endif %}
+    {% for error in field.errors %}<p class="input-error-text" role="alert">{{ error }}</p>{% endfor %}
+</div>
