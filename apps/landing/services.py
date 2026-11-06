@@ -10,12 +10,18 @@ from apps.master_data.models import BarangLaboratorium, KategoriBarangLaboratori
 from apps.peminjaman.constants import PENGUKURAN_FIELD_CONFIG
 from apps.peminjaman.models import PeminjamanRequest, ReturnStepChoices, StepChoices
 
-from .models import TV_SLOT_COUNT, KontenAlatTV, LandingPeralatanCard
+from .models import TV_SLOT_COUNT, TV_SLIDE_COUNT, KontenAlatTV, LandingPeralatanCard
 
 
-def get_tv_slots():
+def get_tv_slides():
     slots = {slot.nomor: slot.alat for slot in KontenAlatTV.objects.select_related("alat")}
-    return [{"nomor": nomor, "alat": slots.get(nomor)} for nomor in range(1, TV_SLOT_COUNT + 1)]
+    return [
+        {"nomor": slide + 1, "slots": [
+            {"nomor": kolom, "alat": slots.get(slide * TV_SLOT_COUNT + kolom)}
+            for kolom in range(1, TV_SLOT_COUNT + 1)
+        ]}
+        for slide in range(TV_SLIDE_COUNT)
+    ]
 
 
 logger = logging.getLogger(__name__)

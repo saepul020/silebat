@@ -15,7 +15,7 @@ from django.views.decorators.http import require_POST
 
 from apps.core.excel_utils import build_excel_response
 from apps.core.permissions import can_access_master_data, get_role_name
-from apps.landing.services import get_tv_slots
+from apps.landing.services import get_tv_slides
 from apps.master_data.models import BahanOperasional, BarangLaboratorium, BarangPenunjangOperasional
 from apps.operasional.models import InstansiKlien, LayananKegiatan, SurveiKegiatan, TimKegiatan
 from apps.peminjaman.constants import PENGUKURAN_FIELD_CONFIG
@@ -732,7 +732,7 @@ def display(request, portal_slug):
 
     context = build_dashboard_context(active_limit=8)
     context["tv_slug"] = portal_slug
-    context["tv_slots"] = get_tv_slots()
+    context["tv_slides"] = get_tv_slides()
     return render(request, "dashboard/display.html", context)
 
 
@@ -746,14 +746,15 @@ def display_active_data(request, portal_slug):
         {"active_peminjaman": active_peminjaman},
         request=request,
     )
-    equipment_html = render_to_string(
-        "dashboard/partials/tv_equipment.html",
-        {"tv_slots": get_tv_slots()},
-        request=request,
-    )
+    equipment_slides = [
+        {"nomor": slide["nomor"], "html": render_to_string(
+            "dashboard/partials/tv_equipment.html", {"tv_slots": slide["slots"]}, request=request,
+        )}
+        for slide in get_tv_slides()
+    ]
     response = JsonResponse({
         "html": html,
-        "equipmentHtml": equipment_html,
+        "equipmentSlides": equipment_slides,
         "updatedAt": timezone.localtime().isoformat(),
     })
     response["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"

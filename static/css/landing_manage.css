@@ -1,4 +1,15 @@
 /* Landing page management helpers */
+.tv-config-panel__toolbar {
+    background: var(--color-soft-blue);
+    justify-content: center;
+    text-align: center;
+}
+
+.tv-config-panel__toolbar .table-title {
+    min-width: 0;
+    text-align: center;
+}
+
 .table-scroll--list .tv-config {
     width: 100%;
     table-layout: fixed;
@@ -30,14 +41,18 @@
     margin-bottom: 0;
 }
 
-.table-scroll--list .tv-config th,
+.table-scroll--list .tv-config th {
+    white-space: nowrap;
+    font-size: clamp(0.6rem, 3vw, 0.9rem);
+}
+
 .tv-config__field {
     white-space: normal;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 480px) {
     .tv-config__number {
-        width: 110px;
+        width: clamp(90px, 28vw, 140px);
     }
 }
 

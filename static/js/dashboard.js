@@ -539,7 +539,7 @@ function buildMonthlySingleSeriesChartData(source, selectedYear, selectedMonth) 
 
 function buildSingleSeriesChartData(source, selectedYear, idKey, datasetLabel, chartType) {
     const rows = Array.isArray(source?.rows) ? source.rows : [];
-    const categories = Array.isArray(source?.categories) ? source.categories : [];
+    let categories = Array.isArray(source?.categories) ? source.categories : [];
     const totals = new Map();
 
     rows.forEach(function (row) {
@@ -550,6 +550,10 @@ function buildSingleSeriesChartData(source, selectedYear, idKey, datasetLabel, c
         const currentTotal = Number(totals.get(row[idKey]) || 0);
         totals.set(row[idKey], currentTotal + Number(row.total || 0));
     });
+
+    if (idKey === 'instansiId') {
+        categories = sortInstansiCategories(categories, totals, source.key);
+    }
 
     const isScrollableChart = chartType === 'scrollable';
     const barSizing = getSingleBarSizing(isScrollableChart);

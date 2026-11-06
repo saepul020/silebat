@@ -6,12 +6,14 @@ from apps.master_data.models import KategoriBarangLaboratoriumChoices
 
 MAX_EQUIPMENT_PHOTOS = 5
 TV_SLOT_COUNT = 6
+TV_SLIDE_COUNT = 2
+TV_TOTAL_SLOTS = TV_SLOT_COUNT * TV_SLIDE_COUNT
 
 
 class KontenAlatTV(models.Model):
     nomor = models.PositiveSmallIntegerField(
         primary_key=True,
-        validators=[MinValueValidator(1), MaxValueValidator(TV_SLOT_COUNT)],
+        validators=[MinValueValidator(1), MaxValueValidator(TV_TOTAL_SLOTS)],
         verbose_name="Nomor Kolom",
     )
     alat = models.ForeignKey(
@@ -29,13 +31,14 @@ class KontenAlatTV(models.Model):
         verbose_name_plural = "Konten Alat TV"
         constraints = [
             models.CheckConstraint(
-                condition=models.Q(nomor__gte=1, nomor__lte=TV_SLOT_COUNT),
+                condition=models.Q(nomor__gte=1, nomor__lte=TV_TOTAL_SLOTS),
                 name="tv_nomor_range",
             ),
         ]
 
     def __str__(self):
-        return f"Kolom {self.nomor}"
+        slide, kolom = divmod(self.nomor - 1, TV_SLOT_COUNT)
+        return f"Slide {slide + 1} - Kolom {kolom + 1}"
 
 
 class LandingPeralatanCard(models.Model):

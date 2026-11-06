@@ -9,7 +9,7 @@ from apps.core.upload_validation import (
 )
 from apps.master_data.models import BarangLaboratorium, KategoriBarangLaboratoriumChoices
 
-from .models import MAX_EQUIPMENT_PHOTOS, TV_SLOT_COUNT, KontenAlatTV, LandingPeralatanCard, LandingPeralatanFoto
+from .models import MAX_EQUIPMENT_PHOTOS, TV_SLOT_COUNT, TV_SLIDE_COUNT, TV_TOTAL_SLOTS, KontenAlatTV, LandingPeralatanCard, LandingPeralatanFoto
 
 
 class KontenAlatTVForm(forms.Form):
@@ -22,32 +22,38 @@ class KontenAlatTVForm(forms.Form):
             (alat.pk, f"{alat.nama_barang} - {alat.tipe_merek_barang} ({alat.kode_aset_bmn or alat.kode_laboratorium or '-'})")
             for alat in queryset
         )
-        for nomor in range(1, TV_SLOT_COUNT + 1):
+        for nomor in range(1, TV_TOTAL_SLOTS + 1):
+            slide, kolom = divmod(nomor - 1, TV_SLOT_COUNT)
             field = forms.ModelChoiceField(
                 queryset=queryset,
                 required=False,
-                label="Peralatan Survei Lapangan",
+                label="Peralatan Survei Lapangan Utama",
                 initial=selected.get(nomor),
                 widget=forms.Select(attrs={
                     "class": "form-control",
-                    "aria-label": f"Peralatan Survei Lapangan kolom {nomor}",
+                    "aria-label": f"Peralatan Survei Lapangan Utama slide {slide + 1} kolom {kolom + 1}",
                 }),
             )
             field.choices = choices
             self.fields[f"alat_{nomor}"] = field
+        self.slides = [
+            {"nomor": slide + 1, "fields": [self[f"alat_{slide * TV_SLOT_COUNT + kolom}"] for kolom in range(1, TV_SLOT_COUNT + 1)]}
+            for slide in range(TV_SLIDE_COUNT)
+        ]
 
     def clean(self):
         cleaned_data = super().clean()
         selected = {}
-        for nomor in range(1, TV_SLOT_COUNT + 1):
+        for nomor in range(1, TV_TOTAL_SLOTS + 1):
             field_name = f"alat_{nomor}"
             alat = cleaned_data.get(field_name)
             if alat is None:
                 continue
             if alat.pk in selected:
+                slide, kolom = divmod(selected[alat.pk] - 1, TV_SLOT_COUNT)
                 self.add_error(
                     field_name,
-                    f"Alat sudah dipilih pada kolom {selected[alat.pk]}. Pilih alat yang berbeda.",
+                    f"Alat sudah dipilih pada kolom {kolom + 1} slide {slide + 1}. Pilih alat yang berbeda.",
                 )
             else:
                 selected[alat.pk] = nomor
@@ -57,7 +63,7 @@ class KontenAlatTVForm(forms.Form):
         if not self.is_valid():
             raise ValueError("Konfigurasi alat TV belum valid.")
         with transaction.atomic():
-            for nomor in range(1, TV_SLOT_COUNT + 1):
+            for nomor in range(1, TV_TOTAL_SLOTS + 1):
                 KontenAlatTV.objects.update_or_create(
                     nomor=nomor,
                     defaults={"alat": self.cleaned_data[f"alat_{nomor}"]},

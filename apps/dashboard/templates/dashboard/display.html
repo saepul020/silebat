@@ -77,16 +77,18 @@
         <section class="card dashboard-chart dashboard-chart--full tv-chart-card" aria-label="Slide peralatan dan grafik dashboard">
             <div class="dashboard-chart__header tv-chart-head">
                 <div class="dashboard-chart__top tv-chart-top">
-                    <h3 class="card-title" data-tv-slide-title>Peralatan Survei Lapangan</h3>
+                    <h3 class="card-title" data-tv-slide-title>Peralatan Survei Lapangan Utama</h3>
                     <div class="tv-dots" data-tv-dots aria-hidden="true"></div>
                 </div>
             </div>
             <div class="dashboard-chart__area tv-chart-stage">
-                <article class="tv-chart-slide is-active" data-tv-slide data-title="Peralatan Survei Lapangan">
-                    <div class="tv-equipment" data-tv-equipment aria-live="polite">
-                        {% include 'dashboard/partials/tv_equipment.html' %}
+                {% for slide in tv_slides %}
+                <article class="tv-chart-slide{% if forloop.first %} is-active{% endif %}" data-tv-slide data-title="Peralatan Survei Lapangan Utama" aria-label="Peralatan Survei Lapangan Utama slide {{ slide.nomor }}">
+                    <div class="tv-equipment" data-tv-equipment="{{ slide.nomor }}" aria-live="polite">
+                        {% include 'dashboard/partials/tv_equipment.html' with tv_slots=slide.slots %}
                     </div>
                 </article>
+                {% endfor %}
                 <article class="tv-chart-slide" data-tv-slide data-title="Rekap Peminjaman">
                     <canvas id="tvApprovedChart" aria-label="Grafik rekap peminjaman"></canvas>
                 </article>
@@ -124,6 +126,7 @@
     {% include 'partials/loading.html' %}
     <script src="{% static 'js/loading.js' %}?v=20260612-global-loading-v1" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
-    <script src="{% static 'js/dashboard_display.js' %}?v=20261106-alat-tv-v1" defer></script>
+    <script src="{% static 'js/chart_data.js' %}?v=20261106-instansi-sort-v1" defer></script>
+    <script src="{% static 'js/dashboard_display.js' %}?v=20261106-instansi-sort-v1" defer></script>
 </body>
 </html>
