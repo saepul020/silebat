@@ -25,9 +25,6 @@ const TV_MONTH_LABELS = {
     12: 'Des',
 };
 
-const TV_COMPACT_WIDTH = 1280;
-const TV_COMPACT_HEIGHT = 800;
-
 const tvZeroDashPlugin = {
     id: 'tvZeroDashPlugin',
     afterDatasetsDraw(chart) {
@@ -277,15 +274,15 @@ function initTvCharts() {
 
     Chart.defaults.font.family = '"Montserrat", Arial, sans-serif';
     Chart.defaults.color = getComputedStyle(document.documentElement).getPropertyValue('--text-soft').trim() || '#103e6f';
-    Chart.register(tvZeroDashPlugin);
+    Chart.register(tvZeroDashPlugin, tvLabelPlugin);
     window.tvChartInstances = [
         createTvApprovedChart(),
-        createTvCategoryChart('tvLayananChart', 'data-layanan', 'layananId', 'Total Peminjaman', 12, 45),
+        createTvCategoryChart('tvLayananChart', 'data-layanan', 'layananId', 'Total Peminjaman'),
         createTvPengukuranChart(),
         createTvGroupedChart('tvTimChart', 'data-tim', 'timId', 'teams'),
-        createTvCategoryChart('tvSurveiChart', 'data-survei', 'surveiId', 'Total Peminjaman', 10, 50),
+        createTvCategoryChart('tvSurveiChart', 'data-survei', 'surveiId', 'Total Peminjaman'),
         ...Array.from(document.querySelectorAll('[data-instansi-chart]'), function (canvas) {
-            return createTvCategoryChart(canvas.id, 'data-' + canvas.dataset.instansiChart, 'instansiId', 'Total Peminjaman', 10, 50);
+            return createTvCategoryChart(canvas.id, 'data-' + canvas.dataset.instansiChart, 'instansiId', 'Total Peminjaman');
         }),
     ].filter(Boolean);
 }
@@ -321,7 +318,7 @@ function formatTvMonth(monthKey) {
     return TV_MONTH_LABELS[Number(parts[1])] || '-';
 }
 
-function createTvBaseOptions(maxValue, wrapWidth, rotation) {
+function createTvBaseOptions(maxValue) {
     const hasValue = Number(maxValue || 0) > 0;
     return {
         responsive: true,
@@ -368,15 +365,12 @@ function createTvBaseOptions(maxValue, wrapWidth, rotation) {
                 },
                 ticks: {
                     autoSkip: false,
-                    maxRotation: rotation,
-                    minRotation: rotation,
+                    maxRotation: 0,
+                    minRotation: 0,
                     color: '#48677d',
                     font: {
                         size: 9,
                         weight: '700',
-                    },
-                    callback: function (value) {
-                        return wrapTvLabel(this.getLabelForValue(value), wrapWidth, 2);
                     },
                 },
             },
@@ -401,45 +395,35 @@ function createTvBaseOptions(maxValue, wrapWidth, rotation) {
     };
 }
 
-function getTvInstansiTickProfile(width, height) {
-    const viewportWidth = Math.max(Number(width || window.innerWidth || 0), 1);
-    const viewportHeight = Math.max(Number(height || window.innerHeight || 0), 1);
-    const compact = viewportWidth <= TV_COMPACT_WIDTH || viewportHeight <= TV_COMPACT_HEIGHT;
-
-    if (!compact) {
-        return {
-            maxLines: 2,
-            rotation: 50,
-            wrapWidth: 10,
-            fontSize: 9,
-        };
-    }
-
+function getTvTickProfile(labels, width) {
+    const longest = labels.reduce((max, label) => Math.max(max, String(label).trim().length), 0);
+    const slot = Math.max(1, (Number(width) - 48) / Math.max(1, labels.length));
+    const longLabels = longest > 14 || longest * 5.4 > slot;
+    const fontSize = longLabels ? Math.max(6, Math.min(8, slot / 8)) : 9;
     return {
-        maxLines: 1,
-        rotation: 90,
-        wrapWidth: viewportWidth <= 1024 ? 11 : 13,
-        fontSize: viewportWidth <= 1024 ? 7 : 8,
+        rotation: longLabels ? 22.5 : 0,
+        wrapWidth: Math.max(8, Math.min(28, Math.floor(slot / (fontSize * 0.58)))),
+        fontSize: fontSize,
     };
 }
 
-function applyTvInstansiAxis(options, size) {
-    const ticks = options?.scales?.x?.ticks;
-    if (!ticks) {
-        return;
-    }
-
-    const profile = getTvInstansiTickProfile(size?.width, size?.height);
-    ticks.autoSkip = false;
-    delete ticks.maxTicksLimit;
-    ticks.maxRotation = profile.rotation;
-    ticks.minRotation = profile.rotation;
-    ticks.align = 'center';
-    ticks.font.size = profile.fontSize;
-    ticks.callback = function (value) {
-        return wrapTvLabel(this.getLabelForValue(value), profile.wrapWidth, profile.maxLines);
-    };
-}
+// Shared by every Live TV chart and recomputed before layout, including resize.
+const tvLabelPlugin = {
+    id: 'tvLabelPlugin',
+    beforeLayout(chart) {
+        const ticks = chart.options.scales?.x?.ticks;
+        if (!ticks) {
+            return;
+        }
+        const profile = getTvTickProfile(chart.data.labels || [], chart.width);
+        ticks.minRotation = profile.rotation;
+        ticks.maxRotation = profile.rotation;
+        ticks.font.size = profile.fontSize;
+        ticks.callback = function (value) {
+            return wrapTvLabel(this.getLabelForValue(value), profile.wrapWidth);
+        };
+    },
+};
 
 function createTvChart(canvasId, labels, datasets, maxValue, options) {
     const canvas = document.getElementById(canvasId);
@@ -453,7 +437,7 @@ function createTvChart(canvasId, labels, datasets, maxValue, options) {
             labels: labels,
             datasets: datasets,
         },
-        options: options || createTvBaseOptions(maxValue, 12, 0),
+        options: options || createTvBaseOptions(maxValue),
     });
 }
 
@@ -468,6 +452,13 @@ function buildTvBarDataset(label, data, backgroundColor, borderColor) {
         borderSkipped: false,
         categoryPercentage: 0.94,
         barPercentage: 0.96,
+    };
+}
+
+function getTvPinjamColors(dataset) {
+    return {
+        backgroundColor: dataset?.backgroundColor || 'rgba(16, 62, 111, 0.82)',
+        borderColor: dataset?.borderColor || 'rgba(16, 62, 111, 1)',
     };
 }
 
@@ -493,13 +484,14 @@ function createTvApprovedChart() {
     });
     const maxValue = Math.max.apply(null, data.concat([0]));
     const dataset = source.dataset || {};
-    const options = createTvBaseOptions(maxValue, 8, 0);
+    const colors = getTvPinjamColors(dataset);
+    const options = createTvBaseOptions(maxValue);
     options.plugins.legend.display = false;
 
     return createTvChart(
         'tvApprovedChart',
         monthKeys.map(formatTvMonth),
-        [buildTvBarDataset(dataset.label || 'Total Peminjaman', data, dataset.backgroundColor || 'rgba(16, 62, 111, 0.82)', dataset.borderColor || 'rgba(16, 62, 111, 1)')],
+        [buildTvBarDataset(dataset.label || 'Total Peminjaman', data, colors.backgroundColor, colors.borderColor)],
         maxValue,
         options,
     );
@@ -531,17 +523,15 @@ function createTvPengukuranChart() {
     const data = categories.map(function (category) {
         return Number(totals.get(category.id) || 0);
     });
-    const colors = categories.map(function (category) {
-        return category.backgroundColor || 'rgba(16, 62, 111, 0.82)';
-    });
+    const colors = getTvPinjamColors(readTvData('data-pinjam')?.dataset);
     const maxValue = Math.max.apply(null, data.concat([0]));
-    const options = createTvBaseOptions(maxValue, 10, 0);
+    const options = createTvBaseOptions(maxValue);
     options.plugins.legend.display = false;
 
     return createTvChart(
         'tvPengukuranChart',
         labels,
-        [buildTvBarDataset('Akumulasi Tahun Berjalan', data, colors, colors)],
+        [buildTvBarDataset('Akumulasi Tahun Berjalan', data, colors.backgroundColor, colors.borderColor)],
         maxValue,
         options,
     );
@@ -584,11 +574,11 @@ function createTvGroupedChart(canvasId, scriptId, categoryKey, categoryConfigKey
         return Math.max(highest, Math.max.apply(null, dataset.data.concat([0])));
     }, 0);
 
-    const options = createTvBaseOptions(maxValue, 8, 0);
+    const options = createTvBaseOptions(maxValue);
     return createTvChart(canvasId, monthKeys.map(formatTvMonth), datasets, maxValue, options);
 }
 
-function createTvCategoryChart(canvasId, scriptId, idKey, datasetLabel, wrapWidth, rotation) {
+function createTvCategoryChart(canvasId, scriptId, idKey, datasetLabel) {
     const source = readTvData(scriptId);
     if (!source) {
         return null;
@@ -621,20 +611,8 @@ function createTvCategoryChart(canvasId, scriptId, idKey, datasetLabel, wrapWidt
         return category.backgroundColor || 'rgba(16, 62, 111, 0.82)';
     });
     const maxValue = Math.max.apply(null, data.concat([0]));
-    const options = createTvBaseOptions(maxValue, wrapWidth, rotation);
+    const options = createTvBaseOptions(maxValue);
     options.plugins.legend.display = false;
-    if (idKey === 'instansiId') {
-        applyTvInstansiAxis(options, {
-            width: window.innerWidth,
-            height: window.innerHeight,
-        });
-        options.onResize = function (chart, size) {
-            applyTvInstansiAxis(chart.config.options, {
-                width: size?.width || window.innerWidth,
-                height: window.innerHeight,
-            });
-        };
-    }
 
     return createTvChart(
         canvasId,
@@ -645,7 +623,7 @@ function createTvCategoryChart(canvasId, scriptId, idKey, datasetLabel, wrapWidt
     );
 }
 
-function wrapTvLabel(label, maxCharsPerLine, maxLines) {
+function wrapTvLabel(label, maxCharsPerLine) {
     if (typeof label !== 'string' || !label.trim()) {
         return label;
     }
@@ -655,6 +633,7 @@ function wrapTvLabel(label, maxCharsPerLine, maxLines) {
         return normalized;
     }
 
+    const limit = Math.max(1, Math.floor(Number(maxCharsPerLine) || 1));
     const words = normalized.split(' ');
     const lines = [];
     let currentLine = '';
@@ -665,7 +644,7 @@ function wrapTvLabel(label, maxCharsPerLine, maxLines) {
         }
 
         const nextLine = currentLine ? currentLine + ' ' + word : word;
-        if (nextLine.length <= maxCharsPerLine) {
+        if (nextLine.length <= limit) {
             currentLine = nextLine;
             return;
         }
@@ -673,18 +652,16 @@ function wrapTvLabel(label, maxCharsPerLine, maxLines) {
         if (currentLine) {
             lines.push(currentLine);
         }
-        currentLine = word.length > maxCharsPerLine ? word.slice(0, maxCharsPerLine) : word;
+        // Preserve the entire label, including long names without spaces.
+        while (word.length > limit) {
+            lines.push(word.slice(0, limit));
+            word = word.slice(limit);
+        }
+        currentLine = word;
     });
 
     if (currentLine) {
         lines.push(currentLine);
-    }
-
-    if (lines.length > maxLines) {
-        const limited = lines.slice(0, maxLines);
-        const lastIndex = limited.length - 1;
-        limited[lastIndex] = limited[lastIndex].slice(0, Math.max(1, maxCharsPerLine - 3)).replace(/[\s.]+$/g, '') + '...';
-        return limited;
     }
 
     return lines;

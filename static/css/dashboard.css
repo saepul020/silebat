@@ -202,6 +202,93 @@
     box-shadow: 0 0 0 4px rgba(16, 62, 111, 0.08);
 }
 
+.chart-picker {
+    position: relative;
+    width: 360px;
+    max-width: 100%;
+    color: var(--text);
+    font-size: 0.86rem;
+}
+
+.chart-picker__toggle {
+    min-height: 40px;
+    padding: 8px 12px;
+    border: 1px solid var(--border-strong);
+    border-radius: 12px;
+    background: var(--surface);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.chart-picker__toggle:focus-visible {
+    outline: 2px solid var(--color-aqua-teal);
+    outline-offset: 2px;
+}
+
+.chart-picker__count {
+    margin-left: 6px;
+    color: var(--text-soft);
+    font-size: 0.85em;
+}
+
+.chart-picker__panel {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    z-index: 10;
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--border-strong);
+    border-radius: 12px;
+    background: var(--surface);
+    box-shadow: 0 8px 24px rgba(16, 62, 111, 0.16);
+}
+
+.chart-picker__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.chart-picker__options {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.chart-picker__option {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 8px 4px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.chart-picker__option:hover {
+    background: var(--surface-soft);
+}
+
+.chart-picker__option input {
+    flex: 0 0 auto;
+    width: 16px;
+    height: 16px;
+    min-height: 0;
+    margin: 2px 0 0;
+    padding: 0;
+    accent-color: var(--color-primary-navy);
+}
+
+.chart-picker__option span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.chart-picker__empty {
+    margin: 8px 0;
+    color: var(--text-soft);
+}
+
 .dashboard-chart__area {
     position: relative;
     flex: 1 1 auto;

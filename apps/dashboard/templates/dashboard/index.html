@@ -4,7 +4,7 @@
 {% block title %}Dashboard{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=20260703-chart-excel-v1">
+<link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=20261106-inventory-filter-v1">
 {% endblock %}
 
 {% block content %}
@@ -519,6 +519,7 @@
                 </div>
             </div>
         </div>
+        {% include 'dashboard/partials/chart_filter.html' with key='bahan' label='Pilih bahan operasional' items=bahan_chart.items %}
     </div>
     <div class="dashboard-chart__area chart-area--scroll" data-chart-wrapper="bahan">
         <div class="dashboard-chart__scroll" data-chart-scroll="bahan">
@@ -546,6 +547,7 @@
                 </div>
             </div>
         </div>
+        {% include 'dashboard/partials/chart_filter.html' with key='penunjang' label='Pilih barang penunjang' items=penunjang_chart.items %}
     </div>
     <div class="dashboard-chart__area chart-area--scroll" data-chart-wrapper="penunjang">
         <div class="dashboard-chart__scroll" data-chart-scroll="penunjang">
@@ -578,5 +580,5 @@
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
 <script src="{% static 'js/chart_data.js' %}?v=20261106-instansi-sort-v1" defer></script>
-<script src="{% static 'js/dashboard.js' %}?v=20261106-instansi-sort-v1" defer></script>
+<script src="{% static 'js/dashboard.js' %}?v=20261106-inventory-filter-v1" defer></script>
 {% endblock %}

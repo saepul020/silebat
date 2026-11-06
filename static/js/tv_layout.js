@@ -1,4 +1,4 @@
-/* Explicit signage mode. Reference dimensions set proportions, never the viewport. */
+/* Explicit signage mode. Normal display typography until content needs fitting. */
 function getTvViewport(viewport, fallback) {
     const positive = value => Number.isFinite(Number(value)) && Number(value) > 0;
     const offset = value => Number.isFinite(Number(value)) ? Math.max(0, Number(value)) : 0;
@@ -45,7 +45,7 @@ function initTvLayout() {
         }
     }
 
-    function paginateRows(height) {
+    function paginateRows(height, share = 0.3) {
         if (!table || !tbody) {
             return;
         }
@@ -53,7 +53,7 @@ function initTvLayout() {
         const rows = Array.from(tbody.children);
         rows.forEach(row => { row.hidden = false; });
         const fixed = table.getBoundingClientRect().height - tbody.getBoundingClientRect().height;
-        const available = Math.max(1, height * 0.3 - fixed);
+        const available = Math.max(1, height * share - fixed);
         rowPages = [];
         let group = [];
         let used = 0;
@@ -77,29 +77,16 @@ function initTvLayout() {
         showRows();
     }
 
-    function fitPhotos() {
-        let fits = true;
-        page.querySelectorAll('.tv-equipment__card').forEach(card => {
+    function contentFits() {
+        const photosFit = Array.from(page.querySelectorAll('.tv-equipment__card')).every(card => {
             const photo = card.querySelector('.tv-equipment__photo');
-            const body = card.querySelector('.tv-equipment__body, .tv-summary__body');
-            if (!photo || !body) {
-                return;
+            if (!photo) {
+                return true;
             }
-            const previous = body.style.flex;
-            body.style.flex = '0 0 auto';
-            const required = body.getBoundingClientRect().height;
-            body.style.flex = previous;
-            const width = Math.max(1, Math.min(card.clientWidth, (card.clientHeight - required) * 4 / 3));
-            const rounded = Math.floor(width * 100) / 100;
-            setValue(photo, 'width', `${rounded}px`);
-            setValue(photo, 'height', `${rounded * 0.75}px`);
-            setValue(photo, 'padding-top', '0px');
-            if (width < Math.min(card.clientWidth, fontSize * 6)) {
-                fits = false;
-            }
+            return photo.getBoundingClientRect().bottom <= card.getBoundingClientRect().bottom + 1;
         });
         const nodes = page.querySelectorAll('.tv-equipment__body, .tv-summary__body, .tv-head h1, .tv-head p');
-        return fits && Array.from(nodes).every(node =>
+        return photosFit && Array.from(nodes).every(node =>
             node.scrollWidth <= node.clientWidth + 1 && node.scrollHeight <= node.clientHeight + 1
         );
     }
@@ -114,7 +101,7 @@ function initTvLayout() {
         setValue(root, '--tv-height', `${size.height}px`);
         setValue(root, '--tv-left', `${size.left}px`);
         setValue(root, '--tv-top', `${size.top}px`);
-        const base = Math.min(16, Math.max(10, 16 * Math.min(size.width / 1920, size.height / 1080)));
+        const base = 16;
         if (changed || dirty) {
             fontSize = base;
         }
@@ -122,12 +109,18 @@ function initTvLayout() {
         if (changed || dirty) {
             paginateRows(size.height);
         }
-        let fits = fitPhotos();
+        let tableShare = 0.3;
+        let fits = contentFits();
+        while (!fits && tableShare > 0.18) {
+            tableShare = Math.max(0.18, tableShare - 0.04);
+            paginateRows(size.height, tableShare);
+            fits = contentFits();
+        }
         for (let attempt = 0; !fits && attempt < 6 && fontSize > base * 0.75; attempt += 1) {
             fontSize = Math.max(base * 0.75, fontSize * 0.95);
             setValue(root, '--tv-font-size', `${fontSize}px`);
-            paginateRows(size.height);
-            fits = fitPhotos();
+            paginateRows(size.height, tableShare);
+            fits = contentFits();
         }
         dirty = false;
         root.dataset.tvFit = fits ? 'ready' : 'compact';

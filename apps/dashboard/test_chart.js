@@ -68,7 +68,7 @@ test('TV and dashboard keep labels, totals, and colors aligned for the same year
         for (const year of [2026, 2025]) {
             source.defaultYear = year;
             const dashboard = dashboardData(context, source, year);
-            const tv = context.createTvCategoryChart('canvas', 'script', 'instansiId', 'Total', 10, 50);
+            const tv = context.createTvCategoryChart('canvas', 'script', 'instansiId', 'Total');
             assert.deepEqual(Array.from(tv.labels), Array.from(dashboard.labels));
             assert.deepEqual(Array.from(tv.datasets[0].data), Array.from(dashboard.datasets[0].data));
             assert.deepEqual(Array.from(tv.datasets[0].backgroundColor), Array.from(dashboard.datasets[0].backgroundColor));
@@ -114,4 +114,56 @@ test('Empty data is safe and non-institution charts retain their category order'
     const source = chartSource('instansi-internal');
     const result = context.buildSingleSeriesChartData(source, 2026, 'layananId', 'Total', 'scrollable');
     assert.deepEqual(Array.from(result.labels), source.categories.map(category => category.label));
+});
+
+test('Long axis labels use smaller type and 22.5 degrees in every viewport', () => {
+    const context = chartContext();
+    const labels = ['BBWS Citarum', 'Balai Besar Wilayah Sungai Bengawan Solo'];
+    for (const width of [390, 960, 1280, 1920, 3840]) {
+        const profile = context.getTvTickProfile(labels, width);
+        assert.equal(profile.rotation, 22.5);
+        assert.ok(profile.fontSize >= 6 && profile.fontSize < 9);
+    }
+    const months = context.buildTvMonthKeys(2026).map(context.formatTvMonth);
+    assert.equal(context.getTvTickProfile(months, 960).rotation, 0);
+    assert.equal(context.getTvTickProfile(months, 960).fontSize, 9);
+    assert.equal(context.getTvTickProfile([], 960).rotation, 0);
+});
+
+test('Wrapping preserves full names and long words instead of truncating them', () => {
+    const context = chartContext();
+    for (const label of [
+        'Balai Besar Wilayah Sungai Bengawan Solo',
+        'PengukuranElektromagnetikTanpaSpasi', '  Internal   SDA  ',
+    ]) {
+        const result = context.wrapTvLabel(label, 10);
+        const lines = Array.isArray(result) ? Array.from(result) : [result];
+        assert.equal(lines.join('').replace(/\s/g, ''), label.replace(/\s/g, ''));
+        assert.ok(lines.every(line => line.length <= 10));
+    }
+    assert.equal(context.wrapTvLabel('', 10), '');
+});
+
+test('The shared axis plugin recalculates after resizing or changing labels', () => {
+    const context = chartContext();
+    const plugin = vm.runInContext('tvLabelPlugin', context);
+    const chart = {
+        width: 1920,
+        data: { labels: Array(12).fill('Balai Besar Wilayah Sungai') },
+        options: context.createTvBaseOptions(1),
+    };
+    plugin.beforeLayout(chart);
+    const wideWrap = [].concat(chart.options.scales.x.ticks.callback.call({ getLabelForValue: () => chart.data.labels[0] }, 0));
+    chart.width = 390;
+    plugin.beforeLayout(chart);
+    const ticks = chart.options.scales.x.ticks;
+    assert.equal(ticks.minRotation, 22.5);
+    assert.equal(ticks.maxRotation, 22.5);
+    assert.equal(ticks.autoSkip, false);
+    assert.ok(ticks.font.size < 8);
+    assert.ok(ticks.callback.call({ getLabelForValue: () => chart.data.labels[0] }, 0).length > wideWrap.length);
+    chart.data.labels = ['Jan', 'Feb'];
+    plugin.beforeLayout(chart);
+    assert.equal(ticks.maxRotation, 0);
+    assert.equal(ticks.font.size, 9);
 });

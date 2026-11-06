@@ -1,0 +1,24 @@
+<div class="dashboard-chart__filters">
+    <details class="chart-picker" data-chart-picker="{{ key }}">
+        <summary class="chart-picker__toggle">
+            <span>{{ label }}</span>
+            <span class="chart-picker__count" data-chart-selection>Semua data</span>
+        </summary>
+        <div class="chart-picker__panel">
+            <div class="chart-picker__actions">
+                <button type="button" class="btn btn-secondary btn-sm" data-chart-select="all"{% if not items %} disabled{% endif %}>Pilih semua</button>
+                <button type="button" class="btn btn-secondary btn-sm" data-chart-select="none"{% if not items %} disabled{% endif %}>Kosongkan</button>
+            </div>
+            <div class="chart-picker__options" role="group" aria-label="{{ label }}">
+                {% for item in items %}
+                <label class="chart-picker__option">
+                    <input type="checkbox" value="{{ item.id }}" checked>
+                    <span>{{ item.label }}{% if item.unit %} ({{ item.unit }}){% endif %}</span>
+                </label>
+                {% empty %}
+                <p class="chart-picker__empty">Belum ada pilihan data.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </details>
+</div>

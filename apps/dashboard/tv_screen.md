@@ -7,21 +7,24 @@ Mode tidak ditentukan dari user agent atau resolusi fisik TV.
 
 ## Layout dan refresh
 
-- `dashboard_display.css` menyimpan layout normal. `tv_screen.css` dan `tv_layout.js`
-  hanya dimuat pada mode TV; breakpoint tablet/ponsel tidak mengubah jumlah kolom mode TV.
+- `dashboard_display.css` menjadi sumber bersama ukuran teks, padding, jarak, dan
+  style card untuk kedua mode. `tv_screen.css` hanya mengatur kebutuhan signage dan
+  `tv_layout.js` menangani viewport/paginasi; keduanya hanya dimuat pada mode TV.
+  Breakpoint tablet/ponsel tidak mengubah jumlah kolom mode TV.
 - `--tv-columns` pada `.tv-equipment` menjadi sumber ukuran halaman card (enam).
   Card tambahan dibagi ke halaman berikutnya. Slot yang belum dipilih tidak diduplikasi
   menjadi alat; halaman tanpa pilihan menampilkan pesan kosong.
 - Halaman menggunakan ukuran dan offset `visualViewport`, dengan fallback `innerWidth`
   dan `innerHeight`. Ukuran dihitung ulang pada resize, perubahan visual viewport,
   perubahan ukuran halaman, pemuatan font/gambar, dan pembaruan data.
-  Ukuran 1920×1080 di JS hanya acuan proporsi font, bukan ukuran viewport atau canvas paksa.
-  Skala font awal dibatasi 10–16 px agar tampilan kecil tetap terbaca dan viewport 4K
-  tidak membesarkan seluruh tipografi. Padding dan tinggi baris mengikuti proporsi tampilan normal;
-  penyesuaian tambahan hanya dilakukan jika konten memang tidak muat.
+  Font root dimulai dari 16 px seperti mode normal, tanpa mengecilkannya berdasarkan
+  tinggi/lebar viewport. Ukuran elemen mengikuti aturan responsif bersama. Jika konten
+  benar-benar tidak muat, kurangi baris tabel per halaman dahulu, kemudian font root
+  secara bertahap hingga 12 px. Tidak ada viewport/canvas dengan resolusi paksa.
 - Layout mengisi viewport aktual dengan ukuran CSS biasa, tanpa CSS `zoom` atau
-  `transform: scale()` pada dashboard. Foto tetap berasio 4:3; pada rasio layar yang
-  sangat lebar, frame foto dapat mengecil secara proporsional untuk memberi ruang informasi.
+  `transform: scale()` pada dashboard. Frame foto selalu selebar card dan berasio 4:3,
+  dengan gambar mengisi frame. Jika konten padat, tinggi halaman tabel dan ukuran teks
+  disesuaikan bersama; frame tidak diperkecil sendiri-sendiri berdasarkan isi card.
 - Tabel memakai maksimal sekitar 30% tinggi viewport. Jika tidak muat, seluruh baris
   tetap tersedia dalam halaman otomatis dengan indikator `Realtime · 1/2` dan seterusnya.
   Pergantian tabel mengikuti timer slideshow 8,5 detik yang sama.
@@ -29,8 +32,17 @@ Mode tidak ditentukan dari user agent atau resolusi fisik TV.
   terpisah dari halaman hasil pembagian agar refresh tidak menggandakan card atau timer.
 - Layout normal tetap enam kolom pada desktop, tiga pada tablet, dan satu pada ponsel,
   dengan perilaku scroll normal sebelumnya.
+- Badge status pada mode TV mewarisi jenis font cell tabel dan memakai ketebalan
+  700 seperti teks Peminjam. Khusus primary dan secondary, ukuran font memakai
+  aturan bersama `0.86em` dengan teks tanggal `s/d ...` pada kolom Periode.
+  Cell status dan `cell-wrap` memakai tinggi baris yang sama.
+- Di kedua mode Live TV, label sumbu bawah yang panjang menggunakan font 6–8 px
+  dan rotasi tetap 22,5°. Label pendek tetap horizontal jika ruang mencukupi.
+  Satu plugin menghitung ulang pengaturan sebelum layout grafik, termasuk setelah resize.
+  Pembungkusan label mempertahankan seluruh teks, termasuk kata panjang tanpa spasi.
 
 Referensi perilaku viewport: [MDN VisualViewport](https://developer.mozilla.org/en-US/docs/Web/API/VisualViewport).
+Pengaturan rotasi mengikuti opsi tick [Chart.js](https://www.chartjs.org/docs/latest/axes/cartesian/#tick-configuration).
 
 ## Validasi implementasi
 
@@ -52,6 +64,16 @@ membatasi page scale di bawah 100% pada konfigurasi emulasi tersebut.
 
 Pemeriksaan DOM mencakup posisi horizontal card, batas halaman, rasio foto, overflow
 body card/tabel, `scrollWidth/clientWidth`, dan `scrollHeight/clientHeight`.
+Frame foto juga diperiksa selebar card, sama tinggi antar-card dalam satu grid,
+serta gambar/placeholder memenuhi seluruh frame dengan rasio 4:3. Badge primary
+dan secondary diverifikasi memiliki ukuran font yang sama dengan tanggal `s/d ...`
+pada mode TV, dengan ketebalan 700 seperti teks Peminjam.
+Label grafik panjang diperiksa pada kedua mode, termasuk perubahan ukuran layar:
+rotasi 22,5°, font lebih kecil, dan tidak ada teks label yang terbuang.
+Pada viewport 1918×912 dengan dua kegiatan aktif, ukuran judul, nama alat, merek,
+metadata, padding card, serta teks tabel sama dengan mode normal; font root tetap 16 px.
+Header normal lebih tinggi karena memuat tombol aktivasi Mode TV, sehingga tinggi
+area slideshow kedua mode dapat berbeda meskipun ukuran isi card sudah sama.
 Kasus lain: viewport 1024×768 dan 1920×720, field master panjang, 13 card menjadi
 6–6–1 pada kedua jenis card, pengurangan menjadi dua card tanpa duplikasi, seluruh
 delapan baris tabel bergantian terlihat, satu timer slideshow, polling nyata, jam,

@@ -761,12 +761,15 @@ function buildSdmData(source, selectedYear) {
     };
 }
 
-function updateChartEmptyState(key, hasData) {
+function updateChartEmptyState(key, hasData, message) {
     const emptyState = document.querySelector('[data-chart-empty="' + key + '"]');
     if (!emptyState) {
         return;
     }
 
+    if (message) {
+        emptyState.textContent = message;
+    }
     emptyState.classList.toggle('is-hidden', hasData);
 }
 
@@ -1179,8 +1182,51 @@ function initPeralatanSurveiChart() {
     renderChart();
 }
 
-function getInventoryItems(source) {
-    return Array.isArray(source?.items) ? source.items : [];
+function getInventoryItems(source, selectedIds = null) {
+    const items = Array.isArray(source?.items) ? source.items : [];
+    return selectedIds === null ? items : items.filter(item => selectedIds.has(String(item.id)));
+}
+
+function bindInventoryFilter(key, renderChart) {
+    const picker = document.querySelector('[data-chart-picker="' + key + '"]');
+    if (!picker) {
+        return () => null;
+    }
+    const inputs = Array.from(picker.querySelectorAll('input[type="checkbox"]'));
+    const summary = picker.querySelector('[data-chart-selection]');
+    const getSelection = () => new Set(inputs.filter(input => input.checked).map(input => input.value));
+
+    function updateSelection() {
+        const count = getSelection().size;
+        summary.textContent = !inputs.length ? 'Tidak ada data'
+            : count === inputs.length ? 'Semua data' : count + ' dipilih';
+    }
+
+    picker.addEventListener('change', function () {
+        updateSelection();
+        renderChart();
+    });
+    picker.querySelectorAll('[data-chart-select]').forEach(function (button) {
+        button.addEventListener('click', function () {
+            inputs.forEach(input => { input.checked = button.dataset.chartSelect === 'all'; });
+            updateSelection();
+            renderChart();
+        });
+    });
+    picker.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape' && picker.open) {
+            picker.open = false;
+            picker.querySelector('summary').focus();
+            event.preventDefault();
+        }
+    });
+    document.addEventListener('click', function (event) {
+        if (!picker.contains(event.target)) {
+            picker.open = false;
+        }
+    });
+    updateSelection();
+    return getSelection;
 }
 
 function createInventoryChartOptions(maxValue, units, stacked) {
@@ -1203,8 +1249,8 @@ function createInventoryChartOptions(maxValue, units, stacked) {
     return options;
 }
 
-function buildBahanChartData(source) {
-    const items = getInventoryItems(source);
+function buildBahanChartData(source, selectedIds = null) {
+    const items = getInventoryItems(source, selectedIds);
     const data = items.map(function (item) {
         return Number(item.stock || 0);
     });
@@ -1232,8 +1278,8 @@ function buildBahanChartData(source) {
     };
 }
 
-function buildPenunjangChartData(source) {
-    const items = getInventoryItems(source);
+function buildPenunjangChartData(source, selectedIds = null) {
+    const items = getInventoryItems(source, selectedIds);
     const rusak = items.map(function (item) {
         return Number(item.rusak || 0);
     });
@@ -1289,11 +1335,14 @@ function initBahanOperasionalChart() {
     }
 
     let chartInstance = null;
+    const getSelection = bindInventoryFilter('bahan', renderChart);
 
     function renderChart(updateMode) {
-        const chartData = buildBahanChartData(source);
+        const chartData = buildBahanChartData(source, getSelection());
         updateScrollableChartWidth(holder, chartData.labels.length, isMobileViewport() ? 72 : 118);
-        updateChartEmptyState('bahan', chartData.hasData);
+        updateChartEmptyState('bahan', chartData.hasData, getInventoryItems(source).length
+            ? 'Pilih minimal satu bahan operasional untuk menampilkan grafik.'
+            : 'Belum ada data bahan operasional.');
         const options = createInventoryChartOptions(chartData.maxValue, chartData.units, false);
         options.plugins.legend.display = false;
         chartInstance = upsertBarChart(chartInstance, canvas, chartData.labels, chartData.datasets, options, updateMode);
@@ -1313,11 +1362,14 @@ function initBarangPenunjangChart() {
     }
 
     let chartInstance = null;
+    const getSelection = bindInventoryFilter('penunjang', renderChart);
 
     function renderChart(updateMode) {
-        const chartData = buildPenunjangChartData(source);
+        const chartData = buildPenunjangChartData(source, getSelection());
         updateScrollableChartWidth(holder, chartData.labels.length, isMobileViewport() ? 72 : 118);
-        updateChartEmptyState('penunjang', chartData.hasData);
+        updateChartEmptyState('penunjang', chartData.hasData, getInventoryItems(source).length
+            ? 'Pilih minimal satu barang penunjang untuk menampilkan grafik.'
+            : 'Belum ada data barang penunjang lapangan.');
         const options = createInventoryChartOptions(chartData.maxValue, chartData.units, true);
         chartInstance = upsertBarChart(chartInstance, canvas, chartData.labels, chartData.datasets, options, updateMode);
     }

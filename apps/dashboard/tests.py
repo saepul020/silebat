@@ -117,6 +117,9 @@ class DashboardInventoryChartTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'id="grafikBahan"')
         self.assertContains(response, 'id="grafikPenunjang"')
+        self.assertContains(response, 'data-chart-picker="bahan"')
+        self.assertContains(response, 'data-chart-picker="penunjang"')
+        self.assertContains(response, 'value="%s" checked' % BahanOperasional.objects.get(nama_barang="Alpha Bahan").pk)
         self.assertEqual(response.context["bahan_chart"]["items"][0]["label"], "Alpha Bahan")
         self.assertEqual(response.context["penunjang_chart"]["items"][0]["rusak"], 3)
 
@@ -130,6 +133,7 @@ class DashboardInventoryChartTests(TestCase):
         self.assertNotIn("penunjang_chart", response.context)
         self.assertNotContains(response, 'id="grafikBahan"')
         self.assertNotContains(response, 'id="grafikPenunjang"')
+        self.assertNotContains(response, 'data-chart-picker=')
 
 
 class DashboardSurveyEquipmentChartTests(TestCase):
