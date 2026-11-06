@@ -3,10 +3,11 @@
    Chart dan slideshow public display.
 ======================================== */
 document.addEventListener('DOMContentLoaded', function () {
+    const layout = typeof initTvLayout === 'function' ? initTvLayout() : null;
     initTvClock();
     initTvCharts();
-    initTvSlides();
-    initTvActiveTable();
+    const slideshow = initTvSlides(layout);
+    initTvActiveTable(slideshow, layout);
 });
 
 const TV_MONTH_LABELS = {
@@ -64,7 +65,7 @@ const tvZeroDashPlugin = {
 };
 
 
-function initTvActiveTable() {
+function initTvActiveTable(slideshow, layout) {
     const wrapper = document.querySelector('[data-tv-active-url]');
     const body = document.querySelector('[data-tv-active-body]');
     const equipment = new Map(Array.from(document.querySelectorAll('[data-tv-equipment]'), node => [node.dataset.tvEquipment, node]));
@@ -79,6 +80,7 @@ function initTvActiveTable() {
     }
 
     let isLoading = false;
+    let tableHtml = body.innerHTML;
 
     async function loadActiveData() {
         if (isLoading) {
@@ -99,20 +101,24 @@ function initTvActiveTable() {
                 return;
             }
             const payload = await response.json();
-            if (typeof payload.html === 'string') {
+            if (typeof payload.html === 'string' && tableHtml !== payload.html) {
+                tableHtml = payload.html;
                 body.innerHTML = payload.html;
+                layout?.refresh();
             }
+            const updates = [];
             if (Array.isArray(payload.equipmentSlides)) {
                 payload.equipmentSlides.forEach(function (slide) {
                     const node = equipment.get(String(slide.nomor));
-                    if (node && typeof slide.html === 'string' && node.innerHTML !== slide.html) {
-                        node.innerHTML = slide.html;
+                    if (node && typeof slide.html === 'string') {
+                        updates.push({ node: node, html: slide.html });
                     }
                 });
             }
-            if (inventory && typeof payload.inventoryHtml === 'string' && inventory.innerHTML !== payload.inventoryHtml) {
-                inventory.innerHTML = payload.inventoryHtml;
+            if (inventory && typeof payload.inventoryHtml === 'string') {
+                updates.push({ node: inventory, html: payload.inventoryHtml });
             }
+            slideshow?.updateContents(updates);
         } catch (error) {
             console.error('Gagal memuat data kegiatan aktif display TV.', error);
         } finally {
@@ -150,23 +156,70 @@ function initTvClock() {
     window.setInterval(renderClock, 1000);
 }
 
-function initTvSlides() {
-    const slides = Array.from(document.querySelectorAll('[data-tv-slide]'));
-    const dotsContainer = document.querySelector('[data-tv-dots]');
-    const dots = slides.map(function () {
-        const dot = document.createElement('span');
-        dot.setAttribute('data-tv-dot', '');
-        return dot;
-    });
-    if (dotsContainer) {
-        dotsContainer.replaceChildren(...dots);
+function initTvSlides(layout) {
+    let slides = Array.from(document.querySelectorAll('[data-tv-slide]'));
+    if (!slides.length) {
+        return null;
     }
+    const stage = slides[0].parentElement;
+    const tvMode = document.documentElement.classList.contains('tv-screen');
+    const groups = slides.map(function (slide) {
+        const grid = slide.querySelector('.tv-equipment');
+        return grid ? { slide: slide, grid: grid, html: grid.innerHTML, extra: [] } : null;
+    }).filter(Boolean);
+    const dotsContainer = document.querySelector('[data-tv-dots]');
+    let dots = [];
     const title = document.querySelector('[data-tv-slide-title]');
-    if (slides.length <= 1) {
-        return;
+    let activeIndex = 0;
+
+    function renderGroup(group) {
+        group.extra.forEach(slide => slide.remove());
+        group.extra = [];
+        group.grid.innerHTML = group.html;
+        if (!tvMode) {
+            return;
+        }
+        const cards = Array.from(group.grid.children).filter(card =>
+            card.classList.contains('tv-equipment__card') && !card.classList.contains('tv-equipment__card--empty')
+        );
+        const pageSize = Math.max(1, parseInt(getComputedStyle(group.grid).getPropertyValue('--tv-columns'), 10) || cards.length);
+        group.grid.replaceChildren(...cards.slice(0, pageSize));
+        if (!cards.length) {
+            const message = document.createElement('p');
+            message.className = 'tv-equipment__empty';
+            message.textContent = 'Belum ada peralatan yang dipilih.';
+            group.grid.append(message);
+        }
+        let previous = group.slide;
+        for (let index = pageSize; index < cards.length; index += pageSize) {
+            const slide = group.slide.cloneNode(false);
+            slide.classList.remove('is-active');
+            slide.setAttribute('data-tv-generated', '');
+            const grid = group.grid.cloneNode(false);
+            grid.removeAttribute('data-tv-equipment');
+            grid.removeAttribute('data-tv-inventory');
+            grid.replaceChildren(...cards.slice(index, index + pageSize));
+            slide.append(grid);
+            previous.after(slide);
+            previous = slide;
+            group.extra.push(slide);
+        }
     }
 
-    let activeIndex = 0;
+    function syncSlides(current, fallback) {
+        slides = Array.from(stage.querySelectorAll('[data-tv-slide]'));
+        if (dots.length !== slides.length) {
+            dots = slides.map(function () {
+                const dot = document.createElement('span');
+                dot.setAttribute('data-tv-dot', '');
+                return dot;
+            });
+            dotsContainer?.replaceChildren(...dots);
+        }
+        const index = slides.indexOf(current);
+        const fallbackIndex = slides.indexOf(fallback);
+        showSlide(index >= 0 ? index : Math.max(0, fallbackIndex));
+    }
 
     function showSlide(nextIndex) {
         activeIndex = nextIndex % slides.length;
@@ -188,10 +241,33 @@ function initTvSlides() {
         }
     }
 
-    showSlide(0);
+    if (tvMode) {
+        groups.forEach(renderGroup);
+    }
+    syncSlides();
     window.setInterval(function () {
         showSlide(activeIndex + 1);
+        layout?.nextTablePage();
     }, 8500);
+    return {
+        updateContents(updates) {
+            const current = slides[activeIndex];
+            const activeGroup = groups.find(group => group.slide === current || group.extra.includes(current));
+            let changed = false;
+            updates.forEach(function (update) {
+                const group = groups.find(item => item.grid === update.node);
+                if (group && group.html !== update.html) {
+                    group.html = update.html;
+                    renderGroup(group);
+                    changed = true;
+                }
+            });
+            if (changed) {
+                syncSlides(current, activeGroup?.slide);
+                layout?.refresh();
+            }
+        },
+    };
 }
 
 function initTvCharts() {

@@ -46,8 +46,14 @@ class DisplayModeTests(SimpleTestCase):
                 self.assertContains(response, 'data-tv-dots')
                 if query:
                     self.assertContains(response, '<html lang="id" class="tv-screen">')
+                    self.assertContains(response, 'css/tv_screen.css')
+                    self.assertContains(response, 'js/tv_layout.js')
+                    self.assertNotContains(response, 'class="tv-mode-link"')
                 else:
                     self.assertNotContains(response, 'class="tv-screen"')
+                    self.assertNotContains(response, 'css/tv_screen.css')
+                    self.assertNotContains(response, 'js/tv_layout.js')
+                    self.assertContains(response, 'href="?tv=1">Aktifkan Mode TV</a>')
 
     def test_only_tv_equals_one_enables_the_mode(self):
         for query in ("?tv=0", "?tv=true", "?tv=", ""):

@@ -304,8 +304,9 @@ body.tv-body {
 }
 
 .tv-equipment {
+    --tv-columns: 6;
     display: grid;
-    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-columns: repeat(var(--tv-columns), minmax(0, 1fr));
     gap: clamp(8px, 0.8vw, 16px);
     height: 100%;
     overflow-y: auto;
@@ -527,7 +528,7 @@ body.tv-body {
     }
 
     html:not(.tv-screen) .tv-equipment {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        --tv-columns: 3;
         grid-auto-rows: max-content;
     }
 
@@ -538,32 +539,8 @@ body.tv-body {
 
 @media (max-width: 520px) {
     html:not(.tv-screen) .tv-equipment {
-        grid-template-columns: 1fr;
+        --tv-columns: 1;
     }
-}
-
-/* Explicit TV mode uses the actual CSS viewport, independent of physical pixels. */
-html.tv-screen {
-    font-size: clamp(8px, 0.833333vw, 16px);
-    -webkit-text-size-adjust: 100%;
-    text-size-adjust: 100%;
-}
-
-.tv-screen .tv-page {
-    grid-template-rows: auto minmax(0, 7vh) auto minmax(0, 1fr);
-    gap: clamp(4px, 0.72vw, 13px);
-    padding: clamp(7px, 1.18vw, 21px);
-}
-
-.tv-screen .tv-active-table {
-    display: flex;
-    flex-direction: column;
-    max-height: 30vh;
-}
-
-.tv-screen .tv-table-wrap {
-    overflow: auto;
-    scrollbar-width: thin;
 }
 
 .tv-chart-slide {
