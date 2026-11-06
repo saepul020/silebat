@@ -98,7 +98,7 @@ const zeroValueDashPlugin = {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'bottom';
         ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--text-soft').trim() || 'rgba(16, 62, 111, 0.68)';
-        ctx.font = '600 ' + getChartFontSize(11, 10, 9) + 'px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+        ctx.font = '600 ' + (chart.options.plugins.zeroValueDashPlugin?.fontSize || getChartFontSize(11, 10, 9)) + 'px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
 
         datasets.forEach(function (dataset, datasetIndex) {
             if (dataset.showZeroDash === false) {
@@ -373,27 +373,10 @@ function formatYearAccumulationLabel(year, singleYear) {
 }
 
 
-function getGroupedBarSizing() {
+function getBarSizing() {
     return {
-        categoryPercentage: isMobileViewport() ? 0.9 : 0.92,
-        barPercentage: isMobileViewport() ? 0.94 : 0.96,
-        maxBarThickness: isSmallMobileViewport() ? 24 : (isMobileViewport() ? 28 : 48),
-    };
-}
-
-function getSingleBarSizing(isScrollableChart) {
-    if (isScrollableChart) {
-        return {
-            categoryPercentage: isSmallMobileViewport() ? 1.0 : (isMobileViewport() ? 0.99 : 0.94),
-            barPercentage: isSmallMobileViewport() ? 0.99 : (isMobileViewport() ? 0.98 : 0.94),
-            maxBarThickness: isSmallMobileViewport() ? 34 : (isMobileViewport() ? 38 : 52),
-        };
-    }
-
-    return {
-        categoryPercentage: 0.92,
-        barPercentage: 0.94,
-        maxBarThickness: isSmallMobileViewport() ? 28 : (isMobileViewport() ? 32 : 52),
+        categoryPercentage: 0.94,
+        barPercentage: 0.96,
     };
 }
 
@@ -438,7 +421,7 @@ function buildMonthlyGroupedChartData(source, selectedYear, selectedMonth, categ
         });
     }
 
-    const barSizing = getGroupedBarSizing();
+    const barSizing = getBarSizing();
     const datasets = categories.map(function (category) {
         return {
             label: datasetLabelPrefix ? datasetLabelPrefix + ' - ' + category.label : category.label,
@@ -450,9 +433,7 @@ function buildMonthlyGroupedChartData(source, selectedYear, selectedMonth, categ
             borderWidth: 1,
             borderRadius: 8,
             borderSkipped: false,
-            categoryPercentage: barSizing.categoryPercentage,
-            barPercentage: barSizing.barPercentage,
-            maxBarThickness: barSizing.maxBarThickness,
+            ...barSizing,
         };
     });
 
@@ -509,7 +490,7 @@ function buildMonthlySingleSeriesChartData(source, selectedYear, selectedMonth) 
         });
     }
 
-    const barSizing = getSingleBarSizing(false);
+    const barSizing = getBarSizing();
     const data = dataKeys.map(function (dataKey) {
         return Number(totalsByPeriod.get(dataKey) || 0);
     });
@@ -526,9 +507,7 @@ function buildMonthlySingleSeriesChartData(source, selectedYear, selectedMonth) 
                 borderWidth: 1,
                 borderRadius: 8,
                 borderSkipped: false,
-                categoryPercentage: barSizing.categoryPercentage,
-                barPercentage: barSizing.barPercentage,
-                maxBarThickness: barSizing.maxBarThickness,
+                ...barSizing,
             },
         ],
         maxValue: maxValue,
@@ -537,7 +516,7 @@ function buildMonthlySingleSeriesChartData(source, selectedYear, selectedMonth) 
 
 
 
-function buildSingleSeriesChartData(source, selectedYear, idKey, datasetLabel, chartType) {
+function buildSingleSeriesChartData(source, selectedYear, idKey, datasetLabel) {
     const rows = Array.isArray(source?.rows) ? source.rows : [];
     let categories = Array.isArray(source?.categories) ? source.categories : [];
     const totals = new Map();
@@ -555,8 +534,7 @@ function buildSingleSeriesChartData(source, selectedYear, idKey, datasetLabel, c
         categories = sortInstansiCategories(categories, totals, source.key);
     }
 
-    const isScrollableChart = chartType === 'scrollable';
-    const barSizing = getSingleBarSizing(isScrollableChart);
+    const barSizing = getBarSizing();
     const data = categories.map(function (category) {
         return Number(totals.get(category.id) || 0);
     });
@@ -579,9 +557,7 @@ function buildSingleSeriesChartData(source, selectedYear, idKey, datasetLabel, c
                 borderWidth: 1,
                 borderRadius: 8,
                 borderSkipped: false,
-                categoryPercentage: barSizing.categoryPercentage,
-                barPercentage: barSizing.barPercentage,
-                maxBarThickness: barSizing.maxBarThickness,
+                ...barSizing,
             },
         ],
         maxValue: maxValue,
@@ -702,7 +678,6 @@ function initLayananKegiatanChart() {
             normalizeDashboardYearFilter(yearFilter.value),
             'layananId',
             'Total Peminjaman',
-            'standard',
         );
         const options = createSingleSeriesChartOptions(chartData.maxValue, 18, isMobileViewport() ? 55 : 42);
         chartInstance = upsertBarChart(chartInstance, canvas, chartData.labels, chartData.datasets, options, updateMode);
@@ -1104,7 +1079,6 @@ function initSurveiKegiatanChart() {
             normalizeDashboardYearFilter(yearFilter.value),
             'surveiId',
             'Total Peminjaman',
-            'scrollable',
         );
         updateScrollableChartWidth(holder, chartData.labels.length, isSmallMobileViewport() ? 54 : (isMobileViewport() ? 62 : 132));
         const options = createSingleSeriesChartOptions(chartData.maxValue, isMobileViewport() ? 13 : 18, isMobileViewport() ? 52 : 42);
@@ -1134,7 +1108,6 @@ function initInstansiTujuanChart(key) {
             normalizeDashboardYearFilter(yearFilter.value),
             'instansiId',
             'Total Peminjaman',
-            'scrollable',
         );
         updateScrollableChartWidth(holder, chartData.labels.length, isSmallMobileViewport() ? 56 : (isMobileViewport() ? 66 : 136));
         updateChartEmptyState(key, chartData.datasets[0].data.some(function (total) { return total > 0; }));
@@ -1165,7 +1138,6 @@ function initPeralatanSurveiChart() {
             normalizeDashboardYearFilter(yearFilter.value),
             'barangId',
             'Total Transaksi',
-            'scrollable',
         );
         updateScrollableChartWidth(holder, chartData.labels.length, isSmallMobileViewport() ? 56 : (isMobileViewport() ? 66 : 136));
         updateChartEmptyState('peralatan-survei', chartData.datasets.some(function (dataset) {
@@ -1198,8 +1170,7 @@ function bindInventoryFilter(key, renderChart) {
 
     function updateSelection() {
         const count = getSelection().size;
-        summary.textContent = !inputs.length ? 'Tidak ada data'
-            : count === inputs.length ? 'Semua data' : count + ' dipilih';
+        summary.textContent = count > 0 && count === inputs.length ? 'All' : count + ' item';
     }
 
     picker.addEventListener('change', function () {
@@ -1254,7 +1225,7 @@ function buildBahanChartData(source, selectedIds = null) {
     const data = items.map(function (item) {
         return Number(item.stock || 0);
     });
-    const barSizing = getSingleBarSizing(true);
+    const barSizing = getBarSizing();
 
     return {
         labels: items.map(function (item) { return item.label; }),
@@ -1268,9 +1239,7 @@ function buildBahanChartData(source, selectedIds = null) {
                 borderWidth: 1,
                 borderRadius: 8,
                 borderSkipped: false,
-                categoryPercentage: barSizing.categoryPercentage,
-                barPercentage: barSizing.barPercentage,
-                maxBarThickness: barSizing.maxBarThickness,
+                ...barSizing,
             },
         ],
         maxValue: Math.max.apply(null, data.concat([0])),
@@ -1289,15 +1258,13 @@ function buildPenunjangChartData(source, selectedIds = null) {
     const totals = items.map(function (_, index) {
         return rusak[index] + baik[index];
     });
-    const barSizing = getSingleBarSizing(true);
+    const barSizing = getBarSizing();
     const commonDataset = {
         stack: 'condition',
         borderWidth: 1,
         borderRadius: 0,
         borderSkipped: false,
-        categoryPercentage: barSizing.categoryPercentage,
-        barPercentage: barSizing.barPercentage,
-        maxBarThickness: barSizing.maxBarThickness,
+        ...barSizing,
         showZeroDash: false,
     };
 
@@ -1444,23 +1411,22 @@ function initChartDownloadActions() {
             const format = button.dataset.chartDownload || 'jpg';
 
             closeChartDownloadMenus();
-            if (format === 'xlsx') {
-                button.disabled = true;
-                try {
+            button.disabled = true;
+            try {
+                if (format === 'xlsx') {
                     await downloadDashboardChartExcel(
                         chartId,
                         title,
                         button.dataset.chartExportUrl
                     );
-                } catch (error) {
-                    window.alert(error.message || 'Export Excel grafik gagal diproses.');
-                } finally {
-                    button.disabled = false;
+                } else {
+                    downloadDashboardChart(chartId, title);
                 }
-                return;
+            } catch (error) {
+                window.alert(error.message || 'Download grafik gagal diproses.');
+            } finally {
+                button.disabled = false;
             }
-
-            downloadDashboardChart(chartId, title);
         });
     });
 
@@ -1555,13 +1521,6 @@ function downloadDashboardChart(chartId, title) {
         return;
     }
 
-    if (typeof Chart !== 'undefined') {
-        const chartInstance = Chart.getChart(canvas);
-        if (chartInstance && typeof chartInstance.update === 'function') {
-            chartInstance.update('none');
-        }
-    }
-
     const exportCanvas = buildDashboardChartExportCanvas(canvas, title);
     const dataUrl = exportCanvas.toDataURL('image/jpeg', 0.98);
 
@@ -1573,59 +1532,193 @@ function downloadDashboardChart(chartId, title) {
     document.body.removeChild(link);
 }
 
+function copyChartExport(value) {
+    if (Array.isArray(value)) {
+        return value.map(copyChartExport);
+    }
+    if (value && Object.prototype.toString.call(value) === '[object Object]') {
+        return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, copyChartExport(item)]));
+    }
+    return value;
+}
+
+function wrapExportText(context, text, maxWidth) {
+    const lines = [];
+    let line = '';
+    String(text).trim().split(/\s+/).forEach(function (word) {
+        if (line && context.measureText(line + word).width > maxWidth) {
+            lines.push(line);
+            line = '';
+        }
+        for (const character of word) {
+            if (context.measureText(line + character).width > maxWidth && line) {
+                lines.push(line);
+                line = '';
+            }
+            line += character;
+        }
+        line += ' ';
+    });
+    if (line.trim()) {
+        lines.push(line.trim());
+    }
+    return lines.map(item => item.trim());
+}
+
+function getChartExportFilters(canvas) {
+    const section = canvas.closest('.dashboard-chart');
+    if (!section) {
+        return 'Semua data';
+    }
+    const filters = Array.from(section.querySelectorAll('select')).map(function (select) {
+        const name = /tahun|year/i.test(select.id) ? 'Tahun' : 'Periode';
+        return name + ': ' + (select.selectedOptions[0]?.textContent.trim() || 'All');
+    });
+    const selection = section.querySelector('[data-chart-selection]');
+    if (selection) {
+        filters.push('Pilihan: ' + selection.textContent.trim());
+    }
+    return filters.join('   /   ') || 'Semua data';
+}
+
+function renderChartExport(chart, context, x, y, width, height) {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const options = copyChartExport(chart.config.options);
+    options.responsive = false;
+    options.maintainAspectRatio = false;
+    options.animation = false;
+    options.animations = false;
+    options.devicePixelRatio = 2;
+    options.events = [];
+    options.onResize = null;
+    options.font = { family: 'Arial, sans-serif', size: 14 };
+    options.layout = { padding: 12 };
+    options.plugins = options.plugins || {};
+    options.plugins.tooltip = { enabled: false };
+    options.plugins.zeroValueDashPlugin = { fontSize: 13 };
+    if (options.plugins.legend !== false) {
+        const legend = options.plugins.legend = options.plugins.legend || {};
+        legend.labels = { ...legend.labels, font: { family: 'Arial, sans-serif', size: 14 }, padding: 18, boxWidth: 12 };
+    }
+    Object.values(options.scales || {}).forEach(function (scale) {
+        scale.ticks = { ...scale.ticks, font: { family: 'Arial, sans-serif', size: 14 }, color: '#48627b' };
+    });
+    if (chart.config.type === 'bar' && options.scales?.x) {
+        const ticks = options.scales.x.ticks;
+        const longLabels = chart.data.labels.some(label => String(label).length > 14);
+        const dense = chart.data.labels.length > 24;
+        ticks.font.size = dense ? 12 : 14;
+        ticks.minRotation = ticks.maxRotation = dense ? 65 : longLabels ? 35 : 0;
+        ticks.callback = function (value) {
+            const label = this.getLabelForValue(value);
+            return dense ? label : wrapChartLabel(label, 20, Infinity);
+        };
+    }
+    const data = copyChartExport(chart.data);
+    data.datasets.forEach((dataset, index) => { dataset.hidden = !chart.isDatasetVisible(index); });
+    let rendered;
+    try {
+        rendered = new Chart(canvas, { type: chart.config.type, data: data, options: options });
+        if (chart.config.type === 'pie' || chart.config.type === 'doughnut') {
+            data.labels.forEach((_, index) => {
+                if (!chart.getDataVisibility(index)) {
+                    rendered.toggleDataVisibility(index);
+                }
+            });
+            rendered.update('none');
+        }
+        context.drawImage(canvas, x, y, width, height);
+    } finally {
+        (rendered || Chart.getChart(canvas))?.destroy();
+        canvas.width = canvas.height = 0;
+    }
+}
+
 function buildDashboardChartExportCanvas(sourceCanvas, title) {
-    const sourceWidth = sourceCanvas.width || sourceCanvas.clientWidth || 1200;
-    const sourceHeight = sourceCanvas.height || sourceCanvas.clientHeight || 600;
-    const exportScale = 2;
-    const titleHeight = 92;
-    const paddingX = 48;
-    const paddingBottom = 38;
-    const exportCanvas = document.createElement('canvas');
-    const exportContext = exportCanvas.getContext('2d');
-    const exportWidth = Math.max(1200, sourceWidth + (paddingX * 2));
-    const exportHeight = Math.max(720, sourceHeight + titleHeight + paddingBottom);
-
-    exportCanvas.width = exportWidth * exportScale;
-    exportCanvas.height = exportHeight * exportScale;
-
-    if (!exportContext) {
+    const chart = typeof Chart !== 'undefined' ? Chart.getChart(sourceCanvas) : null;
+    const labelCount = chart?.data?.labels?.length || 0;
+    const width = Math.min(2400, Math.max(1600, labelCount * 72 + 160));
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    if (!context) {
         return sourceCanvas;
     }
+    // Measure text before sizing the final canvas; canvas sizing resets its context.
+    context.font = '700 32px Arial, sans-serif';
+    const titles = wrapExportText(context, title || 'Dashboard Laboratorium', width - 160);
+    context.font = '14px Arial, sans-serif';
+    const filters = wrapExportText(context, getChartExportFilters(sourceCanvas), width - 160);
+    const headerHeight = 96 + titles.length * 42 + filters.length * 21;
+    const plotY = 40 + headerHeight + 24;
+    const height = Math.max(Math.round(width * 9 / 16), plotY + 520 + 76);
+    const plotHeight = height - plotY - 76;
+    canvas.width = width * 2;
+    canvas.height = height * 2;
+    context.scale(2, 2);
+    context.textBaseline = 'top';
 
-    exportContext.scale(exportScale, exportScale);
+    function box(x, y, w, h, fill, border) {
+        context.beginPath();
+        if (typeof context.roundRect === 'function') {
+            context.roundRect(x, y, w, h, 20);
+        } else {
+            context.rect(x, y, w, h);
+        }
+        context.fillStyle = fill;
+        context.fill();
+        if (border) {
+            context.strokeStyle = border;
+            context.lineWidth = 1;
+            context.stroke();
+        }
+    }
 
-    const rootStyle = getComputedStyle(document.documentElement);
-    const backgroundColor = rootStyle.getPropertyValue('--color-white').trim() || '#ffffff';
-    const titleColor = rootStyle.getPropertyValue('--color-primary-navy').trim() || '#103e6f';
-    const borderColor = rootStyle.getPropertyValue('--color-soft-gray').trim() || '#f0f4f6';
+    context.fillStyle = '#edf3f8';
+    context.fillRect(0, 0, width, height);
+    const gradient = context.createLinearGradient(40, 40, width - 40, 40 + headerHeight);
+    gradient.addColorStop(0, '#103e6f');
+    gradient.addColorStop(1, '#1c647c');
+    box(40, 40, width - 80, headerHeight, gradient);
+    context.fillStyle = '#64cdd1';
+    context.fillRect(64, 65, 5, 14);
+    context.font = '700 13px Arial, sans-serif';
+    context.fillStyle = '#c6eef2';
+    context.fillText('SILEBAT  /  DASHBOARD LABORATORIUM', 80, 65);
+    context.fillStyle = '#ffffff';
+    context.font = '700 32px Arial, sans-serif';
+    titles.forEach((line, index) => context.fillText(line, 64, 98 + index * 42));
+    context.fillStyle = '#d7eaf2';
+    context.font = '14px Arial, sans-serif';
+    filters.forEach((line, index) => context.fillText(line, 64, 116 + titles.length * 42 + index * 21));
 
-    exportContext.fillStyle = backgroundColor;
-    exportContext.fillRect(0, 0, exportWidth, exportHeight);
+    box(40, plotY, width - 80, plotHeight, '#ffffff', '#d9e3ef');
+    if (chart && labelCount && chart.data.datasets.some((_, index) => chart.isDatasetVisible(index))) {
+        renderChartExport(chart, context, 68, plotY + 28, width - 136, plotHeight - 56);
+    } else if (!chart) {
+        const ratio = Math.min((width - 136) / sourceCanvas.width, (plotHeight - 56) / sourceCanvas.height);
+        const w = sourceCanvas.width * ratio;
+        const h = sourceCanvas.height * ratio;
+        context.drawImage(sourceCanvas, (width - w) / 2, plotY + (plotHeight - h) / 2, w, h);
+    } else {
+        context.fillStyle = '#48627b';
+        context.font = '18px Arial, sans-serif';
+        context.textAlign = 'center';
+        context.fillText('Belum ada data untuk pilihan ini.', width / 2, plotY + plotHeight / 2);
+    }
 
-    exportContext.fillStyle = titleColor;
-    exportContext.font = '700 32px Arial, sans-serif';
-    exportContext.textAlign = 'center';
-    exportContext.textBaseline = 'middle';
-    exportContext.fillText(title || 'Dashboard Chart', exportWidth / 2, 42, exportWidth - (paddingX * 2));
-
-    exportContext.strokeStyle = borderColor;
-    exportContext.lineWidth = 1;
-    exportContext.beginPath();
-    exportContext.moveTo(paddingX, 78);
-    exportContext.lineTo(exportWidth - paddingX, 78);
-    exportContext.stroke();
-
-    const availableWidth = exportWidth - (paddingX * 2);
-    const availableHeight = exportHeight - titleHeight - paddingBottom;
-    const drawRatio = Math.min(availableWidth / sourceWidth, availableHeight / sourceHeight);
-    const drawWidth = sourceWidth * drawRatio;
-    const drawHeight = sourceHeight * drawRatio;
-    const drawX = (exportWidth - drawWidth) / 2;
-    const drawY = titleHeight;
-
-    exportContext.drawImage(sourceCanvas, drawX, drawY, drawWidth, drawHeight);
-
-    return exportCanvas;
+    context.textAlign = 'left';
+    context.fillStyle = '#48627b';
+    context.font = '13px Arial, sans-serif';
+    context.fillText('Sumber: Dashboard SILEBAT', 44, height - 46);
+    context.textAlign = 'right';
+    const exportedAt = new Date().toLocaleString('id-ID', {
+        timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', timeZoneName: 'short',
+    });
+    context.fillText('Diunduh: ' + exportedAt, width - 44, height - 46);
+    return canvas;
 }
 
 function buildDashboardChartFileName(title, format) {

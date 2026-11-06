@@ -1,8 +1,7 @@
 <div class="dashboard-chart__filters">
     <details class="chart-picker" data-chart-picker="{{ key }}">
-        <summary class="chart-picker__toggle">
-            <span>{{ label }}</span>
-            <span class="chart-picker__count" data-chart-selection>Semua data</span>
+        <summary class="chart-picker__toggle" aria-label="{{ label }}" aria-describedby="pilihan-{{ key }}" title="{{ label }}">
+            <span>Pilih: <span id="pilihan-{{ key }}" data-chart-selection>{% if items %}All{% else %}0 item{% endif %}</span></span>
         </summary>
         <div class="chart-picker__panel">
             <div class="chart-picker__actions">

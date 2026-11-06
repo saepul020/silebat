@@ -33,7 +33,7 @@ function chartSource(key) {
 }
 
 function dashboardData(context, source, year) {
-    return context.buildSingleSeriesChartData(source, year, 'instansiId', 'Total', 'scrollable');
+    return context.buildSingleSeriesChartData(source, year, 'instansiId', 'Total');
 }
 
 test('Internal SDA prioritizes BBWS/BWS, then sorts each group by the selected year', () => {
@@ -112,7 +112,7 @@ test('Empty data is safe and non-institution charts retain their category order'
     const context = chartContext();
     assert.deepEqual(Array.from(dashboardData(context, { categories: [], rows: [] }, 2026).labels), []);
     const source = chartSource('instansi-internal');
-    const result = context.buildSingleSeriesChartData(source, 2026, 'layananId', 'Total', 'scrollable');
+    const result = context.buildSingleSeriesChartData(source, 2026, 'layananId', 'Total');
     assert.deepEqual(Array.from(result.labels), source.categories.map(category => category.label));
 });
 
