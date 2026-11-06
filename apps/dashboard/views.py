@@ -15,7 +15,7 @@ from django.views.decorators.http import require_POST
 
 from apps.core.excel_utils import build_excel_response
 from apps.core.permissions import can_access_master_data, get_role_name
-from apps.landing.services import get_tv_slides
+from apps.landing.services import get_tv_inventory_cards, get_tv_slides
 from apps.master_data.models import BahanOperasional, BarangLaboratorium, BarangPenunjangOperasional
 from apps.operasional.models import InstansiKlien, LayananKegiatan, SurveiKegiatan, TimKegiatan
 from apps.peminjaman.constants import PENGUKURAN_FIELD_CONFIG
@@ -732,7 +732,9 @@ def display(request, portal_slug):
 
     context = build_dashboard_context(active_limit=8)
     context["tv_slug"] = portal_slug
+    context["tv_mode"] = request.GET.get("tv") == "1"
     context["tv_slides"] = get_tv_slides()
+    context["tv_inventory_cards"] = get_tv_inventory_cards()
     return render(request, "dashboard/display.html", context)
 
 
@@ -755,6 +757,9 @@ def display_active_data(request, portal_slug):
     response = JsonResponse({
         "html": html,
         "equipmentSlides": equipment_slides,
+        "inventoryHtml": render_to_string(
+            "dashboard/partials/tv_inventory.html", {"tv_inventory_cards": get_tv_inventory_cards()}, request=request,
+        ),
         "updatedAt": timezone.localtime().isoformat(),
     })
     response["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"

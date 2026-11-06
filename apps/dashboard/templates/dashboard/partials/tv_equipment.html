@@ -4,8 +4,10 @@
         {% if slot.alat.foto_barang %}
         <img src="{{ slot.alat.foto_barang.url }}" alt="{{ slot.alat.nama_barang }}" decoding="async">
         {% else %}
-        <i class="bi bi-tools" aria-hidden="true"></i>
-        <span>{% if slot.alat %}Foto belum tersedia{% else %}Kolom {{ slot.nomor }}{% endif %}</span>
+        <div class="tv-equipment__placeholder">
+            <i class="bi bi-tools" aria-hidden="true"></i>
+            <span>{% if slot.alat %}Foto belum tersedia{% else %}Kolom {{ slot.nomor }}{% endif %}</span>
+        </div>
         {% endif %}
     </div>
     <div class="tv-equipment__body">

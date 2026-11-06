@@ -14,14 +14,13 @@ body.tv-body {
 }
 
 .tv-body {
-    min-width: 100vw;
+    min-width: 0;
     min-height: 100vh;
 }
 
 .tv-page {
-    width: 100vw;
+    width: 100%;
     height: 100vh;
-    aspect-ratio: 16 / 9;
     display: grid;
     grid-template-rows: auto minmax(56px, 7vh) auto minmax(0, 1fr);
     gap: clamp(8px, 0.72vw, 13px);
@@ -83,6 +82,7 @@ body.tv-body {
 }
 
 .tv-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     margin: 0;
     gap: clamp(8px, 0.7vw, 12px);
     min-height: 0;
@@ -169,8 +169,8 @@ body.tv-body {
     table-layout: fixed;
 }
 
-.tv-table th,
-.tv-table td {
+.tv-table-wrap .tv-table th,
+.tv-table-wrap .tv-table td {
     padding: clamp(4px, 0.42vw, 7px) clamp(5px, 0.5vw, 8px);
     font-size: clamp(0.5rem, 0.55vw, 0.66rem);
     line-height: 1.22;
@@ -180,7 +180,7 @@ body.tv-body {
     word-break: break-word;
 }
 
-.tv-table th {
+.tv-table-wrap .tv-table th {
     font-size: clamp(0.5rem, 0.54vw, 0.64rem);
     line-height: 1.12;
     vertical-align: middle;
@@ -199,7 +199,7 @@ body.tv-body {
     font-weight: 700;
 }
 
-.tv-table td small {
+.tv-table-wrap .tv-table td small {
     display: block;
     margin-top: 2px;
     color: var(--text-soft);
@@ -233,7 +233,7 @@ body.tv-body {
 .tv-table th:nth-child(7),
 .tv-table td:nth-child(7) { width: 13.5%; }
 
-.tv-table .status-badge {
+.tv-table-wrap .tv-table .cell-status .status-badge {
     min-width: 0;
     max-width: 100%;
     padding: 3px 6px;
@@ -325,17 +325,111 @@ body.tv-body {
 }
 
 .tv-equipment__photo {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    flex: 0 0 38%;
-    min-height: 55px;
+    position: relative;
+    flex: 0 0 auto;
+    width: 100%;
+    height: 0;
+    padding-top: 75%; /* 4:3, including browsers without aspect-ratio support. */
     overflow: hidden;
     background: linear-gradient(135deg, #103e6f, #2e8fa8);
     color: #fff;
     font-size: clamp(0.55rem, 0.65vw, 0.8rem);
+}
+
+.tv-equipment__placeholder {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
     gap: 6px;
+}
+
+.tv-summary__photo {
+    background: var(--surface-soft);
+}
+
+.tv-summary__body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: clamp(6px, 0.6vw, 12px);
+    min-height: 0;
+    padding: clamp(8px, 0.8vw, 16px);
+    text-align: center;
+    overflow-wrap: anywhere;
+    overflow-y: auto;
+}
+
+.tv-summary__body > :first-child {
+    margin-top: auto;
+}
+
+.tv-summary__body > :last-child {
+    margin-bottom: auto;
+}
+
+.tv-summary__conditions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: clamp(4px, 0.4vw, 8px);
+    width: 100%;
+    margin: 0;
+    font-size: clamp(0.5rem, 0.65vw, 0.75rem);
+    line-height: 1.3;
+}
+
+.tv-summary__condition {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.2em;
+    min-width: 0;
+    padding: clamp(6px, 0.6vw, 10px);
+    border-radius: clamp(6px, 0.5vw, 10px);
+    color: var(--color-white);
+}
+
+.tv-summary__conditions dt,
+.tv-summary__conditions dd {
+    margin: 0;
+    font-weight: 600;
+}
+
+.tv-summary__conditions dd {
+    font-size: 1.25em;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.15;
+}
+
+.tv-summary__condition--rusak {
+    background: var(--color-danger);
+}
+
+.tv-summary__condition--baik {
+    background: var(--color-success);
+}
+
+.tv-summary__count {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 0.2em;
+    margin: 0;
+    color: var(--color-primary-navy);
+    font-size: clamp(1rem, 1.8vw, 2rem);
+    line-height: 1;
+}
+
+.tv-summary__count span {
+    color: var(--color-aqua-teal);
+    font-size: 0.4em;
+    font-weight: 700;
 }
 
 .tv-equipment__card--empty {
@@ -344,10 +438,13 @@ body.tv-body {
 }
 
 .tv-equipment__photo img {
+    position: absolute;
+    inset: 0;
     width: 100%;
     height: 100%;
     min-height: 0;
-    object-fit: contain;
+    object-fit: cover;
+    object-position: center;
     background: var(--surface-soft);
 }
 
@@ -412,16 +509,61 @@ body.tv-body {
 }
 
 @media (max-width: 960px) {
-    .tv-equipment {
+    html:not(.tv-screen),
+    html:not(.tv-screen) body.tv-body {
+        height: auto;
+        overflow-y: auto;
+    }
+
+    html:not(.tv-screen) .tv-page {
+        height: auto;
+        min-height: 100vh;
+        grid-template-rows: auto auto auto auto;
+        overflow: visible;
+    }
+
+    html:not(.tv-screen) .tv-chart-card {
+        height: clamp(300px, 65vh, 540px);
+    }
+
+    html:not(.tv-screen) .tv-equipment {
         grid-template-columns: repeat(3, minmax(0, 1fr));
-        grid-auto-rows: minmax(240px, 1fr);
+        grid-auto-rows: max-content;
+    }
+
+    html:not(.tv-screen) .tv-equipment__card {
+        min-height: auto;
     }
 }
 
 @media (max-width: 520px) {
-    .tv-equipment {
+    html:not(.tv-screen) .tv-equipment {
         grid-template-columns: 1fr;
     }
+}
+
+/* Explicit TV mode uses the actual CSS viewport, independent of physical pixels. */
+html.tv-screen {
+    font-size: clamp(8px, 0.833333vw, 16px);
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+}
+
+.tv-screen .tv-page {
+    grid-template-rows: auto minmax(0, 7vh) auto minmax(0, 1fr);
+    gap: clamp(4px, 0.72vw, 13px);
+    padding: clamp(7px, 1.18vw, 21px);
+}
+
+.tv-screen .tv-active-table {
+    display: flex;
+    flex-direction: column;
+    max-height: 30vh;
+}
+
+.tv-screen .tv-table-wrap {
+    overflow: auto;
+    scrollbar-width: thin;
 }
 
 .tv-chart-slide {
@@ -472,12 +614,12 @@ body.tv-body {
         padding: 7px 12px;
     }
 
-    .tv-table th,
-    .tv-table td {
+    .tv-table-wrap .tv-table th,
+    .tv-table-wrap .tv-table td {
         padding: 4px 5px;
     }
 
-    .tv-table .status-badge {
+    .tv-table-wrap .tv-table .cell-status .status-badge {
         padding: 3px 5px;
     }
 }
@@ -524,8 +666,8 @@ body.tv-body {
         font-size: 0.52rem;
     }
 
-    .tv-table th,
-    .tv-table td {
+    .tv-table-wrap .tv-table th,
+    .tv-table-wrap .tv-table td {
         padding: 4px;
         font-size: 0.5rem;
     }

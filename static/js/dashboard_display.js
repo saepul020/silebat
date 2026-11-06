@@ -68,6 +68,7 @@ function initTvActiveTable() {
     const wrapper = document.querySelector('[data-tv-active-url]');
     const body = document.querySelector('[data-tv-active-body]');
     const equipment = new Map(Array.from(document.querySelectorAll('[data-tv-equipment]'), node => [node.dataset.tvEquipment, node]));
+    const inventory = document.querySelector('[data-tv-inventory]');
     if (!wrapper || !body) {
         return;
     }
@@ -108,6 +109,9 @@ function initTvActiveTable() {
                         node.innerHTML = slide.html;
                     }
                 });
+            }
+            if (inventory && typeof payload.inventoryHtml === 'string' && inventory.innerHTML !== payload.inventoryHtml) {
+                inventory.innerHTML = payload.inventoryHtml;
             }
         } catch (error) {
             console.error('Gagal memuat data kegiatan aktif display TV.', error);

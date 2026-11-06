@@ -1,0 +1,16 @@
+{% load static %}
+{% for card in tv_inventory_cards %}
+<article class="tv-equipment__card tv-summary" aria-label="{{ card.label }}: {{ card.total }} unit">
+    <div class="tv-equipment__photo tv-summary__photo">
+        <img src="{% static card.img %}" alt="Foto {{ card.label }}" decoding="async">
+    </div>
+    <div class="tv-summary__body">
+        <p class="tv-summary__count"><strong>{{ card.total }}</strong><span>UNIT</span></p>
+        <h4 class="tv-equipment__name">{{ card.label }}</h4>
+        <dl class="tv-summary__conditions">
+            <div class="tv-summary__condition tv-summary__condition--rusak"><dt>Rusak</dt><dd>{{ card.rusak }} unit</dd></div>
+            <div class="tv-summary__condition tv-summary__condition--baik"><dt>Baik</dt><dd>{{ card.baik }} unit</dd></div>
+        </dl>
+    </div>
+</article>
+{% endfor %}

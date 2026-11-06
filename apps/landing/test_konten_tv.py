@@ -134,7 +134,7 @@ class KontenAlatTVTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'class="tv-chart-slide is-active" data-tv-slide data-title="Peralatan Survei Lapangan Utama"')
         self.assertContains(response, 'data-tv-dots')
-        self.assertEqual(response.content.count(b" data-tv-slide "), 9)
+        self.assertEqual(response.content.count(b" data-tv-slide "), 10)
 
     def test_slot_kosong_dan_penghapusan_alat_aman(self):
         KontenAlatTV.objects.create(nomor=3, alat=self.alat[2])
@@ -208,7 +208,7 @@ class KontenAlatTVTests(TestCase):
         self.assertContains(response, 'data-tv-equipment="1"', count=1)
         self.assertContains(response, 'data-tv-equipment="2"', count=1)
         self.assertContains(response, "Alat TV 7")
-        self.assertEqual(response.content.count(b'class="tv-equipment__card'), 12)
+        self.assertEqual(response.content.count(b'class="tv-equipment__card'), 18)
         KontenAlatTV.objects.filter(nomor=7).update(alat=self.alat[7])
         BarangLaboratorium.objects.filter(pk=self.alat[7].pk).update(asal_perolehan="Hibah slide dua")
         response = self.client.get(reverse("dashboard:display_active_data", args=[settings.DASHBOARD_TV_SLUG]))

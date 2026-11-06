@@ -6,7 +6,7 @@ from django.db.models import Count, Q, Sum
 from django.db.utils import InterfaceError, OperationalError, ProgrammingError
 from django.utils import timezone
 
-from apps.master_data.models import BarangLaboratorium, KategoriBarangLaboratoriumChoices
+from apps.master_data.models import BarangLaboratorium, KategoriBarangLaboratoriumChoices, KondisiBarangChoices
 from apps.peminjaman.constants import PENGUKURAN_FIELD_CONFIG
 from apps.peminjaman.models import PeminjamanRequest, ReturnStepChoices, StepChoices
 
@@ -54,6 +54,15 @@ CATEGORY_IMG_MAP = {
     KategoriBarangLaboratoriumChoices.TOPOGRAFI_TS: "assets/img/total-station.webp",
     KategoriBarangLaboratoriumChoices.PENDUKUNG_SURVEI_LAPANGAN: "assets/img/pendukung-survei.webp",
 }
+
+TV_INVENTORY_CATEGORIES = (
+    KategoriBarangLaboratoriumChoices.BOREHOLE_CAMERA,
+    KategoriBarangLaboratoriumChoices.DRONE,
+    KategoriBarangLaboratoriumChoices.GEOLISTRIK,
+    KategoriBarangLaboratoriumChoices.INFILTRASI,
+    KategoriBarangLaboratoriumChoices.INSTRUMEN_KEAIRAN,
+    KategoriBarangLaboratoriumChoices.LOGGING,
+)
 
 
 def invalidate_public_landing_cache():
@@ -186,25 +195,37 @@ def get_pengukuran_chart_payload(approved_queryset):
     return build_chart_payload(labels, data)
 
 
-def get_inventory_category_cards():
+def get_inventory_category_cards(categories=None, include_conditions=False):
     choice_labels = dict(KategoriBarangLaboratoriumChoices.choices)
+    queryset = BarangLaboratorium.objects.exclude(kategori_barang__isnull=True).exclude(kategori_barang="")
+    if categories is not None:
+        queryset = queryset.filter(kategori_barang__in=categories)
+    aggregates = {"total": Count("id")}
+    if include_conditions:
+        aggregates.update(
+            baik=Count("id", filter=Q(kondisi_barang=KondisiBarangChoices.BAIK)),
+            rusak=Count("id", filter=Q(kondisi_barang=KondisiBarangChoices.RUSAK)),
+        )
     rows = list(
-        BarangLaboratorium.objects.exclude(kategori_barang__isnull=True)
-        .exclude(kategori_barang="")
-        .values("kategori_barang")
-        .annotate(total=Count("id"))
+        queryset.values("kategori_barang")
+        .annotate(**aggregates)
         .filter(total__gt=0)
         .order_by("kategori_barang")
     )
+    counts = {row["kategori_barang"]: row for row in rows}
 
     return [
         {
-            "label": choice_labels.get(row["kategori_barang"], row["kategori_barang"] or "-"),
-            "total": int(row["total"] or 0),
-            "img": CATEGORY_IMG_MAP.get(row["kategori_barang"], ""),
+            "label": choice_labels.get(category, category or "-"),
+            **{field: int(counts.get(category, {}).get(field) or 0) for field in aggregates},
+            "img": CATEGORY_IMG_MAP.get(category, ""),
         }
-        for row in rows
+        for category in (categories if categories is not None else counts)
     ]
+
+
+def get_tv_inventory_cards():
+    return get_inventory_category_cards(TV_INVENTORY_CATEGORIES, include_conditions=True)
 
 
 def split_spec_points(value):
