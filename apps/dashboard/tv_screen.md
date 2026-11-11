@@ -37,7 +37,8 @@ tanpa mengalikan ukuran layout CSS menjadi 1920 x 1080 px.
   layar/header, tanpa mengecilkan seluruh tabel karena satu field panjang.
   Seluruh isi field, termasuk status, membungkus sesuai lebar kolom maksimal dua
   baris; teks berlebih diberi elipsis di baris kedua. Kata tanpa spasi juga dapat
-  dipotong. Status tetap satu unit skala lebih kecil. Teks lengkap tetap ada dalam
+  dipotong. Status memakai satu unit skala lebih kecil; khusus badge peringatan
+  mode TV, font dua unit skala lebih kecil dari font isi tabel. Teks lengkap tetap ada dalam
   DOM dan tooltip nomor/nama/layanan/instansi/status, tanpa mengubah data tersimpan.
   Partial render awal dan polling sama; clamp CSS hanya aktif pada mode TV.
 - Tabel display memakai wrapper sendiri, tanpa class list transaksi umum yang
@@ -58,6 +59,9 @@ tanpa mengalikan ukuran layout CSS menjadi 1920 x 1080 px.
   sekitar 65% ukuran judul serta 90% ukuran merek agar hierarkinya tetap jelas.
   Jarak baris/kolom mengikuti font dalam satuan `em`. Asal Perolehan membungkus
   maksimal 18 karakter per baris, termasuk spasi; metadata lain tetap satu baris.
+  Pada mode TV, baris Asal Perolehan dapat membungkus lagi mengikuti lebar kolom
+  nilai jika ruangnya menyempit, termasuk kata tanpa spasi. Aturan `nowrap` tidak
+  memaksa nilai meluber; tidak ada elipsis atau batas jumlah baris untuk field ini.
   Ukuran diukur dari baris terpanjang setelah wrap, bukan gabungan teks seluruh
   baris. Semua card dalam satu slide memakai ukuran seragam; slide lain tidak
   membatasi ukuran slide aktif. Card kosong dan rekap memakai penyesuaian sendiri.
@@ -103,6 +107,13 @@ tanpa mengalikan ukuran layout CSS menjadi 1920 x 1080 px.
   ulang sebelum layout, termasuk resize, pada mode normal maupun TV.
 
 ## Validasi 11 November 2026
+
+Asal Perolehan `TKTM - Direktorat BINTEK SDA` diperiksa di 640x360, 960x540,
+1280x720, dan 1920x1080, dengan DPR 1/2. Kolom nilai juga dipersempit untuk
+memeriksa seluruh baris teks tetap berada dalam field/body. Resize dan polling
+mempertahankan teks lengkap. Badge peringatan di 960x540 memakai 5,5 px dari font
+isi tabel 7,5 px; selisih dua unit mengikuti skala layar. Mode normal tetap memakai
+wrap dan ukuran status sebelumnya. Tidak ada perubahan nilai database.
 
 Wrap tabel dua baris diperiksa pada 640x360, 960x540, 1280x720, dan 1920x1080
 dengan DPR 1/2. Fixture memakai kalimat panjang dan kode 240 karakter tanpa spasi:

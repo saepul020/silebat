@@ -56,6 +56,10 @@ html.tv-screen {
     line-height: 1.25;
 }
 
+.tv-screen .tv-table .status-badge.badge-warning {
+    font-size: max(1px, calc(var(--tv-table-size, calc(7.5 * var(--tv-type))) - 2 * var(--tv-type)));
+}
+
 .tv-screen .tv-table .tv-wrap__line {
     display: inline;
     white-space: normal;
@@ -70,6 +74,17 @@ html.tv-screen {
     grid-column: 1 / -1;
     align-self: center;
     text-align: center;
+}
+
+.tv-screen .tv-equipment__meta dd {
+    min-width: 0;
+}
+
+.tv-screen .tv-equipment__origin,
+.tv-screen .tv-equipment__origin .tv-wrap__line {
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }
 
 .tv-screen .tv-summary .tv-equipment__name {
