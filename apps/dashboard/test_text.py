@@ -4,6 +4,7 @@ from types import SimpleNamespace
 
 from django.template.loader import render_to_string
 from django.test import SimpleTestCase
+from django.utils.html import escape
 
 from .templatetags.tv_tags import tv_lines
 
@@ -59,3 +60,15 @@ class TvTextTests(SimpleTestCase):
                 }})
                 self.assertEqual(markup.count('<figure class="tv-documentation__item">'), count)
                 self.assertNotIn("belum diunggah", markup)
+
+    def test_table_preserves_escaped_full_text_for_two_line_display(self):
+        text = '<img src=x onerror="alert(1)"> & Direktorat ' * 12
+        row = render_to_string("dashboard/partials/active_rows.html", {"active_peminjaman": [{
+            "nomor_pengajuan": text, "nama_peminjam": text,
+            "layanan_kegiatan_label": text, "instansi_tujuan_lainnya": text,
+            "proses_peminjaman_label": text, "proses_pengembalian_label": text,
+        }]})
+        self.assertEqual(row.count('class="tv-table__text"'), 7)
+        self.assertEqual(row.count(f'title="{escape(text)}"'), 6)
+        self.assertNotIn("<img", row)
+        self.assertTrue(all(len(line) <= 22 for line in lines(row)))

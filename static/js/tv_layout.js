@@ -92,6 +92,27 @@ function initTvLayout() {
             });
             metaRatio = Math.min(metaRatio, sizes[0] * ratio * 0.65 / sizes[2], sizes[1] * ratio * 0.9 / sizes[2]);
             setValue(grid, '--tv-meta-size', `${Math.floor(sizes[2] * metaRatio * 10) / 10}px`);
+            if (tvMode) {
+                // The TV frame is fixed: wrapped text must fit its remaining height too.
+                for (let attempt = 0; attempt < 3; attempt += 1) {
+                    let heightRatio = 1;
+                    bodies.forEach(body => {
+                        const style = getComputedStyle(body);
+                        const available = body.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
+                        const needed = Array.from(body.children).reduce((sum, node) => {
+                            const childStyle = getComputedStyle(node);
+                            return sum + node.getBoundingClientRect().height
+                                + parseFloat(childStyle.marginTop) + parseFloat(childStyle.marginBottom);
+                        }, 0);
+                        heightRatio = Math.min(heightRatio, Math.max(0.1, available - 2) / Math.max(1, needed));
+                    });
+                    if (heightRatio >= 1) break;
+                    const current = groups.map(([selector]) => parseFloat(getComputedStyle(bodies[0].querySelector(selector)).fontSize));
+                    groups.forEach(([, property], index) => {
+                        setValue(grid, property, `${Math.max(0.1, Math.floor(current[index] * heightRatio * 10) / 10)}px`);
+                    });
+                }
+            }
         });
     }
 
@@ -106,15 +127,31 @@ function initTvLayout() {
         }
         fitText('.tv-head h1', '--tv-heading-size');
         fitText('.tv-head p', '--tv-subtitle-size');
-        fitText('.tv-table th:not(.cell-status), .tv-table td:not([colspan]):not(.cell-status)', '--tv-table-size');
-        fitText('.tv-table .cell-status .status-badge', '--tv-status-size', page, badge => {
-            const style = getComputedStyle(badge);
-            return innerWidth(badge.parentElement) - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
-        });
+        // TV fields wrap at the column width instead of shrinking the whole table.
+        const tableCells = tvMode
+            ? '.tv-table th:not(.cell-status)'
+            : '.tv-table th:not(.cell-status), .tv-table td:not([colspan]):not(.cell-status)';
+        fitText(tableCells, '--tv-table-size');
+        if (tvMode) {
+            page.querySelectorAll('.cell-status .tv-table__text').forEach(node => {
+                if (node.querySelector('.tv-wrap__line')) node.textContent = node.title;
+            });
+        } else {
+            fitText('.tv-table .cell-status .status-badge', '--tv-status-size', page, badge => {
+                const style = getComputedStyle(badge);
+                return innerWidth(badge.parentElement) - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+            });
+        }
         fitText('[data-tv-slide-title]', '--tv-title-size');
         fitEquipment();
+        fitStage();
+        (window.tvChartInstances || []).forEach(chart => chart.resize());
+    }
 
-        // Preserve full cards below all active rows. Dense pages can scroll vertically.
+    function fitStage() {
+        // Normal mode grows with the content. TV uses the remaining viewport track,
+        // so inactive equipment slides cannot push a chart/footer below the screen.
+        if (tvMode) return;
         const grids = Array.from(page.querySelectorAll('.tv-equipment'));
         const stageMin = parseFloat(getComputedStyle(page).getPropertyValue('--tv-stage-min')) || 180;
         const contentHeight = Math.max(stageMin, ...grids.map(grid => {
@@ -147,7 +184,6 @@ function initTvLayout() {
                 + parseFloat(style.paddingTop) + parseFloat(style.paddingBottom) + 2;
             setValue(page, '--tv-chart-min', `${Math.ceil(height)}px`);
         }
-        (window.tvChartInstances || []).forEach(chart => chart.resize());
     }
 
     function schedule() {

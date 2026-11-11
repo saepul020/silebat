@@ -31,12 +31,15 @@ tanpa mengalikan ukuran layout CSS menjadi 1920 x 1080 px.
   dan carousel memakai radius 4–18 px; card alat 3–14 px; ikon, tombol, dan kotak
   kondisi 2–9 px. Radius badge juga dibatasi ukuran font. Aturan radius khusus TV
   dihapus agar ukuran dan transisi konsisten pada semua breakpoint.
-- `dashboard_display.css` dan `tv_layout.js` dipakai mode normal dan TV. Ukuran font
-  tabel mengikuti field yang paling membutuhkan ruang, termasuk header, periode,
-  nama, dan instansi. Cell biasa tetap satu baris. Status memakai font satu unit
-  skala lebih kecil dan membungkus maksimal 22 karakter per baris, termasuk spasi.
-  Pembungkusan mengikuti kata, memotong kata tunggal yang terlalu panjang tanpa
-  elipsis. Badge disesuaikan terhadap lebar cell sehingga tidak memasuki kolom lain.
+- `dashboard_display.css` dan `tv_layout.js` dipakai mode normal dan TV. Pada mode
+  normal, font tabel mengikuti field terpanjang; cell biasa satu baris dan status
+  membungkus maksimal 22 karakter per baris. Pada mode TV, font mengikuti skala
+  layar/header, tanpa mengecilkan seluruh tabel karena satu field panjang.
+  Seluruh isi field, termasuk status, membungkus sesuai lebar kolom maksimal dua
+  baris; teks berlebih diberi elipsis di baris kedua. Kata tanpa spasi juga dapat
+  dipotong. Status tetap satu unit skala lebih kecil. Teks lengkap tetap ada dalam
+  DOM dan tooltip nomor/nama/layanan/instansi/status, tanpa mengubah data tersimpan.
+  Partial render awal dan polling sama; clamp CSS hanya aktif pada mode TV.
 - Tabel display memakai wrapper sendiri, tanpa class list transaksi umum yang
   membawa minimum lebar, tinggi baris, dan breakpoint berbeda. Padding toolbar,
   cell, badge, serta kondisi kosong mengikuti `--tv-type` di kedua mode. Pemisah
@@ -58,6 +61,8 @@ tanpa mengalikan ukuran layout CSS menjadi 1920 x 1080 px.
   Ukuran diukur dari baris terpanjang setelah wrap, bukan gabungan teks seluruh
   baris. Semua card dalam satu slide memakai ukuran seragam; slide lain tidak
   membatasi ukuran slide aktif. Card kosong dan rekap memakai penyesuaian sendiri.
+  Pada mode TV, nama/merek/metadata juga dikecilkan bersama jika tinggi teks,
+  margin, dan jaraknya melebihi ruang body setelah foto; hierarki tetap dijaga.
 - Pengukuran memakai lebar teks hasil render. Ukuran dihitung ulang setelah resize,
   font/gambar selesai dimuat, pergantian slide, dan pembaruan data. Font kembali ke
   ukuran CSS dasarnya sebelum dihitung agar tidak terus membesar/mengecil setelah resize.
@@ -68,15 +73,19 @@ tanpa mengalikan ukuran layout CSS menjadi 1920 x 1080 px.
   Mode TV mengikuti ukuran dan offset
   `visualViewport`, dengan fallback `innerWidth`/`innerHeight`. Tidak ada pengecilan
   font root, CSS zoom, atau transform scale pada dashboard.
-- Tinggi minimum area slide mengikuti konfigurasi CSS dan tinggi isi card. Pada
-  360p, batas dasar 180 px diganti 120 px agar header, tabel, dan carousel mendapat
-  ruang yang cukup. Judul/subjudul TV diukur agar tetap satu baris.
+- Pada mode normal, tinggi minimum area slide mengikuti tinggi isi card.
+  Pada mode TV, carousel memakai sisa tinggi viewport setelah header, ringkasan,
+  dan tabel. Stage memakai basis flex nol agar header dan footer BWS/BBWS Nihil
+  ikut mendapat ruang, tanpa memaksa tinggi canvas sebesar seluruh card.
+  Tinggi alat di slide tidak aktif tidak memperbesar carousel TV.
+  Judul/subjudul TV diukur agar tetap satu baris.
 - Seluruh kegiatan aktif tampil berurutan dalam satu tabel, termasuk pada polling;
   batas delapan record dan paginasi otomatis tabel sudah dihapus. Badge tetap
   **Realtime** dan timer carousel hanya mengganti slide alat/grafik.
-- Track tabel mengikuti tinggi seluruh isinya. Carousel ditempatkan setelah tabel
-  dengan tinggi minimum yang cukup untuk foto 4:3 dan isi card. Jika seluruh konten
-  melebihi layar, halaman bisa digulir ke bawah tanpa menumpuk atau menyembunyikan baris.
+- Pada mode normal, track tabel mengikuti tinggi seluruh isinya dan halaman dapat
+  digulir. Pada mode TV, tinggi tabel dibatasi 28% viewport; daftar padat digulir
+  di wrapper tabel tanpa paginasi atau penghapusan record. Carousel tetap dalam
+  viewport, termasuk label sumbu dan footer nihil. Foto alat tetap 4:3.
 - Mode TV menampilkan enam card per slide. Card tambahan dibagi ke slide berikutnya;
   slot kosong tidak menjadi alat duplikat. Mode normal tetap enam kolom di desktop,
   tiga di tablet, dan satu di ponsel.
@@ -94,6 +103,20 @@ tanpa mengalikan ukuran layout CSS menjadi 1920 x 1080 px.
   ulang sebelum layout, termasuk resize, pada mode normal maupun TV.
 
 ## Validasi 11 November 2026
+
+Wrap tabel dua baris diperiksa pada 640x360, 960x540, 1280x720, dan 1920x1080
+dengan DPR 1/2. Fixture memakai kalimat panjang dan kode 240 karakter tanpa spasi:
+semua field maksimal dua baris, elipsis terlihat di baris kedua, tidak meluber
+ke kolom sebelah, dan font tidak mengecil akibat panjang data. Status tetap lebih
+kecil; teks lengkap dan escaping HTML terjaga. Polling mengembalikan field pendek,
+resize memulihkan skala, dan mode normal mempertahankan pola sebelumnya.
+
+Perbaikan teks terpotong dan footer chart diuji pada TV 640x360, 960x540,
+dan 1280x720 dengan DPR 1/2. Fixture memakai 0, 3, 11, dan 30 kegiatan serta
+Asal Perolehan 22 baris di slide kedua. Body tidak overflow horizontal/vertikal,
+font tetap seragam per slide, dan slide tidak aktif tidak mendorong chart keluar
+viewport. Semua baris tetap ada; tabel padat menggulir secara internal.
+Seluruh slide termasuk rekap diperiksa pada DPR 2, termasuk resize dan polling.
 
 Kalibrasi 960 x 540 px diperiksa di Chrome dengan DPR 1 dan 2. Pada mode TV,
 judul utama menjadi 16 px dan font awal cell tabel 7,5 px (sebelumnya 12 px dan
@@ -292,12 +315,12 @@ role, larangan GET, CSRF, serta satu query foto untuk listing banyak slide.
 Total grafik ditampilkan sebagai badge di kiri atas header; judul tetap di tengah
 dan indikator slide di kanan. Pada Internal SDA, BWS/BBWS Nihil berada dalam dua
 kotak terpisah di bawah canvas dengan rata tengah. Footer memakai skala font layar,
-disembunyikan pada slide lain, dan tingginya ikut dihitung dalam ruang minimum chart.
+disembunyikan pada slide lain, dan mendapat ruang sendiri dalam tinggi card TV.
 
 Belum diuji langsung pada TCL/BrowseHere. Setelah deploy dan `collectstatic`, buka
 ulang URL `?tv=1` pada viewport 960x540/DPR 2, periksa kode barang tetap satu baris,
 Asal Perolehan membungkus maksimal 18 karakter per baris, tabel
 menampilkan semua kegiatan, serta chart Internal SDA tidak menumpuk labelnya.
-Periksa juga resize/zoom browser dan tunggu polling. Jika konten lebih tinggi dari
-viewport, seluruh baris tetap tersedia dengan menggulir halaman. Fullscreen browser
+Periksa juga resize/zoom browser dan tunggu polling. Jika tabel kegiatan padat,
+seluruh baris tetap tersedia dengan menggulir area tabel. Fullscreen browser
 mengikuti kontrol BrowseHere.

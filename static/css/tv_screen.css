@@ -17,6 +17,53 @@ html.tv-screen {
     top: var(--tv-top, 0px);
     width: var(--tv-width, 100vw);
     height: var(--tv-height, 100vh);
+    grid-template-rows: max-content minmax(0, 7vh) max-content minmax(0, 1fr);
+    overflow: hidden;
+}
+
+.tv-screen .tv-active-table {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    max-height: calc(var(--tv-height, 100vh) * 0.28);
+    overflow: hidden;
+}
+
+.tv-screen .tv-table-wrap {
+    overflow-y: auto;
+}
+
+.tv-screen .tv-table td,
+.tv-screen .tv-table td small {
+    white-space: normal;
+}
+
+.tv-screen .tv-table .tv-table__text {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    max-height: 2.44em;
+    line-height: 1.22;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    white-space: normal;
+}
+
+.tv-screen .cell-status .tv-table__text {
+    max-height: 2.5em;
+    line-height: 1.25;
+}
+
+.tv-screen .tv-table .tv-wrap__line {
+    display: inline;
+    white-space: normal;
+}
+
+.tv-screen .tv-chart-stage {
+    flex: 1 1 0;
+    height: 0;
 }
 
 .tv-screen .tv-equipment__empty {
@@ -34,8 +81,7 @@ html.tv-screen {
 @media (max-width: 1024px) {
     .tv-screen .tv-page {
         --tv-unit: clamp(1px, min(0.15625vw, 0.277778vh), 1.6px);
-        --tv-stage-min: 120px;
-        grid-template-rows: max-content calc(26 * var(--tv-unit)) max-content minmax(var(--tv-chart-min, 160px), 1fr);
+        grid-template-rows: max-content calc(26 * var(--tv-unit)) max-content minmax(0, 1fr);
         padding: calc(6 * var(--tv-unit));
         gap: calc(5 * var(--tv-unit));
     }
