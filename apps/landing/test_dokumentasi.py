@@ -118,6 +118,41 @@ class DokumentasiTVTests(TestCase):
         self.assertFalse(storage.exists(replacement.foto.name))
         self.assertTrue(storage.exists(second.foto.name))
 
+    def test_saved_replace_and_x_removal_clean_database_references_and_files(self):
+        original = DokumentasiTV.objects.create(slide=self.slide, nomor=1, foto=photo("original.png"))
+        kept = DokumentasiTV.objects.create(slide=self.slide, nomor=2, foto=photo("kept.png"))
+        old_name, storage = original.foto.name, original.foto.storage
+        self.client.force_login(self.user)
+        response = self.client.get(self.url)
+        form = self.response_form(response)
+        self.assertEqual(form.fields["hapus_1"].widget.input_type, "hidden")
+        self.assertContains(response, 'data-tv-photo-remove', count=6)
+        with self.captureOnCommitCallbacks(execute=True):
+            self.assertRedirects(self.post_slide({"foto_1": photo("replacement.png"), "hapus_1": "False"}), self.edit_url)
+        self.assertFalse(storage.exists(old_name))
+        self.assertFalse(DokumentasiTV.objects.filter(foto=old_name).exists())
+        replacement = self.slide.fotos.get(nomor=1)
+        self.assertEqual(self.slide.fotos.count(), 2)
+        new_name = replacement.foto.name
+        self.assertTrue(storage.exists(new_name))
+        with self.captureOnCommitCallbacks(execute=True):
+            self.assertRedirects(self.post_slide({"hapus_1": "True"}), self.edit_url)
+        self.assertFalse(storage.exists(new_name))
+        self.assertFalse(DokumentasiTV.objects.filter(foto=new_name).exists())
+        self.assertEqual(list(self.slide.fotos.values_list("pk", flat=True)), [kept.pk])
+        self.assertTrue(storage.exists(kept.foto.name))
+
+    def test_deleting_slide_removes_all_six_photo_records_and_files(self):
+        self.client.force_login(self.user)
+        self.post_slide({f"foto_{i}": photo(f"slide-{i}.png") for i in range(1, 7)})
+        photos = list(self.slide.fotos.all())
+        self.assertEqual(len(photos), 6)
+        with self.captureOnCommitCallbacks(execute=True):
+            self.assertRedirects(self.client.post(reverse("landing:dokumentasi_delete", args=[self.slide.pk])), self.url)
+        self.assertFalse(SlideDokumentasi.objects.filter(pk=self.slide.pk).exists())
+        self.assertFalse(DokumentasiTV.objects.filter(slide_id=self.slide.pk).exists())
+        self.assertTrue(all(not item.foto.storage.exists(item.foto.name) for item in photos))
+
     def test_shared_file_and_rolled_back_removal_are_not_cleaned(self):
         first = DokumentasiTV.objects.create(slide=self.slide, nomor=1, foto=photo())
         DokumentasiTV.objects.create(slide=self.slide, nomor=2, foto=first.foto.name)
@@ -161,7 +196,7 @@ class DokumentasiTVTests(TestCase):
         for mode in ("", "?tv=1"):
             response = self.client.get(self.display + mode)
             self.assertContains(response, f'data-tv-documentation-slide="{self.slide.pk}"')
-            self.assertContains(response, 'class="tv-documentation__item"', count=6)
+            self.assertContains(response, 'class="tv-documentation__item"', count=2)
             self.assertContains(response, first.foto.url)
             self.assertContains(response, last.foto.url)
         response = self.client.get(self.refresh)
@@ -255,6 +290,43 @@ class DokumentasiTVTests(TestCase):
         self.assertEqual(len(set(ids)), 24)
         photo_queries = [q for q in queries if 'FROM "landing_dokumentasitv"' in q["sql"]]
         self.assertEqual(len(photo_queries), 1)
+
+    def test_slide_labels_stay_sequential_after_deleting_and_adding(self):
+        second = SlideDokumentasi.objects.create()
+        third = SlideDokumentasi.objects.create()
+        kept = DokumentasiTV.objects.create(slide=third, nomor=1, foto=photo("keep.png"))
+        self.client.force_login(self.user)
+        self.client.post(reverse("landing:dokumentasi_delete", args=[second.pk]))
+        self.client.post(self.url, {"action": "tambah"})
+        fourth = SlideDokumentasi.objects.latest("pk")
+        response = self.client.get(self.url)
+        items = response.context["slides"]
+        self.assertEqual([item["nomor"] for item in items], [1, 2, 3])
+        self.assertEqual([item["slide"].pk for item in items], [self.slide.pk, third.pk, fourth.pk])
+        titles = re.findall(r'<h3 class="table-title"[^>]*>(.*?)</h3>', response.content.decode())
+        self.assertEqual(titles, [f"Slide {i} - Konten Kegiatan TV" for i in range(1, 4)])
+        self.assertContains(response, f'data-delete-url="{reverse("landing:dokumentasi_delete", args=[third.pk])}" data-item-name="Slide 2"')
+        self.assertContains(response, "Simpan Slide 3")
+        kept.refresh_from_db()
+        self.assertEqual(kept.slide_id, third.pk)
+        self.assertTrue(kept.foto.storage.exists(kept.foto.name))
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.client.post(reverse("landing:dokumentasi_delete", args=[third.pk]), follow=True)
+        self.assertContains(response, "Slide 2 dokumentasi berhasil dihapus.")
+        self.assertTrue(SlideDokumentasi.objects.filter(pk=fourth.pk).exists())
+        self.assertEqual([item["nomor"] for item in response.context["slides"]], [1, 2])
+
+    def test_numbering_restarts_at_one_after_all_slides_are_removed(self):
+        old_id = self.slide.pk
+        self.client.force_login(self.user)
+        self.client.post(reverse("landing:dokumentasi_delete", args=[old_id]))
+        self.client.post(self.url, {"action": "tambah"})
+        response = self.client.get(self.url)
+        item = response.context["slides"][0]
+        self.assertGreater(item["slide"].pk, old_id)
+        self.assertEqual(item["nomor"], 1)
+        self.assertContains(response, "Slide 1 - Konten Kegiatan TV")
+        self.assertContains(response, 'data-item-name="Slide 1"')
 
     def test_delete_empty_slide_and_last_slide_then_add_again(self):
         self.client.force_login(self.user)

@@ -30,7 +30,10 @@ Ini ukuran viewport CSS, bukan resolusi foto atau panel fisik TV.
   dihapus agar ukuran dan transisi konsisten pada semua breakpoint.
 - `dashboard_display.css` dan `tv_layout.js` dipakai mode normal dan TV. Ukuran font
   tabel mengikuti field yang paling membutuhkan ruang, termasuk header, periode,
-  nama, instansi, dan badge. Semua cell memakai satu baris dengan font seragam.
+  nama, dan instansi. Cell biasa tetap satu baris. Status memakai font satu unit
+  skala lebih kecil dan membungkus maksimal 22 karakter per baris, termasuk spasi.
+  Pembungkusan mengikuti kata, memotong kata tunggal yang terlalu panjang tanpa
+  elipsis. Badge disesuaikan terhadap lebar cell sehingga tidak memasuki kolom lain.
 - Tabel display memakai wrapper sendiri, tanpa class list transaksi umum yang
   membawa minimum lebar, tinggi baris, dan breakpoint berbeda. Padding toolbar,
   cell, badge, serta kondisi kosong mengikuti `--tv-type` di kedua mode. Pemisah
@@ -43,12 +46,15 @@ Ini ukuran viewport CSS, bukan resolusi foto atau panel fisik TV.
   dan TV serta batas maksimum pada layar besar. Override font per breakpoint
   dihapus; penyesuaian teks terpanjang tetap diterapkan di atas skala ini.
 - Khusus `tv-equipment__body`, font awal dimaksimalkan terhadap lebar dalam card.
-  Nama, merek, dan metadata memakai satu pengali bersama per slide agar hierarki
-  serta ukuran antar-card seragam. Pengali bisa lebih besar atau lebih kecil dari
-  satu, dibatasi judul/merek atau gabungan label dan nilai metadata terpanjang.
-  Slide lain tidak membatasi ukuran font slide yang sedang ditampilkan. Jarak
-  metadata mengikuti font dalam satuan `em`; label dan nilai tetap satu baris
-  tanpa elipsis. Card kosong dan rekap memakai penyesuaian ukurannya sendiri.
+  Nama/merek memakai pengali bersama per slide dan tetap proporsional terhadap
+  metadata ketika judulnya pendek.
+  Metadata dihitung terpisah terhadap gabungan label/nilai terpanjang dan dibatasi
+  sekitar 65% ukuran judul serta 90% ukuran merek agar hierarkinya tetap jelas.
+  Jarak baris/kolom mengikuti font dalam satuan `em`. Asal Perolehan membungkus
+  maksimal 18 karakter per baris, termasuk spasi; metadata lain tetap satu baris.
+  Ukuran diukur dari baris terpanjang setelah wrap, bukan gabungan teks seluruh
+  baris. Semua card dalam satu slide memakai ukuran seragam; slide lain tidak
+  membatasi ukuran slide aktif. Card kosong dan rekap memakai penyesuaian sendiri.
 - Pengukuran memakai lebar teks hasil render. Ukuran dihitung ulang setelah resize,
   font/gambar selesai dimuat, pergantian slide, dan pembaruan data. Font kembali ke
   ukuran CSS dasarnya sebelum dihitung agar tidak terus membesar/mengecil setelah resize.
@@ -85,6 +91,13 @@ Ini ukuran viewport CSS, bukan resolusi foto atau panel fisik TV.
   ulang sebelum layout, termasuk resize, pada mode normal maupun TV.
 
 ## Validasi 11 November 2026
+
+Wrap status/Asal Perolehan memakai filter `tv_lines` pada partial yang sama untuk
+render awal dan polling. HTML sumber di-escape; pemisahan kata, kata tanpa spasi,
+Unicode, teks kosong dan batas 18/22 karakter diuji. Browser memeriksa badge lebih
+kecil dari cell biasa, semua field berada dalam card/cell, dan metadata lebih kecil
+dari judul pada mode TV/normal 640x360, 1280x720, 1600x900, 1920x1080, 390x844.
+Resize bolak-balik serta pembaruan melalui polling juga diperiksa.
 
 Judul manual diperiksa pada kedua slide, mode normal/TV, serta polling. Validasi
 server menolak judul kosong/spasi dan panjang di atas 200 karakter tanpa menyimpan
@@ -164,7 +177,7 @@ node --test apps/dashboard/test_layout.js apps/dashboard/test_chart.js apps/dash
 
 ## Dokumentasi kegiatan TV
 
-Menu Landing Page > Dokumentasi Kegiatan TV menampilkan seluruh slide berurutan
+Menu Manage Konten > Konten Kegiatan TV menampilkan seluruh slide berurutan
 ke bawah dalam satu halaman, dikelola oleh Super Admin. Tombol Tambah Slide
 mengarahkan halaman ke panel slide baru. Tiap slide mempunyai enam kartu upload
 ringkas dengan preview, Simpan Slide, dan Hapus Slide. Layout upload memakai enam
@@ -173,6 +186,37 @@ kolom di desktop, tiga/dua kolom pada layar lebih kecil, dan satu kolom di bawah
 Setiap slide disimpan terpisah; field memakai prefix ID slide agar input/label
 tidak bertabrakan. Seluruh foto diprefetch sekali untuk menghindari query per slide.
 Dropdown dan query pemilihan slide lama sudah dihapus.
+
+Nomor tampilan dihitung ulang dari urutan slide yang tersedia: judul panel, tombol
+simpan/hapus, modal dan pesan penghapusan memakai Slide 1, Slide 2, dan seterusnya.
+Setelah penghapusan tidak ada nomor yang terlewat; penambahan slide ditempatkan
+setelah slide terakhir. ID penyimpanan, relasi foto, prefix form dan URL aksi tetap
+stabil sehingga penomoran tampilan tidak memindahkan gambar antar-slide.
+
+Kontrol upload memakai `landing-gallery-input` dan `landing-gallery-trigger` yang
+sama dengan galeri peralatan, dengan ukuran ringkas untuk enam kolom. Tombol
+menampilkan Pilih/Ganti gambar atau nama file yang dipilih, dilengkapi pratinjau
+dan tombol X di kanan atas preview untuk mengosongkan slot. Nama file dipasang melalui `textContent`; file picker dapat dibuka
+dengan klik label maupun keyboard. Style input native lama di kartu dihapus.
+Validasi meliputi hapus di tengah lalu tambah, hapus seluruh slide lalu tambah,
+label modal/target data, pratinjau, nama file dan layout pada lebar 320-1440 px.
+
+Tombol X menggantikan checkbox dengan flag hidden yang tetap divalidasi di server.
+File baru yang belum disimpan dibatalkan langsung; gambar tersimpan ditandai untuk
+dihapus saat Simpan Slide. Memilih file pengganti membatalkan flag hapus. Backend
+mengganti referensi file pada record slot, menghapus record gambar yang dikosongkan,
+dan membersihkan file lama setelah commit melalui signal yang sudah ada. Hapus Slide
+mencakup seluruh record/file miliknya; file yang masih dipakai slot lain tetap ada.
+Tes HTTP memeriksa replace lalu hapus dan penghapusan slide berisi enam file.
+
+Tambah Slide membuka popup pengingat untuk menyimpan perubahan slide sebelumnya.
+Jika masih ada file baru/pengganti atau flag hapus, tombol konfirmasi tambah menjadi
+disabled dan popup mengarahkan pengguna kembali ke slide yang perlu disimpan.
+Penambahan tidak mengirim POST sampai tidak ada perubahan tertunda. Pembatalan
+popup mempertahankan file pilihan dan preview. Saat pilihan file baru dibatalkan
+hingga form kembali bersih, guard navigasi global direset sebelum POST tambah.
+Browser menguji gambar baru/tersimpan/pengganti, X, flag hapus yang dikirim, popup
+bersih/kotor, batal/kembali, dan penambahan setelah membatalkan pilihan file.
 
 Hapus Slide memakai modal hapus master yang sudah ada dan endpoint POST khusus,
 dengan autentikasi, role Super Admin, dan CSRF. Penghapusan mencakup gambar dalam
@@ -186,8 +230,12 @@ dan hanya jika tidak lagi dipakai slot lain. Migration `landing.0010_dokumentasi
 menambahkan induk slide dan memindahkan enam gambar lama ke Slide 1 tanpa mengubah
 lokasi file. ID gambar memakai urutan otomatis, sedangkan nomor 1-6 unik per slide.
 
-Slide dokumentasi menampilkan enam posisi dalam grid 3 kolom x 2 baris. Gambar
-ditampilkan utuh dengan `object-fit: contain`; slot kosong memakai placeholder.
+Slide Dokumentasi Kegiatan Laboratorium menampilkan hanya slot yang berisi foto,
+maksimal enam gambar. Susunan flex membungkus maksimal tiga foto per baris dan
+memusatkan seluruh kelompok secara horizontal/vertikal. Baris terakhir juga
+dipusatkan: empat foto menjadi 3+1, lima foto menjadi 3+2. Untuk satu sampai tiga
+foto, satu baris berada di tengah tinggi container. Ukuran kotak tetap konsisten
+dan foto ditampilkan utuh dengan `object-fit: contain`; placeholder kosong dihapus.
 Jika semua slot suatu slide kosong, slide beserta indikatornya dilewati. Polling
 10 detik menerima `documentationSlides` dengan ID dan HTML setiap slide terisi,
 memperbarui gambar dan menambah/menghilangkan slide tanpa reload halaman, termasuk

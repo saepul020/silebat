@@ -5,6 +5,7 @@
 document.addEventListener('DOMContentLoaded', function () {
     initTvChoices();
     initTvPhotos();
+    initTvAddSlide();
     initLandingEquipmentOrderValidation();
     initLandingEquipmentGalleryUpload();
     initLandingSpecInput();
@@ -16,26 +17,101 @@ function initTvPhotos() {
         const image = slot.querySelector('[data-tv-photo-preview]');
         const empty = slot.querySelector('[data-tv-photo-empty]');
         const clear = slot.querySelector('[data-tv-photo-clear]');
+        const remove = slot.querySelector('[data-tv-photo-remove]');
+        const name = slot.querySelector('[data-tv-photo-name]');
         const original = image.getAttribute('src') || '';
         let previewUrl = '';
         function render() {
             if (previewUrl) URL.revokeObjectURL(previewUrl);
             previewUrl = input.files?.[0] ? URL.createObjectURL(input.files[0]) : '';
-            const src = clear?.checked ? '' : previewUrl || original;
+            const removed = clear.value === 'True';
+            const src = removed ? '' : previewUrl || original;
             image.hidden = !src;
             empty.hidden = Boolean(src);
+            empty.textContent = removed ? 'Gambar akan dihapus saat disimpan.' : 'Belum ada gambar';
+            remove.hidden = !src;
+            if (name) {
+                const fileName = input.files?.[0]?.name || '';
+                name.textContent = fileName || (src ? 'Ganti gambar' : 'Pilih gambar');
+                name.title = fileName;
+            }
             if (src) image.src = src;
             else image.removeAttribute('src');
         }
         input.addEventListener('change', function () {
-            if (input.files?.length && clear) clear.checked = false;
+            if (input.files?.length) clear.value = 'False';
             render();
         });
-        clear?.addEventListener('change', function () {
-            if (clear.checked) input.value = '';
+        remove.addEventListener('click', function () {
+            input.value = '';
+            clear.value = original ? 'True' : 'False';
+            clear.dispatchEvent(new Event('change', { bubbles: true }));
             render();
         });
         render();
+    });
+}
+
+function initTvAddSlide() {
+    const form = document.querySelector('[data-tv-add-form]');
+    const modal = document.getElementById('tvAddModal');
+    if (!form || !modal) return;
+    const add = form.querySelector('button[type="submit"]');
+    const confirm = modal.querySelector('[data-tv-add-confirm]');
+    const back = modal.querySelector('[data-tv-add-back]');
+    const message = modal.querySelector('#tvAddMessage');
+    const forms = Array.from(document.querySelectorAll('.tv-photo-panel__form'));
+    let confirmed = false;
+    let pending = null;
+
+    function changedForm() {
+        return forms.find(item => Array.from(item.querySelectorAll('[data-tv-photo-input]')).some(input => input.files?.length)
+            || Array.from(item.querySelectorAll('[data-tv-photo-clear]')).some(input => input.value === 'True'));
+    }
+
+    function open() {
+        pending = changedForm();
+        message.textContent = pending
+            ? 'Ada perubahan gambar yang belum disimpan. Klik Simpan Slide pada slide tersebut terlebih dahulu sebelum menambahkan slide baru.'
+            : 'Pastikan perubahan pada slide sebelumnya sudah disimpan sebelum menambahkan slide baru.';
+        confirm.disabled = Boolean(pending);
+        back.textContent = pending ? 'Kembali ke Slide' : 'Batal';
+        modal.classList.add('show');
+        document.body.classList.add('is-scroll-locked');
+        back.focus();
+    }
+
+    function close() {
+        modal.classList.remove('show');
+        document.body.classList.remove('is-scroll-locked');
+        if (pending) {
+            pending.closest('.tv-photo-panel').scrollIntoView({ block: 'center' });
+            pending.querySelector('.tv-photo-panel__actions button').focus({ preventScroll: true });
+        } else {
+            add.focus();
+        }
+    }
+
+    form.addEventListener('submit', event => {
+        if (confirmed && !changedForm()) return;
+        event.preventDefault();
+        open();
+    });
+    confirm.addEventListener('click', () => {
+        if (changedForm()) {
+            open();
+            return;
+        }
+        close();
+        // The page has no pending file changes; clear stale global navigation drafts.
+        forms.forEach(item => item.dispatchEvent(new CustomEvent('unsaved:reset')));
+        confirmed = true;
+        form.requestSubmit(add);
+        confirmed = false;
+    });
+    modal.querySelectorAll('[data-tv-add-close]').forEach(button => button.addEventListener('click', close));
+    document.addEventListener('keydown', event => {
+        if (event.key === 'Escape' && modal.classList.contains('show')) close();
     });
 }
 

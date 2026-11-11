@@ -1,3 +1,4 @@
+{% load tv_tags %}
 {% for slot in tv_slots %}
 <article class="tv-equipment__card{% if not slot.alat %} tv-equipment__card--empty{% endif %}" aria-label="Kolom {{ slot.nomor }}">
     <div class="tv-equipment__photo">
@@ -17,7 +18,7 @@
         <dl class="tv-equipment__meta">
             <div><dt>Kode Barang <span>:</span></dt><dd title="{{ slot.alat.kode_aset_bmn|default:slot.alat.kode_laboratorium|default:'-' }}">{{ slot.alat.kode_aset_bmn|default:slot.alat.kode_laboratorium|default:'-' }}</dd></div>
             <div><dt>Tahun Perolehan <span>:</span></dt><dd>{{ slot.alat.tahun_perolehan|default:'-' }}</dd></div>
-            <div><dt>Asal Perolehan <span>:</span></dt><dd>{{ slot.alat.asal_perolehan|default:'-' }}</dd></div>
+            <div><dt>Asal Perolehan <span>:</span></dt><dd class="tv-equipment__origin">{{ slot.alat.asal_perolehan|default:'-'|tv_lines:18 }}</dd></div>
             <div><dt>Kondisi <span>:</span></dt><dd>{{ slot.alat.kondisi_barang|default:'-' }}</dd></div>
         </dl>
         {% else %}

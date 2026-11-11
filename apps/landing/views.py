@@ -17,7 +17,7 @@ from .services import get_public_landing_context, invalidate_public_landing_cach
 
 landing_manage_required = user_passes_access(
     is_super_admin,
-    'Pengaturan landing page hanya dapat diakses oleh Super Admin.',
+    'Pengaturan konten hanya dapat diakses oleh Super Admin.',
 )
 EQUIPMENT_LIST_SEARCH_FIELDS = (
     "kategori_barang",
@@ -49,13 +49,13 @@ def dokumentasi_tv(request):
         target = int(raw_id)
     slides = []
     bound = None
-    for slide in SlideDokumentasi.objects.prefetch_related("fotos"):
+    for nomor, slide in enumerate(SlideDokumentasi.objects.prefetch_related("fotos"), start=1):
         form = DokumentasiTVForm(
             request.POST if target == slide.pk else None,
             request.FILES if target == slide.pk else None,
             slide=slide, prefix=f"slide-{slide.pk}",
         )
-        slides.append({"slide": slide, "form": form})
+        slides.append({"slide": slide, "form": form, "nomor": nomor})
         if target == slide.pk:
             bound = form
     if target is not None and bound is None:
@@ -72,9 +72,9 @@ def dokumentasi_tv(request):
 @require_POST
 def dokumentasi_delete(request, pk):
     slide = get_object_or_404(SlideDokumentasi, pk=pk)
-    label = str(slide)
+    nomor = SlideDokumentasi.objects.filter(pk__lte=slide.pk).count()
     slide.delete()
-    messages.success(request, f"{label} dokumentasi berhasil dihapus.")
+    messages.success(request, f"Slide {nomor} dokumentasi berhasil dihapus.")
     return redirect("landing:dokumentasi_tv")
 
 

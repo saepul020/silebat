@@ -1,4 +1,4 @@
-/* Shared single-line fitting; signage also follows the visual viewport. */
+/* Responsive TV type, wrapped fields, and the visible signage viewport. */
 function getTvViewport(viewport, fallback) {
     const positive = value => Number.isFinite(Number(value)) && Number(value) > 0;
     const offset = value => Number.isFinite(Number(value)) ? Math.max(0, Number(value)) : 0;
@@ -26,6 +26,8 @@ function initTvLayout() {
     }
 
     function textWidth(node) {
+        const lines = Array.from(node.querySelectorAll('.tv-wrap__line'));
+        if (lines.length) return Math.max(0, ...lines.map(textWidth));
         const range = document.createRange();
         range.selectNodeContents(node);
         return range.getBoundingClientRect().width;
@@ -36,13 +38,13 @@ function initTvLayout() {
         return node.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
     }
 
-    function fitText(selector, property, container = page) {
+    function fitText(selector, property, container = page, widthOf = innerWidth) {
         container.style.removeProperty(property);
         const nodes = Array.from(container.querySelectorAll(selector));
         let ratio = 1;
         nodes.forEach(node => {
             if (node.clientWidth > 0) {
-                ratio = Math.min(ratio, Math.max(1, innerWidth(node) - 2) / Math.max(1, textWidth(node)));
+                ratio = Math.min(ratio, Math.max(1, widthOf(node) - 2) / Math.max(1, textWidth(node)));
             }
         });
         if (nodes.length && ratio < 1) {
@@ -65,9 +67,9 @@ function initTvLayout() {
                 return;
             }
             const sizes = groups.map(([selector]) => parseFloat(getComputedStyle(bodies[0].querySelector(selector)).fontSize));
-            // A shared multiplier preserves the title/brand/metadata hierarchy.
-            // Start uncapped so short fields can grow into the available width.
+            // Titles and brands share a scale; metadata fits separately below them.
             let ratio = Infinity;
+            let metaRatio = Infinity;
             bodies.forEach(body => {
                 body.querySelectorAll('.tv-equipment__name, .tv-equipment__brand').forEach(node => {
                     if (node.clientWidth > 0 && node.textContent.trim()) {
@@ -79,14 +81,17 @@ function initTvLayout() {
                     const labelWidth = Math.max(0, ...Array.from(list.querySelectorAll('dt'), node => node.scrollWidth));
                     const valueWidth = Math.max(0, ...Array.from(list.querySelectorAll('dd'), textWidth));
                     const gap = parseFloat(getComputedStyle(list).columnGap) || 0;
-                    ratio = Math.min(ratio, Math.max(1, list.clientWidth - 2) / Math.max(1, labelWidth + valueWidth + gap));
+                    metaRatio = Math.min(metaRatio, Math.max(1, list.clientWidth - 2) / Math.max(1, labelWidth + valueWidth + gap));
                 }
             });
-            if (Number.isFinite(ratio)) {
-                groups.forEach(([, property], index) => {
-                    setValue(grid, property, `${Math.floor(sizes[index] * ratio * 10) / 10}px`);
-                });
-            }
+            if (!Number.isFinite(ratio) || !Number.isFinite(metaRatio)) return;
+            // Fill the available width while keeping short headings proportional to metadata.
+            ratio = Math.min(ratio, metaRatio * sizes[2] * 1.6 / sizes[0]);
+            groups.slice(0, 2).forEach(([, property], index) => {
+                setValue(grid, property, `${Math.floor(sizes[index] * ratio * 10) / 10}px`);
+            });
+            metaRatio = Math.min(metaRatio, sizes[0] * ratio * 0.65 / sizes[2], sizes[1] * ratio * 0.9 / sizes[2]);
+            setValue(grid, '--tv-meta-size', `${Math.floor(sizes[2] * metaRatio * 10) / 10}px`);
         });
     }
 
@@ -101,7 +106,11 @@ function initTvLayout() {
         }
         fitText('.tv-head h1', '--tv-heading-size');
         fitText('.tv-head p', '--tv-subtitle-size');
-        fitText('.tv-table th, .tv-table td:not([colspan])', '--tv-table-size');
+        fitText('.tv-table th:not(.cell-status), .tv-table td:not([colspan]):not(.cell-status)', '--tv-table-size');
+        fitText('.tv-table .cell-status .status-badge', '--tv-status-size', page, badge => {
+            const style = getComputedStyle(badge);
+            return innerWidth(badge.parentElement) - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+        });
         fitText('[data-tv-slide-title]', '--tv-title-size');
         fitEquipment();
 

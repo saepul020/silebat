@@ -1,9 +1,7 @@
 {% for slot in tv_documentation.slots %}
+{% if slot.foto %}
 <figure class="tv-documentation__item">
-    {% if slot.foto %}
     <img src="{{ slot.foto.url }}" alt="Dokumentasi kegiatan {{ slot.nomor }}" decoding="async">
-    {% else %}
-    <span class="tv-documentation__empty">Gambar {{ slot.nomor }} belum diunggah</span>
-    {% endif %}
 </figure>
+{% endif %}
 {% endfor %}

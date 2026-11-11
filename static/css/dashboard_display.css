@@ -301,16 +301,28 @@ body.tv-body {
 .tv-table th:nth-child(7),
 .tv-table td:nth-child(7) { width: 12%; }
 
+.tv-table-wrap .tv-table .cell-status {
+    font-size: var(--tv-status-size, calc(var(--tv-table-size, calc(7.5 * var(--tv-type))) - var(--tv-type)));
+    white-space: normal;
+}
+
+.tv-wrap__line {
+    display: block;
+    white-space: nowrap;
+}
+
 .tv-table-wrap .tv-table .cell-status .status-badge {
+    display: inline-block;
     border-radius: min(var(--tv-radius-sm), 0.8em);
     min-width: 0;
-    max-width: none;
+    max-width: 100%;
     padding: calc(1.5 * var(--tv-type)) calc(4 * var(--tv-type));
     border: 0;
     box-shadow: inset 0 0 0 var(--tv-stroke) var(--tv-badge-ring, var(--border));
     font-size: inherit;
-    line-height: 1.12;
-    white-space: nowrap;
+    line-height: 1.25;
+    text-align: left;
+    white-space: normal;
 }
 
 .tv-table .badge-primary { --tv-badge-ring: var(--color-soft-blue); }
@@ -403,16 +415,20 @@ body.tv-body {
 }
 
 .tv-documentation {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    grid-template-rows: repeat(2, minmax(0, 1fr));
-    gap: calc(8 * var(--tv-type));
+    --tv-doc-gap: calc(8 * var(--tv-type));
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-content: center;
+    gap: var(--tv-doc-gap);
     height: 100%;
     padding: calc(2 * var(--tv-type));
 }
 
 .tv-documentation__item {
     display: flex;
+    flex: 0 0 calc((100% - 2 * var(--tv-doc-gap)) / 3);
+    height: calc((100% - var(--tv-doc-gap)) / 2);
     align-items: center;
     justify-content: center;
     min-width: 0;
@@ -427,13 +443,6 @@ body.tv-body {
     width: 100%;
     height: 100%;
     object-fit: contain;
-}
-
-.tv-documentation__empty {
-    padding: 0.5em;
-    color: var(--text-soft);
-    font-size: calc(8 * var(--tv-type));
-    text-align: center;
 }
 
 .tv-equipment {
@@ -623,12 +632,13 @@ body.tv-body {
 }
 
 .tv-equipment__meta {
-    font-size: var(--tv-meta-size, calc(8 * var(--tv-type)));
+    font-size: var(--tv-meta-size, calc(7 * var(--tv-type)));
     display: grid;
     grid-template-columns: max-content minmax(0, 1fr);
     align-items: start;
-    gap: 0.4em 0.5em;
+    gap: 0.55em 0.65em;
     margin: 0;
+    line-height: 1.45;
 }
 
 .tv-equipment__meta div {
@@ -641,6 +651,7 @@ body.tv-body {
     gap: 0.4em;
     color: var(--text-soft);
     font-weight: 400;
+    font-size: inherit;
 }
 
 .tv-equipment__meta dd {
@@ -648,6 +659,7 @@ body.tv-body {
     color: var(--color-primary-navy);
     text-align: left;
     font-weight: 600;
+    font-size: inherit;
 }
 
 @media (max-width: 960px) {

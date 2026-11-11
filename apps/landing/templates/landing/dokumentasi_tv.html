@@ -1,19 +1,19 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Dokumentasi Kegiatan TV{% endblock %}
+{% block title %}Konten Kegiatan TV{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/landing_manage.css' %}?v=20261111-tv-list-v1">
+<link rel="stylesheet" href="{% static 'css/landing_manage.css' %}?v=20261111-tv-remove-v1">
 {% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <h1>Dokumentasi Kegiatan TV</h1>
-    <p>Atur enam gambar pada setiap slide dan simpan perubahan per slide. Format JPG, JPEG, atau PNG, maksimal 7 MB per gambar.</p>
+    <h1>Konten Kegiatan TV</h1>
+    <p>Kelola dokumentasi kegiatan yang akan ditampilkan di slide TV show.</p>
 </div>
 <div class="tv-photo-toolbar">
-    <form method="post" action="{% url 'landing:dokumentasi_tv' %}">
+    <form method="post" action="{% url 'landing:dokumentasi_tv' %}" data-tv-add-form>
         {% csrf_token %}
         <button type="submit" name="action" value="tambah" class="btn btn-primary"><i class="bi bi-plus-lg" aria-hidden="true"></i>&nbsp;Tambah Slide</button>
     </form>
@@ -23,8 +23,8 @@
 {% with slide=item.slide form=item.form %}
 <section class="table-wrapper table-panel tv-photo-panel" id="slide-{{ slide.pk }}" aria-labelledby="slide-title-{{ slide.pk }}">
     <div class="table-toolbar tv-config-panel__toolbar tv-photo-panel__header">
-        <h3 class="table-title" id="slide-title-{{ slide.pk }}">{{ slide }} - Dokumentasi Kegiatan TV</h3>
-        <button type="button" class="btn btn-danger btn-sm js-delete-btn" data-delete-modal="master" data-delete-url="{% url 'landing:dokumentasi_delete' slide.pk %}" data-item-name="{{ slide }}" data-item-meta="Dokumentasi Kegiatan TV" aria-label="Hapus {{ slide }}">
+        <h3 class="table-title" id="slide-title-{{ slide.pk }}">Slide {{ item.nomor }} - Konten Kegiatan TV</h3>
+        <button type="button" class="btn btn-danger btn-sm js-delete-btn" data-delete-modal="master" data-delete-url="{% url 'landing:dokumentasi_delete' slide.pk %}" data-item-name="Slide {{ item.nomor }}" data-item-meta="Konten Kegiatan TV" aria-label="Hapus Slide {{ item.nomor }}">
             <i class="bi bi-trash" aria-hidden="true"></i>&nbsp;Hapus Slide
         </button>
     </div>
@@ -44,19 +44,26 @@
             <div class="tv-photo__preview">
                 <img data-tv-photo-preview {% if slot.foto %}src="{{ slot.foto.url }}"{% else %}hidden{% endif %} alt="Pratinjau gambar kegiatan {{ slot.nomor }}">
                 <span data-tv-photo-empty {% if slot.foto %}hidden{% endif %}>Belum ada gambar</span>
+                {{ slot.hapus }}
+                <button type="button" class="landing-gallery-remove tv-photo__remove" data-tv-photo-remove aria-label="Hapus gambar {{ slot.nomor }}" title="Hapus gambar" {% if not slot.foto %}hidden{% endif %}>
+                    <i class="bi bi-x-lg" aria-hidden="true"></i>
+                </button>
             </div>
             <div class="form-group{% if slot.input.errors %} has-error{% endif %}">
-                {{ slot.input }}
+                <div class="landing-gallery-picker">
+                    {{ slot.input }}
+                    <label for="{{ slot.input.id_for_label }}" class="landing-gallery-trigger tv-photo__trigger">
+                        <span class="landing-gallery-trigger__icon"><i class="bi bi-images" aria-hidden="true"></i></span>
+                        <span data-tv-photo-name>{% if slot.foto %}Ganti gambar{% else %}Pilih gambar{% endif %}</span>
+                    </label>
+                </div>
                 {% for error in slot.input.errors %}<p class="input-error-text">{{ error }}</p>{% endfor %}
             </div>
-            {% if slot.foto %}
-            <label class="checkbox-inline tv-photo__clear" for="{{ slot.hapus.id_for_label }}">{{ slot.hapus }} {{ slot.hapus.label }}</label>
-            {% endif %}
         </div>
         {% endfor %}
     </div>
     <div class="tv-photo-panel__actions">
-        <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-floppy" aria-hidden="true"></i>&nbsp;Simpan {{ slide }}</button>
+        <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-floppy" aria-hidden="true"></i>&nbsp;Simpan Slide {{ item.nomor }}</button>
     </div>
 </form>
 </section>
@@ -64,6 +71,21 @@
 {% empty %}
 <div class="card"><p>Belum ada slide dokumentasi. Klik Tambah Slide untuk mulai mengunggah gambar.</p></div>
 {% endfor %}
+</div>
+
+<div class="delete-modal" id="tvAddModal">
+    <div class="delete-modal-backdrop" data-tv-add-close></div>
+    <div class="delete-modal-card" role="dialog" aria-modal="true" aria-labelledby="tvAddTitle" aria-describedby="tvAddMessage">
+        <div class="delete-modal-header">
+            <h3 id="tvAddTitle">Tambah Slide Dokumentasi</h3>
+            <button type="button" class="delete-modal-close" data-tv-add-close aria-label="Tutup">&times;</button>
+        </div>
+        <div class="delete-modal-body"><p id="tvAddMessage"></p></div>
+        <div class="delete-modal-actions">
+            <button type="button" class="btn btn-secondary" data-tv-add-close data-tv-add-back>Batal</button>
+            <button type="button" class="btn btn-primary" data-tv-add-confirm>Tambah Slide</button>
+        </div>
+    </div>
 </div>
 
 <div class="delete-modal" id="masterDeleteModal">
@@ -92,5 +114,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/landing_manage.js' %}?v=20261111-tv-documentation-v1" defer></script>
+<script src="{% static 'js/landing_manage.js' %}?v=20261111-tv-remove-v1" defer></script>
 {% endblock %}

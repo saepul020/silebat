@@ -1,3 +1,4 @@
+{% load tv_tags %}
 {% for item in active_peminjaman %}
 <tr>
     <td>{{ item.nomor_pengajuan }}</td>
@@ -6,10 +7,10 @@
     <td>{{ item.instansi_tujuan.nama_instansi|default:item.instansi_tujuan_lainnya|default:'-' }}</td>
     <td>{{ item.tanggal_mulai|date:'d M Y' }} <small>s/d {{ item.tanggal_selesai|date:'d M Y' }}</small></td>
     <td class="cell-status">
-        <span class="status-badge {{ item.proses_peminjaman_badge_class }}">{{ item.proses_peminjaman_label }}</span>
+        <span class="status-badge {{ item.proses_peminjaman_badge_class }}">{{ item.proses_peminjaman_label|tv_lines:22 }}</span>
     </td>
     <td class="cell-status">
-        <span class="status-badge {{ item.proses_pengembalian_badge_class }}">{{ item.proses_pengembalian_label }}</span>
+        <span class="status-badge {{ item.proses_pengembalian_badge_class }}">{{ item.proses_pengembalian_label|tv_lines:22 }}</span>
     </td>
 </tr>
 {% empty %}

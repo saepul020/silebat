@@ -4,13 +4,13 @@
 {% block title %}Konten Alat TV{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/landing_manage.css' %}?v=20261111-tv-list-v1">
+<link rel="stylesheet" href="{% static 'css/landing_manage.css' %}?v=20261111-tv-remove-v1">
 {% endblock %}
 
 {% block content %}
 <div class="page-header">
     <h1>Konten Alat TV</h1>
-    <p>Pilih peralatan untuk dua slide TV realtime, masing-masing enam kolom. Isi Judul Barang secara manual untuk setiap alat yang ditampilkan.</p>
+    <p>Pilih peralatan untuk konten slide TV show.</p>
 </div>
 <form method="post" data-tv-config>
     {% csrf_token %}
@@ -65,5 +65,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/landing_manage.js' %}?v=20261111-tv-documentation-v1" defer></script>
+<script src="{% static 'js/landing_manage.js' %}?v=20261111-tv-remove-v1" defer></script>
 {% endblock %}

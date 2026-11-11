@@ -27,8 +27,8 @@ class DokumentasiTVForm(forms.Form):
                 required=False,
                 label=f"Gambar {nomor}",
                 widget=forms.FileInput(attrs={
-                    "class": "form-control", "accept": ".jpg,.jpeg,.png",
-                    "data-tv-photo-input": "", "aria-label": f"Upload gambar kegiatan {nomor} pada slide {slide.pk}",
+                    "class": "landing-gallery-input", "accept": ".jpg,.jpeg,.png",
+                    "data-tv-photo-input": "", "aria-label": f"Upload gambar kegiatan {nomor}",
                 }),
                 validators=[self.validate_photo],
             )
@@ -40,7 +40,7 @@ class DokumentasiTVForm(forms.Form):
             )
             self.fields[f"foto_{nomor}"] = field
             self.fields[f"hapus_{nomor}"] = forms.BooleanField(
-                required=False, label="Hapus gambar", widget=forms.CheckboxInput(attrs={"data-tv-photo-clear": ""}),
+                required=False, label="Hapus gambar", widget=forms.HiddenInput(attrs={"data-tv-photo-clear": ""}),
             )
             self.slots.append({
                 "nomor": nomor, "foto": slot.foto if slot else None,
