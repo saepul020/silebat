@@ -10,6 +10,8 @@ html.tv-screen {
 
 .tv-screen .tv-page {
     --tv-type-min: 0.5px;
+    /* 960 x 540 CSS pixels is the TV reference, including panels with DPR 2. */
+    --tv-type: clamp(var(--tv-type-min), min(0.104167vw, 0.185185vh), 1.5px);
     position: fixed;
     left: var(--tv-left, 0px);
     top: var(--tv-top, 0px);
@@ -23,10 +25,15 @@ html.tv-screen {
     text-align: center;
 }
 
-/* 360p baseline (640 x 360): retain six cards and the complete activity table. */
+.tv-screen .tv-summary .tv-equipment__name {
+    width: 100%;
+    min-width: 0;
+}
+
+/* Compact TV frame: retain six cards and all rows down to 640 x 360. */
 @media (max-width: 1024px) {
     .tv-screen .tv-page {
-        --tv-unit: clamp(1px, 0.15625vw, 1.6px);
+        --tv-unit: clamp(1px, min(0.15625vw, 0.277778vh), 1.6px);
         --tv-stage-min: 120px;
         grid-template-rows: max-content calc(26 * var(--tv-unit)) max-content minmax(var(--tv-chart-min, 160px), 1fr);
         padding: calc(6 * var(--tv-unit));
@@ -43,7 +50,7 @@ html.tv-screen {
     }
 
     .tv-screen .tv-head__meta {
-        gap: 2px;
+        gap: calc(2 * var(--tv-type));
     }
 
     .tv-screen .tv-stats {
@@ -61,7 +68,7 @@ html.tv-screen {
     }
 
     .tv-screen .dashboard-stat-card__label {
-        margin-bottom: 1px;
+        margin-bottom: var(--tv-type);
     }
 
     .tv-screen .tv-chart-card {
@@ -74,16 +81,16 @@ html.tv-screen {
     }
 
     .tv-screen .tv-dots {
-        gap: 2px;
+        gap: calc(2 * var(--tv-type));
     }
 
     .tv-screen .tv-dots span {
-        width: 3px;
-        height: 3px;
+        width: calc(3 * var(--tv-type));
+        height: calc(3 * var(--tv-type));
     }
 
     .tv-screen .tv-dots .is-active {
-        width: 9px;
+        width: calc(9 * var(--tv-type));
     }
 
     .tv-screen .tv-equipment {
@@ -96,7 +103,7 @@ html.tv-screen {
     }
 
     .tv-screen .tv-summary .tv-equipment__name {
-        margin-bottom: 2px;
+        margin-bottom: calc(2 * var(--tv-type));
     }
 
     .tv-screen .tv-summary__body {
@@ -104,7 +111,7 @@ html.tv-screen {
     }
 
     .tv-screen .tv-summary__conditions {
-        gap: 2px;
+        gap: calc(2 * var(--tv-type));
     }
 
     .tv-screen .tv-summary__condition {

@@ -5,10 +5,13 @@ Aktifkan melalui **Aktifkan Mode TV**, atau tambahkan `?tv=1` pada URL Live TV
 
 Acuan viewport terkecil mode TV adalah **640 x 360 px (360p, 16:9)**.
 Ini ukuran viewport CSS, bukan resolusi foto atau panel fisik TV.
+Perangkat TV yang digunakan memiliki viewport **960 x 540 px dengan DPR 2**.
+Ukuran ini menjadi acuan tipografi mode TV; DPR menentukan kepadatan render,
+tanpa mengalikan ukuran layout CSS menjadi 1920 x 1080 px.
 
 ## Layout dan refresh
 
-- Setiap slide grafik menampilkan total nilai yang terlihat di kanan atas. Total
+- Setiap slide grafik menampilkan total nilai yang terlihat di kiri atas. Total
   mengikuti grafik aktif dan disembunyikan pada slide peralatan/rekap card. Label
   memakai skala font TV. Pangkal batang pada sumbu nol siku; rounded hanya di ujung.
 - Nama pada `tv-equipment__name` diisi manual melalui **Judul Barang** pada setiap
@@ -41,7 +44,7 @@ Ini ukuran viewport CSS, bukan resolusi foto atau panel fisik TV.
   0,5 px pada 360p. Warna status tetap mengikuti jenis prosesnya. Seluruh kegiatan
   tetap ditampilkan berurutan, termasuk hasil polling, tanpa paginasi tabel.
 - Seluruh tipografi halaman memakai skala bersama dari lebar dan tinggi viewport
-  (`--tv-type`, acuan 1280 x 720 px), termasuk judul, jam, ringkasan, tabel, badge,
+  (`--tv-type`, acuan 1280 x 720 px normal dan 960 x 540 px TV), termasuk judul, jam, ringkasan, tabel, badge,
   card, rekap, dan placeholder foto. Ada batas minimum terpisah untuk mode normal
   dan TV serta batas maksimum pada layar besar. Override font per breakpoint
   dihapus; penyesuaian teks terpanjang tetap diterapkan di atas skala ini.
@@ -60,7 +63,7 @@ Ini ukuran viewport CSS, bukan resolusi foto atau panel fisik TV.
   ukuran CSS dasarnya sebelum dihitung agar tidak terus membesar/mengecil setelah resize.
 - `tv_screen.css` mengatur frame signage dan layout TV ringkas hingga lebar 1024 px.
   Padding, jarak, header, ringkasan, tabel, dan card mengikuti unit proporsional
-  dengan acuan 640 px; enam card tetap sejajar. Mode normal mempertahankan jumlah
+  dari lebar maupun tinggi viewport; enam card tetap sejajar. Mode normal mempertahankan jumlah
   kolom responsifnya dan memakai skala font bersama.
   Mode TV mengikuti ukuran dan offset
   `visualViewport`, dengan fallback `innerWidth`/`innerHeight`. Tidak ada pengecilan
@@ -91,6 +94,24 @@ Ini ukuran viewport CSS, bukan resolusi foto atau panel fisik TV.
   ulang sebelum layout, termasuk resize, pada mode normal maupun TV.
 
 ## Validasi 11 November 2026
+
+Kalibrasi 960 x 540 px diperiksa di Chrome dengan DPR 1 dan 2. Pada mode TV,
+judul utama menjadi 16 px dan font awal cell tabel 7,5 px (sebelumnya 12 px dan
+5,625 px); pengukuran teks terpanjang tetap mengecilkan font jika diperlukan.
+Metadata alat tetap dihitung dari lebar card dan lebih kecil dari judul.
+Jarak dan indikator compact yang sebelumnya memakai ukuran tetap kini mengikuti
+skala teks. Unit ruang compact juga memperhitungkan tinggi layar.
+Judul card rekap mengisi lebar body agar fitting teks memakai ruang card yang
+sebenarnya, termasuk nama alat panjang pada slide keberfungsian.
+
+Browser memeriksa 640x360, 960x540, 1280x720, dan 1920x1080 pada kedua DPR:
+tiga kegiatan/enam alat muat tanpa scroll horizontal atau vertikal, status
+maksimal 22 karakter, Asal Perolehan maksimal 18 karakter, empat foto berpusat,
+serta 55 label chart maksimal dua baris tanpa tabrakan. Total/nihil tetap tertata.
+Resize kembali ke 960x540 dan polling mempertahankan skala; sebelas kegiatan
+tetap tampil lengkap dengan scroll vertikal. Mode normal 960x540 dan 390x844
+ikut diperiksa. Pengujian memakai template asli dan data sintetis, tanpa mengubah
+record aplikasi. Tampilan pada perangkat TV langsung belum diverifikasi.
 
 Wrap status/Asal Perolehan memakai filter `tv_lines` pada partial yang sama untuk
 render awal dan polling. HTML sumber di-escape; pemisahan kata, kata tanpa spasi,
@@ -274,7 +295,8 @@ kotak terpisah di bawah canvas dengan rata tengah. Footer memakai skala font lay
 disembunyikan pada slide lain, dan tingginya ikut dihitung dalam ruang minimum chart.
 
 Belum diuji langsung pada TCL/BrowseHere. Setelah deploy dan `collectstatic`, buka
-ulang URL `?tv=1`, periksa kode barang dan asal perolehan tetap satu baris, tabel
+ulang URL `?tv=1` pada viewport 960x540/DPR 2, periksa kode barang tetap satu baris,
+Asal Perolehan membungkus maksimal 18 karakter per baris, tabel
 menampilkan semua kegiatan, serta chart Internal SDA tidak menumpuk labelnya.
 Periksa juga resize/zoom browser dan tunggu polling. Jika konten lebih tinggi dari
 viewport, seluruh baris tetap tersedia dengan menggulir halaman. Fullscreen browser
