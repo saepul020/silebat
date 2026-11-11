@@ -116,32 +116,29 @@ test('Empty data is safe and non-institution charts retain their category order'
     assert.deepEqual(Array.from(result.labels), source.categories.map(category => category.label));
 });
 
-test('Long axis labels use smaller type and 22.5 degrees in every viewport', () => {
+test('Chart labels share compact type and keep short month labels horizontal', () => {
     const context = chartContext();
     const labels = ['BBWS Citarum', 'Balai Besar Wilayah Sungai Bengawan Solo'];
     for (const width of [390, 960, 1280, 1920, 3840]) {
         const profile = context.getTvTickProfile(labels, width);
-        assert.equal(profile.rotation, 22.5);
-        assert.ok(profile.fontSize >= 6 && profile.fontSize < 9);
+        assert.ok(profile.rotation === 0 || profile.rotation >= 45);
+        assert.ok(profile.fontSize >= 5 && profile.fontSize <= 8);
     }
     const months = context.buildTvMonthKeys(2026).map(context.formatTvMonth);
     assert.equal(context.getTvTickProfile(months, 960).rotation, 0);
-    assert.equal(context.getTvTickProfile(months, 960).fontSize, 9);
+    assert.equal(context.getTvTickProfile(months, 960).fontSize, 8);
     assert.equal(context.getTvTickProfile([], 960).rotation, 0);
 });
 
-test('Wrapping preserves full names and long words instead of truncating them', () => {
+test('Dense institution charts reserve space for both label lines', () => {
     const context = chartContext();
-    for (const label of [
-        'Balai Besar Wilayah Sungai Bengawan Solo',
-        'PengukuranElektromagnetikTanpaSpasi', '  Internal   SDA  ',
-    ]) {
-        const result = context.wrapTvLabel(label, 10);
-        const lines = Array.isArray(result) ? Array.from(result) : [result];
-        assert.equal(lines.join('').replace(/\s/g, ''), label.replace(/\s/g, ''));
-        assert.ok(lines.every(line => line.length <= 10));
+    for (const width of [390, 640, 960, 1280, 1920, 3840]) {
+        const labels = Array(55).fill('Balai Besar Wilayah Sungai Bengawan Solo');
+        const profile = context.getTvTickProfile(labels, width);
+        const slot = (width - 48) / labels.length;
+        assert.ok(slot * Math.sin(profile.rotation * Math.PI / 180) + 0.01 >= profile.fontSize * 2.4 + 2);
+        assert.ok(profile.labels.every(label => [].concat(label).length <= 2));
     }
-    assert.equal(context.wrapTvLabel('', 10), '');
 });
 
 test('The shared axis plugin recalculates after resizing or changing labels', () => {
@@ -151,19 +148,87 @@ test('The shared axis plugin recalculates after resizing or changing labels', ()
         width: 1920,
         data: { labels: Array(12).fill('Balai Besar Wilayah Sungai') },
         options: context.createTvBaseOptions(1),
+        ctx: { save() {}, restore() {}, measureText(label) { return { width: label.length * 4.8 }; } },
     };
     plugin.beforeLayout(chart);
-    const wideWrap = [].concat(chart.options.scales.x.ticks.callback.call({ getLabelForValue: () => chart.data.labels[0] }, 0));
+    const wide = chart.options.scales.x.ticks.callback.call({ getLabelForValue: () => chart.data.labels[0] }, 0);
     chart.width = 390;
     plugin.beforeLayout(chart);
     const ticks = chart.options.scales.x.ticks;
-    assert.equal(ticks.minRotation, 22.5);
-    assert.equal(ticks.maxRotation, 22.5);
+    assert.ok(ticks.minRotation >= 45);
+    assert.equal(ticks.maxRotation, ticks.minRotation);
     assert.equal(ticks.autoSkip, false);
-    assert.ok(ticks.font.size < 8);
-    assert.ok(ticks.callback.call({ getLabelForValue: () => chart.data.labels[0] }, 0).length > wideWrap.length);
+    assert.ok(ticks.font.size <= 8);
+    const narrow = ticks.callback.call({ getLabelForValue: () => chart.data.labels[0] }, 0);
+    assert.ok(Array.isArray(narrow) && narrow.length === 2);
+    assert.notDeepEqual(narrow, wide);
+    assert.equal(chart.data.labels[0], 'Balai Besar Wilayah Sungai');
     chart.data.labels = ['Jan', 'Feb'];
     plugin.beforeLayout(chart);
     assert.equal(ticks.maxRotation, 0);
-    assert.equal(ticks.font.size, 9);
+    assert.equal(ticks.font.size, 8);
+    assert.equal(ticks.callback.call({ getLabelForValue: () => 'Jan' }, 0), 'Jan');
+});
+
+test('TV wrapping uses rendered widths and adds ellipsis only for overflowing second lines', () => {
+    const context = chartContext();
+    const measure = text => Array.from(text).reduce((sum, char) => sum + (char === 'W' ? 10 : 4), 0);
+    assert.equal(context.wrapTvLabel('Jan', 40, measure), 'Jan');
+    assert.deepEqual(Array.from(context.wrapTvLabel('BBWS Citarum', 30, measure)), ['BBWS', 'Citarum']);
+    const label = 'Balai Besar Wilayah Sungai Bengawan Solo dengan nama instansi sangat panjang';
+    const lines = Array.from(context.wrapTvLabel(label, 60, measure));
+    assert.equal(lines.length, 2);
+    assert.equal(lines[0], 'Balai Besar');
+    assert.ok(lines[1].endsWith('\u2026'));
+    assert.ok(lines.every(line => measure(line) <= 60));
+    assert.ok(label.startsWith(lines[0]));
+});
+
+test('Long words, whitespace and Unicode stay within two measured lines', () => {
+    const context = chartContext();
+    const measure = text => Array.from(text).length * 5;
+    for (const label of ['PengukuranElektromagnetikTanpaSpasi', 'WWWWiiiiWWWWiiiiWWWW', '\u{1F30A}'.repeat(30)]) {
+        const lines = Array.from(context.wrapTvLabel(label, 30, measure));
+        assert.equal(lines.length, 2);
+        assert.ok(lines[1].endsWith('\u2026'));
+        assert.ok(lines.every(line => measure(line) <= 30));
+        assert.ok(lines.every(line => !/[\uD800-\uDBFF]$/.test(line)));
+    }
+    assert.equal(context.wrapTvLabel('  Internal   SDA  ', 100, measure), 'Internal SDA');
+    assert.equal(context.wrapTvLabel('', 100, measure), '');
+});
+
+test('360p chart type and label width shrink together while preserving two-line wrapping', () => {
+    const context = chartContext();
+    const labels = Array(55).fill('Balai Besar Wilayah Sungai Bengawan Solo dengan nama sangat panjang');
+    const baseline = context.getTvTickProfile(labels, 640, undefined, 180);
+    const compact = context.getTvTickProfile(labels, 640, undefined, 180, Math.sqrt(0.5));
+    assert.ok(compact.fontSize < baseline.fontSize);
+    assert.ok(compact.lineWidth < baseline.lineWidth);
+    assert.ok(compact.labels.every(label => Array.isArray(label) && label.length === 2 && label[1].endsWith('\u2026')));
+});
+
+test('Canvas axes and legend follow the shared page type scale after resizing', () => {
+    const context = chartContext();
+    const plugin = vm.runInContext('tvLabelPlugin', context);
+    let pageSize = 4;
+    context.getComputedStyle = () => ({ fontSize: String(pageSize) });
+    const chart = {
+        width: 640, height: 180,
+        canvas: { closest() { return {}; } },
+        data: { labels: ['Jan', 'Feb'] },
+        options: context.createTvBaseOptions(1),
+        ctx: { save() {}, restore() {}, measureText(label) { return { width: label.length * 4.8 }; } },
+    };
+    plugin.beforeLayout(chart);
+    const small = chart.options.scales.x.ticks.font.size;
+    assert.ok(small < 8);
+    assert.ok(chart.options.scales.y.ticks.font.size < 7);
+    assert.equal(chart.options.plugins.legend.labels.font.size, chart.options.scales.y.ticks.font.size);
+    pageSize = 12;
+    chart.width = 1920;
+    chart.height = 500;
+    plugin.beforeLayout(chart);
+    assert.ok(chart.options.scales.x.ticks.font.size > small);
+    assert.ok(chart.options.plugins.legend.labels.font.size > 7);
 });

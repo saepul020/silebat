@@ -3,6 +3,10 @@
 
 {% block title %}{{ page_title }}{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/charts.css' %}?v=20261111-chart-badge-v1">
+{% endblock %}
+
 {% block content %}
 <div class="public-detail-shell">
     <div class="page-header detail-header public-detail-header">
@@ -67,6 +71,7 @@
 {% block extra_js %}
 {% if asset_charts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
-<script src="{% static 'js/master_detail.js' %}?v=20260714-asset-chart-v1" defer></script>
+<script src="{% static 'js/chart_summary.js' %}?v=20261111-chart-badge-v1" defer></script>
+<script src="{% static 'js/master_detail.js' %}?v=20261111-chart-total-v1" defer></script>
 {% endif %}
 {% endblock %}

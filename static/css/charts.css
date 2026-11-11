@@ -1,0 +1,74 @@
+.chart-meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    width: 100%;
+    min-width: 0;
+}
+
+.chart-total {
+    flex: 0 0 auto;
+    margin-inline-start: auto;
+    padding: 0.45em 0.85em;
+    border-radius: 0.65em;
+    background: linear-gradient(110deg, #e8f2fa, #e4f5f3);
+    color: #103e6f;
+    font-size: clamp(0.65rem, 0.8vw, 0.85rem);
+    font-weight: 700;
+    line-height: 1.3;
+    white-space: nowrap;
+}
+
+.chart-total[hidden],
+.chart-nihil[hidden] {
+    display: none;
+}
+
+.chart-nihil {
+    display: flex;
+    flex: 0 0 auto;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.65em;
+    padding-top: 0.8em;
+    font-size: clamp(0.65rem, 0.8vw, 0.85rem);
+    line-height: 1.3;
+    text-align: center;
+}
+
+.chart-nihil__item {
+    padding: 0.5em 0.9em;
+    border-radius: 0.65em;
+    background: #e8f2fa;
+    color: #103e6f;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.chart-nihil__item + .chart-nihil__item {
+    background: #e4f5f3;
+    color: #14665f;
+}
+
+.chart-meta > .chart-picker {
+    flex: 0 1 360px;
+    min-width: 0;
+}
+
+.dashboard-chart__filters.chart-meta {
+    flex-wrap: wrap;
+}
+
+.asset-chart-filter.chart-meta {
+    width: auto;
+    flex: 1 1 220px;
+    flex-direction: row;
+    align-self: stretch;
+    min-width: 0;
+}
+
+.asset-chart-filter.chart-meta select {
+    width: 92px;
+    flex: 0 0 92px;
+}

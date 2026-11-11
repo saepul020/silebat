@@ -39,7 +39,8 @@ const tvZeroDashPlugin = {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'bottom';
         ctx.fillStyle = 'rgba(16, 62, 111, 0.58)';
-        ctx.font = '700 9px "Montserrat", Arial, sans-serif';
+        const fontSize = Number(yScale.options.ticks.font.size) || 7;
+        ctx.font = '700 ' + fontSize + 'px "Montserrat", Arial, sans-serif';
 
         datasets.forEach(function (dataset, datasetIndex) {
             const meta = chart.getDatasetMeta(datasetIndex);
@@ -53,7 +54,7 @@ const tvZeroDashPlugin = {
                     return;
                 }
                 const x = typeof element.x === 'number' ? element.x : 0;
-                const y = yScale.getPixelForValue(0) - 5;
+                const y = yScale.getPixelForValue(0) - fontSize * 0.7;
                 ctx.fillText('-', x, y);
             });
         });
@@ -115,7 +116,7 @@ function initTvActiveTable(slideshow, layout) {
             if (inventory && typeof payload.inventoryHtml === 'string') {
                 updates.push({ node: inventory, html: payload.inventoryHtml });
             }
-            slideshow?.updateContents(updates);
+            slideshow?.updateContents(updates, payload.documentationSlides);
         } catch (error) {
             console.error('Gagal memuat data kegiatan aktif display TV.', error);
         } finally {
@@ -167,6 +168,8 @@ function initTvSlides(layout) {
     const dotsContainer = document.querySelector('[data-tv-dots]');
     let dots = [];
     const title = document.querySelector('[data-tv-slide-title]');
+    const documentationAnchor = stage.querySelector('[data-tv-documentation-anchor]');
+    const documentationHtml = new Map();
     let activeIndex = 0;
 
     function renderGroup(group) {
@@ -203,8 +206,52 @@ function initTvSlides(layout) {
         }
     }
 
+    function updateDocumentation(items) {
+        if (!documentationAnchor || !Array.isArray(items)) return false;
+        const existing = new Map(Array.from(stage.querySelectorAll('[data-tv-documentation-slide]'), node => [node.dataset.tvDocumentationSlide, node]));
+        let changed = false;
+        // Build in reverse so every documentation slide stays directly before the anchor.
+        let next = documentationAnchor;
+        items.slice().reverse().forEach(item => {
+            if (!Number.isSafeInteger(item.id) || item.id < 1 || typeof item.html !== 'string') return;
+            const key = String(item.id);
+            let slide = existing.get(key);
+            if (!slide) {
+                slide = document.createElement('article');
+                slide.className = 'tv-chart-slide';
+                slide.setAttribute('data-tv-slide', '');
+                slide.dataset.tvDocumentationSlide = key;
+                slide.setAttribute('data-title', 'Dokumentasi Kegiatan Laboratorium');
+                const grid = document.createElement('div');
+                grid.className = 'tv-documentation';
+                grid.setAttribute('data-tv-documentation', '');
+                slide.appendChild(grid);
+                changed = true;
+            }
+            const grid = slide.querySelector('[data-tv-documentation]');
+            const oldHtml = documentationHtml.has(key) ? documentationHtml.get(key) : grid.innerHTML;
+            if (oldHtml !== item.html) {
+                grid.innerHTML = item.html;
+                changed = true;
+            }
+            documentationHtml.set(key, item.html);
+            if (slide.nextElementSibling !== next) {
+                next.before(slide);
+                changed = true;
+            }
+            existing.delete(key);
+            next = slide;
+        });
+        existing.forEach((slide, key) => {
+            slide.remove();
+            documentationHtml.delete(key);
+            changed = true;
+        });
+        return changed;
+    }
+
     function syncSlides(current, fallback) {
-        slides = Array.from(stage.querySelectorAll('[data-tv-slide]'));
+        slides = Array.from(stage.querySelectorAll('[data-tv-slide]')).filter(slide => !slide.hidden);
         if (dots.length !== slides.length) {
             dots = slides.map(function () {
                 const dot = document.createElement('span');
@@ -226,9 +273,23 @@ function initTvSlides(layout) {
         dots.forEach(function (dot, index) {
             dot.classList.toggle('is-active', index === activeIndex);
         });
+        if (dotsContainer && dots[activeIndex]) {
+            const dot = dots[activeIndex];
+            dotsContainer.scrollLeft = dot.offsetLeft - (dotsContainer.clientWidth - dot.offsetWidth) / 2;
+        }
         if (title) {
             title.textContent = slides[activeIndex].getAttribute('data-title') || 'Grafik Dashboard';
         }
+        const activeCanvas = slides[activeIndex].querySelector('canvas');
+        const activeChart = (window.tvChartInstances || []).find(chart => chart.canvas === activeCanvas);
+        const totalNode = document.querySelector('[data-tv-total]');
+        if (activeChart) {
+            syncChartTotal(activeChart);
+        } else if (totalNode) {
+            totalNode.hidden = true;
+            showChartNihil(totalNode, []);
+        }
+        layout?.refresh();
         if (window.tvChartInstances) {
             window.tvChartInstances.forEach(function (chart) {
                 if (chart && typeof chart.resize === 'function') {
@@ -238,16 +299,13 @@ function initTvSlides(layout) {
         }
     }
 
-    if (tvMode) {
-        groups.forEach(renderGroup);
-    }
+    groups.forEach(renderGroup);
     syncSlides();
     window.setInterval(function () {
         showSlide(activeIndex + 1);
-        layout?.nextTablePage();
     }, 8500);
     return {
-        updateContents(updates) {
+        updateContents(updates, documentationSlides) {
             const current = slides[activeIndex];
             const activeGroup = groups.find(group => group.slide === current || group.extra.includes(current));
             let changed = false;
@@ -259,6 +317,7 @@ function initTvSlides(layout) {
                     changed = true;
                 }
             });
+            changed = updateDocumentation(documentationSlides) || changed;
             if (changed) {
                 syncSlides(current, activeGroup?.slide);
                 layout?.refresh();
@@ -272,6 +331,7 @@ function initTvCharts() {
         return;
     }
 
+    registerChartSummary();
     Chart.defaults.font.family = '"Montserrat", Arial, sans-serif';
     Chart.defaults.color = getComputedStyle(document.documentElement).getPropertyValue('--text-soft').trim() || '#103e6f';
     Chart.register(tvZeroDashPlugin, tvLabelPlugin);
@@ -348,7 +408,7 @@ function createTvBaseOptions(maxValue) {
                     padding: 7,
                     color: '#103e6f',
                     font: {
-                        size: 9,
+                        size: 7,
                         weight: '700',
                     },
                 },
@@ -369,7 +429,7 @@ function createTvBaseOptions(maxValue) {
                     minRotation: 0,
                     color: '#48677d',
                     font: {
-                        size: 9,
+                        size: 8,
                         weight: '700',
                     },
                 },
@@ -382,7 +442,7 @@ function createTvBaseOptions(maxValue) {
                     stepSize: 1,
                     color: '#48677d',
                     font: {
-                        size: 9,
+                        size: 7,
                         weight: '700',
                     },
                 },
@@ -395,15 +455,53 @@ function createTvBaseOptions(maxValue) {
     };
 }
 
-function getTvTickProfile(labels, width) {
-    const longest = labels.reduce((max, label) => Math.max(max, String(label).trim().length), 0);
+function wrapTvLabel(label, width, measure) {
+    const text = String(label ?? '').replace(/\s+/g, ' ').trim();
+    if (measure(text) <= width) {
+        return text;
+    }
+    function prefix(value, suffix = '') {
+        const chars = Array.from(value);
+        let low = 0;
+        let high = chars.length;
+        while (low < high) {
+            const middle = Math.ceil((low + high) / 2);
+            if (measure(chars.slice(0, middle).join('') + suffix) <= width) {
+                low = middle;
+            } else {
+                high = middle - 1;
+            }
+        }
+        return chars.slice(0, low).join('');
+    }
+    let first = prefix(text);
+    const space = first.lastIndexOf(' ');
+    if (space > 0) {
+        first = first.slice(0, space);
+    }
+    const rest = text.slice(first.length).trim();
+    const last = measure(rest) <= width ? rest : prefix(rest, '\u2026').trimEnd() + '\u2026';
+    return first ? [first, last] : last;
+}
+
+function getTvTickProfile(labels, width, measure = label => label.length * 4.8, height = 480, scale = 1) {
     const slot = Math.max(1, (Number(width) - 48) / Math.max(1, labels.length));
-    const longLabels = longest > 14 || longest * 5.4 > slot;
-    const fontSize = longLabels ? Math.max(6, Math.min(8, slot / 8)) : 9;
+    // Reserve perpendicular space for two lines and a gap between neighbours.
+    const baseSize = Math.min(8, (slot - 2) / 2.4);
+    const fontSize = Math.max(1, Math.min(baseSize * scale, (slot - 2 * scale) / 2.4));
+    const lineWidth = Math.max(fontSize * 4, Math.min(120, Math.max(30, slot * 2.5), Math.max(30, height * 0.28)) * scale);
+    const scaledMeasure = label => measure(label) * fontSize / 8;
+    const wrapped = labels.map(label => wrapTvLabel(label, lineWidth, scaledMeasure));
+    const lines = wrapped.flatMap(label => [].concat(label));
+    const longest = Math.max(0, ...lines.map(scaledMeasure));
+    const lineCount = Math.max(1, ...wrapped.map(label => [].concat(label).length));
+    const crowded = longest + 6 * scale > slot;
+    const angle = Math.asin(Math.min(1, (fontSize * 1.2 * lineCount + 2 * scale) / slot)) * 180 / Math.PI;
     return {
-        rotation: longLabels ? 22.5 : 0,
-        wrapWidth: Math.max(8, Math.min(28, Math.floor(slot / (fontSize * 0.58)))),
+        rotation: crowded ? Math.min(90, Math.max(45, Math.ceil(angle / 5) * 5)) : 0,
         fontSize: fontSize,
+        lineWidth: lineWidth,
+        labels: wrapped,
     };
 }
 
@@ -415,13 +513,30 @@ const tvLabelPlugin = {
         if (!ticks) {
             return;
         }
-        const profile = getTvTickProfile(chart.data.labels || [], chart.width);
+        const page = chart.canvas?.closest('.tv-page');
+        const scale = page ? Math.sqrt(parseFloat(getComputedStyle(page).fontSize) / 8) : 1;
+        chart.ctx.save();
+        chart.ctx.font = '700 8px "Montserrat", Arial, sans-serif';
+        const profile = getTvTickProfile(chart.data.labels || [], chart.width, label => chart.ctx.measureText(label).width, chart.height, scale);
+        chart.ctx.restore();
+        const labels = new Map((chart.data.labels || []).map((label, index) => [String(label), profile.labels[index]]));
         ticks.minRotation = profile.rotation;
         ticks.maxRotation = profile.rotation;
         ticks.font.size = profile.fontSize;
+        ticks.font.lineHeight = 1.2;
+        ticks.padding = 2 * scale;
         ticks.callback = function (value) {
-            return wrapTvLabel(this.getLabelForValue(value), profile.wrapWidth);
+            const label = this.getLabelForValue(value);
+            return labels.get(String(label)) ?? label;
         };
+        const yTicks = chart.options.scales.y.ticks;
+        yTicks.font.size = 7 * scale;
+        yTicks.padding = 2 * scale;
+        const legend = chart.options.plugins.legend.labels;
+        legend.font.size = 7 * scale;
+        legend.boxWidth = 7 * scale;
+        legend.boxHeight = 7 * scale;
+        legend.padding = 7 * scale;
     },
 };
 
@@ -449,7 +564,7 @@ function buildTvBarDataset(label, data, backgroundColor, borderColor) {
         borderColor: borderColor || backgroundColor,
         borderWidth: 1,
         borderRadius: 6,
-        borderSkipped: false,
+        borderSkipped: 'start',
         categoryPercentage: 0.94,
         barPercentage: 0.96,
     };
@@ -621,48 +736,4 @@ function createTvCategoryChart(canvasId, scriptId, idKey, datasetLabel) {
         maxValue,
         options,
     );
-}
-
-function wrapTvLabel(label, maxCharsPerLine) {
-    if (typeof label !== 'string' || !label.trim()) {
-        return label;
-    }
-
-    const normalized = label.replace(/\s+/g, ' ').trim();
-    if (normalized.length <= maxCharsPerLine) {
-        return normalized;
-    }
-
-    const limit = Math.max(1, Math.floor(Number(maxCharsPerLine) || 1));
-    const words = normalized.split(' ');
-    const lines = [];
-    let currentLine = '';
-
-    words.forEach(function (word) {
-        if (!word) {
-            return;
-        }
-
-        const nextLine = currentLine ? currentLine + ' ' + word : word;
-        if (nextLine.length <= limit) {
-            currentLine = nextLine;
-            return;
-        }
-
-        if (currentLine) {
-            lines.push(currentLine);
-        }
-        // Preserve the entire label, including long names without spaces.
-        while (word.length > limit) {
-            lines.push(word.slice(0, limit));
-            word = word.slice(limit);
-        }
-        currentLine = word;
-    });
-
-    if (currentLine) {
-        lines.push(currentLine);
-    }
-
-    return lines;
 }

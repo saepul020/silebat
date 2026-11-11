@@ -133,6 +133,7 @@ function initDashboardCharts() {
         return;
     }
 
+    registerChartSummary();
     Chart.register(zeroValueDashPlugin);
     initTimKegiatanChart();
     initLayananKegiatanChart();
@@ -432,7 +433,7 @@ function buildMonthlyGroupedChartData(source, selectedYear, selectedMonth, categ
             borderColor: category.borderColor || category.backgroundColor,
             borderWidth: 1,
             borderRadius: 8,
-            borderSkipped: false,
+            borderSkipped: 'start',
             ...barSizing,
         };
     });
@@ -506,7 +507,7 @@ function buildMonthlySingleSeriesChartData(source, selectedYear, selectedMonth) 
                 borderColor: datasetConfig.borderColor || datasetConfig.backgroundColor || 'rgba(16, 62, 111, 1)',
                 borderWidth: 1,
                 borderRadius: 8,
-                borderSkipped: false,
+                borderSkipped: 'start',
                 ...barSizing,
             },
         ],
@@ -556,7 +557,7 @@ function buildSingleSeriesChartData(source, selectedYear, idKey, datasetLabel) {
                 }),
                 borderWidth: 1,
                 borderRadius: 8,
-                borderSkipped: false,
+                borderSkipped: 'start',
                 ...barSizing,
             },
         ],
@@ -764,7 +765,7 @@ function buildSdmBarData(source, selectedYear) {
                 borderColor: colors.map(function (color) { return color.border; }),
                 borderWidth: 1,
                 borderRadius: 8,
-                borderSkipped: false,
+                borderSkipped: 'start',
                 categoryPercentage: isMobileViewport() ? 0.76 : 0.68,
                 barPercentage: isMobileViewport() ? 0.82 : 0.76,
                 maxBarThickness: isSmallMobileViewport() ? 34 : 54,
@@ -1238,7 +1239,7 @@ function buildBahanChartData(source, selectedIds = null) {
                 borderColor: source.backgroundColor,
                 borderWidth: 1,
                 borderRadius: 8,
-                borderSkipped: false,
+                borderSkipped: 'start',
                 ...barSizing,
             },
         ],
@@ -1262,8 +1263,8 @@ function buildPenunjangChartData(source, selectedIds = null) {
     const commonDataset = {
         stack: 'condition',
         borderWidth: 1,
-        borderRadius: 0,
-        borderSkipped: false,
+        borderRadius: 8,
+        borderSkipped: 'start',
         ...barSizing,
         showZeroDash: false,
     };
@@ -1648,21 +1649,28 @@ function buildDashboardChartExportCanvas(sourceCanvas, title) {
     // Measure text before sizing the final canvas; canvas sizing resets its context.
     context.font = '700 32px Arial, sans-serif';
     const titles = wrapExportText(context, title || 'Dashboard Laboratorium', width - 160);
+    context.font = '700 14px Arial, sans-serif';
+    const totalText = chart ? getChartTotalText(chart) : '';
+    const nihilLines = chart ? getChartNihilLines(chart) : [];
+    const totalWidth = totalText ? context.measureText(totalText).width + 28 : 0;
+    const nihilWidths = nihilLines.map(line => context.measureText(line).width + 36);
     context.font = '14px Arial, sans-serif';
-    const filters = wrapExportText(context, getChartExportFilters(sourceCanvas), width - 160);
-    const headerHeight = 96 + titles.length * 42 + filters.length * 21;
+    const filters = wrapExportText(context, getChartExportFilters(sourceCanvas), width - 176 - totalWidth);
+    const headerHeight = 96 + titles.length * 42 + Math.max(filters.length, totalText ? 1 : 0) * 21;
     const plotY = 40 + headerHeight + 24;
-    const height = Math.max(Math.round(width * 9 / 16), plotY + 520 + 76);
+    const footerHeight = nihilLines.length ? 64 : 0;
+    const height = Math.max(Math.round(width * 9 / 16), plotY + 520 + footerHeight + 76);
     const plotHeight = height - plotY - 76;
+    const graphHeight = plotHeight - footerHeight;
     canvas.width = width * 2;
     canvas.height = height * 2;
     context.scale(2, 2);
     context.textBaseline = 'top';
 
-    function box(x, y, w, h, fill, border) {
+    function box(x, y, w, h, fill, border, radius = 20) {
         context.beginPath();
         if (typeof context.roundRect === 'function') {
-            context.roundRect(x, y, w, h, 20);
+            context.roundRect(x, y, w, h, radius);
         } else {
             context.rect(x, y, w, h);
         }
@@ -1692,21 +1700,42 @@ function buildDashboardChartExportCanvas(sourceCanvas, title) {
     context.fillStyle = '#d7eaf2';
     context.font = '14px Arial, sans-serif';
     filters.forEach((line, index) => context.fillText(line, 64, 116 + titles.length * 42 + index * 21));
+    if (totalText) {
+        const totalY = 116 + titles.length * 42;
+        box(width - 64 - totalWidth, totalY - 9, totalWidth, 34, '#e4f5f3', null, 9);
+        context.textAlign = 'right';
+        context.fillStyle = '#103e6f';
+        context.font = '700 14px Arial, sans-serif';
+        context.fillText(totalText, width - 78, totalY);
+        context.textAlign = 'left';
+    }
 
     box(40, plotY, width - 80, plotHeight, '#ffffff', '#d9e3ef');
     if (chart && labelCount && chart.data.datasets.some((_, index) => chart.isDatasetVisible(index))) {
-        renderChartExport(chart, context, 68, plotY + 28, width - 136, plotHeight - 56);
+        renderChartExport(chart, context, 68, plotY + 28, width - 136, graphHeight - 56);
     } else if (!chart) {
-        const ratio = Math.min((width - 136) / sourceCanvas.width, (plotHeight - 56) / sourceCanvas.height);
+        const ratio = Math.min((width - 136) / sourceCanvas.width, (graphHeight - 56) / sourceCanvas.height);
         const w = sourceCanvas.width * ratio;
         const h = sourceCanvas.height * ratio;
-        context.drawImage(sourceCanvas, (width - w) / 2, plotY + (plotHeight - h) / 2, w, h);
+        context.drawImage(sourceCanvas, (width - w) / 2, plotY + (graphHeight - h) / 2, w, h);
     } else {
         context.fillStyle = '#48627b';
         context.font = '18px Arial, sans-serif';
         context.textAlign = 'center';
-        context.fillText('Belum ada data untuk pilihan ini.', width / 2, plotY + plotHeight / 2);
+        context.fillText('Belum ada data untuk pilihan ini.', width / 2, plotY + graphHeight / 2);
     }
+
+    let badgeX = (width - nihilWidths.reduce((sum, value) => sum + value, 0) - Math.max(0, nihilLines.length - 1) * 16) / 2;
+    nihilLines.forEach((line, index) => {
+        const y = plotY + graphHeight + 8;
+        const w = nihilWidths[index];
+        box(badgeX, y, w, 36, index ? '#e4f5f3' : '#e8f2fa', null, 9);
+        context.textAlign = 'center';
+        context.fillStyle = index ? '#14665f' : '#103e6f';
+        context.font = '700 14px Arial, sans-serif';
+        context.fillText(line, badgeX + w / 2, y + 10);
+        badgeX += w + 16;
+    });
 
     context.textAlign = 'left';
     context.fillStyle = '#48627b';

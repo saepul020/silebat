@@ -19,13 +19,50 @@ body.tv-body {
 }
 
 .tv-page {
+    --tv-type-min: 0.75px;
+    --tv-type: clamp(var(--tv-type-min), min(0.078125vw, 0.138889vh), 1.5px);
+    --tv-radius: clamp(4px, 1.8vmin, 18px);
+    --tv-radius-md: clamp(3px, 1.4vmin, 14px);
+    --tv-radius-sm: clamp(2px, 0.9vmin, 9px);
+    --tv-stroke: clamp(0.4px, 0.138889vmin, 1px);
+    --tv-shadow: 0 calc(10 * var(--tv-stroke)) calc(30 * var(--tv-stroke)) rgba(16, 62, 111, 0.08);
     width: 100%;
     height: 100vh;
     display: grid;
-    grid-template-rows: auto minmax(56px, 7vh) auto minmax(0, 1fr);
+    grid-template-rows: auto minmax(56px, 7vh) max-content minmax(var(--tv-chart-min, 240px), 1fr);
     gap: clamp(8px, 0.72vw, 13px);
     padding: clamp(14px, 1.18vw, 21px);
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
+    font-size: calc(8 * var(--tv-type));
+}
+
+/* Overlay rings retain fractional thickness even on a DPR 1 display.
+   Native borders can round subpixel widths up to a full device pixel. */
+.tv-stat-card,
+.tv-active-table,
+.tv-chart-card,
+.tv-equipment__card {
+    position: relative;
+    border-width: 0;
+    box-shadow: var(--tv-shadow);
+}
+
+.tv-stat-card::before,
+.tv-active-table::before,
+.tv-chart-card::before,
+.tv-equipment__card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    border-radius: inherit;
+    box-shadow: inset 0 0 0 var(--tv-stroke) var(--border);
+    pointer-events: none;
+}
+
+.tv-stat-card::before {
+    box-shadow: inset 0 0 0 var(--tv-stroke) var(--stat-icon-border, var(--border));
 }
 
 .tv-head {
@@ -43,7 +80,7 @@ body.tv-body {
 
 .tv-head h1 {
     margin: 0 0 3px;
-    font-size: clamp(1.02rem, 1.35vw, 1.5rem);
+    font-size: var(--tv-heading-size, calc(16 * var(--tv-type)));
     line-height: 1.12;
     color: var(--text);
     white-space: nowrap;
@@ -54,7 +91,7 @@ body.tv-body {
 .tv-head p {
     max-width: none;
     color: var(--text-soft);
-    font-size: clamp(0.66rem, 0.72vw, 0.82rem);
+    font-size: var(--tv-subtitle-size, calc(8 * var(--tv-type)));
     line-height: 1.35;
     white-space: nowrap;
     overflow: hidden;
@@ -68,7 +105,7 @@ body.tv-body {
     flex: 0 0 auto;
     gap: 3px;
     color: var(--text-soft);
-    font-size: clamp(0.62rem, 0.68vw, 0.78rem);
+    font-size: calc(8 * var(--tv-type));
     font-weight: 600;
     line-height: 1.25;
     text-align: right;
@@ -77,7 +114,7 @@ body.tv-body {
 
 .tv-head__meta strong {
     color: var(--color-primary-navy);
-    font-size: clamp(0.9rem, 1.05vw, 1.2rem);
+    font-size: calc(12 * var(--tv-type));
     line-height: 1;
 }
 
@@ -88,10 +125,10 @@ body.tv-body {
     min-height: 28px;
     padding: 6px 12px;
     border: 1px solid var(--color-primary-navy);
-    border-radius: 10px;
+    border-radius: var(--tv-radius-sm);
     background: var(--color-primary-navy);
     color: var(--color-white);
-    font-size: 0.68rem;
+    font-size: calc(7 * var(--tv-type));
     font-weight: 700;
     line-height: 1.2;
     text-decoration: none;
@@ -118,6 +155,7 @@ body.tv-body {
 }
 
 .tv-stat-card {
+    border-radius: var(--tv-radius);
     height: 100%;
     min-height: 0;
     max-height: 68px;
@@ -132,64 +170,70 @@ body.tv-body {
 .tv-stat-card .dashboard-stat-card__icon {
     width: clamp(30px, 2.18vw, 38px);
     height: clamp(30px, 2.18vw, 38px);
-    border-radius: clamp(9px, 0.7vw, 12px);
-    font-size: clamp(0.82rem, 0.9vw, 1.08rem);
+    border-radius: var(--tv-radius-sm);
+    box-shadow: inset 0 0 0 var(--tv-stroke) var(--stat-icon-border, var(--border));
+    font-size: calc(10 * var(--tv-type));
 }
 
 .tv-stat-card .dashboard-stat-card__label {
     margin-bottom: 2px;
-    font-size: clamp(0.54rem, 0.58vw, 0.68rem);
+    font-size: calc(7 * var(--tv-type));
     letter-spacing: 0.01em;
     white-space: nowrap;
 }
 
 .tv-stat-card .dashboard-stat-card__value {
     margin: 0;
-    font-size: clamp(1.08rem, 1.62vw, 2rem);
+    font-size: calc(20 * var(--tv-type));
     line-height: 1;
     letter-spacing: -0.045em;
 }
 
 .tv-active-table {
+    border-radius: var(--tv-radius);
     display: block;
     align-self: start;
-    min-height: 0;
+    min-height: min-content;
     margin: 0;
 }
 
 .tv-active-table .table-toolbar {
     flex: 0 0 auto;
-    padding: clamp(8px, 0.72vw, 12px) clamp(12px, 1vw, 16px);
+    flex-wrap: nowrap;
+    gap: calc(8 * var(--tv-type));
+    padding: calc(8 * var(--tv-type)) calc(12 * var(--tv-type));
+    border-bottom: 0;
+    box-shadow: inset 0 calc(-1 * var(--tv-stroke)) 0 var(--border);
 }
 
 .tv-active-table .table-title {
-    font-size: clamp(0.78rem, 0.82vw, 0.94rem);
+    font-size: calc(10 * var(--tv-type));
+    line-height: 1.2;
 }
 
 .tv-live-badge {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-height: 24px;
-    padding: 4px 9px;
-    border: 1px solid var(--border);
-    border-radius: 999px;
+    min-height: 0;
+    padding: calc(2 * var(--tv-type)) calc(5 * var(--tv-type));
+    border: 0;
+    box-shadow: inset 0 0 0 var(--tv-stroke) var(--border);
+    border-radius: min(var(--tv-radius-sm), 0.8em);
     background: var(--surface-soft);
     color: var(--text-soft);
-    font-size: clamp(0.54rem, 0.58vw, 0.68rem);
+    font-size: calc(7 * var(--tv-type));
     font-weight: 700;
     line-height: 1;
     white-space: nowrap;
 }
 
 .tv-table-wrap {
+    width: 100%;
+    min-width: 0;
     min-height: 0;
+    padding: 0;
     overflow: visible;
-    scrollbar-width: none;
-}
-
-.tv-table-wrap::-webkit-scrollbar {
-    display: none;
 }
 
 .tv-table-wrap .tv-table {
@@ -200,17 +244,18 @@ body.tv-body {
 
 .tv-table-wrap .tv-table th,
 .tv-table-wrap .tv-table td {
-    padding: clamp(4px, 0.42vw, 7px) clamp(5px, 0.5vw, 8px);
-    font-size: clamp(0.5rem, 0.55vw, 0.66rem);
+    padding: calc(4 * var(--tv-type)) calc(5 * var(--tv-type));
+    font-size: var(--tv-table-size, calc(7.5 * var(--tv-type)));
     line-height: 1.22;
-    vertical-align: top;
-    white-space: normal;
-    overflow-wrap: anywhere;
-    word-break: break-word;
+    vertical-align: middle;
+    border: 0;
+    box-shadow: inset 0 calc(-1 * var(--tv-stroke)) 0 var(--border);
+    white-space: nowrap;
+    overflow-wrap: normal;
+    word-break: normal;
 }
 
 .tv-table-wrap .tv-table th {
-    font-size: clamp(0.5rem, 0.54vw, 0.64rem);
     line-height: 1.12;
     vertical-align: middle;
     white-space: nowrap;
@@ -218,6 +263,10 @@ body.tv-body {
 
 .tv-table tbody tr {
     height: auto;
+}
+
+.tv-table tbody tr:last-child td {
+    box-shadow: none;
 }
 
 .tv-table td:first-child {
@@ -229,55 +278,55 @@ body.tv-body {
 }
 
 .tv-table-wrap .tv-table td small {
-    display: block;
-    margin-top: 2px;
+    display: inline;
+    margin: 0;
     color: var(--text-soft);
-    font-size: 0.86em;
+    font-size: inherit;
     line-height: 1.2;
-    white-space: normal;
-    overflow-wrap: anywhere;
-    word-break: break-word;
-}
-
-.tv-table .cell-wrap,
-.tv-table .cell-status {
-    min-width: 0 !important;
-    white-space: normal !important;
-    overflow-wrap: anywhere;
-    word-break: break-word;
+    white-space: nowrap;
 }
 
 .tv-table th:nth-child(1),
-.tv-table td:nth-child(1) { width: 15%; }
+.tv-table td:nth-child(1) { width: 12%; }
 .tv-table th:nth-child(2),
 .tv-table td:nth-child(2) { width: 14%; }
 .tv-table th:nth-child(3),
 .tv-table td:nth-child(3) { width: 14%; }
 .tv-table th:nth-child(4),
-.tv-table td:nth-child(4) { width: 16%; }
+.tv-table td:nth-child(4) { width: 18%; }
 .tv-table th:nth-child(5),
-.tv-table td:nth-child(5) { width: 14%; }
+.tv-table td:nth-child(5) { width: 15%; }
 .tv-table th:nth-child(6),
-.tv-table td:nth-child(6),
+.tv-table td:nth-child(6) { width: 15%; }
 .tv-table th:nth-child(7),
-.tv-table td:nth-child(7) { width: 13.5%; }
+.tv-table td:nth-child(7) { width: 12%; }
 
 .tv-table-wrap .tv-table .cell-status .status-badge {
+    border-radius: min(var(--tv-radius-sm), 0.8em);
     min-width: 0;
-    max-width: 100%;
-    padding: 3px 6px;
-    font-size: clamp(0.44rem, 0.48vw, 0.58rem);
+    max-width: none;
+    padding: calc(1.5 * var(--tv-type)) calc(4 * var(--tv-type));
+    border: 0;
+    box-shadow: inset 0 0 0 var(--tv-stroke) var(--tv-badge-ring, var(--border));
+    font-size: inherit;
     line-height: 1.12;
-    white-space: normal;
-    overflow-wrap: anywhere;
-    word-break: break-word;
+    white-space: nowrap;
 }
 
+.tv-table .badge-primary { --tv-badge-ring: var(--color-soft-blue); }
+.tv-table .badge-success { --tv-badge-ring: var(--success-border); }
+.tv-table .badge-warning { --tv-badge-ring: var(--warning-border); }
+.tv-table .badge-danger { --tv-badge-ring: var(--danger-border); }
+.tv-table .badge-secondary { --tv-badge-ring: var(--border-strong); }
+
 .tv-empty {
-    padding: clamp(14px, 1.2vw, 22px);
+    padding: calc(12 * var(--tv-type));
+    font-size: inherit;
 }
 
 .tv-chart-card {
+    border-radius: var(--tv-radius);
+    min-width: 0;
     min-height: 0;
     height: auto;
     max-height: none;
@@ -291,7 +340,7 @@ body.tv-body {
 }
 
 .tv-chart-top {
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 3fr) minmax(0, 1fr);
 }
 
 .tv-chart-top::before {
@@ -299,21 +348,42 @@ body.tv-body {
 }
 
 .tv-chart-top .card-title {
-    grid-column: 1;
+    grid-column: 2;
+    grid-row: 1;
     justify-self: center;
-    font-size: clamp(0.76rem, 0.82vw, 0.96rem);
+    font-size: var(--tv-title-size, calc(10 * var(--tv-type)));
     text-align: center;
+    width: 100%;
+    white-space: nowrap;
 }
 
 .tv-dots {
-    grid-column: 2;
+    position: relative;
+    grid-column: 3;
+    grid-row: 1;
     justify-self: end;
     display: inline-flex;
     align-items: center;
     gap: 4px;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+.tv-chart-top .chart-total {
+    grid-column: 1;
+    grid-row: 1;
+    justify-self: start;
+    margin-inline-start: 0;
+    font-size: calc(8 * var(--tv-type));
+}
+
+.tv-chart-card .chart-nihil {
+    font-size: calc(8 * var(--tv-type));
 }
 
 .tv-dots span {
+    flex-shrink: 0;
     width: clamp(5px, 0.38vw, 7px);
     height: clamp(5px, 0.38vw, 7px);
     border-radius: 999px;
@@ -332,6 +402,40 @@ body.tv-body {
     overflow: hidden;
 }
 
+.tv-documentation {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-rows: repeat(2, minmax(0, 1fr));
+    gap: calc(8 * var(--tv-type));
+    height: 100%;
+    padding: calc(2 * var(--tv-type));
+}
+
+.tv-documentation__item {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    min-height: 0;
+    margin: 0;
+    overflow: hidden;
+    border-radius: var(--tv-radius-sm);
+    background: var(--color-soft-blue);
+}
+
+.tv-documentation__item img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.tv-documentation__empty {
+    padding: 0.5em;
+    color: var(--text-soft);
+    font-size: calc(8 * var(--tv-type));
+    text-align: center;
+}
+
 .tv-equipment {
     --tv-columns: 6;
     display: grid;
@@ -348,10 +452,9 @@ body.tv-body {
     min-width: 0;
     min-height: 0;
     overflow: hidden;
-    border: 1px solid var(--border);
-    border-radius: 14px;
+    border-radius: var(--tv-radius-md);
     background: var(--color-white);
-    box-shadow: 0 4px 12px rgba(16, 62, 111, 0.08);
+    box-shadow: 0 calc(4 * var(--tv-stroke)) calc(12 * var(--tv-stroke)) rgba(16, 62, 111, 0.08);
 }
 
 .tv-equipment__photo {
@@ -363,7 +466,7 @@ body.tv-body {
     overflow: hidden;
     background: linear-gradient(135deg, #103e6f, #2e8fa8);
     color: #fff;
-    font-size: clamp(0.55rem, 0.65vw, 0.8rem);
+    font-size: calc(7 * var(--tv-type));
 }
 
 .tv-equipment__placeholder {
@@ -390,7 +493,7 @@ body.tv-body {
     min-height: 0;
     padding: clamp(8px, 0.8vw, 16px);
     text-align: center;
-    overflow-wrap: anywhere;
+    white-space: nowrap;
     overflow-y: auto;
 }
 
@@ -408,7 +511,7 @@ body.tv-body {
     gap: clamp(4px, 0.4vw, 8px);
     width: 100%;
     margin: 0;
-    font-size: clamp(0.5rem, 0.65vw, 0.75rem);
+    font-size: calc(7 * var(--tv-type));
     line-height: 1.3;
 }
 
@@ -420,7 +523,7 @@ body.tv-body {
     gap: 0.2em;
     min-width: 0;
     padding: clamp(6px, 0.6vw, 10px);
-    border-radius: clamp(6px, 0.5vw, 10px);
+    border-radius: var(--tv-radius-sm);
     color: var(--color-white);
 }
 
@@ -452,7 +555,7 @@ body.tv-body {
     gap: 0.2em;
     margin: 0;
     color: var(--color-primary-navy);
-    font-size: clamp(1rem, 1.8vw, 2rem);
+    font-size: calc(22 * var(--tv-type));
     line-height: 1;
 }
 
@@ -463,8 +566,12 @@ body.tv-body {
 }
 
 .tv-equipment__card--empty {
-    border-style: dashed;
     box-shadow: none;
+}
+
+.tv-equipment__card--empty::before {
+    box-shadow: none;
+    border: var(--tv-stroke) dashed var(--border);
 }
 
 .tv-equipment__photo img {
@@ -479,7 +586,7 @@ body.tv-body {
 }
 
 .tv-equipment__photo i {
-    font-size: clamp(1.5rem, 2.4vw, 3rem);
+    font-size: calc(24 * var(--tv-type));
 }
 
 .tv-equipment__body {
@@ -487,36 +594,40 @@ body.tv-body {
     min-height: 0;
     padding: clamp(7px, 0.75vw, 14px);
     overflow-y: auto;
-    overflow-wrap: anywhere;
-    font-size: clamp(0.55rem, 0.65vw, 0.82rem);
-    line-height: 1.35;
-}
-
-.tv-equipment__code dd {
-    overflow: hidden;
     white-space: nowrap;
-    text-overflow: ellipsis;
-    color: var(--color-primary-navy);
+    font-size: calc(8 * var(--tv-type));
+    line-height: 1.35;
 }
 
 .tv-equipment__name {
     margin: 0 0 3px;
     color: var(--color-primary-navy);
-    font-size: clamp(0.65rem, 0.85vw, 1rem);
+    font-size: var(--tv-name-size, calc(11 * var(--tv-type)));
     line-height: 1.25;
+    white-space: nowrap;
+}
+
+.tv-equipment__body .tv-equipment__name {
+    margin-bottom: 0.25em;
+}
+
+.tv-equipment__card--empty .tv-equipment__name {
+    font-size: calc(11 * var(--tv-type));
 }
 
 .tv-equipment__brand {
-    margin: 0 0 8px;
+    font-size: var(--tv-brand-size, calc(8 * var(--tv-type)));
+    margin: 0 0 0.65em;
     color: #2e8fa8;
     font-weight: 600;
 }
 
 .tv-equipment__meta {
+    font-size: var(--tv-meta-size, calc(8 * var(--tv-type)));
     display: grid;
     grid-template-columns: max-content minmax(0, 1fr);
     align-items: start;
-    gap: 5px 6px;
+    gap: 0.4em 0.5em;
     margin: 0;
 }
 
@@ -527,13 +638,14 @@ body.tv-body {
 .tv-equipment__meta dt {
     display: flex;
     justify-content: space-between;
-    gap: 6px;
+    gap: 0.4em;
     color: var(--text-soft);
     font-weight: 400;
 }
 
 .tv-equipment__meta dd {
     margin: 0;
+    color: var(--color-primary-navy);
     text-align: left;
     font-weight: 600;
 }
@@ -553,7 +665,7 @@ body.tv-body {
     }
 
     html:not(.tv-screen) .tv-chart-card {
-        height: clamp(300px, 65vh, 540px);
+        height: max(var(--tv-chart-min, 300px), 65vh);
     }
 
     html:not(.tv-screen) .tv-equipment {
@@ -579,14 +691,12 @@ body.tv-body {
     height: 100%;
     opacity: 0;
     pointer-events: none;
-    transform: translateY(10px) scale(0.99);
-    transition: opacity 0.55s ease, transform 0.55s ease;
+    transition: opacity 0.55s ease;
 }
 
 .tv-chart-slide.is-active {
     opacity: 1;
     pointer-events: auto;
-    transform: translateY(0) scale(1);
 }
 
 .tv-chart-slide canvas {
@@ -601,7 +711,7 @@ body.tv-body {
     display: grid;
     place-items: center;
     color: var(--text-soft);
-    font-size: clamp(1.4rem, 4.2vw, 4.4rem);
+    font-size: calc(32 * var(--tv-type));
     font-weight: 700;
 }
 
@@ -611,7 +721,7 @@ body.tv-body {
 
 @media (max-width: 1280px) {
     .tv-page {
-        grid-template-rows: auto minmax(52px, 7vh) auto minmax(0, 1fr);
+        grid-template-rows: auto minmax(52px, 7vh) max-content minmax(var(--tv-chart-min, 240px), 1fr);
         gap: 12px;
         padding: 16px;
     }
@@ -620,19 +730,11 @@ body.tv-body {
         padding: 7px 12px;
     }
 
-    .tv-table-wrap .tv-table th,
-    .tv-table-wrap .tv-table td {
-        padding: 4px 5px;
-    }
-
-    .tv-table-wrap .tv-table .cell-status .status-badge {
-        padding: 3px 5px;
-    }
 }
 
 @media (max-aspect-ratio: 4 / 3) {
     .tv-page {
-        grid-template-rows: auto minmax(50px, 7vh) auto minmax(0, 1fr);
+        grid-template-rows: auto minmax(50px, 7vh) max-content minmax(var(--tv-chart-min, 240px), 1fr);
     }
 
     .tv-head p {
@@ -654,28 +756,6 @@ body.tv-body {
     .tv-stat-card .dashboard-stat-card__icon {
         width: 28px;
         height: 28px;
-        border-radius: 9px;
-        font-size: 0.78rem;
-    }
-
-    .tv-stat-card .dashboard-stat-card__value {
-        font-size: clamp(1rem, 3.1vw, 1.58rem);
-    }
-
-    .tv-active-table .table-toolbar {
-        padding: 7px 9px;
-    }
-
-    .tv-live-badge {
-        min-height: 22px;
-        padding: 4px 7px;
-        font-size: 0.52rem;
-    }
-
-    .tv-table-wrap .tv-table th,
-    .tv-table-wrap .tv-table td {
-        padding: 4px;
-        font-size: 0.5rem;
     }
 
 }

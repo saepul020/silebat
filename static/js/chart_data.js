@@ -1,12 +1,22 @@
-/* Shared ordering for dashboard and TV institution charts. */
+/* Shared institution classification and ordering for dashboard and TV charts. */
+function getBalaiType(label) {
+    const name = (Array.isArray(label) ? label.join(' ') : String(label || '')).trim();
+    if (/^BBWS\b|^Balai\s+Besar\s+Wilayah\s+Sungai\b/i.test(name)) {
+        return 'BBWS';
+    }
+    if (/^BWS\b|^Balai\s+Wilayah\s+Sungai\b/i.test(name)) {
+        return 'BWS';
+    }
+    return '';
+}
+
 function sortInstansiCategories(categories, totals, key) {
     const prioritizeBalai = key === 'instansi-internal';
-    const balaiPattern = /^(?:BBWS|BWS)\b|^Balai\s+(?:Besar\s+)?Wilayah\s+Sungai\b/i;
 
     return categories.slice().sort(function (left, right) {
         if (prioritizeBalai) {
-            const leftPriority = balaiPattern.test(left.label.trim());
-            const rightPriority = balaiPattern.test(right.label.trim());
+            const leftPriority = Boolean(getBalaiType(left.label));
+            const rightPriority = Boolean(getBalaiType(right.label));
             if (leftPriority !== rightPriority) {
                 return leftPriority ? -1 : 1;
             }

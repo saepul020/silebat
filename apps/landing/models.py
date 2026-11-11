@@ -10,6 +10,40 @@ TV_SLIDE_COUNT = 2
 TV_TOTAL_SLOTS = TV_SLOT_COUNT * TV_SLIDE_COUNT
 
 
+class SlideDokumentasi(models.Model):
+    class Meta:
+        ordering = ["pk"]
+        verbose_name = "Slide Dokumentasi TV"
+        verbose_name_plural = "Slide Dokumentasi TV"
+
+    def __str__(self):
+        return f"Slide {self.pk}"
+
+
+class DokumentasiTV(models.Model):
+    slide = models.ForeignKey(SlideDokumentasi, on_delete=models.CASCADE, related_name="fotos")
+    nomor = models.PositiveSmallIntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(TV_SLOT_COUNT)],
+        verbose_name="Nomor Gambar",
+    )
+    foto = models.ImageField(upload_to="landing/dokumentasi/", verbose_name="Gambar Kegiatan")
+
+    class Meta:
+        ordering = ["slide_id", "nomor"]
+        verbose_name = "Dokumentasi Kegiatan TV"
+        verbose_name_plural = "Dokumentasi Kegiatan TV"
+        constraints = [
+            models.UniqueConstraint(fields=["slide", "nomor"], name="dokumentasi_slot_unique"),
+            models.CheckConstraint(
+                condition=models.Q(nomor__gte=1, nomor__lte=TV_SLOT_COUNT),
+                name="dokumentasi_nomor_range",
+            ),
+        ]
+
+    def __str__(self):
+        return f"Slide {self.slide_id} - Gambar Kegiatan {self.nomor}"
+
+
 class KontenAlatTV(models.Model):
     nomor = models.PositiveSmallIntegerField(
         primary_key=True,
@@ -24,6 +58,7 @@ class KontenAlatTV(models.Model):
         related_name="konten_tv",
         verbose_name="Peralatan Survei Lapangan",
     )
+    judul_barang = models.CharField(max_length=200, blank=True, default="", verbose_name="Judul Barang")
 
     class Meta:
         ordering = ["nomor"]

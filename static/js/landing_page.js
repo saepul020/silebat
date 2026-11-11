@@ -586,6 +586,7 @@ function showChartMessage(canvasId, message, state) {
 
 function showChartEmpty(canvasId) {
     showChartMessage(canvasId, null, 'empty');
+    showChartTotal(document.getElementById(canvasId), 'Total: 0');
 }
 
 function showChartError(canvasId, message) {
@@ -784,6 +785,7 @@ function initLandingCharts() {
         return;
     }
 
+    registerChartSummary();
     requestAnimationFrameSafe(function () {
         const layoutPlans = renderableConfigs
             .filter(function (config) { return config.type === 'bar'; })
@@ -838,7 +840,7 @@ function renderLandingBarChart(canvasId, chartPayload, label, horizontal) {
                 backgroundColor: chartPayload.colors,
                 borderColor: chartPayload.colors,
                 borderRadius: 7,
-                borderSkipped: false,
+                borderSkipped: 'start',
                 maxBarThickness: horizontal ? 34 : 52,
             }],
         },

@@ -4,13 +4,13 @@
 {% block title %}Konten Alat TV{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/landing_manage.css' %}?v=20261106-konten-tv-v7">
+<link rel="stylesheet" href="{% static 'css/landing_manage.css' %}?v=20261111-tv-list-v1">
 {% endblock %}
 
 {% block content %}
 <div class="page-header">
     <h1>Konten Alat TV</h1>
-    <p>Pilih peralatan survei lapangan utama untuk dua slide TV realtime, masing-masing enam kolom.</p>
+    <p>Pilih peralatan untuk dua slide TV realtime, masing-masing enam kolom. Isi Judul Barang secara manual untuk setiap alat yang ditampilkan.</p>
 </div>
 <form method="post" data-tv-config>
     {% csrf_token %}
@@ -31,16 +31,23 @@
                         <tr>
                             <th class="tv-config__number" scope="col" data-sortable="false">Nomor Kolom</th>
                             <th scope="col" data-sortable="false">Peralatan Survei Lapangan Utama</th>
+                            <th class="tv-config__title" scope="col" data-sortable="false">Judul Barang</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% for field in slide.fields %}
+                        {% for slot in slide.slots %}
                         <tr>
-                            <td><span class="tv-config__badge">{{ forloop.counter }}</span></td>
+                            <td><span class="tv-config__badge">{{ slot.nomor }}</span></td>
                             <td>
-                                <div class="form-group tv-config__field {% if field.errors %}has-error{% endif %}">
-                                    {{ field }}
-                                    {% for error in field.errors %}<p class="input-error-text">{{ error }}</p>{% endfor %}
+                                <div class="form-group tv-config__field {% if slot.alat.errors %}has-error{% endif %}">
+                                    {{ slot.alat }}
+                                    {% for error in slot.alat.errors %}<p class="input-error-text">{{ error }}</p>{% endfor %}
+                                </div>
+                            </td>
+                            <td>
+                                <div class="form-group tv-config__field {% if slot.judul.errors %}has-error{% endif %}">
+                                    {{ slot.judul }}
+                                    {% for error in slot.judul.errors %}<p class="input-error-text">{{ error }}</p>{% endfor %}
                                 </div>
                             </td>
                         </tr>
@@ -58,5 +65,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/landing_manage.js' %}?v=20261106-tv-choices-v1" defer></script>
+<script src="{% static 'js/landing_manage.js' %}?v=20261111-tv-documentation-v1" defer></script>
 {% endblock %}

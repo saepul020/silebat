@@ -10,8 +10,9 @@
     <link rel="stylesheet" href="{% static 'css/base.css' %}?v=20260505-pelatihan-v3">
     <link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=20260505-dashboard-items-v2">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
-    <link rel="stylesheet" href="{% static 'css/dashboard_display.css' %}?v=20261106-tv-button-v1">
-    {% if tv_mode %}<link rel="stylesheet" href="{% static 'css/tv_screen.css' %}?v=20261106-tv-badge-v3">{% endif %}
+    <link rel="stylesheet" href="{% static 'css/charts.css' %}?v=20261111-chart-badge-v1">
+    <link rel="stylesheet" href="{% static 'css/dashboard_display.css' %}?v=20261111-tv-slides-v1">
+    {% if tv_mode %}<link rel="stylesheet" href="{% static 'css/tv_screen.css' %}?v=20261111-tv-equipment-v1">{% endif %}
     <link rel="stylesheet" href="{% static 'css/loading.css' %}?v=20260612-global-loading-v1">
 </head>
 <body class="tv-body">
@@ -56,14 +57,14 @@
                 <span class="tv-live-badge">Realtime</span>
             </div>
 
-            <div class="table-scroll-area table-scroll--list tv-table-wrap" tabindex="0" aria-label="Tabel data kegiatan aktif display TV">
-                <table class="table-data list-table--peminjaman tv-table">
+            <div class="tv-table-wrap" tabindex="0" aria-label="Tabel data kegiatan aktif display TV">
+                <table class="table-data tv-table">
                     <thead>
                         <tr>
                             <th>Nomor</th>
-                            <th class="cell-wrap">Peminjam</th>
-                            <th class="cell-wrap">Layanan</th>
-                            <th class="cell-wrap">Instansi Tujuan</th>
+                            <th>Peminjam</th>
+                            <th>Layanan</th>
+                            <th>Instansi Tujuan</th>
                             <th>Periode</th>
                             <th class="cell-status">Proses Peminjaman</th>
                             <th class="cell-status">Proses Pengembalian</th>
@@ -79,6 +80,7 @@
         <section class="card dashboard-chart dashboard-chart--full tv-chart-card" aria-label="Slide peralatan dan grafik dashboard">
             <div class="dashboard-chart__header tv-chart-head">
                 <div class="dashboard-chart__top tv-chart-top">
+                    <span class="chart-total" data-tv-total aria-live="polite" hidden></span>
                     <h3 class="card-title" data-tv-slide-title>Peralatan Survei Lapangan Utama</h3>
                     <div class="tv-dots" data-tv-dots aria-hidden="true"></div>
                 </div>
@@ -91,6 +93,14 @@
                     </div>
                 </article>
                 {% endfor %}
+                {% for slide in tv_documentation %}
+                <article class="tv-chart-slide" data-tv-slide data-tv-documentation-slide="{{ slide.id }}" data-title="Dokumentasi Kegiatan Laboratorium">
+                    <div class="tv-documentation" data-tv-documentation>
+                        {% include 'dashboard/partials/tv_documentation.html' with tv_documentation=slide %}
+                    </div>
+                </article>
+                {% endfor %}
+                <template data-tv-documentation-anchor></template>
                 <article class="tv-chart-slide" data-tv-slide data-title="Rekapitulasi Keberfungsian Alat Survei Utama">
                     <div class="tv-equipment" data-tv-inventory aria-live="polite">
                         {% include 'dashboard/partials/tv_inventory.html' %}
@@ -133,8 +143,9 @@
     {% include 'partials/loading.html' %}
     <script src="{% static 'js/loading.js' %}?v=20260612-global-loading-v1" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
-    <script src="{% static 'js/chart_data.js' %}?v=20261106-instansi-sort-v1" defer></script>
-    {% if tv_mode %}<script src="{% static 'js/tv_layout.js' %}?v=20261106-tv-style-v1" defer></script>{% endif %}
-    <script src="{% static 'js/dashboard_display.js' %}?v=20261106-tv-color-v1" defer></script>
+    <script src="{% static 'js/chart_data.js' %}?v=20261111-chart-nihil-v1" defer></script>
+    <script src="{% static 'js/tv_layout.js' %}?v=20261111-chart-badge-v1" defer></script>
+    <script src="{% static 'js/chart_summary.js' %}?v=20261111-chart-badge-v1" defer></script>
+    <script src="{% static 'js/dashboard_display.js' %}?v=20261111-tv-title-v1" defer></script>
 </body>
 </html>

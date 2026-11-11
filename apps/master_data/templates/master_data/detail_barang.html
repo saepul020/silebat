@@ -4,6 +4,7 @@
 {% block title %}{{ page_title }}{% endblock %}
 
 {% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/charts.css' %}?v=20261111-chart-badge-v1">
 {% if label_url %}
 <link rel="stylesheet" href="{% static 'css/label.css' %}?v=20260714-label-quantity-v1">
 {% endif %}
@@ -98,6 +99,7 @@
 {% block extra_js %}
 {% if asset_charts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
-<script src="{% static 'js/master_detail.js' %}?v=20260714-asset-chart-v1" defer></script>
+<script src="{% static 'js/chart_summary.js' %}?v=20261111-chart-badge-v1" defer></script>
+<script src="{% static 'js/master_detail.js' %}?v=20261111-chart-total-v1" defer></script>
 {% endif %}
 {% endblock %}

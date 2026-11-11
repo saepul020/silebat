@@ -7,7 +7,7 @@ const { test } = require('node:test');
 const context = vm.createContext({
     document: {
         documentElement: { classList: { contains() { return false; } } },
-        querySelector() { return {}; },
+        querySelector() { return null; },
     },
 });
 vm.runInContext(fs.readFileSync(path.join(__dirname, '../../static/js/tv_layout.js'), 'utf8'), context);
@@ -39,6 +39,6 @@ test('Physical pixel density does not change CSS viewport dimensions', () => {
     }));
 });
 
-test('Normal mode does not install signage listeners or change layout', () => {
+test('Pages without the display do not install layout listeners', () => {
     assert.equal(context.initTvLayout(), null);
 });

@@ -1,0 +1,96 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Dokumentasi Kegiatan TV{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/landing_manage.css' %}?v=20261111-tv-list-v1">
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Dokumentasi Kegiatan TV</h1>
+    <p>Atur enam gambar pada setiap slide dan simpan perubahan per slide. Format JPG, JPEG, atau PNG, maksimal 7 MB per gambar.</p>
+</div>
+<div class="tv-photo-toolbar">
+    <form method="post" action="{% url 'landing:dokumentasi_tv' %}">
+        {% csrf_token %}
+        <button type="submit" name="action" value="tambah" class="btn btn-primary"><i class="bi bi-plus-lg" aria-hidden="true"></i>&nbsp;Tambah Slide</button>
+    </form>
+</div>
+<div class="tv-photo-list">
+{% for item in slides %}
+{% with slide=item.slide form=item.form %}
+<section class="table-wrapper table-panel tv-photo-panel" id="slide-{{ slide.pk }}" aria-labelledby="slide-title-{{ slide.pk }}">
+    <div class="table-toolbar tv-config-panel__toolbar tv-photo-panel__header">
+        <h3 class="table-title" id="slide-title-{{ slide.pk }}">{{ slide }} - Dokumentasi Kegiatan TV</h3>
+        <button type="button" class="btn btn-danger btn-sm js-delete-btn" data-delete-modal="master" data-delete-url="{% url 'landing:dokumentasi_delete' slide.pk %}" data-item-name="{{ slide }}" data-item-meta="Dokumentasi Kegiatan TV" aria-label="Hapus {{ slide }}">
+            <i class="bi bi-trash" aria-hidden="true"></i>&nbsp;Hapus Slide
+        </button>
+    </div>
+<form method="post" action="{% url 'landing:dokumentasi_tv' %}#slide-{{ slide.pk }}" enctype="multipart/form-data" class="tv-photo-panel__form">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="simpan">
+    <input type="hidden" name="slide_id" value="{{ slide.pk }}">
+    {% if form.non_field_errors %}
+    <div class="form-global-errors">
+        {% for error in form.non_field_errors %}<p class="input-error-text">{{ error }}</p>{% endfor %}
+    </div>
+    {% endif %}
+    <div class="tv-photo-grid">
+        {% for slot in form.slots %}
+        <div class="card tv-photo" data-tv-photo>
+            <label class="tv-photo__label" for="{{ slot.input.id_for_label }}">{{ slot.input.label }}</label>
+            <div class="tv-photo__preview">
+                <img data-tv-photo-preview {% if slot.foto %}src="{{ slot.foto.url }}"{% else %}hidden{% endif %} alt="Pratinjau gambar kegiatan {{ slot.nomor }}">
+                <span data-tv-photo-empty {% if slot.foto %}hidden{% endif %}>Belum ada gambar</span>
+            </div>
+            <div class="form-group{% if slot.input.errors %} has-error{% endif %}">
+                {{ slot.input }}
+                {% for error in slot.input.errors %}<p class="input-error-text">{{ error }}</p>{% endfor %}
+            </div>
+            {% if slot.foto %}
+            <label class="checkbox-inline tv-photo__clear" for="{{ slot.hapus.id_for_label }}">{{ slot.hapus }} {{ slot.hapus.label }}</label>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    <div class="tv-photo-panel__actions">
+        <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-floppy" aria-hidden="true"></i>&nbsp;Simpan {{ slide }}</button>
+    </div>
+</form>
+</section>
+{% endwith %}
+{% empty %}
+<div class="card"><p>Belum ada slide dokumentasi. Klik Tambah Slide untuk mulai mengunggah gambar.</p></div>
+{% endfor %}
+</div>
+
+<div class="delete-modal" id="masterDeleteModal">
+    <div class="delete-modal-backdrop" id="masterDeleteModalBackdrop"></div>
+    <div class="delete-modal-card" role="dialog" aria-modal="true" aria-labelledby="masterDeleteModalTitle">
+        <div class="delete-modal-header">
+            <h3 id="masterDeleteModalTitle">Konfirmasi Hapus Slide</h3>
+            <button type="button" class="delete-modal-close" id="masterDeleteModalClose" aria-label="Tutup">&times;</button>
+        </div>
+        <div class="delete-modal-body">
+            <p>Hapus slide berikut beserta seluruh gambar di dalamnya?</p>
+            <div class="delete-user-info">
+                <p><strong>Slide:</strong> <span id="masterDeleteItemName">-</span></p>
+                <p><strong>Konten:</strong> <span id="masterDeleteItemMeta">-</span></p>
+            </div>
+        </div>
+        <div class="delete-modal-actions">
+            <button type="button" class="btn btn-secondary" id="masterDeleteModalCancel">Batal</button>
+            <form method="post" id="masterDeleteForm">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger">Ya, Hapus Slide</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/landing_manage.js' %}?v=20261111-tv-documentation-v1" defer></script>
+{% endblock %}

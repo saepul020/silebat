@@ -15,7 +15,7 @@ from django.views.decorators.http import require_POST
 
 from apps.core.excel_utils import build_excel_response
 from apps.core.permissions import can_access_master_data, get_role_name
-from apps.landing.services import get_tv_inventory_cards, get_tv_slides
+from apps.landing.services import get_tv_documentation, get_tv_inventory_cards, get_tv_slides
 from apps.master_data.models import BahanOperasional, BarangLaboratorium, BarangPenunjangOperasional
 from apps.operasional.models import InstansiKlien, LayananKegiatan, SurveiKegiatan, TimKegiatan
 from apps.peminjaman.constants import PENGUKURAN_FIELD_CONFIG
@@ -325,7 +325,7 @@ def build_instansi_charts(queryset, current_year):
     return charts
 
 
-def build_dashboard_context(request=None, active_limit=None):
+def build_dashboard_context(request=None):
     approved_peminjaman_qs = get_approved_peminjaman_queryset()
     pengukuran_lapangan_qs = get_pengukuran_lapangan_queryset(approved_peminjaman_qs)
     now = timezone.localtime()
@@ -602,8 +602,6 @@ def build_dashboard_context(request=None, active_limit=None):
     survey_equipment_chart = build_survey_equipment_chart(current_year)
 
     active_peminjaman = get_active_peminjaman_queryset()
-    if active_limit:
-        active_peminjaman = active_peminjaman[:active_limit]
 
     if request is not None and request.user.is_authenticated:
         greeting_name = request.user.get_full_name() or request.user.username or get_role_name(request.user) or "Pengguna"
@@ -730,11 +728,12 @@ def display(request, portal_slug):
     if portal_slug != settings.DASHBOARD_TV_SLUG:
         raise Http404("Halaman display tidak ditemukan.")
 
-    context = build_dashboard_context(active_limit=8)
+    context = build_dashboard_context()
     context["tv_slug"] = portal_slug
     context["tv_mode"] = request.GET.get("tv") == "1"
     context["tv_slides"] = get_tv_slides()
     context["tv_inventory_cards"] = get_tv_inventory_cards()
+    context["tv_documentation"] = get_tv_documentation()
     return render(request, "dashboard/display.html", context)
 
 
@@ -742,7 +741,7 @@ def display_active_data(request, portal_slug):
     if portal_slug != settings.DASHBOARD_TV_SLUG:
         raise Http404("Data display tidak ditemukan.")
 
-    active_peminjaman = get_active_peminjaman_queryset()[:8]
+    active_peminjaman = get_active_peminjaman_queryset()
     html = render_to_string(
         "dashboard/partials/active_rows.html",
         {"active_peminjaman": active_peminjaman},
@@ -760,6 +759,12 @@ def display_active_data(request, portal_slug):
         "inventoryHtml": render_to_string(
             "dashboard/partials/tv_inventory.html", {"tv_inventory_cards": get_tv_inventory_cards()}, request=request,
         ),
+        "documentationSlides": [
+            {"id": slide["id"], "html": render_to_string(
+                "dashboard/partials/tv_documentation.html", {"tv_documentation": slide}, request=request,
+            )}
+            for slide in get_tv_documentation()
+        ],
         "updatedAt": timezone.localtime().isoformat(),
     })
     response["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"

@@ -199,6 +199,7 @@ function initAssetHistoryChart() {
     if (typeof Chart === 'undefined') {
         return;
     }
+    registerChartSummary();
 
     const pack = readAssetChartData();
     const sources = pack && Array.isArray(pack.items) ? pack.items : [];
@@ -232,6 +233,7 @@ function initAssetHistoryChart() {
                 borderColor: activeSource.borderColor || 'rgba(16, 62, 111, 1)',
                 borderWidth: 1,
                 borderRadius: 8,
+                borderSkipped: 'start',
                 maxBarThickness: 58,
                 categoryPercentage: 0.78,
                 barPercentage: 0.78,

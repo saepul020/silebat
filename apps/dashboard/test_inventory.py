@@ -73,6 +73,7 @@ class TvInventoryTests(TestCase):
             self.assertContains(response, "data-tv-inventory", count=1)
             self.assertContains(response, 'class="tv-equipment__card tv-summary"', count=6)
             self.assertEqual(response.content.count(b" data-tv-slide "), 10)
+            self.assertContains(response, 'data-tv-documentation-anchor', count=1)
             for slide in (1, 2):
                 self.assertContains(response, f'data-tv-equipment="{slide}"', count=1)
 

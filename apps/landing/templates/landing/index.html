@@ -32,6 +32,7 @@
   <link rel="stylesheet" href="{% static 'css/landing_critical.css' %}?v=20260606-typography-v1">
   <link rel="stylesheet" href="{% static 'css/landing_fonts.css' %}?v=20260606-v1">
   <link rel="stylesheet" href="{% static 'vendor/bootstrap-icons/bootstrap-icons.min.css' %}?v=1.11.3">
+  <link rel="stylesheet" href="{% static 'css/charts.css' %}?v=20261111-chart-badge-v1">
   <link rel="stylesheet" href="{% static 'css/landing_page.css' %}?v=20260610-equipment-card-v1">
   <link rel="stylesheet" href="{% static 'css/chatbot.css' %}?v=20260604-avatar-img-v1">
   <link rel="stylesheet" href="{% static 'css/loading.css' %}?v=20260612-global-loading-v1">
@@ -549,7 +550,8 @@
 {{ landing_charts|json_script:"landing-chart-data" }}
 {% include 'partials/loading.html' %}
 <script src="{% static 'js/loading.js' %}?v=20260612-global-loading-v1" defer></script>
-<script src="{% static 'js/landing_page.js' %}?v=20260610-equipment-card-v1" defer></script>
+<script src="{% static 'js/chart_summary.js' %}?v=20261111-chart-badge-v1" defer></script>
+<script src="{% static 'js/landing_page.js' %}?v=20261111-chart-total-v1" defer></script>
 <script src="{% static 'js/chatbot.js' %}?v=20260604-head-close-v1" defer></script>
 </body>
 </html>

@@ -4,6 +4,7 @@
 {% block title %}Dashboard SDM{% endblock %}
 
 {% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/charts.css' %}?v=20261111-chart-badge-v1">
 <link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=20260505-sdm-v6">
 {% endblock %}
 
@@ -145,5 +146,6 @@
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
-<script src="{% static 'js/dashboard.js' %}?v=20260505-sdm-v6" defer></script>
+<script src="{% static 'js/chart_summary.js' %}?v=20261111-chart-badge-v1" defer></script>
+<script src="{% static 'js/dashboard.js' %}?v=20261111-chart-badge-v1" defer></script>
 {% endblock %}

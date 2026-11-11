@@ -4,10 +4,40 @@
 ======================================== */
 document.addEventListener('DOMContentLoaded', function () {
     initTvChoices();
+    initTvPhotos();
     initLandingEquipmentOrderValidation();
     initLandingEquipmentGalleryUpload();
     initLandingSpecInput();
 });
+
+function initTvPhotos() {
+    document.querySelectorAll('[data-tv-photo]').forEach(function (slot) {
+        const input = slot.querySelector('[data-tv-photo-input]');
+        const image = slot.querySelector('[data-tv-photo-preview]');
+        const empty = slot.querySelector('[data-tv-photo-empty]');
+        const clear = slot.querySelector('[data-tv-photo-clear]');
+        const original = image.getAttribute('src') || '';
+        let previewUrl = '';
+        function render() {
+            if (previewUrl) URL.revokeObjectURL(previewUrl);
+            previewUrl = input.files?.[0] ? URL.createObjectURL(input.files[0]) : '';
+            const src = clear?.checked ? '' : previewUrl || original;
+            image.hidden = !src;
+            empty.hidden = Boolean(src);
+            if (src) image.src = src;
+            else image.removeAttribute('src');
+        }
+        input.addEventListener('change', function () {
+            if (input.files?.length && clear) clear.checked = false;
+            render();
+        });
+        clear?.addEventListener('change', function () {
+            if (clear.checked) input.value = '';
+            render();
+        });
+        render();
+    });
+}
 
 function initTvChoices() {
     const form = document.querySelector('[data-tv-config]');
@@ -27,6 +57,10 @@ function initTvChoices() {
                 .map(option => option.cloneNode(true)));
             select.value = value;
             select.classList.toggle('is-placeholder-state', !value);
+            const title = form.elements.namedItem(select.name.replace(/^alat_/, 'judul_'));
+            if (title) {
+                title.required = Boolean(value);
+            }
         });
     }
 

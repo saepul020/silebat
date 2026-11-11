@@ -10,14 +10,31 @@ from apps.master_data.models import BarangLaboratorium, KategoriBarangLaboratori
 from apps.peminjaman.constants import PENGUKURAN_FIELD_CONFIG
 from apps.peminjaman.models import PeminjamanRequest, ReturnStepChoices, StepChoices
 
-from .models import TV_SLOT_COUNT, TV_SLIDE_COUNT, KontenAlatTV, LandingPeralatanCard
+from .models import TV_SLOT_COUNT, TV_SLIDE_COUNT, DokumentasiTV, KontenAlatTV, LandingPeralatanCard
+
+
+def get_tv_documentation():
+    slides = {}
+    for slot in DokumentasiTV.objects.all():
+        if slot.foto:
+            slides.setdefault(slot.slide_id, {})[slot.nomor] = slot.foto
+    return [
+        {
+            "id": slide_id,
+            "slots": [{"nomor": nomor, "foto": photos.get(nomor)} for nomor in range(1, TV_SLOT_COUNT + 1)],
+        }
+        for slide_id, photos in slides.items()
+    ]
 
 
 def get_tv_slides():
-    slots = {slot.nomor: slot.alat for slot in KontenAlatTV.objects.select_related("alat")}
+    slots = {
+        slot.nomor: {"alat": slot.alat, "judul_barang": slot.judul_barang}
+        for slot in KontenAlatTV.objects.select_related("alat")
+    }
     return [
         {"nomor": slide + 1, "slots": [
-            {"nomor": kolom, "alat": slots.get(slide * TV_SLOT_COUNT + kolom)}
+            {"nomor": kolom, **slots.get(slide * TV_SLOT_COUNT + kolom, {"alat": None, "judul_barang": ""})}
             for kolom in range(1, TV_SLOT_COUNT + 1)
         ]}
         for slide in range(TV_SLIDE_COUNT)

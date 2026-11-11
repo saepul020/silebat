@@ -1,16 +1,17 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse, JsonResponse
+from django.http import Http404, HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.templatetags.static import static
-from django.views.decorators.http import require_http_methods
+from django.urls import reverse
+from django.views.decorators.http import require_http_methods, require_POST
 
 from apps.core.list_pagination import paginate_list
 from apps.core.navigation import get_next_url, redirect_next
 from apps.core.permissions import is_super_admin, user_passes_access
 
-from .forms import KontenAlatTVForm, LandingPeralatanCardForm
-from .models import LandingPeralatanCard
+from .forms import DokumentasiTVForm, KontenAlatTVForm, LandingPeralatanCardForm
+from .models import LandingPeralatanCard, SlideDokumentasi
 from .services import get_public_landing_context, invalidate_public_landing_cache
 
 
@@ -28,6 +29,53 @@ EQUIPMENT_LIST_SEARCH_FIELDS = (
     "spesifikasi_alat",
     "ringkasan_alat",
 )
+
+
+@login_required
+@landing_manage_required
+@require_http_methods(["GET", "POST"])
+def dokumentasi_tv(request):
+    if request.method == "POST" and request.POST.get("action") == "tambah":
+        slide = SlideDokumentasi.objects.create()
+        messages.success(request, "Slide dokumentasi baru berhasil ditambahkan.")
+        return redirect(f"{reverse('landing:dokumentasi_tv')}#slide-{slide.pk}")
+    if request.method == "POST" and request.POST.get("action", "simpan") != "simpan":
+        return HttpResponseBadRequest("Aksi dokumentasi tidak valid.")
+    target = None
+    if request.method == "POST":
+        raw_id = request.POST.get("slide_id", "")
+        if not raw_id.isdecimal() or len(raw_id) > 19 or not 0 < int(raw_id) <= 9223372036854775807:
+            return HttpResponseBadRequest("Slide dokumentasi tidak valid.")
+        target = int(raw_id)
+    slides = []
+    bound = None
+    for slide in SlideDokumentasi.objects.prefetch_related("fotos"):
+        form = DokumentasiTVForm(
+            request.POST if target == slide.pk else None,
+            request.FILES if target == slide.pk else None,
+            slide=slide, prefix=f"slide-{slide.pk}",
+        )
+        slides.append({"slide": slide, "form": form})
+        if target == slide.pk:
+            bound = form
+    if target is not None and bound is None:
+        raise Http404("Slide dokumentasi tidak ditemukan.")
+    if bound and bound.is_valid():
+        bound.save()
+        messages.success(request, "Dokumentasi kegiatan TV berhasil disimpan.")
+        return redirect(f"{reverse('landing:dokumentasi_tv')}#slide-{target}")
+    return render(request, "landing/dokumentasi_tv.html", {"slides": slides})
+
+
+@login_required
+@landing_manage_required
+@require_POST
+def dokumentasi_delete(request, pk):
+    slide = get_object_or_404(SlideDokumentasi, pk=pk)
+    label = str(slide)
+    slide.delete()
+    messages.success(request, f"{label} dokumentasi berhasil dihapus.")
+    return redirect("landing:dokumentasi_tv")
 
 
 @login_required

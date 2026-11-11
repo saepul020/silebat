@@ -413,6 +413,7 @@ class DashboardInstansiChartTests(TestCase):
         self.assertContains(dashboard, 'data-chart-target="grafik-instansi-internal"', count=2)
         self.assertContains(dashboard, 'data-chart-target="grafik-instansi-gabungan"', count=2)
         self.assertEqual(display.content.count(b" data-tv-slide "), 10)
+        self.assertContains(display, 'data-tv-documentation-anchor', count=1)
         self.assertContains(display, 'data-tv-dots')
 
     def test_export_excel_masing_masing_kelompok(self):

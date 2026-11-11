@@ -9,13 +9,76 @@ from apps.core.upload_validation import (
 )
 from apps.master_data.models import BarangLaboratorium, KategoriBarangLaboratoriumChoices
 
-from .models import MAX_EQUIPMENT_PHOTOS, TV_SLOT_COUNT, TV_SLIDE_COUNT, TV_TOTAL_SLOTS, KontenAlatTV, LandingPeralatanCard, LandingPeralatanFoto
+from .models import (
+    MAX_EQUIPMENT_PHOTOS, TV_SLOT_COUNT, TV_SLIDE_COUNT, TV_TOTAL_SLOTS,
+    DokumentasiTV, KontenAlatTV, LandingPeralatanCard, LandingPeralatanFoto,
+)
+
+
+class DokumentasiTVForm(forms.Form):
+    def __init__(self, *args, slide, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.slide = slide
+        existing = {slot.nomor: slot for slot in slide.fotos.all()}
+        self.slots = []
+        for nomor in range(1, TV_SLOT_COUNT + 1):
+            slot = existing.get(nomor)
+            field = forms.ImageField(
+                required=False,
+                label=f"Gambar {nomor}",
+                widget=forms.FileInput(attrs={
+                    "class": "form-control", "accept": ".jpg,.jpeg,.png",
+                    "data-tv-photo-input": "", "aria-label": f"Upload gambar kegiatan {nomor} pada slide {slide.pk}",
+                }),
+                validators=[self.validate_photo],
+            )
+            apply_upload_widget_validation_attrs(
+                field,
+                allowed_extensions="jpg,jpeg,png",
+                invalid_extension_message="Gambar hanya boleh berupa file JPG, JPEG, atau PNG.",
+                max_size_message=build_max_upload_size_message("Gambar Kegiatan"),
+            )
+            self.fields[f"foto_{nomor}"] = field
+            self.fields[f"hapus_{nomor}"] = forms.BooleanField(
+                required=False, label="Hapus gambar", widget=forms.CheckboxInput(attrs={"data-tv-photo-clear": ""}),
+            )
+            self.slots.append({
+                "nomor": nomor, "foto": slot.foto if slot else None,
+                "input": self[f"foto_{nomor}"], "hapus": self[f"hapus_{nomor}"],
+            })
+
+    @staticmethod
+    def validate_photo(file_obj):
+        return validate_uploaded_file(
+            file_obj,
+            allowed_extensions={".jpg", ".jpeg", ".png"},
+            invalid_extension_message="Gambar hanya boleh berupa file JPG, JPEG, atau PNG.",
+            max_size_message=build_max_upload_size_message("Gambar Kegiatan"),
+        )
+
+    def clean(self):
+        cleaned = super().clean()
+        for nomor in range(1, TV_SLOT_COUNT + 1):
+            if cleaned.get(f"foto_{nomor}") and cleaned.get(f"hapus_{nomor}"):
+                self.add_error(f"foto_{nomor}", "Pilih gambar baru atau hapus gambar, jangan keduanya sekaligus.")
+        return cleaned
+
+    def save(self):
+        if not self.is_valid():
+            raise ValueError("Dokumentasi kegiatan TV belum valid.")
+        with transaction.atomic():
+            for nomor in range(1, TV_SLOT_COUNT + 1):
+                foto = self.cleaned_data.get(f"foto_{nomor}")
+                if foto:
+                    DokumentasiTV.objects.update_or_create(slide=self.slide, nomor=nomor, defaults={"foto": foto})
+                elif self.cleaned_data.get(f"hapus_{nomor}"):
+                    self.slide.fotos.filter(nomor=nomor).delete()
 
 
 class KontenAlatTVForm(forms.Form):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        selected = dict(KontenAlatTV.objects.values_list("nomor", "alat_id"))
+        selected = {slot.nomor: slot for slot in KontenAlatTV.objects.all()}
         queryset = BarangLaboratorium.objects.order_by("nama_barang", "kode_laboratorium", "pk")
         choices = [("", "Tidak ditampilkan")]
         choices.extend(
@@ -24,11 +87,12 @@ class KontenAlatTVForm(forms.Form):
         )
         for nomor in range(1, TV_TOTAL_SLOTS + 1):
             slide, kolom = divmod(nomor - 1, TV_SLOT_COUNT)
+            slot = selected.get(nomor)
             field = forms.ModelChoiceField(
                 queryset=queryset,
                 required=False,
                 label="Peralatan Survei Lapangan Utama",
-                initial=selected.get(nomor),
+                initial=slot.alat_id if slot else None,
                 widget=forms.Select(attrs={
                     "class": "form-control",
                     "aria-label": f"Peralatan Survei Lapangan Utama slide {slide + 1} kolom {kolom + 1}",
@@ -36,8 +100,26 @@ class KontenAlatTVForm(forms.Form):
             )
             field.choices = choices
             self.fields[f"alat_{nomor}"] = field
+            self.fields[f"judul_{nomor}"] = forms.CharField(
+                max_length=KontenAlatTV._meta.get_field("judul_barang").max_length,
+                required=False,
+                label="Judul Barang",
+                initial=slot.judul_barang if slot else "",
+                widget=forms.TextInput(attrs={
+                    "class": "form-control",
+                    "placeholder": "Masukkan judul barang",
+                    "aria-label": f"Judul Barang slide {slide + 1} kolom {kolom + 1}",
+                }),
+            )
         self.slides = [
-            {"nomor": slide + 1, "fields": [self[f"alat_{slide * TV_SLOT_COUNT + kolom}"] for kolom in range(1, TV_SLOT_COUNT + 1)]}
+            {"nomor": slide + 1, "slots": [
+                {
+                    "nomor": kolom,
+                    "alat": self[f"alat_{slide * TV_SLOT_COUNT + kolom}"],
+                    "judul": self[f"judul_{slide * TV_SLOT_COUNT + kolom}"],
+                }
+                for kolom in range(1, TV_SLOT_COUNT + 1)
+            ]}
             for slide in range(TV_SLIDE_COUNT)
         ]
 
@@ -49,6 +131,8 @@ class KontenAlatTVForm(forms.Form):
             alat = cleaned_data.get(field_name)
             if alat is None:
                 continue
+            if not cleaned_data.get(f"judul_{nomor}") and f"judul_{nomor}" not in self.errors:
+                self.add_error(f"judul_{nomor}", "Judul Barang wajib diisi untuk alat yang ditampilkan.")
             if alat.pk in selected:
                 slide, kolom = divmod(selected[alat.pk] - 1, TV_SLOT_COUNT)
                 self.add_error(
@@ -66,7 +150,10 @@ class KontenAlatTVForm(forms.Form):
             for nomor in range(1, TV_TOTAL_SLOTS + 1):
                 KontenAlatTV.objects.update_or_create(
                     nomor=nomor,
-                    defaults={"alat": self.cleaned_data[f"alat_{nomor}"]},
+                    defaults={
+                        "alat": self.cleaned_data[f"alat_{nomor}"],
+                        "judul_barang": self.cleaned_data[f"judul_{nomor}"],
+                    },
                 )
 
 
