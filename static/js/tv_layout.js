@@ -69,7 +69,8 @@ function initTvLayout() {
             const sizes = groups.map(([selector]) => parseFloat(getComputedStyle(bodies[0].querySelector(selector)).fontSize));
             // Titles and brands share a scale; metadata fits separately below them.
             let ratio = Infinity;
-            let metaRatio = Infinity;
+            // TV metadata may shrink to fit, but never zoom beyond its CSS size.
+            let metaRatio = tvMode ? 1 : Infinity;
             bodies.forEach(body => {
                 body.querySelectorAll('.tv-equipment__name, .tv-equipment__brand').forEach(node => {
                     if (node.clientWidth > 0 && node.textContent.trim()) {

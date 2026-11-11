@@ -41,6 +41,8 @@ tanpa mengalikan ukuran layout CSS menjadi 1920 x 1080 px.
   mode TV, font dua unit skala lebih kecil dari font isi tabel. Teks lengkap tetap ada dalam
   DOM dan tooltip nomor/nama/layanan/instansi/status, tanpa mengubah data tersimpan.
   Partial render awal dan polling sama; clamp CSS hanya aktif pada mode TV.
+  Teks status memakai line-height 1,5 dan hanya clamp dua baris, tanpa batas
+  max-height tambahan yang dapat memotong huruf pada font kecil/subpixel.
 - Tabel display memakai wrapper sendiri, tanpa class list transaksi umum yang
   membawa minimum lebar, tinggi baris, dan breakpoint berbeda. Padding toolbar,
   cell, badge, serta kondisi kosong mengikuti `--tv-type` di kedua mode. Pemisah
@@ -57,6 +59,10 @@ tanpa mengalikan ukuran layout CSS menjadi 1920 x 1080 px.
   metadata ketika judulnya pendek.
   Metadata dihitung terpisah terhadap gabungan label/nilai terpanjang dan dibatasi
   sekitar 65% ukuran judul serta 90% ukuran merek agar hierarkinya tetap jelas.
+  Pada mode TV, font metadata berawal dari 5,5 unit `--tv-type` dan hanya boleh
+  mengecil saat fitting. Data pendek tidak memperbesar metadata untuk mengisi
+  lebar; kolom label/nilai membagi ruang sekitar 45/55 agar tetap memenuhi body
+  dan sejajar antar-card. Ukuran font seragam per slide.
   Jarak baris/kolom mengikuti font dalam satuan `em`. Asal Perolehan membungkus
   maksimal 18 karakter per baris, termasuk spasi; metadata lain tetap satu baris.
   Pada mode TV, baris Asal Perolehan dapat membungkus lagi mengikuti lebar kolom
@@ -107,6 +113,14 @@ tanpa mengalikan ukuran layout CSS menjadi 1920 x 1080 px.
   ulang sebelum layout, termasuk resize, pada mode normal maupun TV.
 
 ## Validasi 11 November 2026
+
+Pengurangan metadata dan perbaikan clipping badge diperiksa pada 640x360,
+960x540, 1280x720, dan 1920x1080 dengan DPR 1/2. Di 960x540, metadata fixture
+menjadi sekitar 5,4 px dan seragam pada enam card; polling data pendek tetap
+mempertahankan batas font. Asal Perolehan lengkap, field/body tidak meluber,
+dan resize kembali memulihkan ukuran. Badge dipersempit agar status asli memakai
+dua baris: seluruh glyph berada di dalam area teks, termasuk pada DPR 2. Status
+yang melebihi dua baris tetap memakai elipsis. Mode normal tidak berubah.
 
 Asal Perolehan `TKTM - Direktorat BINTEK SDA` diperiksa di 640x360, 960x540,
 1280x720, dan 1920x1080, dengan DPR 1/2. Kolom nilai juga dipersempit untuk

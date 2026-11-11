@@ -52,8 +52,8 @@ html.tv-screen {
 }
 
 .tv-screen .cell-status .tv-table__text {
-    max-height: 2.5em;
-    line-height: 1.25;
+    max-height: none;
+    line-height: 1.5;
 }
 
 .tv-screen .tv-table .status-badge.badge-warning {
@@ -78,6 +78,11 @@ html.tv-screen {
 
 .tv-screen .tv-equipment__meta dd {
     min-width: 0;
+}
+
+.tv-screen .tv-equipment__meta {
+    font-size: var(--tv-meta-size, calc(5.5 * var(--tv-type)));
+    grid-template-columns: minmax(max-content, 0.9fr) minmax(0, 1.1fr);
 }
 
 .tv-screen .tv-equipment__origin,
