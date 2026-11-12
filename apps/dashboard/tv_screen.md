@@ -64,15 +64,21 @@ tanpa mengalikan ukuran layout CSS menjadi 1920 x 1080 px.
   lebar; kolom label/nilai membagi ruang sekitar 45/55 agar tetap memenuhi body
   dan sejajar antar-card. Ukuran font seragam per slide.
   Jarak baris/kolom mengikuti font dalam satuan `em`. Asal Perolehan membungkus
-  maksimal 18 karakter per baris, termasuk spasi; metadata lain tetap satu baris.
+  maksimal 18 karakter per baris, termasuk spasi. Pada mode TV, nilai Kondisi
+  membungkus maksimal 13 karakter per baris, termasuk spasi, tanpa elipsis.
+  Pemisahan mengikuti kata dan memotong kata tunggal yang terlalu panjang.
+  Mode normal mempertahankan teks Kondisi asli; metadata lain tetap satu baris.
+  Baris Kondisi dirender langsung sebagai span dari server, tanpa menunggu JS
+  mengganti nilai dari atribut data. Span menjadi block pada TV dan inline pada
+  mode normal; spasi antarkata tetap utuh, termasuk pemotongan kata tanpa spasi.
   Pada mode TV, baris Asal Perolehan dapat membungkus lagi mengikuti lebar kolom
   nilai jika ruangnya menyempit, termasuk kata tanpa spasi. Aturan `nowrap` tidak
   memaksa nilai meluber; tidak ada elipsis atau batas jumlah baris untuk field ini.
   Ukuran diukur dari baris terpanjang setelah wrap, bukan gabungan teks seluruh
   baris. Semua card dalam satu slide memakai ukuran seragam; slide lain tidak
   membatasi ukuran slide aktif. Card kosong dan rekap memakai penyesuaian sendiri.
-  Pada mode TV, nama/merek/metadata juga dikecilkan bersama jika tinggi teks,
-  margin, dan jaraknya melebihi ruang body setelah foto; hierarki tetap dijaga.
+  Tinggi minimum carousel memperhitungkan foto dan seluruh isi body, sehingga
+  tabel yang bertambah tidak memaksa metadata menjadi sangat kecil.
 - Pengukuran memakai lebar teks hasil render. Ukuran dihitung ulang setelah resize,
   font/gambar selesai dimuat, pergantian slide, dan pembaruan data. Font kembali ke
   ukuran CSS dasarnya sebelum dihitung agar tidak terus membesar/mengecil setelah resize.
@@ -87,15 +93,16 @@ tanpa mengalikan ukuran layout CSS menjadi 1920 x 1080 px.
   Pada mode TV, carousel memakai sisa tinggi viewport setelah header, ringkasan,
   dan tabel. Stage memakai basis flex nol agar header dan footer BWS/BBWS Nihil
   ikut mendapat ruang, tanpa memaksa tinggi canvas sebesar seluruh card.
-  Tinggi alat di slide tidak aktif tidak memperbesar carousel TV.
+  Tinggi minimum mengikuti kebutuhan card agar foto/metadata tetap utuh.
   Judul/subjudul TV diukur agar tetap satu baris.
 - Seluruh kegiatan aktif tampil berurutan dalam satu tabel, termasuk pada polling;
   batas delapan record dan paginasi otomatis tabel sudah dihapus. Badge tetap
   **Realtime** dan timer carousel hanya mengganti slide alat/grafik.
-- Pada mode normal, track tabel mengikuti tinggi seluruh isinya dan halaman dapat
-  digulir. Pada mode TV, tinggi tabel dibatasi 28% viewport; daftar padat digulir
-  di wrapper tabel tanpa paginasi atau penghapusan record. Carousel tetap dalam
-  viewport, termasuk label sumbu dan footer nihil. Foto alat tetap 4:3.
+- Pada kedua mode, track tabel mengikuti tinggi seluruh isinya dalam satu listing.
+  Batas 28% viewport dan scroll internal tabel TV dihapus. Carousel ditempatkan
+  setelah seluruh tabel dan mengisi sisa viewport, dengan tinggi minimum dari
+  kebutuhan kontennya. Jika tabel dan carousel melebihi layar, halaman digulir
+  vertikal tanpa memotong baris atau menumpuk carousel. Foto alat tetap 4:3.
 - Mode TV menampilkan enam card per slide. Card tambahan dibagi ke slide berikutnya;
   slot kosong tidak menjadi alat duplikat. Mode normal tetap enam kolom di desktop,
   tiga di tablet, dan satu di ponsel.
@@ -112,7 +119,39 @@ tanpa mengalikan ukuran layout CSS menjadi 1920 x 1080 px.
   dimiringkan 45–90 derajat berdasarkan jarak antarkategori. Pengaturan dihitung
   ulang sebelum layout, termasuk resize, pada mode normal maupun TV.
 
+## Perbaikan 12 November 2026
+
+Data Kegiatan Aktif diprioritaskan sebagai listing lengkap. Pengukuran minimum
+carousel yang sama dipakai normal/TV; pengecilan font berdasarkan tinggi sempit
+dan batas tinggi/scroll internal tabel lama dihapus. Validasi browser memakai
+0/3/6/11/30 kegiatan pada 640x360, 960x540, 1280x720, dan 1920x1080, DPR 1/2:
+wrapper tabel memuat tinggi semua baris, baris terakhir berada di atas carousel,
+dan tinggi carousel sama dengan sisa viewport atau minimum kontennya. Polling
+3 ke 11/30 lalu 3/0 serta resize diperiksa tanpa reload. Mode normal/mobile
+tetap diperiksa; listing padat tersedia melalui scroll halaman.
+
+Kondisi kini membungkus sejak HTML awal dan fragmen polling diterima. Atribut
+`data-tv-condition`, penggantian `textContent`, dan ketergantungan newline/JS
+untuk membuat baris dihapus. Pengukuran font memakai baris block pada TV dan
+lebar teks utuh untuk span inline mode normal. `tv_lines` mempertahankan spasi
+antarkata tanpa menambahkan spasi saat kata panjang dipotong.
+
+Validasi Chrome pada 960x540 DPR 2 mencakup JS dimatikan, script layout diblokir,
+serta semua script aktif. Enam card berisi kondisi panjang, pendek, dan kata 45
+karakter tampil utuh, maksimal 13 karakter per span/baris tanpa elipsis atau
+overflow. Polling yang mengganti markup, resize 640x360 hingga 1920x1080, DPR 1,
+dan teks normal dengan kata panjang juga diperiksa. Tes template memverifikasi
+pemisahan sudah ada dalam HTML dan teks asli tetap utuh setelah tag dilepas.
+
 ## Validasi 11 November 2026
+
+Wrap Kondisi diperiksa pada 640x360, 960x540, 1280x720, dan 1920x1080 dengan
+DPR 1/2. Nilai panjang tampil lengkap dalam baris maksimal 13 karakter, tanpa
+overflow field/body. Polling, perubahan panjang ke pendek, dan resize juga
+diperiksa; mode normal tetap menampilkan teks aslinya. Helper `tv_wrap` memakai
+logika pembungkusan yang sama dengan `tv_lines`, tanpa helper terpisah/duplikat.
+Tes template memeriksa spasi, kata panjang, Unicode, dan escaping HTML pada
+atribut data serta nilai field. Tidak ada perubahan data tersimpan.
 
 Pengurangan metadata dan perbaikan clipping badge diperiksa pada 640x360,
 960x540, 1280x720, dan 1920x1080 dengan DPR 1/2. Di 960x540, metadata fixture
@@ -347,5 +386,5 @@ ulang URL `?tv=1` pada viewport 960x540/DPR 2, periksa kode barang tetap satu ba
 Asal Perolehan membungkus maksimal 18 karakter per baris, tabel
 menampilkan semua kegiatan, serta chart Internal SDA tidak menumpuk labelnya.
 Periksa juga resize/zoom browser dan tunggu polling. Jika tabel kegiatan padat,
-seluruh baris tetap tersedia dengan menggulir area tabel. Fullscreen browser
+seluruh baris tetap tersedia dengan menggulir halaman. Fullscreen browser
 mengikuti kontrol BrowseHere.

@@ -19,7 +19,7 @@
             <div><dt>Kode Barang <span>:</span></dt><dd title="{{ slot.alat.kode_aset_bmn|default:slot.alat.kode_laboratorium|default:'-' }}">{{ slot.alat.kode_aset_bmn|default:slot.alat.kode_laboratorium|default:'-' }}</dd></div>
             <div><dt>Tahun Perolehan <span>:</span></dt><dd>{{ slot.alat.tahun_perolehan|default:'-' }}</dd></div>
             <div><dt>Asal Perolehan <span>:</span></dt><dd class="tv-equipment__origin">{{ slot.alat.asal_perolehan|default:'-'|tv_lines:18 }}</dd></div>
-            <div><dt>Kondisi <span>:</span></dt><dd>{{ slot.alat.kondisi_barang|default:'-' }}</dd></div>
+            <div><dt>Kondisi <span>:</span></dt><dd class="tv-equipment__condition">{{ slot.alat.kondisi_barang|default:'-'|tv_lines:13 }}</dd></div>
         </dl>
         {% else %}
         <h4 class="tv-equipment__name">Belum dipilih</h4>

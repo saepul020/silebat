@@ -6,7 +6,7 @@ from django.template.loader import render_to_string
 from django.test import SimpleTestCase
 from django.utils.html import escape
 
-from .templatetags.tv_tags import tv_lines
+from .templatetags.tv_tags import tv_lines, tv_wrap
 
 
 def lines(markup):
@@ -36,7 +36,7 @@ class TvTextTests(SimpleTestCase):
         self.assertNotIn("<img", markup)
         self.assertEqual("".join(lines(markup)).replace(" ", ""), text.replace(" ", ""))
 
-    def test_tv_partials_wrap_only_status_and_origin_fields(self):
+    def test_tv_partials_keep_field_wrapping_separate(self):
         row = render_to_string("dashboard/partials/active_rows.html", {"active_peminjaman": [{
             "nomor_pengajuan": "PMJ-1", "nama_peminjam": "Nama Peminjam Panjang",
             "instansi_tujuan_lainnya": "Direktorat SDA",
@@ -50,7 +50,7 @@ class TvTextTests(SimpleTestCase):
             "alat": SimpleNamespace(asal_perolehan="TKTM - Direktorat BINTEK SDA", kode_aset_bmn="3080149020-1", kode_laboratorium=""),
         }]})
         self.assertIn("3080149020-1", equipment)
-        self.assertEqual(lines(equipment), ["TKTM - Direktorat", "BINTEK SDA"])
+        self.assertEqual(lines(equipment), ["TKTM - Direktorat", "BINTEK SDA", "-"])
 
     def test_documentation_omits_empty_slots_for_every_photo_count(self):
         for count in range(7):
@@ -72,3 +72,18 @@ class TvTextTests(SimpleTestCase):
         self.assertEqual(row.count(f'title="{escape(text)}"'), 6)
         self.assertNotIn("<img", row)
         self.assertTrue(all(len(line) <= 22 for line in lines(row)))
+
+    def test_condition_wraps_at_thirteen_characters_without_truncation(self):
+        for text in ("Rusak Ringan", "Rusak Berat Sekali", "1234567890123", "12345678901234", "X" * 45, "Kondisi \U0001f600 Perlu Pemeliharaan", "<img src=x onerror=alert(1)> & Rusak"):
+            with self.subTest(text=text):
+                wrapped = tv_wrap(text, 13)
+                self.assertTrue(all(len(line) <= 13 for line in wrapped.splitlines()))
+                self.assertEqual(wrapped.replace("\n", "").replace(" ", ""), text.replace(" ", ""))
+                markup = render_to_string("dashboard/partials/tv_equipment.html", {"tv_slots": [{
+                    "nomor": 1, "alat": SimpleNamespace(kondisi_barang=text, kode_aset_bmn="", kode_laboratorium=""),
+                }]})
+                condition = re.search(r'<dd class="tv-equipment__condition">(.*?)</dd>', markup).group(1)
+                self.assertEqual(lines(condition), wrapped.splitlines())
+                self.assertEqual(html.unescape(re.sub(r"<[^>]+>", "", condition)), text)
+                self.assertNotIn("data-tv-condition", markup)
+                self.assertNotIn("<img", markup)

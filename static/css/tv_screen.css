@@ -17,19 +17,7 @@ html.tv-screen {
     top: var(--tv-top, 0px);
     width: var(--tv-width, 100vw);
     height: var(--tv-height, 100vh);
-    grid-template-rows: max-content minmax(0, 7vh) max-content minmax(0, 1fr);
-    overflow: hidden;
-}
-
-.tv-screen .tv-active-table {
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-    max-height: calc(var(--tv-height, 100vh) * 0.28);
-    overflow: hidden;
-}
-
-.tv-screen .tv-table-wrap {
+    grid-template-rows: max-content minmax(0, 7vh) max-content minmax(var(--tv-chart-min, 180px), 1fr);
     overflow-y: auto;
 }
 
@@ -92,6 +80,17 @@ html.tv-screen {
     word-break: break-word;
 }
 
+.tv-screen .tv-equipment__condition,
+.tv-screen .tv-equipment__condition .tv-wrap__line {
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.tv-screen .tv-equipment__condition .tv-wrap__line {
+    display: block;
+}
+
 .tv-screen .tv-summary .tv-equipment__name {
     width: 100%;
     min-width: 0;
@@ -101,7 +100,8 @@ html.tv-screen {
 @media (max-width: 1024px) {
     .tv-screen .tv-page {
         --tv-unit: clamp(1px, min(0.15625vw, 0.277778vh), 1.6px);
-        grid-template-rows: max-content calc(26 * var(--tv-unit)) max-content minmax(0, 1fr);
+        --tv-stage-min: 120px;
+        grid-template-rows: max-content calc(26 * var(--tv-unit)) max-content minmax(var(--tv-chart-min, 160px), 1fr);
         padding: calc(6 * var(--tv-unit));
         gap: calc(5 * var(--tv-unit));
     }

@@ -662,6 +662,10 @@ body.tv-body {
     font-size: inherit;
 }
 
+.tv-equipment__condition .tv-wrap__line {
+    display: inline;
+}
+
 @media (max-width: 960px) {
     html:not(.tv-screen),
     html:not(.tv-screen) body.tv-body {
