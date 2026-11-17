@@ -193,6 +193,7 @@ class PemeliharaanVerifikasiTests(TestCase):
             reverse("pemeliharaan:tambah"),
             {
                 "pilih_alat": str(self.alat.pk),
+                "tanggal_pemeriksaan": timezone.localdate().isoformat(),
                 "komponen_0": "Kamera",
                 "kondisi_0": KondisiPemeliharaanChoices.BAIK,
                 "dokumentasi_pemeriksaan": SimpleUploadedFile(
@@ -251,7 +252,7 @@ class PemeliharaanVerifikasiTests(TestCase):
             )
 
         form = PemeliharaanForm(
-            data={"pilih_alat": str(alat_dipinjam.pk)},
+            data={"pilih_alat": str(alat_dipinjam.pk), "tanggal_pemeriksaan": timezone.localdate().isoformat()},
             actor=self.users["Admin Lab"],
         )
 
@@ -263,6 +264,7 @@ class PemeliharaanVerifikasiTests(TestCase):
         form = PemeliharaanForm(
             data={
                 "pilih_alat": str(self.alat.pk),
+                "tanggal_pemeriksaan": "12 Jun 2026",
                 "komponen_0": "Kamera",
                 "kondisi_0": KondisiPemeliharaanChoices.PERLU_PERBAIKAN,
                 "tindakan_0": TindakanPerbaikanChoices.MANDIRI,
@@ -295,6 +297,104 @@ class PemeliharaanVerifikasiTests(TestCase):
         selesai = form.cleaned_items[0]["tanggal_selesai_perbaikan"]
         self.assertEqual(selesai.hour, 23)
         self.assertEqual(selesai.minute, 59)
+
+    def test_tanggal_pemeriksaan_manual_disimpan(self):
+        self._login("Admin Lab")
+        response = self.client.get(reverse("pemeliharaan:tambah"))
+        field = response.context["form"].fields["tanggal_pemeriksaan"]
+        self.assertTrue(field.required)
+        self.assertFalse(field.disabled)
+        self.assertNotIn("readonly", field.widget.attrs)
+        self.assertEqual(field.widget.attrs["data-maint-date-picker"], "true")
+
+        response = self.client.post(reverse("pemeliharaan:tambah"), {
+            "pilih_alat": self.alat.pk,
+            "tanggal_pemeriksaan": "12 Jun 2026",
+            "komponen_0": "Kamera",
+            "kondisi_0": KondisiPemeliharaanChoices.BAIK,
+            "dokumentasi_pemeriksaan": self._image_upload("manual-date.png"),
+        })
+        self.assertEqual(response.status_code, 302)
+        pengajuan = PemeliharaanPengajuan.objects.get(alat=self.alat)
+        self.assertEqual(timezone.localdate(pengajuan.tanggal_pemeriksaan), date(2026, 6, 12))
+
+    def test_tanggal_pemeriksaan_manual_valid_dan_format_lama(self):
+        for value in ("12 Jun 2026", "2026-06-12", "12/06/2026", "12-06-2026"):
+            with self.subTest(value=value):
+                form = PemeliharaanForm(data={
+                    "pilih_alat": self.alat.pk, "tanggal_pemeriksaan": value,
+                    "komponen_0": "Kamera", "kondisi_0": KondisiPemeliharaanChoices.BAIK,
+                }, files=MultiValueDict({"dokumentasi_pemeriksaan": [self._image_upload("valid-date.png")]}))
+                self.assertTrue(form.is_valid(), form.errors)
+                self.assertEqual(timezone.localdate(form.cleaned_data["tanggal_pemeriksaan"]), date(2026, 6, 12))
+
+    def test_tanggal_pemeriksaan_tidak_valid_tidak_disimpan(self):
+        self._login("Admin Lab")
+        for value in ("", "31 Feb 2026", "bukan tanggal"):
+            with self.subTest(value=value):
+                response = self.client.post(reverse("pemeliharaan:tambah"), {
+                    "pilih_alat": self.alat.pk, "tanggal_pemeriksaan": value,
+                    "komponen_0": "Kamera", "kondisi_0": KondisiPemeliharaanChoices.BAIK,
+                })
+                self.assertEqual(response.status_code, 200)
+                self.assertIn("tanggal_pemeriksaan", response.context["form"].errors)
+                self.assertContains(response, 'class="input-error-text"')
+                self.assertFalse(PemeliharaanPengajuan.objects.filter(alat=self.alat).exists())
+
+    def test_edit_tanggal_pemeriksaan_manual_dan_jam_lama(self):
+        pengajuan = self._create_pengajuan_baik()
+        original = timezone.make_aware(datetime(2026, 6, 12, 9, 30))
+        pengajuan.tanggal_pemeriksaan = original
+        pengajuan.save(update_fields=["tanggal_pemeriksaan"])
+        self._login("Admin Lab")
+        for value, expected in (("12 Jun 2026", original), ("14 Jun 2026", timezone.make_aware(datetime(2026, 6, 14)))):
+            with self.subTest(value=value):
+                response = self.client.post(reverse("pemeliharaan:edit", args=[pengajuan.pk]), {
+                    "pilih_alat": self.alat.pk, "tanggal_pemeriksaan": value,
+                    "komponen_0": "Kamera", "kondisi_0": KondisiPemeliharaanChoices.BAIK,
+                    "dokumentasi_pemeriksaan": self._image_upload("edit-date.png"),
+                })
+                self.assertEqual(response.status_code, 302)
+                pengajuan.refresh_from_db()
+                self.assertEqual(pengajuan.tanggal_pemeriksaan, expected)
+
+    def test_tanggal_selesai_mengikuti_tanggal_pemeriksaan_manual(self):
+        form = PemeliharaanForm(data={
+            "pilih_alat": self.alat.pk, "tanggal_pemeriksaan": "16 Jun 2026",
+            "komponen_0": "Kamera", "kondisi_0": KondisiPemeliharaanChoices.PERLU_PERBAIKAN,
+            "tindakan_0": TindakanPerbaikanChoices.MANDIRI,
+            "uraian_perbaikan_0": "Kalibrasi", "tanggal_selesai_perbaikan_0": "15 Jun 2026",
+        }, files=MultiValueDict({
+            "dokumentasi_pemeriksaan": [self._image_upload("check-date.png")],
+            "dokumentasi_perbaikan_0": [self._image_upload("repair-date.png")],
+        }))
+        self.assertFalse(form.is_valid())
+        self.assertIn("lebih awal dari tanggal pemeriksaan", str(form.component_errors))
+
+    def test_edit_invalid_mempertahankan_tanggal_manual_tanpa_menyimpan(self):
+        pengajuan = self._create_pengajuan(TindakanPerbaikanChoices.MANDIRI)
+        original = pengajuan.tanggal_pemeriksaan
+        self._login("Admin Lab")
+        response = self.client.post(reverse("pemeliharaan:edit", args=[pengajuan.pk]), {
+            "pilih_alat": self.alat.pk, "tanggal_pemeriksaan": "12 Jun 2026",
+            "komponen_0": "Kamera", "kondisi_0": KondisiPemeliharaanChoices.PERLU_PERBAIKAN,
+            "tindakan_0": TindakanPerbaikanChoices.MANDIRI,
+            "uraian_perbaikan_0": "", "tanggal_selesai_perbaikan_0": "13 Jun 2026",
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["tanggal_pemeriksaan_display"], "12 Jun 2026")
+        self.assertTrue(response.context["form"].component_errors)
+        self.assertContains(response, 'value="12 Jun 2026"')
+        pengajuan.refresh_from_db()
+        self.assertEqual(pengajuan.tanggal_pemeriksaan, original)
+
+    def test_picker_tanggal_selesai_memakai_tanggal_mulai_perbaikan(self):
+        pengajuan = self._create_pengajuan(TindakanPerbaikanChoices.MANDIRI)
+        self._login("Admin Lab")
+        response = self.client.get(reverse("pemeliharaan:edit", args=[pengajuan.pk]))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'data-maint-min-source="id_tanggal_pemeriksaan"')
+        self.assertContains(response, 'name="tanggal_selesai_perbaikan_0"')
 
     def test_edit_form_menampilkan_dokumentasi_tersimpan(self):
         pengajuan = self._create_pengajuan_baik()
@@ -343,6 +443,7 @@ class PemeliharaanVerifikasiTests(TestCase):
                 "komponen_0": "Kamera",
                 "kondisi_0": KondisiPemeliharaanChoices.BAIK,
                 "hapus_foto_ids": str(foto_hapus.pk),
+                "tanggal_pemeriksaan": timezone.localdate(pengajuan.tanggal_pemeriksaan).isoformat(),
             },
         )
 
@@ -370,6 +471,7 @@ class PemeliharaanVerifikasiTests(TestCase):
                 "komponen_0": "Kamera",
                 "kondisi_0": KondisiPemeliharaanChoices.BAIK,
                 "hapus_foto_ids": ["999999999"],
+                "tanggal_pemeriksaan": timezone.localdate(pengajuan.tanggal_pemeriksaan).isoformat(),
             },
             actor=self.users["Admin Lab"],
             instance=pengajuan,
@@ -392,6 +494,7 @@ class PemeliharaanVerifikasiTests(TestCase):
                 "komponen_0": "Kamera",
                 "kondisi_0": KondisiPemeliharaanChoices.BAIK,
                 "hapus_foto_ids": [str(foto.pk)],
+                "tanggal_pemeriksaan": timezone.localdate(pengajuan.tanggal_pemeriksaan).isoformat(),
             },
             actor=self.users["Admin Lab"],
             instance=pengajuan,
@@ -416,6 +519,7 @@ class PemeliharaanVerifikasiTests(TestCase):
         form = PemeliharaanForm(
             data={
                 "pilih_alat": str(self.alat.pk),
+                "tanggal_pemeriksaan": timezone.localdate(pengajuan.tanggal_pemeriksaan).isoformat(),
                 "komponen_0": "Kamera",
                 "kondisi_0": KondisiPemeliharaanChoices.BAIK,
             },

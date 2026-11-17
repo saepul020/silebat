@@ -217,13 +217,12 @@ class PemeliharaanForm(forms.Form):
     )
     tanggal_pemeriksaan = forms.CharField(
         label="Tanggal Pemeriksaan",
-        required=False,
-        disabled=True,
         widget=forms.TextInput(
             attrs={
-                "class": "date-input",
+                "class": "date-input pemeliharaan-date-input",
                 "placeholder": "Masukan tanggal sesuai format",
                 "autocomplete": "off",
+                "data-maint-date-picker": "true",
             }
         ),
     )
@@ -245,16 +244,24 @@ class PemeliharaanForm(forms.Form):
         self.fields["tanggal_pemeriksaan"].initial = format_display_date(self.tanggal_pemeriksaan_value)
         self._set_common_widget_style()
         self.fields["pilih_alat"].widget.attrs["data-preserve-placeholder"] = "true"
-        self.fields["tanggal_pemeriksaan"].widget.attrs.update(
-            {
-                "readonly": "readonly",
-                "aria-readonly": "true",
-                "class": (
-                    self.fields["tanggal_pemeriksaan"].widget.attrs.get("class", "")
-                    + " is-readonly-field"
-                ).strip(),
-            }
-        )
+
+    def clean_tanggal_pemeriksaan(self):
+        try:
+            parsed = parse_flexible_date(self.cleaned_data["tanggal_pemeriksaan"])
+        except (TypeError, ValueError, forms.ValidationError):
+            parsed = None
+        if not parsed:
+            raise forms.ValidationError("Tanggal pemeriksaan harus berupa tanggal yang valid.")
+
+        reference = self.tanggal_pemeriksaan_value
+        if timezone.is_naive(reference):
+            reference = timezone.make_aware(reference, timezone.get_current_timezone())
+        if parsed == timezone.localdate(reference):
+            value = reference
+        else:
+            value = timezone.make_aware(datetime.combine(parsed, time.min), timezone.get_current_timezone())
+        self.tanggal_pemeriksaan_value = value
+        return value
 
     def _setup_photo_delete_field(self):
         photo_ids = []
@@ -530,7 +537,7 @@ class PemeliharaanForm(forms.Form):
     def clean(self):
         cleaned_data = super().clean()
         alat = cleaned_data.get("pilih_alat")
-        if not alat:
+        if not alat or not cleaned_data.get("tanggal_pemeriksaan"):
             return cleaned_data
 
         components = self._get_components(alat)

@@ -223,7 +223,8 @@ function initPemeliharaanDatePickers(scope) {
             if (input.disabled) {
                 return;
             }
-            const selectedDate = parseMaintDate(input.value) || new Date();
+            const selectedDate = parseMaintDate(input.value)
+                || (minSource ? parseMaintDate(minSource.value) : null) || new Date();
             state.year = selectedDate.getFullYear();
             state.month = selectedDate.getMonth();
             renderCalendar();
@@ -246,14 +247,15 @@ function initPemeliharaanDatePickers(scope) {
             }
 
             const minimumDate = parseMaintDate(minSource.value);
-            const locked = !minimumDate;
+            const panel = input.closest('[data-action-panel]');
+            const locked = !minimumDate || Boolean(panel?.hidden);
             input.disabled = locked;
             toggleButton.disabled = locked;
             input.setAttribute('aria-disabled', String(locked));
             toggleButton.setAttribute('aria-disabled', String(locked));
 
             if (locked) {
-                input.value = '';
+                if (!panel) input.value = '';
                 closePopup();
                 return;
             }
@@ -327,6 +329,7 @@ function initPemeliharaanDatePickers(scope) {
 
         input.dataset.datePickerReady = 'true';
         if (minSource) {
+            input.addEventListener('maint:date-sync', syncMinSource);
             minSource.addEventListener('input', syncMinSource);
             minSource.addEventListener('change', syncMinSource);
             syncMinSource();
@@ -543,7 +546,14 @@ function initPemeliharaanForm() {
 
     function getTanggalMulaiLabel() {
         const value = String(tanggalInput?.value || '').trim();
-        return value ? value.replace('T', ' ') : '-';
+        const parsed = parseMaintDate(value);
+        return parsed ? formatMaintDate(parsed) : value || '-';
+    }
+
+    function syncTanggalMulai() {
+        form.querySelectorAll('[data-maint-start-date]').forEach(function (input) {
+            input.value = getTanggalMulaiLabel();
+        });
     }
 
     function uploadBlock(index, name, label) {
@@ -644,11 +654,11 @@ function initPemeliharaanForm() {
                     <div class="form-row master-form-row master-form-row--2">
                         <div class="form-group">
                             <label>Tanggal Perbaikan Mulai</label>
-                            <input type="text" class="form-control is-readonly-field" value="${escapeHtml(getTanggalMulaiLabel())}" readonly aria-readonly="true">
+                            <input type="text" class="form-control is-readonly-field" value="${escapeHtml(getTanggalMulaiLabel())}" readonly aria-readonly="true" data-maint-start-date>
                         </div>
                         <div class="form-group">
                             <label for="id_tanggal_selesai_perbaikan_${index}">Tanggal Perbaikan Selesai</label>
-                            <input type="text" name="tanggal_selesai_perbaikan_${index}" id="id_tanggal_selesai_perbaikan_${index}" class="form-control date-input pemeliharaan-date-input" value="${escapeHtml(tanggalSelesai)}" placeholder="Masukan tanggal sesuai format" autocomplete="off" data-maint-date-picker="true">
+                            <input type="text" name="tanggal_selesai_perbaikan_${index}" id="id_tanggal_selesai_perbaikan_${index}" class="form-control date-input pemeliharaan-date-input" value="${escapeHtml(tanggalSelesai)}" placeholder="Masukan tanggal sesuai format" autocomplete="off" data-maint-date-picker="true" data-maint-min-source="id_tanggal_pemeriksaan">
                         </div>
                     </div>
                     ${uploadBlock(index, 'dokumentasi_perbaikan', 'Dokumentasi Perbaikan')}
@@ -718,6 +728,9 @@ function initPemeliharaanForm() {
             const isActive = actionField?.value === panel.getAttribute('data-action-panel');
             panel.hidden = !isActive;
             setPanelDisabled(panel, !isActive);
+            panel.querySelectorAll('[data-maint-min-source]').forEach(function (input) {
+                input.dispatchEvent(new Event('maint:date-sync'));
+            });
         });
     }
 
@@ -880,10 +893,13 @@ function initPemeliharaanForm() {
         renderComponents();
     });
 
+    tanggalInput?.addEventListener('input', syncTanggalMulai);
+    tanggalInput?.addEventListener('change', syncTanggalMulai);
     bindComponentRows(form);
     bindRepairRows(form);
     initPemeliharaanGallery(form);
     initPemeliharaanDatePickers(form);
+    syncTanggalMulai();
     initPemeliharaanDigits(form);
 }
 

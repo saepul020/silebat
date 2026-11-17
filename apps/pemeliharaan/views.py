@@ -180,12 +180,6 @@ def _build_alat_components(instance=None):
     }
 
 
-def _format_local_date(value):
-    if not value:
-        return "-"
-    return format_display_date(value)
-
-
 def _prepare_detail_items(obj):
     items = []
     repair_items = []
@@ -464,12 +458,10 @@ def tambah_pengajuan(request):
             "Hanya Admin Lab, Teknisi Lab, atau Super Admin yang dapat membuat pengajuan pemeliharaan.",
         )
 
-    tanggal_pemeriksaan = timezone.now()
     form = PemeliharaanForm(
         request.POST or None,
         request.FILES or None,
         actor=request.user,
-        tanggal_pemeriksaan=tanggal_pemeriksaan,
     )
     if request.method == "POST" and form.is_valid():
         pengajuan = form.save()
@@ -490,7 +482,7 @@ def tambah_pengajuan(request):
             "page_subtitle": "Pilih alat, isi kondisi setiap komponen, dan unggah dokumentasi pemeriksaan.",
             "submit_label": "Simpan",
             "alat_components": _build_alat_components(),
-            "tanggal_pemeriksaan_display": _format_local_date(tanggal_pemeriksaan),
+            "tanggal_pemeriksaan_display": form["tanggal_pemeriksaan"].value(),
         },
     )
 
@@ -529,7 +521,7 @@ def edit_pengajuan(request, pk):
             "page_subtitle": "Perbarui data pemeriksaan sebelum dikirim ke proses verifikasi.",
             "submit_label": "Simpan",
             "alat_components": _build_alat_components(obj),
-            "tanggal_pemeriksaan_display": _format_local_date(obj.tanggal_pemeriksaan),
+            "tanggal_pemeriksaan_display": form["tanggal_pemeriksaan"].value(),
         },
     )
 

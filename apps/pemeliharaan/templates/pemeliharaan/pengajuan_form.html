@@ -45,9 +45,10 @@
             <legend>Pemeriksaan</legend>
             <div class="master-fieldset-stack">
                 <div class="form-row master-form-row master-form-row--1">
-                    <div class="form-group">
+                    <div class="form-group {% if form.tanggal_pemeriksaan.errors %}has-error{% endif %}">
                         <label for="{{ form.tanggal_pemeriksaan.id_for_label }}">{{ form.tanggal_pemeriksaan.label }}</label>
                         {{ form.tanggal_pemeriksaan }}
+                        {% for error in form.tanggal_pemeriksaan.errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
                     </div>
                 </div>
 
@@ -150,5 +151,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/pemeliharaan.js' %}?v=20260713-maintenance-delete-v1" defer></script>
+<script src="{% static 'js/pemeliharaan.js' %}?v=20261117-repair-date-v2" defer></script>
 {% endblock %}
