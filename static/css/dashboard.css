@@ -881,9 +881,8 @@
     gap: 12px;
 }
 
-.item-modal__trigger {
-    gap: 6px;
-    white-space: nowrap;
+.dashboard-active-table .table-action-group {
+    flex-wrap: nowrap;
 }
 
 .item-modal.show {
@@ -941,13 +940,6 @@
         padding: 14px;
     }
 
-    .item-modal__trigger {
-        width: 100%;
-        min-width: 92px;
-        padding-inline: 10px;
-        font-size: 0.78rem;
-    }
-
     .item-modal .delete-modal-header p {
         font-size: 0.8rem;
     }
@@ -969,12 +961,6 @@
 @media (max-width: 480px) {
     .item-modal.show {
         padding: 10px;
-    }
-
-    .item-modal__trigger {
-        min-width: 82px;
-        padding: 6px 9px;
-        font-size: 0.72rem;
     }
 
     .item-modal .tbl-scroll--sum-lab {

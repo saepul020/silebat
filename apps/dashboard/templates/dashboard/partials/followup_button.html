@@ -1,0 +1,5 @@
+{% if item.action_url %}
+<a href="{{ item.action_url }}" class="btn btn-primary btn-sm" title="{{ item.action_label }} {{ item.nomor_pengajuan }}" aria-label="{{ item.action_label }} {{ item.nomor_pengajuan }}">
+    <i class="bi bi-arrow-right-circle-fill" aria-hidden="true"></i>
+</a>
+{% endif %}

@@ -836,6 +836,29 @@ class PemeliharaanVerifikasiTests(TestCase):
         )
         self.assertNotIn("disabled", form.fields["tanggal_selesai"].widget.attrs)
 
+    def test_vendor_tanggal_mulai_minimum_adalah_tanggal_pemeriksaan(self):
+        pengajuan = self._create_pengajuan(TindakanPerbaikanChoices.EKSTERNAL)
+        pengajuan.tanggal_pemeriksaan = timezone.make_aware(datetime(2026, 6, 12, 9, 30))
+        pengajuan.current_step = StepPemeliharaanChoices.VENDOR_DRAFT
+        pengajuan.save(update_fields=["tanggal_pemeriksaan", "current_step"])
+        self._login("Admin Lab")
+        response = self.client.get(reverse("pemeliharaan:vendor", args=[pengajuan.pk]))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'data-maint-min-date="2026-06-12"')
+        self.assertContains(response, 'data-maint-min-source="id_tanggal_mulai"')
+
+        for day, valid in ((11, False), (12, True), (13, True)):
+            with self.subTest(day=day):
+                form = PemeliharaanVendorForm(pengajuan=pengajuan, data={
+                    "nama_vendor": "Vendor Uji", "nama_pic": "PIC Uji",
+                    "nomor_hp_pic": "08123456789", "alamat": "Alamat Uji",
+                    "tanggal_mulai": f"{day} Jun 2026", "tanggal_selesai": "14 Jun 2026",
+                })
+                self.assertEqual(form.is_valid(), valid, form.errors)
+                if not valid:
+                    self.assertIn("tanggal_mulai", form.errors)
+                    self.assertIn("lebih awal dari tanggal pemeriksaan", str(form.errors["tanggal_mulai"]))
+
     def test_list_dan_detail_memakai_badge_seragam_dan_modal_hapus_custom(self):
         pengajuan = self._create_pengajuan(TindakanPerbaikanChoices.EKSTERNAL)
         self._login("Super Admin")

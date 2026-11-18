@@ -13,8 +13,8 @@ from apps.pengguna.models import Role, User
 
 class PeminjamanFlowTests(TestCase):
     def setUp(self):
-        self.role_teknisi = Role.objects.create(nama="Teknisi Lab")
-        self.role_user = Role.objects.create(nama="User")
+        self.role_teknisi, _ = Role.objects.get_or_create(nama="Teknisi Lab")
+        self.role_user, _ = Role.objects.get_or_create(nama="User")
         self.teknisi = self._user("teknisi", "Teknisi", self.role_teknisi)
         self.peminjam = self._user("peminjam", "Peminjam", self.role_user)
         self.obj = PeminjamanRequest.objects.create(

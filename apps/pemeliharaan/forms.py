@@ -138,6 +138,10 @@ class PemeliharaanVendorForm(forms.ModelForm):
             field.widget.attrs["required"] = "required"
             field.error_messages["required"] = f"{field.label} wajib diisi."
 
+        self.fields["tanggal_mulai"].widget.attrs["data-maint-min-date"] = (
+            timezone.localdate(self.pengajuan.tanggal_pemeriksaan).isoformat()
+        )
+
         if not self.is_bound and self.instance and self.instance.pk:
             self.initial["tanggal_mulai"] = format_display_date(self.instance.tanggal_mulai)
             self.initial["tanggal_selesai"] = format_display_date(self.instance.tanggal_selesai)

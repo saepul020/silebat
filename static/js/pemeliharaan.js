@@ -121,6 +121,10 @@ function initPemeliharaanDatePickers(scope) {
         const baseDate = initialDate || new Date();
         const state = { year: baseDate.getFullYear(), month: baseDate.getMonth() };
 
+        function getMinimumDate() {
+            return parseMaintDate(minSource ? minSource.value : input.dataset.maintMinDate);
+        }
+
         weekdays.innerHTML = MAINT_DAY_SHORT_ID.map(function (dayName) {
             return `<span class="date-picker-weekday">${dayName}</span>`;
         }).join('');
@@ -141,7 +145,7 @@ function initPemeliharaanDatePickers(scope) {
             const firstDay = new Date(state.year, state.month, 1, 12, 0, 0, 0);
             const startOffset = firstDay.getDay();
             const daysInMonth = new Date(state.year, state.month + 1, 0, 12, 0, 0, 0).getDate();
-            const minimumDate = minSource ? parseMaintDate(minSource.value) : null;
+            const minimumDate = getMinimumDate();
             todayButton.disabled = Boolean(
                 minimumDate && createMaintDate(
                     today.getFullYear(),
@@ -224,7 +228,7 @@ function initPemeliharaanDatePickers(scope) {
                 return;
             }
             const selectedDate = parseMaintDate(input.value)
-                || (minSource ? parseMaintDate(minSource.value) : null) || new Date();
+                || getMinimumDate() || new Date();
             state.year = selectedDate.getFullYear();
             state.month = selectedDate.getMonth();
             renderCalendar();
@@ -246,7 +250,7 @@ function initPemeliharaanDatePickers(scope) {
                 return;
             }
 
-            const minimumDate = parseMaintDate(minSource.value);
+            const minimumDate = getMinimumDate();
             const panel = input.closest('[data-action-panel]');
             const locked = !minimumDate || Boolean(panel?.hidden);
             input.disabled = locked;

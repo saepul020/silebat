@@ -5,7 +5,7 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/charts.css' %}?v=20261111-chart-badge-v1">
-<link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=20261106-inventory-filter-v2">
+<link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=20261118-active-tables-v1">
 {% endblock %}
 
 {% block content %}
@@ -58,7 +58,7 @@
                     <th>Periode</th>
                     <th class="cell-status">Proses Peminjaman</th>
                     <th class="cell-status">Proses Pengembalian</th>
-                    <th class="cell-action">Detail Barang</th>
+                    <th class="cell-action">Aksi</th>
                 </tr>
             </thead>
             <tbody>
@@ -83,15 +83,73 @@
                         {% endif %}
                     </td>
                     <td class="cell-action">
-                        <button type="button" class="btn btn-secondary btn-sm item-modal__trigger" data-item-open="itemModal{{ item.pk }}" title="Detail barang {{ item.nomor_pengajuan }}">
-                            <i class="bi bi-eye-fill" aria-hidden="true"></i>
-                            <span>Detail</span>
-                        </button>
+                        <div class="table-action-group">
+                            <button type="button" class="btn btn-secondary btn-sm" data-item-open="itemModal{{ item.pk }}" title="Detail barang {{ item.nomor_pengajuan }}" aria-label="Detail barang {{ item.nomor_pengajuan }}">
+                                <i class="bi bi-eye-fill" aria-hidden="true"></i>
+                            </button>
+                            {% include 'dashboard/partials/followup_button.html' %}
+                        </div>
                     </td>
                 </tr>
                 {% empty %}
                 <tr>
                     <td colspan="8"><div class="empty-state">Belum ada data kegiatan aktif.</div></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="table-wrapper table-panel dashboard-active-table">
+    <div class="table-toolbar">
+        <h3 class="table-title">Data Pemeliharaan Aktif</h3>
+    </div>
+
+    {% include 'components/local_search.html' with search_placeholder='Cari pemeliharaan aktif...' search_label='Cari pemeliharaan aktif' %}
+
+    <div class="table-scroll-area table-scroll--list" tabindex="0" aria-label="Scroll tabel data pemeliharaan aktif">
+        <table class="table-data">
+            <thead>
+                <tr>
+                    <th>Nomor</th>
+                    <th class="cell-wrap">Pelaksana Pemeliharaan</th>
+                    <th class="cell-wrap">Alat</th>
+                    <th>Tanggal Pemeriksaan</th>
+                    <th>Kondisi</th>
+                    <th class="cell-status">Proses Pemeliharaan</th>
+                    <th class="cell-action">Aksi</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in active_pemeliharaan %}
+                <tr>
+                    <td>{{ item.nomor_pengajuan }}</td>
+                    <td class="cell-wrap"><strong>{{ item.nama_pelaksana }}</strong></td>
+                    <td class="cell-wrap">{{ item.alat_label }}</td>
+                    <td>{{ item.tanggal_pemeriksaan|date:'d M Y H:i' }}</td>
+                    <td>
+                        {% if item.perlu_perbaikan %}
+                        <span class="status-badge badge-warning">Perlu Perbaikan</span>
+                        {% else %}
+                        <span class="status-badge badge-success">Baik</span>
+                        {% endif %}
+                    </td>
+                    <td class="cell-status">
+                        <span class="status-badge {{ item.status_badge_class }}">{{ item.status_label }}</span>
+                    </td>
+                    <td class="cell-action">
+                        <div class="table-action-group">
+                            <a href="{% url 'pemeliharaan:detail' item.pk %}" class="btn btn-secondary btn-sm" title="Detail pemeliharaan {{ item.nomor_pengajuan }}" aria-label="Detail pemeliharaan {{ item.nomor_pengajuan }}">
+                                <i class="bi bi-eye-fill" aria-hidden="true"></i>
+                            </a>
+                            {% include 'dashboard/partials/followup_button.html' %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7"><div class="empty-state">Belum ada data pemeliharaan aktif.</div></td>
                 </tr>
                 {% endfor %}
             </tbody>

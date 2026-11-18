@@ -8,6 +8,7 @@ from django.db.models.functions import Coalesce, ExtractYear, TruncMonth, Trim
 from django.http import Http404, JsonResponse
 from django.shortcuts import render
 from django.template.loader import render_to_string
+from django.urls import reverse
 from django.utils import timezone
 from django.utils.text import slugify
 from django.views.decorators.csrf import ensure_csrf_cookie
@@ -20,6 +21,9 @@ from apps.master_data.models import BahanOperasional, BarangLaboratorium, Barang
 from apps.operasional.models import InstansiKlien, LayananKegiatan, SurveiKegiatan, TimKegiatan
 from apps.peminjaman.constants import PENGUKURAN_FIELD_CONFIG
 from apps.peminjaman.models import PeminjamanBarangLaboratorium, PeminjamanRequest, ReturnStepChoices, StepChoices
+from apps.pemeliharaan.models import ACTIVE_PEMELIHARAAN_STEPS, PemeliharaanPengajuan
+from apps.pemeliharaan.views import _can_edit_pengajuan, _can_input_vendor
+from apps.verifikasi.views import _get_pending_pemeliharaan_queryset, _get_pending_queryset
 
 
 MONTH_LABELS_ID = {
@@ -640,9 +644,43 @@ def build_dashboard_context(request=None):
 @ensure_csrf_cookie
 def index(request):
     context = build_dashboard_context(request)
+    context.update(build_active_context(request.user, context["active_peminjaman"]))
     if can_access_master_data(request.user):
         context.update(build_inventory_chart_context())
     return render(request, "dashboard/index.html", context)
+
+
+def build_active_context(user, active_peminjaman):
+    verification_url = reverse("verifikasi:index")
+    maintenance_url = reverse("pemeliharaan:list")
+    pending_peminjaman = set(_get_pending_queryset(user).values_list("pk", flat=True))
+    for item in active_peminjaman:
+        item.action_url = ""
+        item.action_label = ""
+        if item.pk in pending_peminjaman:
+            item.action_url = verification_url
+            item.action_label = "Buka menu Verifikasi"
+
+    active_pemeliharaan = (
+        PemeliharaanPengajuan.objects.select_related("pemohon", "alat")
+        .prefetch_related("items")
+        .filter(current_step__in=ACTIVE_PEMELIHARAAN_STEPS)
+    )
+
+    pending_pemeliharaan = set(
+        _get_pending_pemeliharaan_queryset(user).values_list("pk", flat=True)
+    )
+    for item in active_pemeliharaan:
+        item.action_url = ""
+        item.action_label = ""
+        if item.pk in pending_pemeliharaan:
+            item.action_url = verification_url
+            item.action_label = "Buka menu Verifikasi"
+        elif _can_edit_pengajuan(user, item) or _can_input_vendor(user, item):
+            item.action_url = maintenance_url
+            item.action_label = "Buka menu Pemeliharaan"
+
+    return {"active_pemeliharaan": active_pemeliharaan}
 
 
 def _chart_export_data(payload):
