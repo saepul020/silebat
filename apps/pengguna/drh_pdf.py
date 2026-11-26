@@ -22,6 +22,7 @@ from .drh_data import get_drh_data
 
 LEFT, RIGHT, TOP, BOTTOM = 25 * mm, 15 * mm, 20 * mm, 15 * mm
 WIDTH = A4[0] - LEFT - RIGHT
+PHOTO_WIDTH = 38 * mm
 NAVY = colors.HexColor('#24364b')
 STYLES = {
     'body': ParagraphStyle('DrhBody', fontName='Arial', fontSize=11, leading=15, spaceAfter=0),
@@ -112,7 +113,8 @@ def _photo(field):
                 buffer = BytesIO()
                 white.save(buffer, format='PNG')
                 buffer.seek(0)
-                return Image(buffer, width=30 * mm, height=40 * mm, kind='proportional')
+                return Image(buffer, width=PHOTO_WIDTH,
+                             height=PHOTO_WIDTH * white.height / white.width, hAlign='CENTER')
         except (OSError, ValueError, PilImage.DecompressionBombError):
             pass
     return _text('Foto Profil\nbelum tersedia', 'center')
@@ -135,9 +137,15 @@ def _personal(user, profile):
     data.append([_text('Alamat', 'label'), getattr(profile, 'alamat', ''), ''])
     table = _table(
         ['Keterangan', 'Data Pribadi', 'Foto Profil'], data,
-        [45, WIDTH / mm - 83, 38], spans=[((2, 1), (2, len(data)))],
+        [45 * mm, WIDTH - 45 * mm - PHOTO_WIDTH, PHOTO_WIDTH], spans=[((2, 1), (2, len(data)))],
     )
-    table.setStyle(TableStyle([('BACKGROUND', (2, 1), (2, len(data)), colors.white)]))
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (2, 1), (2, len(data)), colors.white),
+        ('ALIGN', (2, 1), (2, len(data)), 'CENTER'),
+        ('VALIGN', (2, 1), (2, len(data)), 'MIDDLE'),
+        ('LEFTPADDING', (2, 1), (2, len(data)), 0),
+        ('RIGHTPADDING', (2, 1), (2, len(data)), 0),
+    ]))
     return [table]
 
 

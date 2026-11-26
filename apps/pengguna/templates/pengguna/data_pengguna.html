@@ -21,6 +21,14 @@
         <span class="user-menu__icon" aria-hidden="true"><i class="bi bi-person-vcard"></i></span>
         <span class="user-menu__label">Data Pribadi</span>
     </a>
+    <a href="{% url 'pengguna:pendidikan_daftar' %}" class="user-menu__card">
+        <span class="user-menu__icon" aria-hidden="true"><i class="bi bi-mortarboard-fill"></i></span>
+        <span class="user-menu__label">Data Pendidikan</span>
+    </a>
+    <a href="{% url 'pengguna:karir_daftar' %}" class="user-menu__card">
+        <span class="user-menu__icon" aria-hidden="true"><i class="bi bi-briefcase"></i></span>
+        <span class="user-menu__label">Riwayat Karir</span>
+    </a>
     <a href="{% url 'pengguna:pelatihan_daftar' %}" class="user-menu__card">
         <span class="user-menu__icon" aria-hidden="true">
             <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" focusable="false">
@@ -30,14 +38,6 @@
             </svg>
         </span>
         <span class="user-menu__label">Data Pelatihan / Diklat / Workshop / Seminar</span>
-    </a>
-    <a href="{% url 'pengguna:pendidikan_daftar' %}" class="user-menu__card">
-        <span class="user-menu__icon" aria-hidden="true"><i class="bi bi-mortarboard-fill"></i></span>
-        <span class="user-menu__label">Data Pendidikan</span>
-    </a>
-    <a href="{% url 'pengguna:karir_daftar' %}" class="user-menu__card">
-        <span class="user-menu__icon" aria-hidden="true"><i class="bi bi-briefcase"></i></span>
-        <span class="user-menu__label">Riwayat Karir</span>
     </a>
     <a href="{% url 'pengguna:portofolio_daftar' %}" class="user-menu__card">
         <span class="user-menu__icon" aria-hidden="true"><i class="bi bi-folder2-open"></i></span>

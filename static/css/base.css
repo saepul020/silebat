@@ -9505,7 +9505,8 @@ select.return-status-select option:disabled {
 }
 
 .detail-grid--pelatihan .detail-item--long-text p {
-    font-weight: 500;
+    font-weight: 400;
+    text-align: justify;
     line-height: 1.65;
     white-space: normal;
 }
