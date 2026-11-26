@@ -116,7 +116,9 @@ class DrhTests(TestCase):
         self.assertIn('DRH-nadia-contoh-st.pdf', response['Content-Disposition'])
         self.assertEqual(response['Cache-Control'], 'private, no-store')
         self.assertTrue(b''.join(response.streaming_content).startswith(b'%PDF-'))
-        for value in ('Nadia Contoh, S.T.', '123456', 'Bandung, 21 Apr 1995', 'Perempuan',
+        self.assertIn('Nama Lengkap', output)
+        self.assertNotIn('Nama Lengkap dan Gelar', output)
+        for value in ('Nadia Contoh, S.T.', '123456', 'Bandung, 21 April 1995', 'Perempuan',
                       'nadia@example.com', '08123456', 'Analis Laboratorium', 'Jalan Contoh 10',
                       'Universitas CV', 'Teknik Kimia', '2017', 'Instansi CV',
                       '2018 - Sekarang', 'Pengujian sampel', 'Pelaporan hasil',

@@ -23,6 +23,7 @@ from .drh_data import get_drh_data
 LEFT, RIGHT, TOP, BOTTOM = 25 * mm, 15 * mm, 20 * mm, 15 * mm
 WIDTH = A4[0] - LEFT - RIGHT
 PHOTO_WIDTH = 38 * mm
+PHOTO_PADDING = 2 * mm
 NAVY = colors.HexColor('#24364b')
 STYLES = {
     'body': ParagraphStyle('DrhBody', fontName='Arial', fontSize=11, leading=15, spaceAfter=0),
@@ -113,20 +114,22 @@ def _photo(field):
                 buffer = BytesIO()
                 white.save(buffer, format='PNG')
                 buffer.seek(0)
-                return Image(buffer, width=PHOTO_WIDTH,
-                             height=PHOTO_WIDTH * white.height / white.width, hAlign='CENTER')
+                width = PHOTO_WIDTH - 2 * PHOTO_PADDING
+                return Image(buffer, width=width,
+                             height=width * white.height / white.width, hAlign='CENTER')
         except (OSError, ValueError, PilImage.DecompressionBombError):
             pass
     return _text('Foto Profil\nbelum tersedia', 'center')
 
 
 def _personal(user, profile):
-    birth = ', '.join(part for part in (
-        getattr(profile, 'tempat_lahir', ''),
-        _date(profile.tanggal_lahir) if profile and profile.tanggal_lahir else '',
-    ) if part)
+    with translation.override('id'):
+        birth = ', '.join(part for part in (
+            getattr(profile, 'tempat_lahir', ''),
+            date_format(profile.tanggal_lahir, 'd F Y') if profile and profile.tanggal_lahir else '',
+        ) if part)
     rows = [
-        ('Nama Lengkap dan Gelar', user.get_full_name() or user.username),
+        ('Nama Lengkap', user.get_full_name() or user.username),
         ('NIP / NIK', user.nip), ('Tempat, Tanggal Lahir', birth),
         ('Jenis Kelamin', profile.get_jenis_kelamin_display() if profile else ''),
         ('Email', user.email), ('Nomor Handphone', user.no_hp),
@@ -143,8 +146,10 @@ def _personal(user, profile):
         ('BACKGROUND', (2, 1), (2, len(data)), colors.white),
         ('ALIGN', (2, 1), (2, len(data)), 'CENTER'),
         ('VALIGN', (2, 1), (2, len(data)), 'MIDDLE'),
-        ('LEFTPADDING', (2, 1), (2, len(data)), 0),
-        ('RIGHTPADDING', (2, 1), (2, len(data)), 0),
+        ('LEFTPADDING', (2, 1), (2, len(data)), PHOTO_PADDING),
+        ('RIGHTPADDING', (2, 1), (2, len(data)), PHOTO_PADDING),
+        ('TOPPADDING', (2, 1), (2, len(data)), PHOTO_PADDING),
+        ('BOTTOMPADDING', (2, 1), (2, len(data)), PHOTO_PADDING),
     ]))
     return [table]
 
