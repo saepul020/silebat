@@ -27,7 +27,14 @@
     {% include 'components/entry_control.html' %}
 
     <div class="table-scroll-area table-scroll--list" tabindex="0" aria-label="Scroll tabel data pengguna">
-        <table class="table-data list-table--pengguna">
+        <table class="table-data user-table user-table--accounts">
+            <colgroup>
+                <col class="user-table__col--user">
+                <col class="user-table__col--name">
+                <col class="user-table__col--email">
+                <col class="user-table__col--type">
+                <col class="user-table__col--action">
+            </colgroup>
             <thead>
                 <tr>
                     <th>Username</th>
@@ -40,11 +47,11 @@
             <tbody>
                 {% for user in users %}
                 <tr>
-                    <td>{{ user.username }}</td>
+                    <td class="user-table__nowrap">{{ user.username }}</td>
                     <td class="cell-wrap">{{ user.get_full_name|default:"-" }}</td>
                     <td class="cell-wrap">{{ user.email|default:"-" }}</td>
-                    <td>{{ user.profile.role|default:"-" }}</td>
-                    <td class="cell-action">
+                    <td class="user-table__nowrap">{{ user.profile.role|default:"-" }}</td>
+                    <td class="cell-action user-table__nowrap">
                         <div class="table-action-group">
                             <a href="{% url 'pengguna:detail' user.id %}" class="btn btn-secondary btn-sm">
                                 <i class="bi bi-eye-fill"></i>

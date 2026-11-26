@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+{% block title %}{{ page_title }}{% endblock %}
+{% block content %}
+<div class="page-header"><h1>{{ page_title }}</h1><p>Lengkapi riwayat pendidikan dan dokumen pendukung Anda.</p></div>
+<div class="card master-form-card">
+    <form method="post" enctype="multipart/form-data" class="pengguna-form" data-pendidikan-form novalidate>
+        {% csrf_token %}
+        {{ form.NILAI_BATAS|json_script:'pendidikan-nilai-batas' }}
+        {{ form.TANPA_JURUSAN|json_script:'pendidikan-tanpa-jurusan' }}
+        {% for error in form.non_field_errors %}<p class="input-error-text">{{ error }}</p>{% endfor %}
+        <fieldset>
+            <legend>Identitas Pendidikan</legend>
+            <div class="form-row">
+                {% include 'pengguna/user_field.html' with field=form.tingkat %}
+                {% include 'pengguna/user_field.html' with field=form.lokasi lock_field=form.lock_fields %}
+                {% include 'pengguna/user_field.html' with field=form.lembaga lock_field=form.lock_fields %}
+                {% include 'pengguna/user_field.html' with field=form.jurusan hide_field=form.hide_jurusan lock_field=form.lock_fields %}
+                {% include 'pengguna/user_field.html' with field=form.tanggal_lulus lock_field=form.lock_fields %}
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>Nilai Akhir</legend>
+            <div class="form-row">
+                {% include 'pengguna/user_field.html' with field=form.jenis_nilai lock_field=form.lock_fields %}
+                {% include 'pengguna/user_field.html' with field=form.nilai lock_field=form.lock_fields %}
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>Dokumen Pendidikan</legend>
+            <div class="form-row">
+                {% include 'pengguna/user_field.html' with field=form.ijazah lock_field=form.lock_fields stored_card=True stored_name=form.ijazah.value.name|cut:'pengguna/pendidikan/ijazah/' %}
+                {% include 'pengguna/user_field.html' with field=form.transkrip lock_field=form.lock_fields stored_card=True stored_name=form.transkrip.value.name|cut:'pengguna/pendidikan/transkrip/' %}
+            </div>
+        </fieldset>
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Simpan</button>
+            <a href="{% url 'pengguna:pendidikan_daftar' %}" class="btn btn-secondary">Kembali</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

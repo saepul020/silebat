@@ -4,24 +4,34 @@
 {% block title %}Dashboard SDM{% endblock %}
 
 {% block extra_css %}
+<script src="{% static 'js/sdm_reset.js' %}?v=20261125-reset-v1"></script>
 <link rel="stylesheet" href="{% static 'css/charts.css' %}?v=20261111-chart-badge-v1">
-<link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=20260505-sdm-v6">
+<link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=20261125-sdm-v14">
 {% endblock %}
 
 {% block content %}
 <div class="page-header dashboard-header">
     <div>
         <h1>Dashboard SDM</h1>
-        <p>Monitor data pelatihan SDM SILEBAT berdasarkan user dan rekap kategori pelatihan.</p>
+        <p>Monitor data pelatihan, portofolio proyek, dan Logbook Harian SDM SILEBAT.</p>
     </div>
 </div>
 
 {% if show_sdm_user_filter %}
 <div class="sdm-filter-row">
-    <form class="sdm-user-filter" method="get" aria-label="Filter user pelatihan">
+    <form class="sdm-user-filter" method="get" autocomplete="off" aria-label="Filter user Dashboard SDM">
+        <input type="hidden" name="log_year" value="{{ log_year }}">
+        <input type="hidden" name="log_month" value="{{ log_month }}">
+        <input type="hidden" name="training_year" value="{{ training_year }}">
+        <input type="hidden" name="training_month" value="{{ training_month }}">
+        <input type="hidden" name="log_q" value="{{ log_search }}">
+        <input type="hidden" name="training_q" value="{{ training_search }}">
+        <input type="hidden" name="training_entries" value="{{ training_list.selected_entries }}">
+        <input type="hidden" name="log_entries" value="{{ log_list.selected_entries }}">
         <label for="sdmUserFilter">Pilih User:</label>
         <select id="sdmUserFilter" name="user" data-preserve-placeholder="true" data-placeholder-label="User" onchange="this.form.submit()">
             <option value="" {% if not selected_sdm_user_id %}selected{% endif %}>Pilih user</option>
+            <option value="all" {% if selected_sdm_user_id == 'all' %}selected{% endif %}>Semua</option>
             {% for user_opt in sdm_user_options %}
                 <option value="{{ user_opt.id }}" {% if user_opt.id == selected_sdm_user_id %}selected{% endif %}>{{ user_opt.name }}</option>
             {% endfor %}
@@ -30,7 +40,14 @@
 </div>
 {% endif %}
 
-<div class="dashboard-stats-grid sdm-stats">
+<div class="dashboard-stats-grid">
+    <section class="card dashboard-stat-card dashboard-stat-card--success sdm-stat" aria-label="Tugas Selesai tahun {{ sdm_year }}">
+        <div class="dashboard-stat-card__icon" aria-hidden="true"><i class="bi bi-clipboard-check-fill"></i></div>
+        <div class="dashboard-stat-card__body">
+            <p class="dashboard-stat-card__label">Tugas Selesai</p>
+            <h2 class="dashboard-stat-card__value">{{ total_tugas }}</h2>
+        </div>
+    </section>
     <section class="card dashboard-stat-card dashboard-stat-card--primary sdm-stat">
         <div class="dashboard-stat-card__icon" aria-hidden="true"><i class="bi bi-mortarboard-fill"></i></div>
         <div class="dashboard-stat-card__body">
@@ -56,7 +73,7 @@
             </div>
             <div class="dashboard-chart__filters">
                 <div class="chart-filter">
-                    <select id="sdmTipeYear" aria-label="Filter tahun tipe pelatihan" title="Filter tahun">
+                    <select autocomplete="off" id="sdmTipeYear" aria-label="Filter tahun tipe pelatihan" title="Filter tahun">
                         <option value="all">All</option>
                         {% for year in sdm_tipe_chart.availableYears %}
                             <option value="{{ year }}" {% if year == sdm_tipe_chart.defaultYear %}selected{% endif %}>{{ year }}</option>
@@ -86,7 +103,7 @@
             </div>
             <div class="dashboard-chart__filters">
                 <div class="chart-filter">
-                    <select id="sdmJenisYear" aria-label="Filter tahun jenis pelatihan" title="Filter tahun">
+                    <select autocomplete="off" id="sdmJenisYear" aria-label="Filter tahun jenis pelatihan" title="Filter tahun">
                         <option value="all">All</option>
                         {% for year in sdm_jenis_chart.availableYears %}
                             <option value="{{ year }}" {% if year == sdm_jenis_chart.defaultYear %}selected{% endif %}>{{ year }}</option>
@@ -100,46 +117,210 @@
             <div class="dashboard-chart__empty is-hidden" data-chart-empty="sdm-jenis">-</div>
         </div>
     </section>
+
+    <section class="card dashboard-chart sdm-chart">
+        <div class="dashboard-chart__header">
+            <div class="dashboard-chart__top">
+                <h3 class="card-title">Rekap Kategori Pelatihan</h3>
+                <div class="chart-download">
+                    <button type="button" class="chart-download__toggle" aria-label="Download chart Rekap Kategori Pelatihan" aria-expanded="false" data-chart-menu-toggle>
+                        <i class="bi bi-three-dots-vertical"></i>
+                    </button>
+                    <div class="chart-download__menu" data-chart-menu>
+                        <button type="button" data-chart-download="jpg" data-chart-target="sdmKategoriChart" data-chart-title="Rekap Kategori Pelatihan"><i class="bi bi-filetype-jpg" aria-hidden="true"></i><span>Download JPG</span></button>
+                    </div>
+                </div>
+            </div>
+            <div class="dashboard-chart__filters">
+                <div class="chart-filter">
+                    <select autocomplete="off" id="sdmKategoriYear" aria-label="Filter tahun kategori pelatihan" title="Filter tahun">
+                        <option value="all">All</option>
+                        {% for year in sdm_kategori_chart.availableYears %}
+                            <option value="{{ year }}" {% if year == sdm_kategori_chart.defaultYear %}selected{% endif %}>{{ year }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div class="dashboard-chart__area" data-chart-wrapper="sdm-kategori">
+            <canvas id="sdmKategoriChart" aria-label="Grafik Rekap Kategori Pelatihan"></canvas>
+            <div class="dashboard-chart__empty is-hidden" data-chart-empty="sdm-kategori">-</div>
+        </div>
+    </section>
+
+    <section class="card dashboard-chart sdm-chart">
+        <div class="dashboard-chart__header">
+            <div class="dashboard-chart__top">
+                <h3 class="card-title">Portofolio Proyek &amp; Kegiatan</h3>
+                <div class="chart-download">
+                    <button type="button" class="chart-download__toggle" aria-label="Download chart Portofolio Proyek &amp; Kegiatan" aria-expanded="false" data-chart-menu-toggle>
+                        <i class="bi bi-three-dots-vertical"></i>
+                    </button>
+                    <div class="chart-download__menu" data-chart-menu>
+                        <button type="button" data-chart-download="jpg" data-chart-target="sdmPortofolioChart" data-chart-title="Portofolio Proyek &amp; Kegiatan"><i class="bi bi-filetype-jpg" aria-hidden="true"></i><span>Download JPG</span></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="dashboard-chart__area" data-chart-wrapper="sdm-portofolio">
+            <canvas id="sdmPortofolioChart" aria-label="Grafik Portofolio Proyek &amp; Kegiatan"></canvas>
+            <div class="dashboard-chart__empty is-hidden" data-chart-empty="sdm-portofolio">-</div>
+        </div>
+    </section>
 </div>
 
 <div class="table-wrapper table-panel sdm-latest">
-    <div class="table-toolbar">
-        <h3 class="table-title">Pelatihan Terbaru</h3>
-        <a href="{% url 'pengguna:pelatihan_daftar' %}" class="btn btn-secondary">Lihat Data Pelatihan</a>
-    </div>
-
-    {% include 'components/local_search.html' with search_placeholder='Cari pelatihan terbaru...' search_label='Cari pelatihan terbaru' %}
+    <form method="get" autocomplete="off" id="sdm-training-filter" data-master-entries-form="true" data-master-live-filter data-page-param="training_page">
+        <div class="table-toolbar">
+            <h3 class="table-title">Daftar Pelatihan</h3>
+            <div class="sdm-period">
+                <input type="hidden" name="user" value="{{ selected_sdm_user_id }}">
+                {% include 'pengguna/sdm_period.html' with filter_label='Pelatihan Terbaru' prefix='training' years=training_year_options selected_year=training_year selected_month=training_month locked=training_search %}
+            </div>
+        </div>
+        <div class="master-list-controls">
+            <div class="master-entries-form">
+                {% include 'pengguna/sdm_entries.html' with prefix='training' listing=training_list filter_label='Pelatihan Terbaru' %}
+                <div class="master-list-search list-search-box sdm-list__search">
+                    <i class="bi bi-search" aria-hidden="true"></i>
+                    <input type="search" name="training_q" value="{{ training_search }}" placeholder="Cari pelatihan terbaru..." aria-label="Cari pelatihan terbaru" autocomplete="off" maxlength="100" data-master-search>
+                    <button type="button" class="list-search-clear" data-master-search-clear aria-label="Hapus pencarian pelatihan"{% if not training_search %} hidden{% endif %}><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+                </div>
+            </div>
+            {% include 'pengguna/sdm_info.html' with listing=training_list %}
+        </div>
+        <input type="hidden" name="log_year" value="{{ log_year }}">
+        <input type="hidden" name="log_month" value="{{ log_month }}">
+        <input type="hidden" name="log_q" value="{{ log_search }}">
+        <input type="hidden" name="log_entries" value="{{ log_list.selected_entries }}">
+    </form>
+    <p class="input-error-text" data-live-error role="status" hidden></p>
 
     <div class="table-scroll-area table-scroll--list" tabindex="0" aria-label="Scroll tabel pelatihan terbaru">
-        <table class="table-data list-table--pengguna">
+        <table class="table-data user-table user-table--sdm">
+            <colgroup>
+                <col class="user-table__col--user">
+                <col class="user-table__col--text">
+                <col class="user-table__col--user">
+                <col class="user-table__col--type">
+                <col class="user-table__col--type">
+                <col class="user-table__col--type">
+                <col class="user-table__col--date">
+                <col class="user-table__col--date">
+                <col class="user-table__col--compact">
+            </colgroup>
             <thead>
                 <tr>
+                    <th>Penginput</th>
                     <th class="cell-wrap">Nama Pelatihan</th>
+                    <th>Peserta Pelatihan</th>
+                    <th>Kategori Pelatihan</th>
                     <th>Tipe Pelatihan</th>
                     <th>Jenis Pelatihan</th>
                     <th>Mulai</th>
                     <th>Selesai</th>
+                    <th>Materi</th>
                 </tr>
             </thead>
             <tbody>
                 {% for item in pelatihan_terbaru %}
                 <tr>
+                    <td class="cell-wrap">{{ item.user.get_full_name|default:item.user.username }}</td>
                     <td class="cell-wrap">{{ item.nama_pelatihan }}</td>
+                    <td class="cell-wrap">
+                        {% with peserta=item.peserta.all %}
+                        {% if peserta %}
+                        <ul>{% for row in peserta %}<li>{{ row.user.get_full_name|default:row.user.username }}</li>{% endfor %}</ul>
+                        {% else %}-{% endif %}
+                        {% endwith %}
+                    </td>
+                    <td>{{ item.get_kategori_kegiatan_display|default:'-' }}</td>
                     <td>{{ item.tipe_pelatihan }}</td>
                     <td>{{ item.jenis_pelatihan }}</td>
                     <td>{{ item.tanggal_mulai|date:'d M Y' }}</td>
                     <td>{{ item.tanggal_selesai|date:'d M Y' }}</td>
+                    <td class="user-table__media user-table__nowrap">
+                        {% if item.file_materi %}
+                        <a href="{% url 'pengguna:sdm_materi' item.pk %}" class="btn btn-secondary btn-sm" download title="Download materi" aria-label="Download materi {{ item.nama_pelatihan }}"><i class="bi bi-download" aria-hidden="true"></i></a>
+                        {% else %}-{% endif %}
+                    </td>
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="5"><div class="empty-state">Belum ada data pelatihan.</div></td>
+                    <td colspan="9"><div class="empty-state">{% if training_search %}Tidak ada pelatihan yang sesuai dengan pencarian.{% else %}Belum ada data pelatihan pada periode ini.{% endif %}</div></td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
+    {% include 'pengguna/sdm_pagination.html' with prefix='training' listing=training_list filter_label='Pelatihan Terbaru' %}
 </div>
 
+<div class="table-wrapper table-panel sdm-logbook">
+    <form method="get" autocomplete="off" id="sdm-logbook-filter" data-master-entries-form="true" data-master-live-filter data-page-param="log_page">
+        <div class="table-toolbar">
+            <h3 class="table-title">Daftar Logbook Harian</h3>
+            <div class="sdm-period">
+                <input type="hidden" name="user" value="{{ selected_sdm_user_id }}">
+                {% include 'pengguna/sdm_period.html' with filter_label='Logbook Harian' prefix='log' years=log_year_options selected_year=log_year selected_month=log_month locked=log_search %}
+            </div>
+        </div>
+        <div class="master-list-controls">
+            <div class="master-entries-form">
+                {% include 'pengguna/sdm_entries.html' with prefix='log' listing=log_list filter_label='Logbook Harian' %}
+                <div class="master-list-search list-search-box sdm-list__search">
+                    <i class="bi bi-search" aria-hidden="true"></i>
+                    <input type="search" name="log_q" value="{{ log_search }}" placeholder="Cari Logbook Harian..." aria-label="Cari Logbook Harian" maxlength="100" autocomplete="off" data-master-search>
+                    <button type="button" class="list-search-clear" data-master-search-clear aria-label="Hapus pencarian Logbook"{% if not log_search %} hidden{% endif %}><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+                </div>
+            </div>
+            {% include 'pengguna/sdm_info.html' with listing=log_list %}
+        </div>
+        <input type="hidden" name="training_year" value="{{ training_year }}">
+        <input type="hidden" name="training_month" value="{{ training_month }}">
+        <input type="hidden" name="training_q" value="{{ training_search }}">
+        <input type="hidden" name="training_entries" value="{{ training_list.selected_entries }}">
+    </form>
+    <p class="input-error-text" data-live-error role="status" hidden></p>
+    <div class="table-scroll-area table-scroll--list" tabindex="0" aria-label="Tabel Logbook Harian">
+        <table class="table-data user-table user-table--logbook">
+            <thead><tr><th>Tanggal Pelaksanaan</th><th>Penginput</th><th>Uraian Kegiatan</th><th>Dokumentasi Kegiatan</th><th>Peserta Kegiatan</th></tr></thead>
+            <tbody>
+            {% for item in logbook_page %}
+            <tr>
+                <td class="user-table__nowrap">{{ item.tanggal|date:'d M Y' }}</td>
+                <td data-sort-value="{{ item.user.get_full_name|default:item.user.username }}"><div class="user-table__owner">{{ item.user.get_full_name|default:item.user.username }}</div></td>
+                <td data-sort-value="{{ item.uraian }}"><div class="user-table__description">{{ item.uraian }}</div></td>
+                <td class="user-table__media user-table__nowrap">
+                    {% if item.preview_url %}
+                    <button type="button" class="inventory-photo__trigger" data-inventory-photo-open data-photo-src="{{ item.preview_url }}" data-photo-alt="Dokumentasi kegiatan {{ item.tanggal|date:'d M Y' }}" data-photo-caption="Dokumentasi kegiatan {{ item.tanggal|date:'d M Y' }}" aria-label="Preview dokumentasi kegiatan {{ item.tanggal|date:'d M Y' }}" aria-haspopup="dialog" aria-controls="sdm-photo-modal" title="Preview dokumentasi">
+                        <img class="inventory-photo__thumb" src="{{ item.preview_url }}" alt="Dokumentasi kegiatan {{ item.tanggal|date:'d M Y' }}" loading="lazy">
+                    </button>
+                    {% else %}-{% endif %}
+                </td>
+                <td><ul>{% for row in item.peserta.all %}<li><span class="user-table__person">{{ row.user.get_full_name|default:row.user.username }}</span></li>{% endfor %}</ul></td>
+            </tr>
+            {% empty %}<tr><td colspan="5"><div class="empty-state">{% if log_search %}Tidak ada Logbook Harian yang sesuai dengan pencarian.{% else %}Belum ada Logbook Harian pada periode ini.{% endif %}</div></td></tr>{% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% include 'pengguna/sdm_pagination.html' with prefix='log' listing=log_list filter_label='Logbook Harian' %}
+</div>
+
+<div class="inventory-photo" id="sdm-photo-modal" data-inventory-photo-modal hidden aria-hidden="true">
+    <div class="inventory-photo__backdrop" data-inventory-photo-close></div>
+    <div class="inventory-photo__card" role="dialog" aria-modal="true" aria-labelledby="sdm-photo-title" tabindex="-1">
+        <div class="inventory-photo__head">
+            <h3 id="sdm-photo-title">Preview Dokumentasi Kegiatan</h3>
+            <button type="button" class="inventory-photo__close" data-inventory-photo-close aria-label="Tutup preview dokumentasi" title="Tutup"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+        </div>
+        <div class="inventory-photo__stage"><img alt="" data-inventory-photo-image></div>
+        <p class="inventory-photo__caption" data-inventory-photo-caption></p>
+    </div>
+</div>
+
+{{ sdm_kategori_chart|json_script:"sdm-kategori-data" }}
+{{ sdm_portofolio_chart|json_script:"sdm-portofolio-data" }}
 {{ sdm_tipe_chart|json_script:"sdm-tipe-data" }}
 {{ sdm_jenis_chart|json_script:"sdm-jenis-data" }}
 {% endblock %}
@@ -147,5 +328,5 @@
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
 <script src="{% static 'js/chart_summary.js' %}?v=20261111-chart-badge-v1" defer></script>
-<script src="{% static 'js/dashboard.js' %}?v=20261111-chart-badge-v1" defer></script>
+<script src="{% static 'js/dashboard.js' %}?v=20261125-sdm-v2" defer></script>
 {% endblock %}

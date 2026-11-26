@@ -20,9 +20,17 @@
         {% endif %}
 
         <fieldset>
-            <legend>Identitas Pelatihan</legend>
+            <legend>Identitas Kegiatan</legend>
 
-            <div class="form-row form-row--single pelatihan-type-row">
+            <div class="form-row form-row--single">
+                <div class="form-group form-group-full {% if form.kategori_kegiatan.errors %}has-error{% endif %}">
+                    <label for="{{ form.kategori_kegiatan.id_for_label }}">{{ form.kategori_kegiatan.label }}</label>
+                    {{ form.kategori_kegiatan }}
+                    {% for error in form.kategori_kegiatan.errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
+                </div>
+            </div>
+
+            <div class="form-row form-row--single pelatihan-type-row is-status-dependent{% if not form.kategori_kegiatan.value %} is-locked{% endif %}" data-training-category-group>
                 <div class="form-group form-group-full {% if form.tipe_pelatihan.errors %}has-error{% endif %}">
                     <label for="{{ form.tipe_pelatihan.id_for_label }}">{{ form.tipe_pelatihan.label }}</label>
                     {{ form.tipe_pelatihan }}
@@ -31,9 +39,9 @@
             </div>
         </fieldset>
 
-        <div class="master-fieldset-stack is-status-dependent{% if not form.tipe_pelatihan.value %} is-locked{% endif %}" data-training-dependent-group="true">
+        <div class="master-fieldset-stack is-status-dependent{% if not form.kategori_kegiatan.value or not form.tipe_pelatihan.value %} is-locked{% endif %}" data-training-dependent-group="true">
             <fieldset>
-                <legend>Detail Pelatihan</legend>
+                <legend>Detail Kegiatan</legend>
 
                 <div class="form-row">
                     <div class="form-group {% if form.jenis_pelatihan.errors %}has-error{% endif %}">
@@ -80,23 +88,10 @@
                 </div>
             </fieldset>
 
-            <fieldset class="peserta-form" data-peserta-group>
-                <legend>Peserta Pelatihan</legend>
-                {{ peserta.management_form }}
-                {% for error in peserta.non_form_errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
-                <div class="peserta-form__list" data-peserta-list>
-                    {% for row in peserta %}
-                        {% include 'pengguna/peserta_form.html' with row=row %}
-                    {% endfor %}
-                </div>
-                <button type="button" class="btn btn-secondary peserta-form__add" data-peserta-add><i class="bi bi-plus-circle" aria-hidden="true"></i>&nbsp;Tambah Peserta</button>
-                <template data-peserta-template>
-                    {% include 'pengguna/peserta_form.html' with row=peserta.empty_form %}
-                </template>
-            </fieldset>
+            {% include 'pengguna/peserta_group.html' with row_template='pengguna/peserta_form.html' %}
 
             <fieldset>
-                <legend>Dokumen Pelatihan</legend>
+                <legend>Dokumen Kegiatan</legend>
 
                 <div class="form-row form-row--single">
                     <div class="form-group form-group-full {% if form.file_materi.errors %}has-error{% endif %}">
@@ -107,7 +102,7 @@
                                 <span class="document-file-link-wrap__icon"><i class="bi bi-file-earmark-zip-fill"></i></span>
                                 <span class="document-file-link-wrap__title pelatihan-file-name">{{ obj.file_materi.name|cut:'pengguna/pelatihan/materi/' }}</span>
                             </div>
-                            <a href="{{ obj.file_materi.url }}" target="_blank" rel="noopener" class="document-file-link">Buka file</a>
+                            <a href="{% url 'pengguna:materi_download' obj.pk %}" class="btn btn-secondary btn-sm" download title="Download materi tersimpan" aria-label="Download materi tersimpan"><i class="bi bi-download" aria-hidden="true"></i></a>
                         </div>
                         {% endif %}
 

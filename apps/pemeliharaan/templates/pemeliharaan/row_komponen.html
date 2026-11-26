@@ -5,22 +5,15 @@
     </div>
     <input type="hidden" name="komponen_{{ row.index }}" value="{{ row.komponen }}">
 
-    {% if row.errors %}
-    <div class="form-global-errors pemeliharaan-komponen__errors">
-        {% for error in row.errors %}
-            <p class="input-error-text">*{{ error }}</p>
-        {% endfor %}
-    </div>
-    {% endif %}
-
     <div class="form-row master-form-row master-form-row--1">
-        <div class="form-group">
+        <div class="form-group {% if row.field_errors.kondisi %}has-error{% endif %}">
             <label for="id_kondisi_{{ row.index }}">Kondisi Pemeliharaan</label>
             <select name="kondisi_{{ row.index }}" id="id_kondisi_{{ row.index }}" class="form-control" data-kondisi-field data-preserve-placeholder="true" autocomplete="off" required>
                 <option value="">Pilih kondisi pemeliharaan</option>
                 <option value="Baik" {% if row.kondisi == 'Baik' %}selected{% endif %}>Baik</option>
                 <option value="Perlu Perbaikan" {% if row.kondisi == 'Perlu Perbaikan' %}selected{% endif %}>Perlu Perbaikan</option>
             </select>
+            {% for error in row.field_errors.kondisi %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
         </div>
     </div>
 </section>

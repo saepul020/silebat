@@ -41,18 +41,31 @@ class TtdDigitalTests(TestCase):
         with Image.open(profile.ttd_digital.path) as stored:
             self.assertEqual(stored.size, (320, 100))
 
-    def test_profile_photo_remains_square_cropped(self):
-        profile = self.user.safe_profile
-        form = UserProfileForm(
-            data={},
-            files={"foto_profil": image_upload("profile.png", (320, 100))},
-            instance=profile,
-        )
+    def test_profile_photo_is_cropped_to_portrait(self):
+        for size in ((320, 100), (100, 320), (100, 100), (200, 300), (1, 1)):
+            with self.subTest(size=size):
+                form = UserProfileForm(
+                    data={},
+                    files={"foto_profil": image_upload("profile.png", size)},
+                    instance=self.user.safe_profile,
+                )
+                self.assertTrue(form.is_valid(), form.errors)
+                profile = form.save()
+                profile.refresh_from_db()
+                with Image.open(profile.foto_profil.path) as stored:
+                    self.assertEqual(stored.width * 3, stored.height * 2)
+                    if size == (200, 300):
+                        self.assertEqual(stored.size, size)
 
+    def test_profile_photo_is_preserved_without_new_upload(self):
+        profile = self.user.safe_profile
+        profile.foto_profil.save("old.png", image_upload("old.png", (100, 100)))
+        old_name = profile.foto_profil.name
+        form = UserProfileForm(data={}, instance=profile)
         self.assertTrue(form.is_valid(), form.errors)
         form.save()
-
         profile.refresh_from_db()
+        self.assertEqual(profile.foto_profil.name, old_name)
         with Image.open(profile.foto_profil.path) as stored:
             self.assertEqual(stored.size, (100, 100))
 
@@ -68,4 +81,10 @@ class TtdDigitalTests(TestCase):
         self.assertContains(response, "upload-card--signature", count=1)
         self.assertNotContains(response, "Rasio gambar asli")
         self.assertContains(response, 'class="upload-card__hint"', count=1)
-        self.assertContains(response, "Auto crop 1:1", count=1)
+        self.assertContains(response, "Auto crop 2:3", count=1)
+        self.assertNotContains(response, "Auto crop 1:1")
+
+        response = self.client.get(reverse("pengguna:tambah"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Auto crop 2:3", count=1)
+        self.assertNotContains(response, "Auto crop 1:1")

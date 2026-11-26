@@ -131,11 +131,11 @@
             </button>
             <div class="sub-menu">
                 <a href="{% url 'pengguna:dashboard_sdm' %}" class="sub-link">Dashboard SDM</a>
-                <a href="{% url 'pengguna:pelatihan_daftar' %}" class="sub-link">Data Pelatihan</a>
+                <a href="{% url 'pengguna:data' %}" class="sub-link"{% if request.resolver_match.namespace == 'pengguna' %}{% if request.resolver_match.url_name == 'data' or request.resolver_match.url_name == 'detail' or request.resolver_match.url_name == 'edit' or 'pelatihan' in request.resolver_match.url_name or 'pendidikan' in request.resolver_match.url_name or 'karir' in request.resolver_match.url_name or 'portofolio' in request.resolver_match.url_name %} aria-current="page"{% endif %}{% endif %}>Data Pengguna</a>
+                <a href="{% url 'pengguna:logbook_daftar' %}" class="sub-link"{% if request.resolver_match.namespace == 'pengguna' and 'logbook' in request.resolver_match.url_name %} aria-current="page"{% endif %}>Logbook Harian</a>
                 {% if role_access.show_data_pengguna %}
-                <a href="{% url 'pengguna:daftar' %}" class="sub-link">Data Pengguna</a>
+                <a href="{% url 'pengguna:daftar' %}" class="sub-link">Daftar Pengguna</a>
                 {% endif %}
-                <a href="{% url 'pengguna:detail' request.user.pk %}" class="sub-link">Pengaturan Profil</a>
             </div>
         </div>
 

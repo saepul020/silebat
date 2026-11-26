@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Data Pengguna{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/pengguna.css' %}?v=20261126-drh-v5">
+{% endblock %}
+
+{% block content %}
+<div class="page-header drh-header">
+    <div>
+        <h1>Data Pengguna</h1>
+        <p>Pastikan data diri Anda sudah lengkap dan sesuai.</p>
+    </div>
+    <button type="button" class="btn btn-primary" data-drh-open aria-haspopup="dialog" aria-controls="drh-modal"><i class="bi bi-file-earmark-pdf" aria-hidden="true"></i>&nbsp;Generate DRH</button>
+</div>
+
+<nav class="user-menu" aria-label="Data Pengguna">
+    <a href="{% url 'pengguna:detail' request.user.pk %}" class="user-menu__card">
+        <span class="user-menu__icon" aria-hidden="true"><i class="bi bi-person-vcard"></i></span>
+        <span class="user-menu__label">Data Pribadi</span>
+    </a>
+    <a href="{% url 'pengguna:pelatihan_daftar' %}" class="user-menu__card">
+        <span class="user-menu__icon" aria-hidden="true">
+            <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" focusable="false">
+                <path d="M12 18H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5M6 7h12M6 11h5M6 14h3"/>
+                <circle cx="17" cy="15" r="3"/>
+                <path d="m15 17.3-.5 4.7 2.5-1.5 2.5 1.5-.5-4.7"/>
+            </svg>
+        </span>
+        <span class="user-menu__label">Data Pelatihan / Diklat / Workshop / Seminar</span>
+    </a>
+    <a href="{% url 'pengguna:pendidikan_daftar' %}" class="user-menu__card">
+        <span class="user-menu__icon" aria-hidden="true"><i class="bi bi-mortarboard-fill"></i></span>
+        <span class="user-menu__label">Data Pendidikan</span>
+    </a>
+    <a href="{% url 'pengguna:karir_daftar' %}" class="user-menu__card">
+        <span class="user-menu__icon" aria-hidden="true"><i class="bi bi-briefcase"></i></span>
+        <span class="user-menu__label">Riwayat Karir</span>
+    </a>
+    <a href="{% url 'pengguna:portofolio_daftar' %}" class="user-menu__card">
+        <span class="user-menu__icon" aria-hidden="true"><i class="bi bi-folder2-open"></i></span>
+        <span class="user-menu__label">Portofolio Proyek &amp; Kegiatan</span>
+    </a>
+</nav>
+
+<dialog id="drh-modal" class="drh-modal" aria-labelledby="drh-title">
+    <div class="delete-modal-header">
+        <h3 id="drh-title">Generate Daftar Riwayat Hidup</h3>
+        <button type="button" class="delete-modal-close" data-drh-close aria-label="Tutup">&times;</button>
+    </div>
+    <form method="get" action="{% url 'pengguna:drh_download' %}" target="_blank" rel="noopener" data-unsaved-ignore novalidate>
+        <div class="delete-modal-body">
+            <div>
+                {% include 'pengguna/user_field.html' with field=drh_form.tanggal %}
+                {% include 'pengguna/user_field.html' with field=drh_form.lokasi %}
+            </div>
+            <fieldset class="drh-modal__options">
+                <legend>{{ drh_form.bagian.label }}</legend>
+                {% for option in drh_form.bagian %}
+                <label class="drh-modal__option{% if option.data.attrs.disabled %} drh-modal__option--locked{% endif %}" for="{{ option.id_for_label }}"{% if option.data.attrs.disabled %} title="Belum ada data"{% endif %}>{{ option.tag }}<span>{{ option.choice_label }}</span></label>
+                {% endfor %}
+            </fieldset>
+        </div>
+        <div class="delete-modal-actions">
+            <button type="button" class="btn btn-secondary" data-drh-close>Batal</button>
+            <button type="submit" class="btn btn-primary">Download PDF</button>
+        </div>
+    </form>
+</dialog>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/drh.js' %}?v=20261126-drh-v4" defer></script>
+{% endblock %}

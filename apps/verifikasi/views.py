@@ -1,6 +1,7 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
+from django.db import transaction
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -37,7 +38,9 @@ from apps.pemeliharaan.models import (
     KeputusanPemeliharaanChoices,
     PemeliharaanPengajuan,
     StepPemeliharaanChoices,
+    MetodePerbaikanChoices,
 )
+from apps.pemeliharaan.forms import VerifikasiPemeliharaanForm
 
 
 ACTION_CHOICES = {
@@ -900,9 +903,10 @@ def _get_pemeliharaan_detail_context(obj):
 
 
 @login_required
+@transaction.atomic
 def detail_pemeliharaan(request, pk):
     obj = get_object_or_404(
-        PemeliharaanPengajuan.objects.select_related("pemohon", "alat", "vendor").prefetch_related(
+        PemeliharaanPengajuan.objects.select_for_update(of=("self",)).select_related("pemohon", "alat", "vendor").prefetch_related(
             "items__fotos",
             "timeline_entries__actor",
         ),
@@ -920,9 +924,14 @@ def detail_pemeliharaan(request, pk):
     selected_action = ""
     catatan_value = ""
     open_action_modal = False
+    requires_method = obj.current_step == StepPemeliharaanChoices.KEPALA_LAB and obj.perlu_lanjutan
+    if requires_method:
+        for button in action_buttons:
+            if button["value"] == "setujui":
+                button.update(modal_title="Pilih Metode Perbaikan", modal_submit_label="Kirim")
 
     if request.method == "POST":
-        form = VerifikasiAksiForm(request.POST, action_choices=action_choices)
+        form = VerifikasiPemeliharaanForm(request.POST, action_choices=action_choices, requires_method=requires_method)
         selected_action = (request.POST.get("aksi") or "").strip()
         catatan_value = (request.POST.get("catatan") or "").strip()
         if form.is_valid():
@@ -937,7 +946,7 @@ def detail_pemeliharaan(request, pk):
                 selected_action = aksi
             else:
                 previous_current_step = obj.current_step
-                _process_pemeliharaan_action(request, obj, aksi, catatan)
+                _process_pemeliharaan_action(request, obj, aksi, catatan, form.cleaned_data.get("metode_perbaikan", ""))
                 sync_transaction_notifications(
                     obj,
                     actor=request.user,
@@ -946,12 +955,14 @@ def detail_pemeliharaan(request, pk):
                     action_note=catatan,
                 )
                 return redirect("verifikasi:index")
-        elif _action_requires_note(selected_action):
+        else:
             open_action_modal = True
     else:
-        form = VerifikasiAksiForm(action_choices=action_choices)
+        form = VerifikasiPemeliharaanForm(action_choices=action_choices, requires_method=requires_method)
 
     active_action = _get_action_config(selected_action, action_choices)
+    if requires_method and selected_action == "setujui":
+        active_action.update(modal_title="Pilih Metode Perbaikan", modal_submit_label="Kirim")
 
     return render(
         request,
@@ -965,6 +976,7 @@ def detail_pemeliharaan(request, pk):
             "catatan_value": catatan_value,
             "open_action_modal": open_action_modal,
             "verification_mode": "pemeliharaan",
+            "requires_repair_method": requires_method,
             "can_delete_pengajuan": False,
             "show_return_process_link": False,
             "can_edit_pengajuan": False,
@@ -983,7 +995,7 @@ def _reject_peminjaman(request, obj, status_field, stage, timeline_action, user,
     messages.success(request, "Pengajuan berhasil ditolak.")
 
 
-def _process_pemeliharaan_action(request, obj, aksi, catatan):
+def _process_pemeliharaan_action(request, obj, aksi, catatan, metode=""):
     now = timezone.now()
     user = request.user
 
@@ -1019,6 +1031,7 @@ def _process_pemeliharaan_action(request, obj, aksi, catatan):
             )
         elif aksi == "setujui":
             obj.kepala_lab_status = KeputusanPemeliharaanChoices.APPROVED
+            obj.metode_perbaikan = metode if obj.perlu_lanjutan else ""
             if obj.perlu_pimpinan:
                 obj.current_step = StepPemeliharaanChoices.PIMPINAN
                 obj.add_timeline(
@@ -1031,6 +1044,10 @@ def _process_pemeliharaan_action(request, obj, aksi, catatan):
                     request,
                     "Pengajuan pemeliharaan disetujui dan diteruskan ke Ketua Tim Layanan Teknis.",
                 )
+            elif obj.perlu_lanjutan:
+                obj.current_step = StepPemeliharaanChoices.PERBAIKAN_MANDIRI
+                obj.add_timeline("Kepala Lab", "Perbaikan mandiri disetujui; pemohon diminta melengkapi data perbaikan", user, catatan)
+                messages.success(request, "Pengajuan disetujui. Pemohon diminta mengisi data perbaikan mandiri.")
             else:
                 obj.current_step = StepPemeliharaanChoices.SELESAI
                 obj.add_timeline(

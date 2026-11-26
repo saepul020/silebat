@@ -14,6 +14,11 @@ class KondisiPemeliharaanChoices(models.TextChoices):
 
 
 class TindakanPerbaikanChoices(models.TextChoices):
+    LANGSUNG = "Perbaikan Langsung", "Perbaikan Langsung"
+    LANJUTAN = "Perbaikan Lanjutan", "Perbaikan Lanjutan"
+
+
+class MetodePerbaikanChoices(models.TextChoices):
     MANDIRI = "Perbaikan Mandiri", "Perbaikan Mandiri"
     EKSTERNAL = "Perbaikan Eksternal", "Perbaikan Eksternal"
 
@@ -23,6 +28,7 @@ class StepPemeliharaanChoices(models.TextChoices):
     KEPALA_LAB = "kepala_lab", "Verifikasi Pemeliharaan - Kepala Lab"
     PIMPINAN = "pimpinan", "Verifikasi Pemeliharaan - Ketua Tim Layanan Teknis"
     VENDOR_DRAFT = "vendor_draft", "Input Data Vendor"
+    PERBAIKAN_MANDIRI = "perbaikan_mandiri", "Input Perbaikan Mandiri"
     VENDOR_KEPALA_LAB = "vendor_kepala_lab", "Verifikasi Data Vendor - Kepala Lab"
     VENDOR_PIMPINAN = "vendor_pimpinan", "Verifikasi Data Vendor - Ketua Tim Layanan Teknis"
     SELESAI = "selesai", "Selesai"
@@ -35,6 +41,7 @@ ACTIVE_PEMELIHARAAN_STEPS = (
     StepPemeliharaanChoices.KEPALA_LAB,
     StepPemeliharaanChoices.PIMPINAN,
     StepPemeliharaanChoices.VENDOR_DRAFT,
+    StepPemeliharaanChoices.PERBAIKAN_MANDIRI,
     StepPemeliharaanChoices.VENDOR_KEPALA_LAB,
     StepPemeliharaanChoices.VENDOR_PIMPINAN,
     StepPemeliharaanChoices.DIKEMBALIKAN,
@@ -91,6 +98,7 @@ class PemeliharaanPengajuan(models.Model):
         default=StepPemeliharaanChoices.DRAFT,
     )
     submitted_at = models.DateTimeField(null=True, blank=True)
+    metode_perbaikan = models.CharField(max_length=30, choices=MetodePerbaikanChoices.choices, blank=True)
     kepala_lab_status = models.CharField(
         max_length=20,
         choices=KeputusanPemeliharaanChoices.choices,
@@ -198,6 +206,7 @@ class PemeliharaanPengajuan(models.Model):
             StepPemeliharaanChoices.KEPALA_LAB: "badge-warning",
             StepPemeliharaanChoices.PIMPINAN: "badge-warning",
             StepPemeliharaanChoices.VENDOR_DRAFT: "badge-warning",
+            StepPemeliharaanChoices.PERBAIKAN_MANDIRI: "badge-warning",
             StepPemeliharaanChoices.VENDOR_KEPALA_LAB: "badge-warning",
             StepPemeliharaanChoices.VENDOR_PIMPINAN: "badge-warning",
             StepPemeliharaanChoices.SELESAI: "badge-success",
@@ -227,6 +236,8 @@ class PemeliharaanPengajuan(models.Model):
 
     @property
     def selesai_at(self):
+        if self.metode_perbaikan == MetodePerbaikanChoices.MANDIRI and self.current_step == StepPemeliharaanChoices.SELESAI:
+            return self.updated_at
         try:
             if self.vendor.pimpinan_at:
                 return self.vendor.pimpinan_at
@@ -253,16 +264,20 @@ class PemeliharaanPengajuan(models.Model):
         return self.items.filter(kondisi=KondisiPemeliharaanChoices.PERLU_PERBAIKAN).exists()
 
     @property
-    def perlu_pimpinan(self):
+    def perlu_lanjutan(self):
         prefetched_items = getattr(self, "_prefetched_objects_cache", {}).get("items")
         if prefetched_items is not None:
             return any(
-                item.tindakan_perbaikan == TindakanPerbaikanChoices.EKSTERNAL
+                item.tindakan_perbaikan == TindakanPerbaikanChoices.LANJUTAN
                 for item in prefetched_items
             )
         return self.items.filter(
-            tindakan_perbaikan=TindakanPerbaikanChoices.EKSTERNAL
+            tindakan_perbaikan=TindakanPerbaikanChoices.LANJUTAN
         ).exists()
+
+    @property
+    def perlu_pimpinan(self):
+        return self.metode_perbaikan == MetodePerbaikanChoices.EKSTERNAL and self.perlu_lanjutan
 
     @property
     def has_vendor_data(self):
@@ -272,13 +287,139 @@ class PemeliharaanPengajuan(models.Model):
             return False
 
     @property
+    def perbaikan_lengkap(self):
+        return not self.perbaikan_errors
+
+    @property
+    def perbaikan_errors(self):
+        items = [item for item in self.items.all() if item.is_lanjutan]
+        if not items:
+            return ["Komponen Perbaikan Mandiri"]
+        return [error for item in items for error in self._repair_errors(item)]
+
+    def _repair_errors(self, item):
+        fields = []
+        if not item.uraian_perbaikan.strip():
+            fields.append("Uraian Perbaikan")
+        if (not item.tanggal_mulai_perbaikan
+                or timezone.localdate(item.tanggal_mulai_perbaikan) < timezone.localdate(self.tanggal_pemeriksaan)):
+            fields.append("Tanggal Perbaikan Mulai")
+        if (not item.tanggal_selesai_perbaikan
+                or item.tanggal_selesai_perbaikan < self.tanggal_pemeriksaan
+                or (item.tanggal_mulai_perbaikan and item.tanggal_selesai_perbaikan < item.tanggal_mulai_perbaikan)):
+            fields.append("Tanggal Perbaikan Selesai")
+        if not self._photo_complete(item, JenisFotoPemeliharaanChoices.PERBAIKAN):
+            fields.append("Dokumentasi Perbaikan")
+        return [f"{item.komponen}: {field}" for field in fields]
+
+    @staticmethod
+    def _photo_complete(item, jenis):
+        return 1 <= sum(1 for photo in item.fotos.all() if photo.jenis == jenis and photo.foto) <= MAX_PEMELIHARAAN_PHOTOS
+
+    @property
+    def pengajuan_lengkap(self):
+        return not self.pengajuan_errors
+
+    @property
+    def pengajuan_errors(self):
+        items = list(self.items.all())
+        errors = []
+        if not self.alat_id:
+            errors.append("Pilih Alat")
+        if not self.tanggal_pemeriksaan:
+            errors.append("Tanggal Pemeriksaan")
+        if not items:
+            errors.append("Komponen Pemeriksaan")
+        photos = sum(1 for item in items for photo in item.fotos.all()
+                     if photo.jenis == JenisFotoPemeliharaanChoices.PEMERIKSAAN and photo.foto)
+        if not 1 <= photos <= MAX_PEMELIHARAAN_PHOTOS:
+            errors.append("Dokumentasi Pemeriksaan")
+        for item in items:
+            if item.kondisi == KondisiPemeliharaanChoices.BAIK:
+                continue
+            if item.kondisi != KondisiPemeliharaanChoices.PERLU_PERBAIKAN:
+                errors.append(f"{item.komponen}: Kondisi Pemeliharaan")
+                continue
+            if item.is_langsung:
+                if self.tanggal_pemeriksaan:
+                    errors.extend(self._repair_errors(item))
+            elif item.is_lanjutan:
+                if not item.uraian_kerusakan.strip():
+                    errors.append(f"{item.komponen}: Uraian Kerusakan")
+                if not self._photo_complete(item, JenisFotoPemeliharaanChoices.KERUSAKAN):
+                    errors.append(f"{item.komponen}: Dokumentasi Kerusakan")
+            else:
+                errors.append(f"{item.komponen}: Tindakan Perbaikan")
+        return errors
+
+    @property
+    def vendor_lengkap(self):
+        return not self.vendor_errors
+
+    @property
+    def vendor_errors(self):
+        labels = {
+            "nama_vendor": "Nama Vendor", "nama_pic": "Nama PIC Vendor",
+            "nomor_hp_pic": "Nomor HP PIC Vendor", "alamat": "Alamat Vendor",
+            "tanggal_mulai": "Tanggal Perbaikan Mulai", "tanggal_selesai": "Tanggal Perbaikan Selesai",
+        }
+        if not self.has_vendor_data:
+            return list(labels.values())
+        vendor = self.vendor
+        errors = [labels[field] for field in ("nama_vendor", "nama_pic", "alamat") if not getattr(vendor, field).strip()]
+        if not vendor.nomor_hp_pic.isdigit():
+            errors.append(labels["nomor_hp_pic"])
+        if not vendor.tanggal_mulai or vendor.tanggal_mulai < timezone.localdate(self.tanggal_pemeriksaan):
+            errors.append(labels["tanggal_mulai"])
+        if not vendor.tanggal_selesai or (vendor.tanggal_mulai and vendor.tanggal_selesai < vendor.tanggal_mulai):
+            errors.append(labels["tanggal_selesai"])
+        return errors
+
+    @property
+    def kirim_errors(self):
+        if self.current_step == StepPemeliharaanChoices.VENDOR_DRAFT:
+            return self.vendor_errors
+        if self.current_step == StepPemeliharaanChoices.PERBAIKAN_MANDIRI:
+            return self.perbaikan_errors
+        return self.pengajuan_errors
+
+    @property
+    def kirim_groups(self):
+        names = list(dict.fromkeys(item.komponen for item in self.items.all()))
+        prefixes = sorted(names, key=len, reverse=True)
+        fields = []
+        groups = {}
+        for error in self.kirim_errors:
+            name = next((name for name in prefixes if error.startswith(f"{name}: ")), None)
+            if name is None:
+                fields.append(error)
+            else:
+                groups.setdefault(name, []).append(error[len(name) + 2:])
+        return {
+            "fields": fields,
+            "components": [{"name": name, "fields": groups[name]} for name in names if name in groups],
+        }
+
+    @property
     def alur_label(self):
         if self.perlu_pimpinan:
             return (
                 "Kepala Lab > Ketua Tim Layanan Teknis > Input Data Vendor > "
                 "Kepala Lab > Ketua Tim Layanan Teknis > Selesai"
             )
-        return "Kepala Lab > Selesai"
+        if self.perlu_lanjutan:
+            if not self.metode_perbaikan:
+                return "Kepala Lab > Pilihan Perbaikan Mandiri / Perbaikan Eksternal"
+            return "Kepala Lab > Input Perbaikan Mandiri > Selesai"
+        return "Kirim > Selesai"
+
+    @property
+    def kirim_target(self):
+        if self.current_step == StepPemeliharaanChoices.PERBAIKAN_MANDIRI:
+            return "akan dinyatakan selesai setelah data perbaikan mandiri lengkap"
+        if self.perlu_lanjutan:
+            return "akan dikirim ke Kepala Lab untuk verifikasi"
+        return "akan langsung dinyatakan selesai setelah pemeriksaan dan perbaikan langsung lengkap"
 
     @property
     def kondisi_ringkas(self):
@@ -398,28 +539,18 @@ class PemeliharaanPengajuan(models.Model):
             alat.save(update_fields=["tanggal_pemeliharaan"])
             return
 
-        has_external = any(
-            item.tindakan_perbaikan == TindakanPerbaikanChoices.EKSTERNAL
+        repair_dates = [
+            timezone.localdate(item.tanggal_selesai_perbaikan)
             for item in repair_items
-        )
-        tanggal_perbaikan = None
-        if has_external:
+            if item.tanggal_selesai_perbaikan
+        ]
+        if self.perlu_pimpinan:
             try:
-                tanggal_perbaikan = self.vendor.tanggal_selesai
+                repair_dates.append(self.vendor.tanggal_selesai)
             except PemeliharaanVendor.DoesNotExist:
                 pass
-        else:
-            selesai_mandiri = [
-                timezone.localdate(item.tanggal_selesai_perbaikan)
-                for item in repair_items
-                if item.tindakan_perbaikan == TindakanPerbaikanChoices.MANDIRI
-                and item.tanggal_selesai_perbaikan
-            ]
-            if selesai_mandiri:
-                tanggal_perbaikan = max(selesai_mandiri)
-
-        if tanggal_perbaikan:
-            alat.tanggal_perbaikan = tanggal_perbaikan
+        if repair_dates:
+            alat.tanggal_perbaikan = max(repair_dates)
             alat.save(update_fields=["tanggal_perbaikan"])
 
     def pulihkan_data_alat_awal(self, alat=None):
@@ -494,11 +625,23 @@ class PemeliharaanItem(models.Model):
 
     @property
     def is_mandiri(self):
-        return self.tindakan_perbaikan == TindakanPerbaikanChoices.MANDIRI
+        return self.is_lanjutan and self.pengajuan.metode_perbaikan == MetodePerbaikanChoices.MANDIRI
+
+    @property
+    def is_langsung(self):
+        return self.tindakan_perbaikan == TindakanPerbaikanChoices.LANGSUNG
+
+    @property
+    def is_lanjutan(self):
+        return self.tindakan_perbaikan == TindakanPerbaikanChoices.LANJUTAN
+
+    @property
+    def has_repair_data(self):
+        return self.is_langsung or self.is_mandiri
 
     @property
     def is_eksternal(self):
-        return self.tindakan_perbaikan == TindakanPerbaikanChoices.EKSTERNAL
+        return self.is_lanjutan and self.pengajuan.metode_perbaikan == MetodePerbaikanChoices.EKSTERNAL
 
 
 class PemeliharaanVendor(models.Model):

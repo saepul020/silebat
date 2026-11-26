@@ -200,6 +200,9 @@ STATICFILES_DIRS = [BASE_DIR / "static"]
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
+# Direktori Arial asli untuk PDF DRH pada server yang tidak memiliki font sistem.
+DRH_FONT_DIR = os.getenv("DRH_FONT_DIR", "").strip()
+
 
 AUTH_USER_MODEL = "pengguna.User"
 

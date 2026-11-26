@@ -1,8 +1,9 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
+from django.db.models import Case, DateTimeField, When
 from django.db.models.functions import Coalesce, ExtractYear
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
@@ -31,6 +32,7 @@ from .models import (
     KeputusanPemeliharaanChoices,
     PemeliharaanPengajuan,
     PemeliharaanVendor,
+    MetodePerbaikanChoices,
     StepPemeliharaanChoices,
 )
 from .pdf_utils import render_pemeliharaan_pdf
@@ -44,6 +46,7 @@ PEMELIHARAAN_LIST_SEARCH_FIELDS = (
     "pemohon__username",
     "pemohon__nama_lengkap",
     "current_step",
+    "metode_perbaikan",
     "items__komponen",
     "items__kondisi",
 )
@@ -78,7 +81,9 @@ def _can_input_pengajuan(user):
 
 def _can_submit_pengajuan(user, obj):
     role_name = get_role_name(user)
-    if role_name not in PEMELIHARAAN_INPUT_ROLES or not obj.is_draft_like:
+    if role_name not in PEMELIHARAAN_INPUT_ROLES or not (
+        obj.is_draft_like or obj.current_step == StepPemeliharaanChoices.PERBAIKAN_MANDIRI
+    ):
         return False
     if role_name == ROLE_SUPER_ADMIN:
         return True
@@ -86,7 +91,23 @@ def _can_submit_pengajuan(user, obj):
 
 
 def _can_edit_pengajuan(user, obj):
-    return _can_submit_pengajuan(user, obj)
+    return obj.is_draft_like and _can_submit_pengajuan(user, obj)
+
+
+def _can_input_perbaikan(user, obj):
+    return (
+        obj.current_step == StepPemeliharaanChoices.PERBAIKAN_MANDIRI
+        and obj.metode_perbaikan == MetodePerbaikanChoices.MANDIRI
+        and _can_submit_pengajuan(user, obj)
+    )
+
+
+def _can_send_pengajuan(user, obj):
+    if not _can_submit_pengajuan(user, obj):
+        return False
+    if obj.current_step == StepPemeliharaanChoices.PERBAIKAN_MANDIRI:
+        return _can_input_perbaikan(user, obj) and obj.perbaikan_lengkap
+    return obj.pengajuan_lengkap
 
 
 def _can_input_vendor(user, obj):
@@ -101,7 +122,7 @@ def _can_input_vendor(user, obj):
 
 
 def _can_submit_vendor(user, obj):
-    return _can_input_vendor(user, obj) and obj.has_vendor_data
+    return _can_input_vendor(user, obj) and obj.vendor_lengkap
 
 
 def _get_pengajuan_queryset():
@@ -126,6 +147,14 @@ def _get_report_queryset(user):
         queryset = queryset.filter(pemohon=user)
     return queryset.annotate(
         report_at=Coalesce(
+            Case(
+                When(
+                    current_step=StepPemeliharaanChoices.SELESAI,
+                    metode_perbaikan=MetodePerbaikanChoices.MANDIRI,
+                    then="updated_at",
+                ),
+                output_field=DateTimeField(),
+            ),
             "vendor__pimpinan_at",
             "pimpinan_at",
             "kepala_lab_at",
@@ -212,14 +241,18 @@ def _reset_verifikasi_pemeliharaan(obj):
     obj.pimpinan_note = ""
 
 
-def _finalkan_pengajuan_baik(obj, user, submitted_at):
+def _finalkan_pengajuan(obj, user, submitted_at):
+    manual = obj.current_step == StepPemeliharaanChoices.PERBAIKAN_MANDIRI
     obj.current_step = StepPemeliharaanChoices.SELESAI
-    obj.submitted_at = submitted_at
-    _reset_verifikasi_pemeliharaan(obj)
+    if not manual:
+        obj.submitted_at = submitted_at
+        obj.metode_perbaikan = ""
+        _reset_verifikasi_pemeliharaan(obj)
     obj.save(
         update_fields=[
             "current_step",
             "submitted_at",
+            "metode_perbaikan",
             "kepala_lab_status",
             "kepala_lab_by",
             "kepala_lab_at",
@@ -233,6 +266,8 @@ def _finalkan_pengajuan_baik(obj, user, submitted_at):
     )
     obj.add_timeline(
         "Pelaksana Pemeliharaan",
+        "Perbaikan mandiri selesai dan pengajuan dinyatakan selesai" if manual else
+        "Pemeriksaan dan perbaikan langsung selesai; pengajuan dinyatakan selesai" if obj.perlu_perbaikan else
         "Pengajuan pemeliharaan semua komponen baik dan dinyatakan selesai",
         user,
     )
@@ -243,11 +278,13 @@ def _finalkan_pengajuan_baik(obj, user, submitted_at):
 def _kirim_pengajuan_ke_kepala_lab(obj, user, submitted_at):
     obj.current_step = StepPemeliharaanChoices.KEPALA_LAB
     obj.submitted_at = submitted_at
+    obj.metode_perbaikan = ""
     _reset_verifikasi_pemeliharaan(obj)
     obj.save(
         update_fields=[
             "current_step",
             "submitted_at",
+            "metode_perbaikan",
             "kepala_lab_status",
             "kepala_lab_by",
             "kepala_lab_at",
@@ -283,9 +320,11 @@ def daftar_pengajuan(request):
         search_fields=PEMELIHARAAN_LIST_SEARCH_FIELDS,
     )
     for item in pagination_context["items"]:
-        item.can_kirim = _can_submit_pengajuan(request.user, item)
+        item.show_submit_pengajuan = _can_submit_pengajuan(request.user, item)
+        item.can_kirim = _can_send_pengajuan(request.user, item)
         item.can_edit = _can_edit_pengajuan(request.user, item)
         item.can_input_vendor = _can_input_vendor(request.user, item)
+        item.can_input_perbaikan = _can_input_perbaikan(request.user, item)
         item.can_submit_vendor = _can_submit_vendor(request.user, item)
     return render(
         request,
@@ -371,6 +410,7 @@ def export_laporan_pemeliharaan(request):
             getattr(obj.pimpinan_by, "nama_lengkap", "") or getattr(obj.pimpinan_by, "username", "") or "-",
             obj.get_pimpinan_status_display(),
             obj.pimpinan_note or "-",
+            obj.metode_perbaikan or "-",
         ])
 
         for item in obj.items.all():
@@ -393,6 +433,7 @@ def export_laporan_pemeliharaan(request):
                 photo_counts[JenisFotoPemeliharaanChoices.PEMERIKSAAN],
                 photo_counts[JenisFotoPemeliharaanChoices.PERBAIKAN],
                 photo_counts[JenisFotoPemeliharaanChoices.KERUSAKAN],
+                obj.metode_perbaikan or "-",
             ])
 
         vendor = getattr(obj, "vendor", None)
@@ -423,6 +464,7 @@ def export_laporan_pemeliharaan(request):
                     "Jenis", "Kondisi", "Hasil", "Proses",
                     "Kepala Lab", "Status Kepala Lab", "Catatan Kepala Lab",
                     "Pimpinan", "Status Pimpinan", "Catatan Pimpinan",
+                    "Metode Perbaikan",
                 ],
                 "rows": laporan_rows,
             },
@@ -433,6 +475,7 @@ def export_laporan_pemeliharaan(request):
                     "Uraian Perbaikan", "Mulai Perbaikan", "Selesai Perbaikan",
                     "Uraian Kerusakan", "Foto Pemeriksaan", "Foto Perbaikan",
                     "Foto Kerusakan",
+                    "Metode Perbaikan",
                 ],
                 "rows": komponen_rows,
             },
@@ -450,6 +493,33 @@ def export_laporan_pemeliharaan(request):
     )
 
 
+def _is_form_request(request):
+    return request.method == "POST" and request.headers.get("X-Requested-With") == "XMLHttpRequest"
+
+
+def _saved_response(request, pk):
+    response = redirect("pemeliharaan:detail", pk=pk)
+    if _is_form_request(request):
+        return JsonResponse({"redirect_url": response.url})
+    return response
+
+
+def _invalid_response(form):
+    errors = {
+        name: list(messages)
+        for name, messages in form.errors.items()
+        if name != "komponen_validasi"
+    }
+    for index, row in getattr(form, "component_errors", {}).items():
+        for name, messages in row.get("fields", {}).items():
+            errors.setdefault(f"{name}_{index}", []).extend(messages)
+    photo_errors = errors.pop("hapus_foto_ids", [])
+    if photo_errors:
+        name = "dokumentasi_perbaikan_0" if getattr(form, "repair_mode", False) else "dokumentasi_pemeriksaan"
+        errors.setdefault(name, []).extend(photo_errors)
+    return JsonResponse({"errors": errors}, status=422)
+
+
 @login_required
 def tambah_pengajuan(request):
     if not _can_input_pengajuan(request.user):
@@ -459,7 +529,7 @@ def tambah_pengajuan(request):
         )
 
     form = PemeliharaanForm(
-        request.POST or None,
+        request.POST if request.method == "POST" else None,
         request.FILES or None,
         actor=request.user,
     )
@@ -471,7 +541,10 @@ def tambah_pengajuan(request):
             request.user,
         )
         messages.success(request, "Pengajuan pemeliharaan berhasil disimpan.")
-        return redirect("pemeliharaan:detail", pk=pengajuan.pk)
+        return _saved_response(request, pengajuan.pk)
+
+    if _is_form_request(request):
+        return _invalid_response(form)
 
     return render(
         request,
@@ -497,7 +570,7 @@ def edit_pengajuan(request, pk):
         )
 
     form = PemeliharaanForm(
-        request.POST or None,
+        request.POST if request.method == "POST" else None,
         request.FILES or None,
         actor=request.user,
         instance=obj,
@@ -510,7 +583,10 @@ def edit_pengajuan(request, pk):
             request.user,
         )
         messages.success(request, "Pengajuan pemeliharaan berhasil diperbarui.")
-        return redirect("pemeliharaan:detail", pk=pengajuan.pk)
+        return _saved_response(request, pengajuan.pk)
+
+    if _is_form_request(request):
+        return _invalid_response(form)
 
     return render(
         request,
@@ -546,12 +622,38 @@ def detail_pengajuan(request, pk):
             "repair_items": repair_items,
             "pemeriksaan_fotos": pemeriksaan_fotos,
             "can_delete_pengajuan": _can_delete_pengajuan(request.user),
-            "can_submit_pengajuan": _can_submit_pengajuan(request.user, obj),
+            "show_submit_pengajuan": _can_submit_pengajuan(request.user, obj),
+            "can_submit_pengajuan": _can_send_pengajuan(request.user, obj),
             "can_edit_pengajuan": _can_edit_pengajuan(request.user, obj),
             "can_input_vendor": _can_input_vendor(request.user, obj),
+            "can_input_perbaikan": _can_input_perbaikan(request.user, obj),
             "can_submit_vendor": _can_submit_vendor(request.user, obj),
         },
     )
+
+
+@login_required
+@transaction.atomic
+def data_perbaikan(request, pk):
+    obj = get_object_or_404(_get_pengajuan_queryset().select_for_update(of=("self",)), pk=pk)
+    if not _can_input_perbaikan(request.user, obj):
+        return deny_access(request, "Perbaikan mandiri hanya dapat diisi oleh pemohon pada tahap Input Perbaikan Mandiri.")
+    form = PemeliharaanForm(
+        request.POST if request.method == "POST" else None, request.FILES or None,
+        instance=obj, actor=request.user, repair_mode=True,
+    )
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        obj.save(update_fields=["updated_at"])
+        obj.add_timeline("Pelaksana Pemeliharaan", "Data perbaikan mandiri disimpan", request.user)
+        messages.success(request, "Data perbaikan mandiri berhasil disimpan. Kirim pengajuan melalui daftar atau halaman detail.")
+        return _saved_response(request, obj.pk)
+    if _is_form_request(request):
+        return _invalid_response(form)
+    return render(request, "pemeliharaan/perbaikan_form.html", {
+        "obj": obj, "form": form, "page_title": "Input Perbaikan Mandiri",
+        "tanggal_pemeriksaan_display": format_display_date(obj.tanggal_pemeriksaan),
+    })
 
 
 @login_required
@@ -565,7 +667,7 @@ def data_vendor(request, pk):
 
     vendor = PemeliharaanVendor.objects.filter(pengajuan=obj).first()
     form = PemeliharaanVendorForm(
-        request.POST or None,
+        request.POST if request.method == "POST" else None,
         instance=vendor,
         pengajuan=obj,
     )
@@ -589,7 +691,10 @@ def data_vendor(request, pk):
                 request.user,
             )
         messages.success(request, "Data vendor perbaikan berhasil disimpan sebagai draft.")
-        return redirect("pemeliharaan:detail", pk=obj.pk)
+        return _saved_response(request, obj.pk)
+
+    if _is_form_request(request):
+        return _invalid_response(form)
 
     _items, repair_items, _pemeriksaan_fotos = _prepare_detail_items(obj)
     return render(
@@ -657,12 +762,13 @@ def download_pdf(request, pk):
 
 
 @login_required
+@transaction.atomic
 def kirim_pengajuan(request, pk):
     if request.method != "POST":
         return redirect("pemeliharaan:list")
 
     obj = get_object_or_404(
-        PemeliharaanPengajuan.objects.prefetch_related("items"),
+        PemeliharaanPengajuan.objects.select_for_update().prefetch_related("items__fotos"),
         pk=pk,
     )
     if not _can_submit_pengajuan(request.user, obj):
@@ -671,11 +777,18 @@ def kirim_pengajuan(request, pk):
             "Anda tidak memiliki akses untuk mengirim pengajuan pemeliharaan ini.",
         )
 
-    langsung_selesai = not obj.perlu_perbaikan
+    manual = obj.current_step == StepPemeliharaanChoices.PERBAIKAN_MANDIRI
+    if manual and not _can_input_perbaikan(request.user, obj):
+        return deny_access(request, "Tahap perbaikan mandiri tidak valid.")
+    form = PemeliharaanForm.saved(obj, request.user, repair_mode=manual)
+    if not form.is_valid() or not (obj.perbaikan_lengkap if manual else obj.pengajuan_lengkap):
+        messages.error(request, "Data pemeriksaan/perbaikan belum lengkap. Lengkapi formulir sebelum mengirim.")
+        return redirect("pemeliharaan:perbaikan" if manual else "pemeliharaan:edit", pk=obj.pk)
+    langsung_selesai = manual or not obj.perlu_lanjutan
     with transaction.atomic():
         submitted_at = timezone.now()
         if langsung_selesai:
-            _finalkan_pengajuan_baik(obj, request.user, submitted_at)
+            _finalkan_pengajuan(obj, request.user, submitted_at)
         else:
             _kirim_pengajuan_ke_kepala_lab(obj, request.user, submitted_at)
         sync_transaction_notifications(obj, actor=request.user)
@@ -683,7 +796,7 @@ def kirim_pengajuan(request, pk):
     if langsung_selesai:
         messages.success(
             request,
-            "Pengajuan pemeliharaan semua komponen baik dan langsung dinyatakan selesai.",
+            "Pemeriksaan dan perbaikan selesai; pengajuan pemeliharaan dinyatakan selesai.",
         )
     else:
         messages.success(

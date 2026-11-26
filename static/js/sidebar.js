@@ -181,6 +181,13 @@ function initSidebarNavigation() {
     }
 
     function getBestActiveSubLink(subLinks) {
+        const currentLink = Array.from(subLinks).find(function (link) {
+            return link.getAttribute('aria-current') === 'page';
+        });
+        if (currentLink) {
+            return currentLink;
+        }
+
         let activeLink = null;
         let activeHrefLength = -1;
 

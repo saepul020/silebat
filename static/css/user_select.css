@@ -1,0 +1,218 @@
+.user-select {
+    position: relative;
+    width: 100%;
+    min-width: 0;
+}
+
+.other-select-field.is-manual-mode > .user-select {
+    display: none;
+}
+
+/* Keep the original control for form submission and existing change handlers. */
+.user-select > select.user-select__native {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+.user-select__toggle {
+    position: relative;
+    width: 100%;
+    min-height: 40px;
+    padding: 8px 30px 8px 12px;
+    border: 1px solid var(--border-strong);
+    border-radius: 12px;
+    background: var(--surface);
+    color: var(--text-main);
+    font-family: inherit;
+    font-size: 0.86rem;
+    font-weight: 700;
+    line-height: 1.35;
+    text-align: left;
+    overflow-wrap: anywhere;
+    cursor: pointer;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.user-select__toggle::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    right: 10px;
+    width: 6px;
+    height: 6px;
+    border: solid currentColor;
+    border-width: 0 1.5px 1.5px 0;
+    transform: translateY(-70%) rotate(45deg);
+    pointer-events: none;
+}
+
+.user-select__toggle:not(:disabled):hover {
+    border-color: var(--color-soft-blue);
+    box-shadow: 0 0 0 3px rgba(100, 205, 209, 0.12);
+}
+
+.user-select__toggle:focus-visible {
+    outline: none;
+    border-color: var(--color-aqua-teal);
+    box-shadow: 0 0 0 4px rgba(16, 62, 111, 0.08);
+}
+
+.user-select__panel {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    z-index: 30;
+    width: 100%;
+    max-height: 220px;
+    overflow-y: auto;
+    padding: 10px 0;
+    border: 1px solid var(--border-strong);
+    border-radius: 12px;
+    background: var(--surface);
+    box-shadow: 0 4px 12px rgba(16, 62, 111, 0.1);
+    font-size: 0.8rem;
+    line-height: 1.45;
+}
+
+.user-select__option {
+    display: block;
+    width: 100%;
+    padding: 6px 14px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--text-main);
+    font: inherit;
+    font-weight: 700;
+    text-align: left;
+    overflow-wrap: anywhere;
+    cursor: pointer;
+}
+
+.user-select--open {
+    z-index: 31;
+}
+
+.user-select__panel--adaptive {
+    display: flex;
+    flex-direction: column;
+    max-height: 420px;
+    overflow: hidden;
+}
+
+.user-select__panel--adaptive[hidden] {
+    display: none;
+}
+
+.user-select__panel--search {
+    min-width: min(240px, calc(100vw - 24px));
+}
+
+.user-select__panel--up {
+    top: auto;
+    bottom: calc(100% + 6px);
+}
+
+.user-select__panel--floating,
+.user-select__panel--floating.user-select__panel--up {
+    position: fixed;
+    margin: 0;
+    bottom: auto;
+}
+
+.user-select__search {
+    flex: 0 0 auto;
+    width: calc(100% - 24px);
+    min-width: 0;
+    margin: 0 12px 10px;
+    padding: 9px 10px;
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--text-main);
+    font: inherit;
+}
+
+.user-select__search::placeholder {
+    color: var(--text-soft);
+    font-weight: 400;
+}
+
+.user-select__options {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+.user-select__empty {
+    margin: 0;
+    padding: 8px 14px;
+    color: var(--text-soft);
+}
+
+.user-select__empty[hidden] {
+    display: none;
+}
+
+.user-select__option[hidden] {
+    display: none;
+}
+
+.user-select__toggle--placeholder,
+.user-select__option--placeholder {
+    color: var(--text-soft);
+    font-weight: 400;
+}
+
+.user-select__option + .user-select__option {
+    margin-top: 4px;
+}
+
+.user-select__option:not(:disabled):hover,
+.user-select__option:focus-visible,
+.user-select__option[aria-selected="true"] {
+    background: var(--surface-soft);
+}
+
+.user-select__option:focus-visible {
+    outline: 2px solid var(--color-aqua-teal);
+    outline-offset: -2px;
+}
+
+.user-select__toggle:disabled,
+.user-select__option:disabled {
+    opacity: 0.58;
+    cursor: not-allowed;
+}
+
+.form-group.has-error .user-select__toggle {
+    border-color: var(--danger, #dc3545);
+}
+
+.master-entries-form > .user-select {
+    width: max-content;
+    flex: 0 0 auto;
+}
+
+.master-entries-form .user-select__toggle {
+    width: max-content;
+}
+
+.master-entries-form .user-select__toggle::before {
+    content: 'Semua';
+    display: block;
+    height: 0;
+    visibility: hidden;
+}
+
+.master-entries-form :is(.user-select__toggle, .user-select__option) {
+    white-space: nowrap;
+    overflow-wrap: normal;
+}

@@ -1,4 +1,4 @@
-{% if role_access.is_super_admin %}
+{% if role_access.is_super_admin or import_allowed and request.user.is_authenticated %}
 <div class="delete-modal import-data-modal{% if import_context.show_modal %} show{% endif %}" id="{{ import_modal_id }}" data-import-modal data-import-modal-open="{% if import_context.show_modal %}true{% else %}false{% endif %}">
     <div class="delete-modal-backdrop" data-import-modal-backdrop></div>
 

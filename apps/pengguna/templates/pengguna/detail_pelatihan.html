@@ -1,12 +1,17 @@
 {% extends 'base.html' %}
+{% load static %}
 
-{% block title %}Detail Pelatihan{% endblock %}
+{% block title %}Detail Kegiatan{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/pelatihan.css' %}?v=20261125-table-v3">
+{% endblock %}
 
 {% block content %}
 <div class="page-header detail-header">
   <div>
-    <h1>Detail Pelatihan</h1>
-    <p>Informasi lengkap data pelatihan pengguna.</p>
+    <h1>Detail Kegiatan</h1>
+    <p>Informasi lengkap data kegiatan pengguna.</p>
   </div>
 </div>
 
@@ -20,7 +25,7 @@
     </div>
     <div class="detail-profile-meta">
       <h2>{{ obj.nama_pelatihan }}</h2>
-      <p>{{ obj.tipe_pelatihan }} &bull; {{ obj.jenis_pelatihan }}</p>
+      <p>Kegiatan {{ obj.tipe_pelatihan|cut:'Pelatihan ' }} &bull; {{ obj.jenis_pelatihan }}</p>
       {% if can_view_all_pelatihan %}
       <span class="detail-role-chip">Penginput: {% if obj.user %}{{ obj.user.get_full_name|default:obj.user.username }}{% else %}-{% endif %}</span>
       {% endif %}
@@ -29,12 +34,12 @@
 
   <div class="detail-grid detail-grid--info detail-grid--pelatihan">
     <div class="detail-item">
-      <label>Tipe Pelatihan</label>
-      <p>{{ obj.tipe_pelatihan }}</p>
+      <label>Tipe Kegiatan</label>
+      <p>Kegiatan {{ obj.tipe_pelatihan|cut:'Pelatihan ' }}</p>
     </div>
 
     <div class="detail-item">
-      <label>Jenis Pelatihan</label>
+      <label>Jenis Kegiatan</label>
       <p>{{ obj.jenis_pelatihan }}</p>
     </div>
 
@@ -49,31 +54,18 @@
     </div>
 
     <div class="detail-item detail-item--full detail-item--span-2">
-      <label>Lokasi Pelatihan</label>
+      <label>Lokasi Kegiatan</label>
       <p>{{ obj.lokasi_pelatihan|default:'-' }}</p>
     </div>
 
     <div
       class="detail-item detail-item--full detail-item--span-2 detail-item--long-text"
     >
-      <label>Uraian Pelatihan</label>
+      <label>Uraian Kegiatan</label>
       <p>{{ obj.uraian_pelatihan|default:'-'|linebreaksbr }}</p>
     </div>
 
-    <div class="detail-item">
-      <label>File Sertifikat</label>
-      <p>
-        {% if keikutsertaan.file_sertifikat %}
-        <a
-          href="{{ keikutsertaan.file_sertifikat.url }}"
-          target="_blank"
-          rel="noopener noreferrer"
-        >Lihat File Sertifikat</a>
-        {% else %} - {% endif %}
-      </p>
-    </div>
-
-    <div class="detail-item">
+    <div class="detail-item detail-item--full detail-item--span-2">
       <label>File Materi</label>
       <p>
         {% if obj.file_materi %}
@@ -86,30 +78,52 @@
       </p>
     </div>
     <div class="detail-item detail-item--full">
-      <label>Peserta Pelatihan</label>
-      <ol class="peserta-list">
-        {% for item in peserta %}
-        <li>
-          {{ item.user.get_full_name|default:item.user.username }}
-          {% if item.file_sertifikat %}
-          &mdash;
-          <a
-            href="{{ item.file_sertifikat.url }}"
-            target="_blank"
-            rel="noopener noreferrer"
-          >Sertifikat</a>
-          {% endif %}
-        </li>
-        {% empty %}
-        <li>Belum ada peserta.</li>
-        {% endfor %}
-      </ol>
+      <label>Peserta Kegiatan</label>
+      <div class="table-scroll-area" tabindex="0" aria-label="Tabel peserta kegiatan">
+        <table class="table-data user-table user-table--participants">
+            <colgroup>
+                <col class="user-table__col--number">
+                <col class="user-table__col--text">
+                <col class="user-table__col--file">
+            </colgroup>
+          <thead>
+            <tr>
+              <th scope="col">No</th>
+              <th scope="col">Nama Peserta</th>
+              <th scope="col">Sertifikat</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in peserta %}
+            <tr>
+              <td>{{ forloop.counter }}</td>
+              <td>{{ item.user.get_full_name|default:item.user.username }}</td>
+              <td>
+                {% if item.file_sertifikat %}
+                <a href="{% url 'pengguna:sertifikat_preview' obj.pk item.pk %}" class="btn btn-secondary btn-sm" data-sertifikat-open data-file-name="{{ item.file_sertifikat.name }}" data-peserta="{{ item.user.get_full_name|default:item.user.username }}" title="Preview sertifikat" aria-label="Preview sertifikat {{ item.user.get_full_name|default:item.user.username }}" aria-haspopup="dialog" aria-controls="sertifikat-modal" target="_blank" rel="noopener noreferrer">
+                  <i class="bi bi-eye-fill" aria-hidden="true"></i>
+                </a>
+                {% else %}-{% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="3">Belum ada peserta.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 
   <div class="detail-card-action detail-card-actions">
-    <a href="{% url 'pengguna:pelatihan_edit' obj.pk %}" class="btn btn-primary">Edit Pelatihan</a>
+    <a href="{% url 'pengguna:pelatihan_edit' obj.pk %}" class="btn btn-primary">Edit Kegiatan</a>
     <a href="{% url 'pengguna:pelatihan_daftar' %}" class="btn btn-secondary">Kembali</a>
   </div>
 </div>
+
+{% include 'pengguna/sertifikat_modal.html' %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/pelatihan.js' %}?v=20261125-1" defer></script>
 {% endblock %}

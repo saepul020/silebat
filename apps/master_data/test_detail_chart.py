@@ -80,7 +80,7 @@ class DetailRiwayatAlatTests(TestCase):
                     pengajuan=obj,
                     komponen=component,
                     kondisi=KondisiPemeliharaanChoices.PERLU_PERBAIKAN,
-                    tindakan_perbaikan=TindakanPerbaikanChoices.MANDIRI,
+                    tindakan_perbaikan=TindakanPerbaikanChoices.LANGSUNG,
                 )
         return obj
 

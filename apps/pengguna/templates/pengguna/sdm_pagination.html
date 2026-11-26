@@ -1,0 +1,13 @@
+{% if listing.total_count %}
+<div class="master-pagination-bar">
+    <p class="master-pagination-summary">
+        {% if listing.show_all_entries %}Semua {{ listing.total_count }} data ditampilkan.{% else %}Halaman {{ listing.page_obj.number }} dari {{ listing.page_obj.paginator.num_pages }}{% endif %}
+    </p>
+    {% if listing.is_paginated %}
+    <nav class="master-pagination" aria-label="Halaman {{ filter_label }}">
+        {% if listing.page_obj.has_previous %}<a class="master-page-link" href="?{{ listing.query }}&amp;{{ prefix }}_page={{ listing.page_obj.previous_page_number }}">Sebelumnya</a>{% endif %}
+        {% if listing.page_obj.has_next %}<a class="master-page-link" href="?{{ listing.query }}&amp;{{ prefix }}_page={{ listing.page_obj.next_page_number }}">Berikutnya</a>{% endif %}
+    </nav>
+    {% endif %}
+</div>
+{% endif %}

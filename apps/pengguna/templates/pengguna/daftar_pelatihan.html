@@ -1,34 +1,55 @@
 {% extends 'base.html' %}
+{% load static %}
 
-{% block title %}Daftar Pelatihan{% endblock %}
+{% block title %}Daftar Kegiatan / Diklat / Workshop / Seminar{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/pelatihan.css' %}?v=20261125-2">
+{% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <h1>Daftar Pelatihan</h1>
-    <p>Kelola data pelatihan pengguna SILEBAT.</p>
+    <h1>Daftar Pelatihan / Diklat / Workshop / Seminar</h1>
+    <p>Kelola data Pelatihan / Diklat / Workshop / Seminar.</p>
 </div>
 
 <div class="table-wrapper table-panel">
     <div class="table-toolbar">
-        <h3 class="table-title">Data Pelatihan</h3>
+        <h3 class="table-title">Data Kegiatan</h3>
         <div class="table-toolbar-actions">
-            <a href="{% url 'pengguna:pelatihan_tambah' %}" class="btn btn-primary"><i class="bi bi-plus-circle"></i>&nbsp;Tambah Pelatihan</a>
+            {% include 'pengguna/excel_actions.html' with kind='pelatihan' %}
+            <a href="{% url 'pengguna:data' %}" class="btn btn-secondary">Kembali</a>
+            <a href="{% url 'pengguna:pelatihan_tambah' %}" class="btn btn-primary"><i class="bi bi-plus-circle" aria-hidden="true"></i>&nbsp;Tambah Data</a>
         </div>
     </div>
 
     {% include 'components/entry_control.html' %}
 
-    <div class="table-scroll-area table-scroll--list" tabindex="0" aria-label="Scroll tabel data pelatihan">
-        <table class="table-data list-table--pengguna list-table--pelatihan">
+    <div class="table-scroll-area table-scroll--list" tabindex="0" aria-label="Scroll tabel data kegiatan">
+        <table class="table-data user-table user-table--training{% if can_view_all_pelatihan %} user-table--owner{% endif %}">
+            <colgroup>
+                {% if can_view_all_pelatihan %}<col class="user-table__col--user">{% endif %}
+                <col class="user-table__col--text">
+                <col class="user-table__col--type">
+                <col class="user-table__col--type">
+                <col class="user-table__col--type">
+                <col class="user-table__col--date">
+                <col class="user-table__col--date">
+                <col class="user-table__col--file">
+                <col class="user-table__col--file">
+                <col class="user-table__col--action">
+            </colgroup>
             <thead>
                 <tr>
                     {% if can_view_all_pelatihan %}<th class="cell-wrap">Penginput</th>{% endif %}
-                    <th class="cell-wrap">Nama Pelatihan</th>
-                    <th>Tipe Pelatihan</th>
-                    <th>Jenis Pelatihan</th>
+                    <th class="cell-wrap">Nama Kegiatan</th>
+                    <th>Kategori Kegiatan</th>
+                    <th>Tipe Kegiatan</th>
+                    <th>Jenis Kegiatan</th>
                     <th>Mulai</th>
                     <th>Selesai</th>
-                    <th class="cell-wrap">Lokasi</th>
+                    <th>Sertifikat</th>
+                    <th>Materi</th>
                     <th class="cell-action">Aksi</th>
                 </tr>
             </thead>
@@ -36,15 +57,29 @@
                 {% for item in items %}
                 <tr>
                     {% if can_view_all_pelatihan %}
-                    <td class="cell-wrap">{% if item.user %}{{ item.user.get_full_name|default:item.user.username }}{% else %}-{% endif %}</td>
+                    <td class="cell-wrap" data-sort-value="{% if item.user %}{{ item.user.get_full_name|default:item.user.username }}{% else %}-{% endif %}"><div class="user-table__owner">{% if item.user %}{{ item.user.get_full_name|default:item.user.username }}{% else %}-{% endif %}</div></td>
                     {% endif %}
-                    <td class="cell-wrap">{{ item.nama_pelatihan }}</td>
-                    <td>{{ item.tipe_pelatihan }}</td>
-                    <td>{{ item.jenis_pelatihan }}</td>
-                    <td>{{ item.tanggal_mulai|date:'d M Y' }}</td>
-                    <td>{{ item.tanggal_selesai|date:'d M Y' }}</td>
-                    <td class="cell-wrap">{{ item.lokasi_pelatihan }}</td>
-                    <td class="cell-action">
+                    <td class="cell-wrap" data-sort-value="{{ item.nama_pelatihan }}"><div class="user-table__title">{{ item.nama_pelatihan }}</div></td>
+                    <td class="user-table__nowrap">{{ item.get_kategori_kegiatan_display|default:'-' }}</td>
+                    <td class="user-table__nowrap">Kegiatan {{ item.tipe_pelatihan|cut:'Pelatihan ' }}</td>
+                    <td class="user-table__nowrap">{{ item.jenis_pelatihan }}</td>
+                    <td class="user-table__nowrap">{{ item.tanggal_mulai|date:'d M Y' }}</td>
+                    <td class="user-table__nowrap">{{ item.tanggal_selesai|date:'d M Y' }}</td>
+                    <td class="user-table__media user-table__nowrap">
+                        {% if item.sertifikat_file %}
+                        <a href="{% url 'pengguna:sertifikat_preview' item.pk item.sertifikat_pk %}" class="btn btn-secondary btn-sm" data-sertifikat-open data-file-name="{{ item.sertifikat_file }}" data-peserta="{% if can_view_all_pelatihan %}{{ item.user.get_full_name|default:item.user.username }}{% else %}{{ request.user.get_full_name|default:request.user.username }}{% endif %}" title="Preview sertifikat" aria-label="Preview sertifikat {{ item.nama_pelatihan }}" aria-haspopup="dialog" aria-controls="sertifikat-modal" target="_blank" rel="noopener noreferrer">
+                            <i class="bi bi-eye-fill" aria-hidden="true"></i>
+                        </a>
+                        {% else %}-{% endif %}
+                    </td>
+                    <td class="user-table__media user-table__nowrap">
+                        {% if item.file_materi %}
+                        <a href="{% url 'pengguna:materi_download' item.pk %}" class="btn btn-secondary btn-sm" download title="Download materi" aria-label="Download materi {{ item.nama_pelatihan }}">
+                            <i class="bi bi-download" aria-hidden="true"></i>
+                        </a>
+                        {% else %}-{% endif %}
+                    </td>
+                    <td class="cell-action user-table__nowrap">
                         <div class="table-action-group">
                             <a href="{% url 'pengguna:pelatihan_detail' item.pk %}" class="btn btn-secondary btn-sm" title="Detail">
                                 <i class="bi bi-eye-fill"></i>
@@ -57,7 +92,7 @@
                                 class="btn btn-danger btn-sm js-delete-btn" data-delete-modal="operasional"
                                 data-delete-url="{% url 'pengguna:pelatihan_hapus' item.pk %}"
                                 data-item-name="{{ item.nama_pelatihan }}"
-                                data-item-meta="{{ item.tipe_pelatihan }} - {{ item.tanggal_mulai|date:'d M Y' }} s.d. {{ item.tanggal_selesai|date:'d M Y' }}"
+                                data-item-meta="Kegiatan {{ item.tipe_pelatihan|cut:'Pelatihan ' }} - {{ item.tanggal_mulai|date:'d M Y' }} s.d. {{ item.tanggal_selesai|date:'d M Y' }}"
                                 title="Hapus"
                             >
                                 <i class="bi bi-trash3-fill"></i>
@@ -67,7 +102,7 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="{% if can_view_all_pelatihan %}8{% else %}7{% endif %}"><div class="empty-state">Belum ada data pelatihan.</div></td>
+                    <td colspan="{% if can_view_all_pelatihan %}10{% else %}9{% endif %}"><div class="empty-state">Belum ada data kegiatan.</div></td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -76,6 +111,8 @@
 
     {% include 'components/pagination.html' %}
 </div>
+
+{% include 'pengguna/sertifikat_modal.html' %}
 
 <div class="delete-modal" id="operasionalDeleteModal">
     <div class="delete-modal-backdrop" id="operasionalDeleteModalBackdrop"></div>
@@ -88,20 +125,20 @@
 
         <div class="delete-modal-body">
             {% if can_view_all_pelatihan %}
-            <p>Apakah Anda yakin ingin menghapus seluruh data pelatihan berikut?</p>
+            <p>Apakah Anda yakin ingin menghapus seluruh data kegiatan berikut?</p>
             {% else %}
-            <p>Apakah Anda yakin ingin menghapus keikutsertaan Anda pada pelatihan berikut?</p>
+            <p>Apakah Anda yakin ingin menghapus keikutsertaan Anda pada kegiatan berikut?</p>
             {% endif %}
 
             <div class="delete-user-info">
-                <p><strong>Nama Pelatihan:</strong> <span id="operasionalDeleteItemName">-</span></p>
+                <p><strong>Nama Kegiatan:</strong> <span id="operasionalDeleteItemName">-</span></p>
                 <p><strong>Info:</strong> <span id="operasionalDeleteItemMeta">-</span></p>
             </div>
 
             {% if can_view_all_pelatihan %}
-            <p class="delete-warning-text">Pelatihan beserta seluruh peserta dan dokumennya akan dihapus dari semua akun peserta.</p>
+            <p class="delete-warning-text">Kegiatan beserta seluruh peserta dan dokumennya akan dihapus dari semua akun peserta.</p>
             {% else %}
-            <p class="delete-warning-text">Pelatihan akan dihapus dari akun Anda. Data peserta lain tetap tersimpan.</p>
+            <p class="delete-warning-text">Kegiatan akan dihapus dari akun Anda. Data peserta lain tetap tersimpan.</p>
             {% endif %}
         </div>
 
@@ -115,4 +152,9 @@
         </div>
     </div>
 </div>
+{% include 'pengguna/excel_modal.html' with kind='pelatihan' title='Import Pelatihan / Diklat / Workshop / Seminar' %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/pelatihan.js' %}?v=20261125-1" defer></script>
 {% endblock %}

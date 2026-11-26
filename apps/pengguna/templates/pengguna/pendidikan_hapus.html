@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% block title %}Hapus Pendidikan{% endblock %}
+{% block content %}
+<div class="page-header"><h1>Hapus Pendidikan</h1><p>Konfirmasi penghapusan riwayat pendidikan.</p></div>
+<div class="card">
+    <p>Hapus data {{ obj.tingkat }} di {{ obj.lembaga }} beserta ijazah dan transkripnya?</p>
+    <form method="post" class="form-actions">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">Ya, Hapus</button>
+        <a href="{% url 'pengguna:pendidikan_daftar' %}" class="btn btn-secondary">Batal</a>
+    </form>
+</div>
+{% endblock %}

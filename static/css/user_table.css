@@ -1,0 +1,136 @@
+/* Fill the panel while preserving readable minimum column widths. */
+.table-data.user-table {
+    --user-owner: 0px;
+    width: 100%;
+    min-width: calc(var(--user-columns) + var(--user-owner));
+    max-width: none;
+    table-layout: auto;
+}
+
+.table-data.user-table--owner {
+    --user-owner: 180px;
+}
+
+.table-data.user-table :is(th, td) {
+    width: auto;
+    min-width: 0;
+    max-width: none;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: normal;
+    vertical-align: top;
+    line-height: 1.5;
+}
+
+.table-data.user-table th,
+.table-data.user-table th.cell-wrap,
+.user-table .table-sort-button__label {
+    white-space: nowrap;
+    overflow-wrap: normal;
+}
+
+.user-table :is(ul, ol) {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.user-table li + li {
+    margin-top: 4px;
+}
+
+.user-table--accounts {
+    --user-columns: 920px;
+}
+
+.table-data.user-table td.user-table__nowrap {
+    white-space: nowrap;
+    overflow-wrap: normal;
+}
+
+.user-table__nowrap .table-action-group {
+    flex-wrap: nowrap;
+}
+
+:is(.user-table--training, .user-table--logbook, .user-table--education, .user-table--career, .user-table--portfolio) {
+    --user-columns: 0px;
+}
+
+.table-data:is(.user-table--training, .user-table--logbook, .user-table--education, .user-table--career, .user-table--portfolio).user-table--owner {
+    --user-owner: 0px;
+}
+
+.table-data:is(.user-table--training, .user-table--logbook, .user-table--education, .user-table--career, .user-table--portfolio) .cell-wrap {
+    min-width: 0;
+}
+
+.user-table :is(.user-table__title, .user-table__owner, .user-table__description, .user-table__person) {
+    display: block;
+    width: auto;
+    white-space: pre-line;
+    overflow-wrap: anywhere;
+}
+
+.user-table--logbook .user-table__description {
+    min-width: 40ch;
+}
+
+.user-table__col--compact,
+.table-data.user-table .user-table__compact {
+    width: 1%;
+}
+
+.table-data.user-table td.user-table__media {
+    text-align: center !important;
+}
+
+.user-table--sdm {
+    --user-columns: 800px;
+}
+
+.user-table--participants {
+    --user-columns: 424px;
+}
+
+.user-table__col--user {
+    width: 180px;
+}
+
+.user-table__col--name {
+    width: 200px;
+}
+
+.user-table__col--text {
+    width: 240px;
+}
+
+.user-table__col--email {
+    width: 240px;
+}
+
+.user-table__col--description {
+    width: 320px;
+}
+
+.user-table__col--date {
+    width: 140px;
+}
+
+.user-table__col--type {
+    width: 140px;
+}
+
+.user-table__col--year {
+    width: 110px;
+}
+
+.user-table__col--file {
+    width: 120px;
+}
+
+.user-table__col--action {
+    width: 160px;
+}
+
+.user-table__col--number {
+    width: 64px;
+}

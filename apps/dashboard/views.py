@@ -22,7 +22,7 @@ from apps.operasional.models import InstansiKlien, LayananKegiatan, SurveiKegiat
 from apps.peminjaman.constants import PENGUKURAN_FIELD_CONFIG
 from apps.peminjaman.models import PeminjamanBarangLaboratorium, PeminjamanRequest, ReturnStepChoices, StepChoices
 from apps.pemeliharaan.models import ACTIVE_PEMELIHARAAN_STEPS, PemeliharaanPengajuan
-from apps.pemeliharaan.views import _can_edit_pengajuan, _can_input_vendor
+from apps.pemeliharaan.views import _can_edit_pengajuan, _can_input_perbaikan, _can_input_vendor
 from apps.verifikasi.views import _get_pending_pemeliharaan_queryset, _get_pending_queryset
 
 
@@ -676,7 +676,7 @@ def build_active_context(user, active_peminjaman):
         if item.pk in pending_pemeliharaan:
             item.action_url = verification_url
             item.action_label = "Buka menu Verifikasi"
-        elif _can_edit_pengajuan(user, item) or _can_input_vendor(user, item):
+        elif _can_edit_pengajuan(user, item) or _can_input_vendor(user, item) or _can_input_perbaikan(user, item):
             item.action_url = maintenance_url
             item.action_label = "Buka menu Pemeliharaan"
 

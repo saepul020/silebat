@@ -759,7 +759,7 @@ function buildSdmBarData(source, selectedYear) {
         labels: chartData.labels,
         datasets: [
             {
-                label: 'Total Pelatihan',
+                label: source.label || 'Total Pelatihan',
                 data: chartData.data,
                 backgroundColor: colors.map(function (color) { return color.background; }),
                 borderColor: colors.map(function (color) { return color.border; }),
@@ -840,19 +840,19 @@ function createSdmPieOptions() {
     };
 }
 
-function initSdmTipeChart() {
-    const canvas = document.getElementById('sdmTipeChart');
-    const source = readDashboardChartData('sdm-tipe-data');
-    const yearFilter = document.getElementById('sdmTipeYear');
+function initSdmBarChart(name, key) {
+    const canvas = document.getElementById(`sdm${name}Chart`);
+    const source = readDashboardChartData(`sdm-${key}-data`);
+    const yearFilter = document.getElementById(`sdm${name}Year`);
 
-    if (!canvas || !source || !yearFilter) {
+    if (!canvas || !source) {
         return;
     }
 
     let chartInstance = null;
 
     function renderChart(updateMode) {
-        const chartData = buildSdmBarData(source, normalizeDashboardYearFilter(yearFilter.value));
+        const chartData = buildSdmBarData(source, yearFilter ? normalizeDashboardYearFilter(yearFilter.value) : 'all');
         const options = createBaseBarOptions(chartData.maxValue);
         options.plugins.legend.display = false;
         options.plugins.tooltip.callbacks = {
@@ -864,11 +864,11 @@ function initSdmTipeChart() {
         options.scales.x.ticks.callback = function (value) {
             return wrapChartLabel(this.getLabelForValue(value), isMobileViewport() ? 12 : 18, 2);
         };
-        updateChartEmptyState('sdm-tipe', chartData.hasData);
+        updateChartEmptyState(`sdm-${key}`, chartData.hasData);
         chartInstance = upsertBarChart(chartInstance, canvas, chartData.labels, chartData.datasets, options, updateMode);
     }
 
-    yearFilter.addEventListener('change', renderChart);
+    yearFilter?.addEventListener('change', renderChart);
     bindDashboardChartResize(renderChart);
     renderChart();
 }
@@ -912,7 +912,9 @@ function initSdmJenisChart() {
 }
 
 function initSdmCharts() {
-    initSdmTipeChart();
+    initSdmBarChart('Tipe', 'tipe');
+    initSdmBarChart('Kategori', 'kategori');
+    initSdmBarChart('Portofolio', 'portofolio');
     initSdmJenisChart();
 }
 
@@ -1184,18 +1186,6 @@ function bindInventoryFilter(key, renderChart) {
             updateSelection();
             renderChart();
         });
-    });
-    picker.addEventListener('keydown', function (event) {
-        if (event.key === 'Escape' && picker.open) {
-            picker.open = false;
-            picker.querySelector('summary').focus();
-            event.preventDefault();
-        }
-    });
-    document.addEventListener('click', function (event) {
-        if (!picker.contains(event.target)) {
-            picker.open = false;
-        }
     });
     updateSelection();
     return getSelection;

@@ -1,0 +1,45 @@
+<div class="form-group{% if field.errors %} has-error{% endif %}{% if hide_field %} is-hidden{% endif %}{% if lock_field %} is-status-dependent is-locked{% endif %}"{% if lock_field %} data-status-dependent-group="true"{% endif %}>
+    {% if end_checkbox %}
+    <div class="karir-form__end">
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        <label class="karir-form__check" for="{{ end_checkbox.id_for_label }}">{{ end_checkbox }}<span>{{ end_checkbox.label }}</span></label>
+    </div>
+    {% else %}
+    <label id="{{ field.auto_id }}_label" for="{{ field.id_for_label }}">{{ label_text|default:field.label }}{% if label_note %} <em class="user-field__note">{{ label_note }}</em>{% elif field.field.widget.input_type == 'file' and not field.field.required %} (opsional){% endif %}</label>
+    {% endif %}
+    {% if field.field.widget.input_type == 'file' %}
+    {% if stored_card and obj and field.value %}
+    <div class="document-file-link-wrap pelatihan-file-card">
+        <div class="document-file-link-wrap__info">
+            <span class="document-file-link-wrap__icon"><i class="bi bi-file-earmark-text-fill" aria-hidden="true"></i></span>
+            <span class="document-file-link-wrap__title pelatihan-file-name" title="{{ stored_name }}">{{ stored_name }}</span>
+        </div>
+        <a href="{% url doc_route|default:'pengguna:pendidikan_dokumen' obj.pk field.name %}" class="btn btn-secondary btn-sm" download title="Download {{ field.label|lower }} tersimpan" aria-label="Download {{ field.label|lower }} tersimpan"><i class="bi bi-download" aria-hidden="true"></i></a>
+    </div>
+    {% endif %}
+    <div class="upload-input-wrap upload-input-wrap--inline upload-input-wrap--file-proxy" data-inline-file-proxy>
+        <div class="upload-input-wrap__field">
+            {{ field }}
+            <label for="{{ field.id_for_label }}" class="file-input-proxy">
+                <span class="file-input-proxy__button" aria-hidden="true"><i class="bi bi-upload"></i></span>
+                <span class="file-input-proxy__text is-placeholder" data-inline-file-text>Pilih file {{ field.label|lower }}</span>
+            </label>
+        </div>
+        <div class="upload-file-state upload-file-state--inline is-hidden" data-inline-file-state>
+            <button type="button" class="upload-file-state__action upload-file-state__action--icon" data-inline-file-clear title="Batalkan Upload" aria-label="Batalkan Upload"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+        </div>
+    </div>
+    {% else %}
+    {{ field }}
+    {% endif %}
+    {% if group_notes %}<div class="user-field__notes">{% endif %}
+    {% if field.field.widget.input_type == 'file' %}<p class="input-error-text" data-inline-file-error-node hidden></p>{% endif %}
+    {% if field.help_text %}<p class="input-help-text">{{ field.help_text }}</p>{% endif %}
+    {% for error in field.errors %}<p class="input-error-text" data-user-error>*{{ error }}</p>{% endfor %}
+    {% if obj and field.value and not stored_card %}
+    {% if field.field.widget.input_type == 'file' %}
+    <a href="{% url doc_route|default:'pengguna:pendidikan_dokumen' obj.pk field.name %}">Download {{ field.label|lower }} tersimpan</a>
+    {% endif %}
+    {% endif %}
+    {% if group_notes %}</div>{% endif %}
+</div>

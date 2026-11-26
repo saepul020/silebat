@@ -1,0 +1,9 @@
+<p class="master-entries-info" role="status">
+    {% if listing.has_search %}
+        {{ listing.total_count }} hasil untuk "{{ listing.search_query }}"
+    {% elif listing.total_count %}
+        Menampilkan {{ listing.start_index }} - {{ listing.end_index }} dari {{ listing.total_count }} data
+    {% else %}
+        Menampilkan 0 data
+    {% endif %}
+</p>

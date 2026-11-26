@@ -4,7 +4,7 @@
 {% block title %}{% if is_report %}Detail Laporan Pemeliharaan{% else %}Detail Pengajuan Pemeliharaan{% endif %}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/pemeliharaan.css' %}?v=20260714-report-layout-v1">
+<link rel="stylesheet" href="{% static 'css/pemeliharaan.css' %}?v=20261125-field-groups-v1">
 {% endblock %}
 
 {% block content %}
@@ -40,21 +40,40 @@
             >
                 Kirim Data Vendor
             </button>
+            {% elif can_input_vendor %}
+            <span class="pemeliharaan-send-lock" data-maint-incomplete role="button" tabindex="0" data-incomplete-label="Vendor" aria-label="Kirim data vendor belum tersedia. Data belum lengkap">
+                <button type="button" class="btn btn-primary pemeliharaan-head-btn" disabled>Kirim Data Vendor</button>
+                {% include 'pemeliharaan/kirim_fields.html' %}
+            </span>
+            {% endif %}
+            {% if can_input_perbaikan %}
+            <a href="{% url 'pemeliharaan:perbaikan' obj.pk %}" class="btn btn-primary pemeliharaan-head-btn">Input Perbaikan Mandiri</a>
             {% endif %}
             {% if can_input_vendor %}
             <a href="{% url 'pemeliharaan:vendor' obj.pk %}" class="btn btn-primary pemeliharaan-head-btn">{% if obj.has_vendor_data %}Edit Data Vendor{% else %}Input Data Vendor{% endif %}</a>
             {% endif %}
-            {% if can_submit_pengajuan %}
+            {% if show_submit_pengajuan %}
+            {% if not can_submit_pengajuan %}
+            <span class="pemeliharaan-send-lock" data-maint-incomplete role="button" tabindex="0" data-incomplete-label="{% if can_input_perbaikan %}Perbaikan Mandiri{% else %}Pengajuan Pemeliharaan{% endif %}" aria-label="Kirim pengajuan belum tersedia. Data belum lengkap">
+            {% endif %}
             <button
                 type="button"
                 class="btn btn-primary pemeliharaan-head-btn"
+                {% if can_submit_pengajuan %}
                 data-maint-send-button
                 data-send-url="{% url 'pemeliharaan:kirim' obj.pk %}"
                 data-send-number="{{ obj.nomor_pengajuan|default:'-' }}"
-                data-send-target="{% if obj.perlu_perbaikan %}akan dikirim ke Kepala Lab untuk proses verifikasi{% else %}akan langsung dinyatakan selesai karena semua komponen baik{% endif %}"
+                data-send-target="{{ obj.kirim_target }}"
+                {% else %}
+                disabled title="Lengkapi dan simpan data sebelum mengirim pengajuan"
+                {% endif %}
             >
-                Kirim
+                Kirim Pengajuan
             </button>
+            {% if not can_submit_pengajuan %}
+                {% include 'pemeliharaan/kirim_fields.html' %}
+            </span>
+            {% endif %}
             {% endif %}
             {% if can_edit_pengajuan %}
             <a href="{% url 'pemeliharaan:edit' obj.pk %}" class="btn btn-warning pemeliharaan-head-btn">Edit Pengajuan</a>
@@ -79,5 +98,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/pemeliharaan.js' %}?v=20260713-maintenance-flow-v1" defer></script>
+<script src="{% static 'js/pemeliharaan.js' %}?v=20261125-field-groups-v1" defer></script>
 {% endblock %}

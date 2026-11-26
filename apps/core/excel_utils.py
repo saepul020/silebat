@@ -120,3 +120,53 @@ def build_excel_response(filename: str, sheets: Sequence[Mapping]) -> HttpRespon
     response = HttpResponse(output.getvalue(), content_type=EXCEL_CONTENT_TYPE)
     response["Content-Disposition"] = f'attachment; filename="{filename}"'
     return response
+
+
+def build_import_template(*, headers, sample, references, validations, worksheet_title, filename):
+    try:
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, PatternFill
+        from openpyxl.worksheet.datavalidation import DataValidation
+    except ImportError as exc:
+        raise RuntimeError('Library openpyxl belum tersedia. Jalankan: pip install openpyxl') from exc
+
+    workbook = Workbook()
+    worksheet = workbook.active
+    worksheet.title = worksheet_title
+
+    for column_index, header in enumerate(headers, start=1):
+        cell = worksheet.cell(row=1, column=column_index, value=header)
+        cell.font = Font(bold=True)
+        cell.fill = PatternFill('solid', fgColor='EAF2FF')
+        worksheet.column_dimensions[cell.column_letter].width = 28
+
+    for column_index, value in enumerate(sample, start=1):
+        worksheet.cell(row=2, column=column_index, value=value)
+
+    if references:
+        lists_sheet = workbook.create_sheet('Referensi Pilihan')
+        for col_index, (title, values) in enumerate(references, start=1):
+            lists_sheet.cell(row=1, column=col_index, value=title).font = Font(bold=True)
+            lists_sheet.column_dimensions[lists_sheet.cell(row=1, column=col_index).column_letter].width = 34
+            for row_index, value in enumerate(values, start=2):
+                lists_sheet.cell(row=row_index, column=col_index, value=value)
+
+    for header, values in (validations or {}).items():
+        if header not in headers:
+            continue
+        column_index = headers.index(header) + 1
+        column_letter = worksheet.cell(row=1, column=column_index).column_letter
+        formula = '"' + ','.join(values) + '"'
+        validator = DataValidation(type='list', formula1=formula, allow_blank=False)
+        worksheet.add_data_validation(validator)
+        validator.add(f'{column_letter}2:{column_letter}1000')
+
+    output = BytesIO()
+    workbook.save(output)
+    output.seek(0)
+    response = HttpResponse(
+        output.getvalue(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response

@@ -1,5 +1,6 @@
 document.addEventListener('DOMContentLoaded', function () {
     initPemeliharaanForm();
+    initPemeliharaanSubmit();
     initPemeliharaanSendModal();
     initPemeliharaanPhotoModal();
 });
@@ -474,13 +475,20 @@ function initPemeliharaanSendModal() {
     const numberNode = modal?.querySelector('[data-maint-send-number]');
     const targetNode = modal?.querySelector('[data-maint-send-target]');
     const buttons = document.querySelectorAll('[data-maint-send-button]');
-    const closeButtons = modal?.querySelectorAll('[data-maint-send-close]') || [];
+    const incomplete = document.getElementById('maint-incomplete-modal');
+    const incompleteNote = incomplete?.querySelector('[data-maint-incomplete-note]');
+    const missingTitle = incomplete?.querySelector('[data-maint-missing-title]');
+    const missingList = incomplete?.querySelector('[data-maint-missing-list]');
+    const incompleteButtons = document.querySelectorAll('[data-maint-incomplete]');
+    const closeButtons = document.querySelectorAll('[data-maint-send-close], [data-maint-incomplete-close]');
+    let activeButton = null;
 
-    if (!modal || !form || !buttons.length) {
+    if (!modal || !form || (!buttons.length && !incompleteButtons.length)) {
         return;
     }
 
     function openModal(button) {
+        activeButton = button;
         form.action = button.getAttribute('data-send-url') || '';
         if (numberNode) {
             numberNode.textContent = button.getAttribute('data-send-number') || '-';
@@ -490,12 +498,43 @@ function initPemeliharaanSendModal() {
         }
         modal.classList.add('show');
         document.body.classList.add('is-scroll-locked');
+        modal.querySelector('.delete-modal-close')?.focus();
     }
 
     function closeModal() {
         modal.classList.remove('show');
+        incomplete?.classList.remove('show');
         document.body.classList.remove('is-scroll-locked');
+        activeButton?.focus();
     }
+
+    incompleteButtons.forEach(function (button) {
+        function openIncomplete() {
+            if (!incomplete) return;
+            activeButton = button;
+            if (incompleteNote) {
+                const label = button.dataset.incompleteLabel || 'Pengajuan Pemeliharaan';
+                incompleteNote.textContent = `Silakan lengkapi Data ${label} terlebih dahulu.`;
+            }
+            if (missingList) {
+                const fields = button.querySelector('[data-maint-missing]');
+                missingList.replaceChildren();
+                if (fields) missingList.appendChild(fields.content.cloneNode(true));
+                missingList.hidden = !missingList.querySelector('li');
+                if (missingTitle) missingTitle.hidden = missingList.hidden;
+            }
+            incomplete.classList.add('show');
+            document.body.classList.add('is-scroll-locked');
+            incomplete.querySelector('.delete-modal-close')?.focus();
+        }
+        button.addEventListener('click', openIncomplete);
+        button.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                openIncomplete();
+            }
+        });
+    });
 
     buttons.forEach(function (button) {
         button.addEventListener('click', function () {
@@ -508,7 +547,7 @@ function initPemeliharaanSendModal() {
     });
 
     document.addEventListener('keydown', function (event) {
-        if (event.key === 'Escape' && modal.classList.contains('show')) {
+        if (event.key === 'Escape' && (modal.classList.contains('show') || incomplete?.classList.contains('show'))) {
             closeModal();
         }
     });
@@ -643,12 +682,12 @@ function initPemeliharaanForm() {
                         <label for="id_tindakan_${index}">Tindakan Perbaikan</label>
                         <select name="tindakan_${index}" id="id_tindakan_${index}" class="form-control" data-action-field data-preserve-placeholder="true" autocomplete="off">
                             <option value="">Pilih tindakan perbaikan</option>
-                            <option value="Perbaikan Mandiri" ${action === 'Perbaikan Mandiri' ? 'selected' : ''}>Perbaikan Mandiri</option>
-                            <option value="Perbaikan Eksternal" ${action === 'Perbaikan Eksternal' ? 'selected' : ''}>Perbaikan Eksternal</option>
+                            <option value="Perbaikan Langsung" ${action === 'Perbaikan Langsung' ? 'selected' : ''}>Perbaikan Langsung</option>
+                            <option value="Perbaikan Lanjutan" ${action === 'Perbaikan Lanjutan' ? 'selected' : ''}>Perbaikan Lanjutan</option>
                         </select>
                     </div>
                 </div>
-                <div class="pemeliharaan-action-panel" data-action-panel="Perbaikan Mandiri" ${action === 'Perbaikan Mandiri' ? '' : 'hidden'}>
+                <div class="pemeliharaan-action-panel" data-action-panel="Perbaikan Langsung" ${action === 'Perbaikan Langsung' ? '' : 'hidden'}>
                     <div class="form-row master-form-row master-form-row--1">
                         <div class="form-group form-group-full">
                             <label for="id_uraian_perbaikan_${index}">Uraian Perbaikan</label>
@@ -667,7 +706,7 @@ function initPemeliharaanForm() {
                     </div>
                     ${uploadBlock(index, 'dokumentasi_perbaikan', 'Dokumentasi Perbaikan')}
                 </div>
-                <div class="pemeliharaan-action-panel" data-action-panel="Perbaikan Eksternal" ${action === 'Perbaikan Eksternal' ? '' : 'hidden'}>
+                <div class="pemeliharaan-action-panel" data-action-panel="Perbaikan Lanjutan" ${action === 'Perbaikan Lanjutan' ? '' : 'hidden'}>
                     <div class="form-row master-form-row master-form-row--1">
                         <div class="form-group form-group-full">
                             <label for="id_uraian_kerusakan_${index}">Uraian Kerusakan</label>
@@ -680,29 +719,37 @@ function initPemeliharaanForm() {
         `;
     }
 
-    function clearAreaErrors(target) {
-        const area = target.closest?.('[data-komponen-row], [data-repair-row], .upload-card');
-        area?.querySelectorAll('.pemeliharaan-komponen__errors, .input-error-text:not([data-gallery-error])').forEach(function (node) {
-            node.remove();
-        });
-        area?.classList.remove('has-error');
+    function clearFieldErrors(field) {
+        if (!field.matches?.('input, select, textarea') || field.disabled
+            || ['file', 'checkbox', 'hidden'].includes(field.type)) {
+            return;
+        }
+        const group = field.closest('.form-group');
+        const errors = Array.from(group?.querySelectorAll('.input-error-text') || []);
+        if (!errors.length) return;
+
+        const value = String(field.value || '').trim();
+        if (!value && (field.required || errors.some(node => /wajib/i.test(node.textContent)))) return;
+        if (value && field.matches('[data-maint-date-picker]')) {
+            const date = parseMaintDate(value);
+            const source = document.getElementById(field.dataset.maintMinSource || '');
+            const minimum = parseMaintDate(source ? source.value : field.dataset.maintMinDate);
+            if (!date || (source && !minimum) || (minimum && date < minimum)) return;
+        }
+        if (field.validity && !field.validity.valid) return;
+        errors.forEach(node => node.remove());
+        group.classList.remove('has-error');
+        field.removeAttribute('aria-invalid');
     }
 
-    function bindErrorClear(scope) {
-        const root = scope || form;
-        root.querySelectorAll('input, select, textarea').forEach(function (field) {
-            if (field.dataset.errorClearReady === 'true') {
-                return;
-            }
-            field.dataset.errorClearReady = 'true';
-            field.addEventListener('input', function () {
-                clearAreaErrors(field);
-            });
-            field.addEventListener('change', function () {
-                clearAreaErrors(field);
+    ['input', 'change'].forEach(function (eventName) {
+        form.addEventListener(eventName, function (event) {
+            clearFieldErrors(event.target);
+            form.querySelectorAll('[data-maint-min-source]').forEach(function (field) {
+                if (field.dataset.maintMinSource === event.target.id) clearFieldErrors(field);
             });
         });
-    }
+    });
 
     function bindSelectPlaceholderState(scope) {
         const root = scope || form;
@@ -729,7 +776,8 @@ function initPemeliharaanForm() {
     function syncRepairRow(row) {
         const actionField = row.querySelector('[data-action-field]');
         row.querySelectorAll('[data-action-panel]').forEach(function (panel) {
-            const isActive = actionField?.value === panel.getAttribute('data-action-panel');
+            const action = form.dataset.repairMode === 'true' ? 'Perbaikan Langsung' : actionField?.value;
+            const isActive = action === panel.getAttribute('data-action-panel');
             panel.hidden = !isActive;
             setPanelDisabled(panel, !isActive);
             panel.querySelectorAll('[data-maint-min-source]').forEach(function (input) {
@@ -742,7 +790,7 @@ function initPemeliharaanForm() {
         const root = scope || form;
         root.querySelectorAll('[data-repair-row]').forEach(function (row) {
             const actionField = row.querySelector('[data-action-field]');
-            if (actionField?.dataset.repairReady !== 'true') {
+            if (actionField && actionField.dataset.repairReady !== 'true') {
                 actionField.dataset.repairReady = 'true';
                 actionField.addEventListener('change', function () {
                     syncRepairRow(row);
@@ -753,7 +801,6 @@ function initPemeliharaanForm() {
         initPemeliharaanGallery(root);
         initPemeliharaanDatePickers(root);
         bindSelectPlaceholderState(root);
-        bindErrorClear(root);
     }
 
     function getRepairNeededRows() {
@@ -781,9 +828,20 @@ function initPemeliharaanForm() {
         if (repairEmpty) {
             repairEmpty.hidden = rows.length > 0;
         }
-        repairList.innerHTML = rows.map(function (row) {
-            return repairRow(row.index, row.component, values);
-        }).join('');
+        const existing = new Map(Array.from(repairList.querySelectorAll('[data-repair-row]'))
+            .map(row => [row.dataset.index, row]));
+        const fragment = document.createDocumentFragment();
+        rows.forEach(function (row) {
+            const current = existing.get(row.index);
+            if (current) {
+                fragment.appendChild(current);
+            } else {
+                const template = document.createElement('template');
+                template.innerHTML = repairRow(row.index, row.component, values);
+                fragment.appendChild(template.content);
+            }
+        });
+        repairList.replaceChildren(fragment);
         bindRepairRows(repairList);
     }
 
@@ -800,7 +858,6 @@ function initPemeliharaanForm() {
             });
         });
         bindSelectPlaceholderState(root);
-        bindErrorClear(root);
     }
 
     function renderComponents() {
@@ -811,6 +868,7 @@ function initPemeliharaanForm() {
         list.innerHTML = components.map(function (component, index) {
             return componentRow(index, component);
         }).join('');
+        repairList?.replaceChildren();
         if (checkFieldset) {
             checkFieldset.hidden = !alatSelect?.value;
         }
@@ -889,6 +947,7 @@ function initPemeliharaanForm() {
                 alatSelect.value = pendingAlatValue;
                 lastAlatValue = pendingAlatValue;
                 renderComponents();
+                alatSelect.dispatchEvent(new Event('change', { bubbles: true }));
             });
             return;
         }
@@ -905,6 +964,89 @@ function initPemeliharaanForm() {
     initPemeliharaanDatePickers(form);
     syncTanggalMulai();
     initPemeliharaanDigits(form);
+}
+
+function initPemeliharaanSubmit() {
+    const form = document.querySelector('[data-pemeliharaan-form="true"]');
+    if (!form || !window.fetch || !window.FormData) return;
+    let pending = false;
+
+    function showStatus(message) {
+        let status = form.querySelector('[data-maint-save-error]');
+        if (!status) {
+            status = document.createElement('p');
+            status.className = 'input-error-text';
+            status.dataset.maintSaveError = 'true';
+            status.setAttribute('role', 'alert');
+            form.prepend(status);
+        }
+        status.textContent = message;
+    }
+
+    function showErrors(errors) {
+        form.querySelectorAll('.input-error-text:not([data-gallery-error])').forEach(node => node.remove());
+        form.querySelectorAll('.has-error').forEach(node => node.classList.remove('has-error'));
+        form.querySelectorAll('[aria-invalid]').forEach(node => node.removeAttribute('aria-invalid'));
+        const globalErrors = [];
+        Object.entries(errors).forEach(function ([name, messages]) {
+            const field = form.elements.namedItem(name);
+            const group = field?.closest?.('.form-group, .upload-card');
+            if (!group) {
+                globalErrors.push(...messages);
+                return;
+            }
+            group.classList.add('has-error');
+            field.setAttribute('aria-invalid', 'true');
+            let anchor = group.querySelector('.landing-gallery-picker') || field.closest('.date-picker-control') || field;
+            messages.forEach(function (message) {
+                const error = document.createElement('p');
+                error.className = 'input-error-text';
+                error.textContent = '*' + String(message).replace(/^\*/, '');
+                anchor.insertAdjacentElement('afterend', error);
+                anchor = error;
+            });
+        });
+        if (globalErrors.length) showStatus(globalErrors.join(' '));
+        form.querySelector('.input-error-text:not([hidden])')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    form.addEventListener('submit', async function (event) {
+        if (event.defaultPrevented) return;
+        event.preventDefault();
+        if (pending) return;
+        const data = new FormData(form);
+        if (event.submitter?.name) data.append(event.submitter.name, event.submitter.value);
+        const buttons = Array.from(form.querySelectorAll('button[type="submit"], input[type="submit"]'))
+            .map(button => ({ button, disabled: button.disabled }));
+        pending = true;
+        form.setAttribute('aria-busy', 'true');
+        buttons.forEach(({ button }) => { button.disabled = true; });
+        form.querySelector('[data-maint-save-error]')?.remove();
+        try {
+            const response = await fetch(form.action || window.location.href, {
+                method: 'POST', body: data, credentials: 'same-origin',
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+            });
+            if (response.redirected || !response.headers.get('content-type')?.includes('application/json')) {
+                throw new Error('Unexpected save response');
+            }
+            const result = await response.json();
+            if (response.status === 422 && result.errors) {
+                showErrors(result.errors);
+            } else if (response.ok && result.redirect_url) {
+                form.dispatchEvent(new Event('unsaved:submitted'));
+                window.location.assign(result.redirect_url);
+            } else {
+                throw new Error('Save failed');
+            }
+        } catch {
+            showStatus('Penyimpanan belum dapat dipastikan. Dokumentasi tetap tersedia. Periksa koneksi dan halaman detail sebelum mencoba kembali.');
+        } finally {
+            pending = false;
+            form.removeAttribute('aria-busy');
+            buttons.forEach(({ button, disabled }) => { button.disabled = disabled; });
+        }
+    });
 }
 
 function initPemeliharaanGallery(scope) {

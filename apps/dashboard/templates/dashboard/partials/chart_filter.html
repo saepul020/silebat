@@ -1,14 +1,14 @@
 <div class="dashboard-chart__filters">
-    <details class="chart-picker" data-chart-picker="{{ key }}">
-        <summary class="chart-picker__toggle" aria-label="{{ label }}" aria-describedby="pilihan-{{ key }}" title="{{ label }}">
+    <details class="chart-picker" data-chart-picker="{{ key }}" data-select-menu>
+        <summary class="chart-picker__toggle user-select__toggle" data-select-toggle aria-label="{{ label }}" aria-describedby="pilihan-{{ key }}" title="{{ label }}">
             <span>Pilih: <span id="pilihan-{{ key }}" data-chart-selection>{% if items %}All{% else %}0 item{% endif %}</span></span>
         </summary>
-        <div class="chart-picker__panel">
+        <div class="user-select__panel user-select__panel--adaptive" data-select-panel>
             <div class="chart-picker__actions">
                 <button type="button" class="btn btn-secondary btn-sm" data-chart-select="all"{% if not items %} disabled{% endif %}>Pilih semua</button>
                 <button type="button" class="btn btn-secondary btn-sm" data-chart-select="none"{% if not items %} disabled{% endif %}>Kosongkan</button>
             </div>
-            <div class="chart-picker__options" role="group" aria-label="{{ label }}">
+            <div class="user-select__options" data-select-options role="group" aria-label="{{ label }}">
                 {% for item in items %}
                 <label class="chart-picker__option">
                     <input type="checkbox" value="{{ item.id }}" checked>

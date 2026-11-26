@@ -1,11 +1,11 @@
 {% extends 'base.html' %}
 
-{% block title %}Detail Pengguna{% endblock %}
+{% block title %}Data Pribadi{% endblock %}
 
 {% block content %}
 <div class="page-header detail-header">
     <div>
-        <h1>Detail Pengguna</h1>
+        <h1>Data Pribadi</h1>
         <p>Informasi lengkap pengguna aplikasi.</p>
     </div>
 </div>
@@ -31,6 +31,18 @@
     </div>
 
     <div class="detail-grid detail-grid--info">
+        <div class="detail-item">
+            <label>Tempat Lahir</label>
+            <p>{{ obj.profile.tempat_lahir|default:"-" }}</p>
+        </div>
+        <div class="detail-item">
+            <label>Tanggal Lahir</label>
+            <p>{{ obj.profile.tanggal_lahir|date:"d M Y"|default:"-" }}</p>
+        </div>
+        <div class="detail-item">
+            <label>Jenis Kelamin</label>
+            <p>{{ obj.profile.get_jenis_kelamin_display|default:"-" }}</p>
+        </div>
         <div class="detail-item">
             <label>Email</label>
             <p>{{ obj.email|default:"-" }}</p>
@@ -77,10 +89,10 @@
         {% if can_edit_obj %}
             <a href="{% url 'pengguna:edit' obj.pk %}" class="btn btn-primary">Edit Pengguna</a>
         {% endif %}
-        {% if role_access.show_data_pengguna %}
+        {% if request.user.pk != obj.pk and role_access.show_data_pengguna %}
             <a href="{% url 'pengguna:daftar' %}" class="btn btn-secondary">Kembali</a>
         {% else %}
-            <a href="{% url 'dashboard:index' %}" class="btn btn-secondary">Kembali</a>
+            <a href="{% url 'pengguna:data' %}" class="btn btn-secondary">Kembali</a>
         {% endif %}
     </div>
 </div>

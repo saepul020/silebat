@@ -63,7 +63,7 @@ function initEquipmentFilter() {
                 return;
             }
             filter.value = button.value;
-            applyFilter();
+            filter.dispatchEvent(new Event('change', { bubbles: true }));
         });
     });
     filter.addEventListener('change', applyFilter);

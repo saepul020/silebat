@@ -1,0 +1,5 @@
+{% with import_route='pengguna:'|add:kind|add:'_import' format_route='pengguna:'|add:kind|add:'_format' modal_id=kind|add:'-import' file_id=kind|add:'-import-file' %}
+{% url import_route as import_action_url %}
+{% url format_route as import_download_url %}
+{% include 'components/import_modal.html' with import_allowed=True import_context=import_context import_modal_id=modal_id import_file_id=file_id import_title=title import_action_url=import_action_url import_download_url=import_download_url import_help_text='Gunakan file .xlsx maksimal 7 MB dan 5000 baris. Data duplikat diperbolehkan. Lampiran dan nomor dokumen dilengkapi melalui Edit Data setelah impor.' %}
+{% endwith %}

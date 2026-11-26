@@ -1,0 +1,15 @@
+<div class="sdm-period__fields">
+    <div class="sdm-period__field">
+        <select id="{{ prefix }}-year" name="{{ prefix }}_year" aria-label="Filter tahun {{ filter_label }}" data-select-fit data-search-period class="js-master-filter-select"{% if locked %} disabled title="Periode dikunci selama pencarian aktif"{% endif %}>
+            <option value="all"{% if selected_year == 'all' %} selected{% endif %}>Semua</option>
+            {% for year in years %}<option value="{{ year }}"{% if year == selected_year %} selected{% endif %}>{{ year }}</option>{% endfor %}
+        </select>
+        <input type="hidden" name="{{ prefix }}_year" value="all" data-period-value{% if not locked %} disabled{% endif %}>
+    </div>
+    <div class="sdm-period__field">
+        <select id="{{ prefix }}-month" name="{{ prefix }}_month" aria-label="Filter bulan {{ filter_label }}" data-select-fit data-search-period class="js-master-filter-select"{% if locked %} disabled title="Periode dikunci selama pencarian aktif"{% endif %}>
+            {% for month in month_options %}<option value="{{ month.value }}"{% if month.value == selected_month %} selected{% endif %}>{{ month.label }}</option>{% endfor %}
+        </select>
+        <input type="hidden" name="{{ prefix }}_month" value="all" data-period-value{% if not locked %} disabled{% endif %}>
+    </div>
+</div>

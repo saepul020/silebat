@@ -1,0 +1,14 @@
+            <fieldset class="peserta-form{% if group_locked %} is-status-dependent is-locked{% endif %}" data-peserta-group{% if group_locked %} disabled inert{% endif %}>
+                <legend>Peserta Kegiatan</legend>
+                {{ peserta.management_form }}
+                {% for error in peserta.non_form_errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
+                <div class="peserta-form__list" data-peserta-list>
+                    {% for row in peserta %}
+                        {% include row_template with row=row %}
+                    {% endfor %}
+                </div>
+                <button type="button" class="btn btn-secondary peserta-form__add" data-peserta-add><i class="bi bi-plus-circle" aria-hidden="true"></i>&nbsp;Tambah Peserta</button>
+                <template data-peserta-template>
+                    {% include row_template with row=peserta.empty_form %}
+                </template>
+            </fieldset>

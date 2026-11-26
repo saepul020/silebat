@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Input Perbaikan Mandiri{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/landing_manage.css' %}">
+<link rel="stylesheet" href="{% static 'css/pemeliharaan.css' %}?v=20261125-field-errors-v1">
+{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>{{ page_title }}</h1>
+    <p>{{ obj.nomor_pengajuan }} — {{ obj.alat_label }}</p>
+</div>
+<div class="form-card user-form-card master-data-form-card pemeliharaan-form-card">
+    <form method="post" enctype="multipart/form-data" class="pengguna-form master-data-form" data-pemeliharaan-form="true" data-repair-mode="true" novalidate>
+        {% csrf_token %}
+        {% for error in form.non_field_errors %}<p class="input-error-text">{{ error }}</p>{% endfor %}
+        <fieldset>
+            <legend>Perbaikan Mandiri</legend>
+            {% if form.pilih_alat.errors %}
+            <div class="form-group has-error">
+                <label for="{{ form.pilih_alat.id_for_label }}">{{ form.pilih_alat.label }}</label>
+                {{ form.pilih_alat }}
+                {% for error in form.pilih_alat.errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
+            </div>
+            {% endif %}
+            <div class="form-group {% if form.tanggal_pemeriksaan.errors %}has-error{% endif %}">
+                <label for="id_tanggal_pemeriksaan">Tanggal Pemeriksaan</label>
+                <input id="id_tanggal_pemeriksaan" type="text" value="{{ tanggal_pemeriksaan_display }}" readonly class="form-control is-readonly-field">
+                {% for error in form.tanggal_pemeriksaan.errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
+            </div>
+            <div class="pemeliharaan-komponen-list" data-repair-list>
+                {% for row in form.component_rows %}
+                    {% include 'pemeliharaan/row_perbaikan.html' %}
+                {% endfor %}
+            </div>
+        </fieldset>
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Simpan</button>
+            <a href="{% url 'pemeliharaan:detail' obj.pk %}" class="btn btn-secondary">Kembali</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script src="{% static 'js/pemeliharaan.js' %}?v=20261125-uploads-v1" defer></script>
+{% endblock %}

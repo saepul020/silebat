@@ -33,7 +33,8 @@
   <link rel="stylesheet" href="{% static 'css/landing_fonts.css' %}?v=20260606-v1">
   <link rel="stylesheet" href="{% static 'vendor/bootstrap-icons/bootstrap-icons.min.css' %}?v=1.11.3">
   <link rel="stylesheet" href="{% static 'css/charts.css' %}?v=20261111-chart-badge-v1">
-  <link rel="stylesheet" href="{% static 'css/landing_page.css' %}?v=20260610-equipment-card-v1">
+  <link rel="stylesheet" href="{% static 'css/landing_page.css' %}?v=20261126-select-v1">
+  <link rel="stylesheet" href="{% static 'css/user_select.css' %}?v=20261126-global-v3">
   <link rel="stylesheet" href="{% static 'css/chatbot.css' %}?v=20260604-avatar-img-v1">
   <link rel="stylesheet" href="{% static 'css/loading.css' %}?v=20260612-global-loading-v1">
 </head>
@@ -82,7 +83,7 @@
   </div>
 </nav>
 
-<main id="main-content">
+<main id="main-content" data-select-adaptive>
 <!-- === HERO === -->
 <section class="hero" id="beranda">
   <div class="container">
@@ -355,14 +356,14 @@
           <button type="button" class="peralatan-filter__button" data-equipment-filter-button value="{{ option.value }}" aria-pressed="{% if option.value == default_equipment_filter %}true{% else %}false{% endif %}">{{ option.label }}</button>
           {% endfor %}
         </div>
-        <label class="peralatan-filter__select-wrap" for="equipmentCategoryFilter">
-          <span class="sr-only">Kategori Barang :</span>
+        <div class="peralatan-filter__select-wrap">
+          <label class="sr-only" for="equipmentCategoryFilter">Kategori Barang :</label>
           <select id="equipmentCategoryFilter" data-equipment-filter data-default-category="{{ default_equipment_filter|default:'Geolistrik' }}">
             {% for option in equipment_filters %}
             <option value="{{ option.value }}" {% if option.value == default_equipment_filter %}selected{% endif %}>{{ option.label }}</option>
             {% endfor %}
           </select>
-        </label>
+        </div>
       </div>
     </div>
     {% endif %}
@@ -551,7 +552,8 @@
 {% include 'partials/loading.html' %}
 <script src="{% static 'js/loading.js' %}?v=20260612-global-loading-v1" defer></script>
 <script src="{% static 'js/chart_summary.js' %}?v=20261111-chart-badge-v1" defer></script>
-<script src="{% static 'js/landing_page.js' %}?v=20261111-chart-total-v1" defer></script>
+<script src="{% static 'js/landing_page.js' %}?v=20261126-select-v1" defer></script>
+<script src="{% static 'js/user_select.js' %}?v=20261126-global-v3" defer></script>
 <script src="{% static 'js/chatbot.js' %}?v=20260604-head-close-v1" defer></script>
 </body>
 </html>

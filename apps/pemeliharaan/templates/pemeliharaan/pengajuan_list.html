@@ -4,7 +4,7 @@
 {% block title %}{{ page_title }}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/pemeliharaan.css' %}?v=20260714-report-layout-v1">
+<link rel="stylesheet" href="{% static 'css/pemeliharaan.css' %}?v=20261125-field-groups-v1">
 {% endblock %}
 
 {% block content %}
@@ -99,14 +99,24 @@
                                 data-maint-send-button
                                 data-send-url="{% url 'pemeliharaan:kirim' obj.pk %}"
                                 data-send-number="{{ obj.nomor_pengajuan|default:'-' }}"
-                                data-send-target="{% if obj.perlu_perbaikan %}akan dikirim ke Kepala Lab untuk proses verifikasi{% else %}akan langsung dinyatakan selesai karena semua komponen baik{% endif %}"
+                                data-send-target="{{ obj.kirim_target }}"
                             >
                                 <i class="bi bi-send-fill"></i>
                             </button>
+                            {% elif obj.show_submit_pengajuan or obj.can_input_vendor %}
+                            <span class="pemeliharaan-send-lock" data-maint-incomplete role="button" tabindex="0" data-incomplete-label="{% if obj.can_input_vendor %}Vendor{% elif obj.can_input_perbaikan %}Perbaikan Mandiri{% else %}Pengajuan Pemeliharaan{% endif %}" aria-label="Kirim belum tersedia. Data belum lengkap">
+                            <button type="button" class="btn btn-primary btn-sm" disabled title="Lengkapi dan simpan data sebelum mengirim pengajuan" aria-label="Kirim pengajuan belum tersedia">
+                                <i class="bi bi-send-fill" aria-hidden="true"></i>
+                            </button>
+                            {% include 'pemeliharaan/kirim_fields.html' %}
+                            </span>
                             {% else %}
                             <button type="button" class="btn btn-secondary btn-sm" title="Pengajuan sudah masuk proses verifikasi" disabled>
                                 <i class="bi bi-send-fill"></i>
                             </button>
+                            {% endif %}
+                            {% if obj.can_input_perbaikan %}
+                            <a href="{% url 'pemeliharaan:perbaikan' obj.pk %}" class="btn btn-primary btn-sm" title="Input Perbaikan Mandiri" aria-label="Input Perbaikan Mandiri"><i class="bi bi-tools" aria-hidden="true"></i></a>
                             {% endif %}
                             {% if obj.can_input_vendor %}
                             <a href="{% url 'pemeliharaan:vendor' obj.pk %}" class="btn btn-primary btn-sm" title="{% if obj.has_vendor_data %}Edit Data Vendor{% else %}Input Data Vendor{% endif %}"><i class="bi bi-building"></i></a>
@@ -141,5 +151,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/pemeliharaan.js' %}?v=20260713-maintenance-flow-v1" defer></script>
+<script src="{% static 'js/pemeliharaan.js' %}?v=20261125-field-groups-v1" defer></script>
 {% endblock %}

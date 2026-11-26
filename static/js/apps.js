@@ -26,7 +26,12 @@ document.addEventListener('DOMContentLoaded', function () {
         initMasterDataFormValidation,
         initOperasionalFormValidation,
         initPenggunaCreateFormValidation,
+        initUserProfileForm,
         initPelatihanFormBehavior,
+        initPendidikanForm,
+        initKarirForm,
+        initLogbookForm,
+        initPortofolioForm,
         initGlobalQtyStepperBehavior,
         initInventoryPhotoPreview,
         initPeminjamanFormBehavior,
@@ -59,10 +64,9 @@ function initInventoryPhotoPreview() {
     const image = modal?.querySelector('[data-inventory-photo-image]');
     const caption = modal?.querySelector('[data-inventory-photo-caption]');
     const card = modal?.querySelector('.inventory-photo__card');
-    const triggers = document.querySelectorAll('[data-inventory-photo-open]');
     let activeTrigger = null;
 
-    if (!modal || !image || !caption || !card || !triggers.length) {
+    if (!modal || !image || !caption || !card) {
         return;
     }
 
@@ -93,10 +97,9 @@ function initInventoryPhotoPreview() {
         card.focus();
     }
 
-    triggers.forEach(function (trigger) {
-        trigger.addEventListener('click', function () {
-            openModal(trigger);
-        });
+    document.addEventListener('click', function (event) {
+        const trigger = event.target.closest('[data-inventory-photo-open]');
+        if (trigger) openModal(trigger);
     });
 
     modal.querySelectorAll('[data-inventory-photo-close]').forEach(function (button) {
@@ -219,6 +222,11 @@ function initSelectPlaceholderState() {
     });
 }
 
+
+function initUserProfileForm() {
+    const form = document.querySelector('[data-profile-form]');
+    if (form) initUserDatePickers(form);
+}
 
 function initPenggunaCreateFormValidation() {
     const form = document.querySelector('[data-pengguna-create-form="true"]');
@@ -771,37 +779,64 @@ function initVerificationActionModal() {
     const cancelButton = document.getElementById('verificationNoteModalCancel');
     const backdrop = document.getElementById('verificationNoteModalBackdrop');
     const actionButtons = document.querySelectorAll('.js-verify-action[data-action]');
+    const repairMethod = form?.querySelector('[data-repair-method]');
+    const methodInput = repairMethod?.querySelector('select');
+
+    function syncRepairMethod() {
+        if (!repairMethod) return;
+        const active = actionInput.value === 'setujui';
+        repairMethod.hidden = !active;
+        methodInput.disabled = !active;
+        methodInput.required = active;
+        if (!active) {
+            clearFieldErrors(methodInput);
+        }
+    }
 
     if (!modal || !form || !actionInput || !actionButtons.length) {
         return;
     }
 
     const submitClassCandidates = ['btn-primary', 'btn-secondary', 'btn-warning', 'btn-danger', 'btn-success'];
-    const noteGroup = noteInput ? noteInput.closest('.form-group') : null;
-
-    function clearNoteErrors() {
-        if (!noteGroup) {
+    function clearFieldErrors(field) {
+        const group = field?.closest('.form-group');
+        if (!group) {
             return;
         }
 
-        noteGroup.classList.remove('has-error');
-        noteGroup.querySelectorAll('.verify-note-error').forEach(function (errorNode) {
+        group.classList.remove('has-error');
+        field.removeAttribute('aria-invalid');
+        group.querySelectorAll('.verify-note-error').forEach(function (errorNode) {
             errorNode.remove();
         });
     }
 
-    function showNoteError(message) {
-        if (!noteGroup || !message) {
+    function showFieldError(field, message) {
+        const group = field?.closest('.form-group');
+        if (!group || !message) {
             return;
         }
 
-        clearNoteErrors();
-        noteGroup.classList.add('has-error');
+        clearFieldErrors(field);
+        group.classList.add('has-error');
+        field.setAttribute('aria-invalid', 'true');
 
         const errorNode = document.createElement('p');
         errorNode.className = 'input-error-text verify-note-error';
         errorNode.textContent = message.startsWith('*') ? message : '*' + message;
-        noteGroup.appendChild(errorNode);
+        field.insertAdjacentElement('afterend', errorNode);
+    }
+
+    function validateRepairMethod() {
+        if (!methodInput || methodInput.disabled || !methodInput.required) {
+            return true;
+        }
+        if (!methodInput.value) {
+            showFieldError(methodInput, 'Metode perbaikan wajib dipilih.');
+            return false;
+        }
+        clearFieldErrors(methodInput);
+        return true;
     }
 
     function getRequiredNoteMessage() {
@@ -846,6 +881,7 @@ function initVerificationActionModal() {
         const submitClass = button.getAttribute('data-submit-class') || 'btn-primary';
 
         actionInput.value = action;
+        syncRepairMethod();
 
         if (modalTitle) {
             modalTitle.textContent = title;
@@ -857,7 +893,7 @@ function initVerificationActionModal() {
             noteInput.placeholder = placeholder;
             noteInput.required = requiresNote;
         }
-        clearNoteErrors();
+        clearFieldErrors(noteInput);
         if (noteHelp) {
             noteHelp.textContent = helpText;
             noteHelp.hidden = !helpText;
@@ -875,6 +911,7 @@ function initVerificationActionModal() {
             openModal();
         });
     });
+    syncRepairMethod();
 
     [closeButton, cancelButton, backdrop].forEach(function (element) {
         if (!element) {
@@ -893,21 +930,27 @@ function initVerificationActionModal() {
         ['input', 'change'].forEach(function (eventName) {
             noteInput.addEventListener(eventName, function () {
                 if (String(noteInput.value || '').trim()) {
-                    clearNoteErrors();
+                    clearFieldErrors(noteInput);
                 }
             });
         });
     }
 
-    form.addEventListener('submit', function (event) {
-        if (!noteInput || !noteInput.required) {
-            return;
-        }
+    if (methodInput) {
+        ['input', 'change', 'blur'].forEach(function (eventName) {
+            methodInput.addEventListener(eventName, validateRepairMethod);
+        });
+    }
 
-        if (!String(noteInput.value || '').trim()) {
+    form.addEventListener('submit', function (event) {
+        let firstInvalid = validateRepairMethod() ? null : methodInput;
+        if (noteInput?.required && !String(noteInput.value || '').trim()) {
+            showFieldError(noteInput, getRequiredNoteMessage());
+            firstInvalid = firstInvalid || noteInput;
+        }
+        if (firstInvalid) {
             event.preventDefault();
-            showNoteError(getRequiredNoteMessage());
-            noteInput.focus();
+            firstInvalid.focus();
         }
     });
 
@@ -1298,12 +1341,37 @@ function initUploadPreviewControls() {
                 setExistingLinkVisibility(false);
             }
 
-            if (hasAnyImagePreview && file && file.type && file.type.startsWith('image/')) {
+            function readPreview(blob) {
                 const reader = new FileReader();
                 reader.onload = function (loadEvent) {
-                    setSelectedPreview(loadEvent.target.result);
+                    if (input.files?.[0] === file) setSelectedPreview(loadEvent.target.result);
                 };
-                reader.readAsDataURL(file);
+                reader.readAsDataURL(blob);
+            }
+
+            if (hasAnyImagePreview && /\.(heic|heif)$/i.test(file.name) && control.dataset.uploadPreviewUrl) {
+                clearSelectedPreview();
+                const data = new FormData();
+                data.append('dokumen', file);
+                fetch(control.dataset.uploadPreviewUrl, {
+                    method: 'POST', body: data, credentials: 'same-origin',
+                    headers: { 'X-CSRFToken': input.form.querySelector('[name="csrfmiddlewaretoken"]').value },
+                }).then(async function (response) {
+                    if (!response.ok) {
+                        const result = await response.json().catch(() => ({ error: 'Preview gambar tidak tersedia. Coba pilih ulang gambar.' }));
+                        throw new Error(result.error || 'Preview gambar tidak tersedia.');
+                    }
+                    return response.blob();
+                }).then(function (blob) {
+                    if (input.files?.[0] === file) readPreview(blob);
+                }).catch(function (error) {
+                    if (input.files?.[0] !== file) return;
+                    input.value = '';
+                    clearSelectedPreview();
+                    showInlineError(error.message);
+                });
+            } else if (hasAnyImagePreview && file && (file.type.startsWith('image/') || /\.(jpe?g|png)$/i.test(file.name))) {
+                readPreview(file);
             } else if (hasAnyImagePreview) {
                 clearSelectedPreview();
             }
@@ -1397,6 +1465,7 @@ function initUploadPreviewControls() {
         });
 
         function validateRequiredFileSelection() {
+            if (input.dataset.inlineFileSkipRequired === 'true') return true;
             const requiredMessage = String(input.getAttribute('data-inline-file-required-message') || 'Kolom ini wajib diisi.').trim() || 'Kolom ini wajib diisi.';
             const hasSelectedFile = Boolean(input.files && input.files[0]);
             const hasExistingFile = Boolean(existingUrl) && !(hiddenInput && hiddenInput.value === '1');
@@ -1652,7 +1721,7 @@ function initInlineFileProxyControls(root = document) {
                 const existingUrl = existingUploadControl ? String(existingUploadControl.getAttribute('data-existing-url') || '').trim() : '';
                 const hasExistingFile = Boolean(existingUrl);
 
-                if (input.required && !hasSelectedFile && !hasExistingFile) {
+                if (input.required && !hasSelectedFile && !hasExistingFile && input.dataset.inlineFileSkipRequired !== 'true') {
                     showInlineError(requiredMessage);
                     event.preventDefault();
                     if (formGroup) {
@@ -1765,21 +1834,12 @@ function initInlineImageSourceButtons() {
 
 
 /* ========================================
-   HALAMAN DATA PELATIHAN
-   Menangani lock field berdasarkan Tipe Pelatihan,
-   validasi realtime, dan date-picker dengan style global.
+   KALENDER FORM PENGGUNA
+   Picker bersama untuk tanggal kegiatan dan kelulusan.
 ======================================== */
-function initPelatihanFormBehavior() {
-    const form = document.querySelector('[data-pelatihan-form="true"]');
-    if (!form) {
-        return;
-    }
-
-    const typeField = form.querySelector('[data-training-type-field="true"]');
-    const dependentGroups = form.querySelectorAll('[data-training-dependent-group="true"]');
-    const startDateInput = form.querySelector('[data-training-start-date="true"]');
-    const endDateInput = form.querySelector('[data-training-end-date="true"]');
-    const dateInputs = form.querySelectorAll('[data-training-date-picker="true"]');
+function initUserDatePickers(form) {
+    const startDateInput = form.querySelector('[data-training-start-date="true"], [data-user-start-date]');
+    const endDateInput = form.querySelector('[data-training-end-date="true"], [data-user-end-date]');
     const monthNamesLongId = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
     const monthNamesShortId = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
     const dayNamesShortId = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
@@ -1797,145 +1857,6 @@ function initPelatihanFormBehavior() {
         nov: 10, november: 10,
         des: 11, desember: 11, dec: 11, december: 11,
     };
-
-    function getFormGroup(element) {
-        return element ? element.closest('.form-group') : null;
-    }
-
-    function clearGroupErrors(group) {
-        if (!group) {
-            return;
-        }
-        group.classList.remove('has-error');
-        group.querySelectorAll('.input-error-text').forEach(function (errorNode) {
-            if (!errorNode.hasAttribute('data-inline-file-error-node')) {
-                errorNode.remove();
-            } else {
-                errorNode.hidden = true;
-                errorNode.textContent = '';
-            }
-        });
-    }
-
-    function addGroupError(group, message) {
-        if (!group || !message) {
-            return;
-        }
-        clearGroupErrors(group);
-        group.classList.add('has-error');
-        const errorNode = document.createElement('p');
-        errorNode.className = 'input-error-text';
-        errorNode.textContent = String(message).trim().startsWith('*') ? String(message).trim() : `*${String(message).trim()}`;
-        group.appendChild(errorNode);
-    }
-
-    function setFieldDisabledState(field, disabled) {
-        if (!field) {
-            return;
-        }
-        field.disabled = disabled || field.dataset.trainingLocked === 'true';
-        if (field.disabled) {
-            field.setAttribute('aria-disabled', 'true');
-        } else {
-            field.removeAttribute('aria-disabled');
-        }
-    }
-
-    function hasTypeValue() {
-        return Boolean(typeField && String(typeField.value || '').trim());
-    }
-
-    function syncDependentLock() {
-        const unlocked = hasTypeValue();
-        dependentGroups.forEach(function (group) {
-            group.classList.toggle('is-locked', !unlocked);
-            group.setAttribute('aria-disabled', unlocked ? 'false' : 'true');
-            group.querySelectorAll('input, select, textarea, button').forEach(function (field) {
-                if (field.type !== 'hidden') {
-                    setFieldDisabledState(field, !unlocked);
-                }
-            });
-        });
-        setFieldDisabledState(typeField, false);
-    }
-
-    const pesertaGroup = form.querySelector('[data-peserta-group]');
-    const pesertaList = pesertaGroup?.querySelector('[data-peserta-list]');
-    const pesertaTemplate = pesertaGroup?.querySelector('[data-peserta-template]');
-    const pesertaTotal = form.querySelector('[name="peserta-TOTAL_FORMS"]');
-    const pesertaSelect = pesertaTemplate?.content.querySelector('select') || pesertaList?.querySelector('select');
-    const pesertaOptions = Array.from(pesertaSelect?.options || []).map(option => option.cloneNode(true));
-
-    function syncPesertaOptions() {
-        if (!pesertaList) {
-            return;
-        }
-        const selects = Array.from(pesertaList.querySelectorAll('[data-peserta-row]:not([data-peserta-deleted]) select[name$="-user"]'));
-        const selected = new Set(selects.map(select => select.value).filter(Boolean));
-        selects.forEach(function (select) {
-            const value = select.value;
-            const options = pesertaOptions
-                .filter(option => !option.value || option.value === value || !selected.has(option.value))
-                .map(option => option.cloneNode(true));
-            select.replaceChildren(...options);
-            select.value = value;
-            select.classList.toggle('is-placeholder-state', !value);
-        });
-    }
-
-    function syncPesertaRows() {
-        const rows = pesertaList.querySelectorAll('[data-peserta-row]');
-        rows.forEach(function (row, index) {
-            row.querySelectorAll('[name], [id], label[for]').forEach(function (element) {
-                ['name', 'id', 'for'].forEach(function (attribute) {
-                    const value = element.getAttribute(attribute);
-                    if (value) {
-                        element.setAttribute(attribute, value.replace(/peserta-(?:\d+|__prefix__)-/g, 'peserta-' + index + '-'));
-                    }
-                });
-            });
-        });
-        pesertaTotal.value = rows.length;
-        syncPesertaOptions();
-        syncDependentLock();
-    }
-
-    syncPesertaOptions();
-    pesertaList?.addEventListener('change', function (event) {
-        if (event.target.matches('select[name$="-user"]')) {
-            syncPesertaOptions();
-        }
-    });
-
-    if (pesertaList && pesertaTemplate && pesertaTotal) {
-        pesertaGroup.querySelector('[data-peserta-add]').addEventListener('click', function () {
-            const fragment = pesertaTemplate.content.cloneNode(true);
-            const row = fragment.querySelector('[data-peserta-row]');
-            pesertaList.appendChild(fragment);
-            syncPesertaRows();
-            initInlineFileProxyControls(row);
-            row.querySelector('select')?.focus();
-        });
-        pesertaList.addEventListener('click', function (event) {
-            const button = event.target.closest('[data-peserta-remove]');
-            if (!button || button.disabled) {
-                return;
-            }
-            const row = button.closest('[data-peserta-row]');
-            const deleteField = row.querySelector('input[name$="-DELETE"]');
-            const initialCount = Number(form.querySelector('[name="peserta-INITIAL_FORMS"]').value);
-            const index = Array.from(pesertaList.children).indexOf(row);
-            if (deleteField && index < initialCount) {
-                deleteField.value = 'on';
-                row.dataset.pesertaDeleted = 'true';
-                row.hidden = true;
-                row.querySelector('input[type="file"]').value = '';
-            } else {
-                row.remove();
-            }
-            syncPesertaRows();
-        });
-    }
 
     function createDateAtMidday(year, monthIndex, day) {
         const date = new Date(year, monthIndex, day, 12, 0, 0, 0);
@@ -2210,6 +2131,484 @@ function initPelatihanFormBehavior() {
         input.dataset.datePickerReady = 'true';
     }
 
+    form.querySelectorAll('[data-training-date-picker="true"], [data-user-date-picker]').forEach(setupDatePicker);
+    return { parseDisplayDate };
+}
+
+function initUserValidation(form, options = {}) {
+    const getFields = () => Array.from(form.querySelectorAll('[data-required-message]'));
+
+    function showError(field, message) {
+        const group = field.closest('.form-group');
+        group.querySelectorAll('[data-user-error]').forEach(node => node.remove());
+        if (message) {
+            const error = document.createElement('p');
+            error.className = 'input-error-text';
+            error.dataset.userError = '';
+            error.textContent = '* ' + message;
+            (group.querySelector('.user-field__notes') || group).append(error);
+        }
+        const invalid = Boolean(group.querySelector('.input-error-text:not([hidden])'));
+        group.classList.toggle('has-error', invalid);
+        field.setAttribute('aria-invalid', String(invalid));
+    }
+
+    function validate(field) {
+        if (options.skip?.(field)) {
+            showError(field, '');
+            return true;
+        }
+        const uploadError = field.type === 'file'
+            ? field.closest('.form-group').querySelector('[data-inline-file-error-node]') : null;
+        if (uploadError && !uploadError.hidden && uploadError.textContent.trim()) {
+            showError(field, '');
+            return false;
+        }
+        const hasValue = field.type === 'file'
+            ? Boolean(field.files.length || field.dataset.hasFile === 'true') : Boolean(field.value.trim());
+        const error = options.validate?.(field) || (!hasValue && field.required ? field.dataset.requiredMessage : '');
+        showError(field, error);
+        return !error;
+    }
+
+    ['input', 'change'].forEach(function (event) {
+        form.addEventListener(event, function (e) {
+            const field = e.target;
+            if (!field.matches('[data-required-message]')) return;
+            options.input?.(field, event);
+            validate(field);
+        });
+    });
+    form.addEventListener('submit', function (event) {
+        options.submit?.();
+        if (!getFields().map(validate).every(Boolean)) {
+            event.preventDefault();
+            form.querySelector('.has-error')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    });
+    form.addEventListener('reset', function () {
+        setTimeout(function () {
+            getFields().forEach(field => showError(field, ''));
+            options.reset?.();
+        }, 0);
+    });
+    return { showError, validate };
+}
+
+function initPendidikanForm() {
+    const form = document.querySelector('[data-pendidikan-form]');
+    if (!form) return;
+    initUserDatePickers(form);
+    const tingkat = form.querySelector('[name="tingkat"]');
+    const jurusan = form.querySelector('[name="jurusan"]');
+    const tanpaJurusan = JSON.parse(form.querySelector('#pendidikan-tanpa-jurusan').textContent);
+    const jenis = form.querySelector('[name="jenis_nilai"]');
+    const nilai = form.querySelector('[name="nilai"]');
+    const batas = JSON.parse(form.querySelector('#pendidikan-nilai-batas').textContent);
+
+    function syncFields() {
+        const ready = Boolean(tingkat.value && tingkat.selectedOptions.length);
+        const hidden = tanpaJurusan.includes(tingkat.value);
+        const hasBatas = Object.hasOwn(batas, jenis.value);
+        jurusan.required = !hidden;
+        jurusan.closest('.form-group').classList.toggle('is-hidden', hidden);
+        form.querySelectorAll('[data-required-message]').forEach(function (field) {
+            if (field === tingkat) return;
+            const locked = !ready || (field === jurusan && hidden) || (field === nilai && !hasBatas);
+            const group = field.closest('.form-group');
+            field.disabled = locked;
+            field.setAttribute('aria-disabled', String(locked));
+            group.classList.add('is-status-dependent');
+            group.classList.toggle('is-locked', locked);
+            group.dataset.statusDependentGroup = 'true';
+            group.querySelectorAll('.date-picker-toggle, [data-inline-file-clear]').forEach(function (button) {
+                button.disabled = locked;
+            });
+            if (locked) {
+                validation.showError(field, '');
+                group.querySelectorAll('.date-picker-popup').forEach(popup => { popup.hidden = true; });
+                group.querySelector('.date-picker-control')?.classList.remove('is-open');
+            }
+        });
+        if (ready && hasBatas) {
+            nilai.max = batas[jenis.value];
+        } else {
+            nilai.removeAttribute('max');
+        }
+        if (!nilai.disabled && nilai.value) validation.validate(nilai);
+    }
+
+    function normalizeNilai(format) {
+        if (nilai.disabled || !nilai.value || nilai.validity.badInput) return;
+        const number = Number(nilai.value);
+        if (!Number.isFinite(number)) return;
+        const limited = Math.max(0, Math.min(batas[jenis.value], number));
+        if (number !== limited || (format && !nilai.validity.stepMismatch)) {
+            nilai.value = limited.toFixed(2);
+        }
+    }
+
+    const validation = initUserValidation(form, {
+        skip: field => field.disabled,
+        validate(field) {
+            if (field !== nilai || (!nilai.value && !nilai.validity.badInput)) return '';
+            const number = Number(nilai.value);
+            if (nilai.validity.badInput || !Number.isFinite(number) || nilai.validity.stepMismatch) {
+                return 'Masukkan nilai akhir berupa angka dengan maksimal dua angka desimal.';
+            }
+            if (Object.hasOwn(batas, jenis.value) && (number < 0 || number > batas[jenis.value])) {
+                return `Nilai ${jenis.value} harus berada pada rentang 0.00?${batas[jenis.value].toFixed(2)}.`;
+            }
+            return '';
+        },
+        input(field, event) {
+            if (field === nilai) normalizeNilai(event === 'change');
+        },
+        submit: syncFields,
+        reset: syncFields,
+    });
+    tingkat.addEventListener('change', syncFields);
+    jenis.addEventListener('change', function () {
+        nilai.value = '';
+        validation.showError(nilai, '');
+        syncFields();
+    });
+    syncFields();
+}
+
+function syncUserDocument(form, validation) {
+    const dokumen = form.querySelector('[name="dokumen"]');
+    const nomor = form.querySelector('[name="nomor_dokumen"]');
+    const unlocked = Boolean(dokumen.files.length || dokumen.dataset.hasFile === 'true');
+    nomor.disabled = !unlocked;
+    nomor.required = unlocked;
+    nomor.setAttribute('aria-disabled', String(!unlocked));
+    nomor.closest('.form-group').classList.add('is-status-dependent');
+    nomor.closest('.form-group').classList.toggle('is-locked', !unlocked);
+    if (!unlocked) {
+        nomor.value = '';
+        validation.showError(nomor, '');
+    }
+}
+
+function validateUserPoints(field) {
+    if (!field.matches('[data-komponen-input]')) return '';
+    const group = field.closest('[data-komponen]');
+    const points = Array.from(group.querySelectorAll('[data-komponen-input]'));
+    if (points.some(point => !point.value.trim())) return group.dataset.komponenRequiredMessage;
+    if (points.some(point => point.value.length > Number(group.dataset.komponenMax))) {
+        return `Setiap poin ${group.dataset.komponenTitle} maksimal ${group.dataset.komponenMax} karakter.`;
+    }
+    return '';
+}
+
+function bindUserPointRemoval(form, validation) {
+    const group = form.querySelector('[data-komponen]');
+    group.addEventListener('click', function (event) {
+        if (event.target.closest('[data-komponen-remove]')) {
+            validation.validate(group.querySelector('[data-komponen-input]'));
+        }
+    });
+}
+
+function initPortofolioForm() {
+    const form = document.querySelector('[data-portofolio-form]');
+    if (!form) return;
+    const syncNomor = () => syncUserDocument(form, validation);
+    const validation = initUserValidation(form, {
+        validate: validateUserPoints,
+        input(field) {
+            if (field.name === 'dokumen') syncNomor();
+        },
+        submit: syncNomor,
+        reset: syncNomor,
+    });
+    bindUserPointRemoval(form, validation);
+    syncNomor();
+}
+
+function initKarirForm() {
+    const form = document.querySelector('[data-karir-form]');
+    if (!form) return;
+    const { parseDisplayDate } = initUserDatePickers(form);
+    const dokumen = form.querySelector('[name="dokumen"]');
+    const start = form.querySelector('[name="tanggal_mulai"]');
+    const end = form.querySelector('[name="tanggal_selesai"]');
+    const working = form.querySelector('[name="masih_bekerja"]');
+
+    function syncNomor() {
+        syncUserDocument(form, validation);
+    }
+
+    function syncEndDate() {
+        const unlocked = Boolean(parseDisplayDate(start.value)) && !working.checked;
+        end.disabled = !unlocked;
+        end.required = !working.checked;
+        end.setAttribute('aria-disabled', String(!unlocked));
+        const control = end.closest('.date-picker-control');
+        control.classList.add('is-status-dependent');
+        control.classList.toggle('is-locked', !unlocked);
+        control.querySelector('.date-picker-toggle').disabled = !unlocked;
+        working.disabled = Boolean(end.value.trim()) && !working.checked;
+        working.setAttribute('aria-disabled', String(working.disabled));
+        if (!unlocked) {
+            control.querySelector('.date-picker-popup').hidden = true;
+            control.classList.remove('is-open');
+        }
+    }
+
+    function syncLocks() {
+        syncNomor();
+        syncEndDate();
+    }
+
+    const validation = initUserValidation(form, {
+        validate(field) {
+            const pointError = validateUserPoints(field);
+            if (pointError) return pointError;
+            if ((field !== start && field !== end) || !field.value.trim()) return '';
+            const date = parseDisplayDate(field.value);
+            if (!date) return 'Masukkan tanggal yang valid, contoh 05 Nov 2026.';
+            const startDate = parseDisplayDate(start.value);
+            if (field === end && startDate && date < startDate) {
+                return 'Tanggal selesai tidak boleh lebih awal dari tanggal mulai.';
+            }
+            return '';
+        },
+        input(field) {
+            if (field === dokumen) syncNomor();
+            if (field === start) {
+                syncEndDate();
+                if (end.value) validation.validate(end);
+            }
+            if (field === end) syncEndDate();
+        },
+        submit: syncLocks,
+        reset: syncLocks,
+    });
+    working.addEventListener('change', function () {
+        if (working.checked) end.value = '';
+        validation.showError(end, '');
+        syncEndDate();
+    });
+    bindUserPointRemoval(form, validation);
+    syncLocks();
+}
+
+function initLogbookForm() {
+    const form = document.querySelector('[data-logbook-form]');
+    if (!form) return;
+    const { parseDisplayDate } = initUserDatePickers(form);
+    const lingkup = form.querySelector('[name="lingkup"]');
+    const groups = form.querySelectorAll('[data-logbook-data], [data-peserta-group]');
+    const submit = form.querySelector('[type="submit"]');
+
+    function syncLocks() {
+        const locked = !lingkup.value || !lingkup.selectedOptions.length;
+        groups.forEach(function (group) {
+            if (group.matches('fieldset')) {
+                group.disabled = locked;
+            } else {
+                group.querySelectorAll('input, textarea, button').forEach(function (field) {
+                    field.disabled = locked;
+                });
+            }
+            group.inert = locked;
+            group.classList.add('is-status-dependent');
+            group.classList.toggle('is-locked', locked);
+            group.querySelectorAll('select').forEach(function (select) {
+                select.dispatchEvent(new Event('change', { bubbles: true }));
+            });
+            if (locked) {
+                group.querySelectorAll('.date-picker-popup').forEach(popup => { popup.hidden = true; });
+                group.querySelectorAll('.date-picker-control').forEach(control => control.classList.remove('is-open'));
+            }
+        });
+        submit.disabled = locked;
+    }
+
+    initPesertaRows(form);
+    initUserValidation(form, {
+        skip: field => field.matches(':disabled'),
+        reset: syncLocks,
+        validate(field) {
+            if (field.name === 'tanggal' && field.value.trim() && !parseDisplayDate(field.value)) {
+                return 'Masukkan tanggal pelaksanaan yang valid.';
+            }
+            return '';
+        },
+    });
+    lingkup.addEventListener('change', syncLocks);
+    syncLocks();
+}
+
+function initPesertaRows(form, onRowsChanged = () => {}) {
+    const pesertaGroup = form.querySelector('[data-peserta-group]');
+    const pesertaList = pesertaGroup?.querySelector('[data-peserta-list]');
+    const pesertaTemplate = pesertaGroup?.querySelector('[data-peserta-template]');
+    const pesertaTotal = form.querySelector('[name="peserta-TOTAL_FORMS"]');
+    const pesertaSelect = pesertaTemplate?.content.querySelector('select') || pesertaList?.querySelector('select');
+    const pesertaOptions = Array.from(pesertaSelect?.options || []).map(option => option.cloneNode(true));
+
+    function syncPesertaOptions() {
+        if (!pesertaList) {
+            return;
+        }
+        const selects = Array.from(pesertaList.querySelectorAll('[data-peserta-row]:not([data-peserta-deleted]) select[name$="-user"]'));
+        const selected = new Set(selects.map(select => select.value).filter(Boolean));
+        selects.forEach(function (select) {
+            const value = select.value;
+            const options = pesertaOptions
+                .filter(option => !option.value || option.value === value || !selected.has(option.value))
+                .map(option => option.cloneNode(true));
+            select.replaceChildren(...options);
+            select.value = value;
+            select.classList.toggle('is-placeholder-state', !value);
+        });
+    }
+
+    function syncPesertaRows() {
+        const rows = pesertaList.querySelectorAll('[data-peserta-row]');
+        rows.forEach(function (row, index) {
+            row.querySelectorAll('[name], [id], label[for]').forEach(function (element) {
+                ['name', 'id', 'for'].forEach(function (attribute) {
+                    const value = element.getAttribute(attribute);
+                    if (value) {
+                        element.setAttribute(attribute, value.replace(/peserta-(?:\d+|__prefix__)-/g, 'peserta-' + index + '-'));
+                    }
+                });
+            });
+        });
+        pesertaTotal.value = rows.length;
+        syncPesertaOptions();
+        onRowsChanged();
+    }
+
+    syncPesertaOptions();
+    pesertaList?.addEventListener('change', function (event) {
+        if (event.target.matches('select[name$="-user"]')) {
+            syncPesertaOptions();
+        }
+    });
+
+    if (pesertaList && pesertaTemplate && pesertaTotal) {
+        pesertaGroup.querySelector('[data-peserta-add]').addEventListener('click', function () {
+            const fragment = pesertaTemplate.content.cloneNode(true);
+            const row = fragment.querySelector('[data-peserta-row]');
+            pesertaList.appendChild(fragment);
+            syncPesertaRows();
+            initInlineFileProxyControls(row);
+            row.querySelector('select')?.focus();
+        });
+        pesertaList.addEventListener('click', function (event) {
+            const button = event.target.closest('[data-peserta-remove]');
+            if (!button || button.disabled) {
+                return;
+            }
+            const row = button.closest('[data-peserta-row]');
+            const deleteField = row.querySelector('input[name$="-DELETE"]');
+            const initialCount = Number(form.querySelector('[name="peserta-INITIAL_FORMS"]').value);
+            const index = Array.from(pesertaList.children).indexOf(row);
+            if (deleteField && index < initialCount) {
+                deleteField.value = 'on';
+                row.dataset.pesertaDeleted = 'true';
+                row.hidden = true;
+                const file = row.querySelector('input[type="file"]');
+                if (file) file.value = '';
+            } else {
+                row.remove();
+            }
+            syncPesertaRows();
+        });
+    }
+
+}
+
+/* Lock kategori/tipe kegiatan dan validasi realtime. */
+function initPelatihanFormBehavior() {
+    const form = document.querySelector('[data-pelatihan-form="true"]');
+    if (!form) {
+        return;
+    }
+
+    const categoryField = form.querySelector('[data-training-category-field="true"]');
+    const categoryGroup = form.querySelector('[data-training-category-group]');
+    const typeField = form.querySelector('[data-training-type-field="true"]');
+    const dependentGroups = form.querySelectorAll('[data-training-dependent-group="true"]');
+    const startDateInput = form.querySelector('[data-training-start-date="true"]');
+    const endDateInput = form.querySelector('[data-training-end-date="true"]');
+    const { parseDisplayDate } = initUserDatePickers(form);
+
+    function getFormGroup(element) {
+        return element ? element.closest('.form-group') : null;
+    }
+
+    function clearGroupErrors(group) {
+        if (!group) {
+            return;
+        }
+        group.classList.remove('has-error');
+        group.querySelectorAll('.input-error-text').forEach(function (errorNode) {
+            if (!errorNode.hasAttribute('data-inline-file-error-node')) {
+                errorNode.remove();
+            } else {
+                errorNode.hidden = true;
+                errorNode.textContent = '';
+            }
+        });
+    }
+
+    function addGroupError(group, message) {
+        if (!group || !message) {
+            return;
+        }
+        clearGroupErrors(group);
+        group.classList.add('has-error');
+        const errorNode = document.createElement('p');
+        errorNode.className = 'input-error-text';
+        errorNode.textContent = String(message).trim().startsWith('*') ? String(message).trim() : `*${String(message).trim()}`;
+        group.appendChild(errorNode);
+    }
+
+    function setFieldDisabledState(field, disabled) {
+        if (!field) {
+            return;
+        }
+        field.disabled = disabled || field.dataset.trainingLocked === 'true';
+        if (field.disabled) {
+            field.setAttribute('aria-disabled', 'true');
+        } else {
+            field.removeAttribute('aria-disabled');
+        }
+    }
+
+    function hasCategoryValue() {
+        return Boolean(categoryField && categoryField.value);
+    }
+
+    function hasTypeValue() {
+        return hasCategoryValue() && Boolean(typeField && String(typeField.value || '').trim());
+    }
+
+    function syncDependentLock() {
+        const unlocked = hasTypeValue();
+        dependentGroups.forEach(function (group) {
+            group.classList.toggle('is-locked', !unlocked);
+            group.setAttribute('aria-disabled', unlocked ? 'false' : 'true');
+            group.querySelectorAll('input, select, textarea, button').forEach(function (field) {
+                if (field.type !== 'hidden') {
+                    setFieldDisabledState(field, !unlocked);
+                }
+            });
+        });
+        const categorySelected = hasCategoryValue();
+        categoryGroup?.classList.toggle('is-locked', !categorySelected);
+        categoryGroup?.setAttribute('aria-disabled', categorySelected ? 'false' : 'true');
+        setFieldDisabledState(typeField, !categorySelected);
+    }
+
+    initPesertaRows(form, syncDependentLock);
+
     function validateRequiredField(field, message) {
         if (!field || field.disabled) {
             return true;
@@ -2257,7 +2656,10 @@ function initPelatihanFormBehavior() {
 
     function validateTrainingForm() {
         let isValid = true;
-        if (!validateRequiredField(typeField, 'Tipe pelatihan wajib dipilih.')) {
+        if (!validateRequiredField(categoryField, 'Kategori kegiatan wajib dipilih.')) {
+            return false;
+        }
+        if (!validateRequiredField(typeField, 'Tipe kegiatan wajib dipilih.')) {
             isValid = false;
         }
         if (!hasTypeValue()) {
@@ -2265,12 +2667,12 @@ function initPelatihanFormBehavior() {
         }
 
         [
-            [form.querySelector('#id_jenis_pelatihan'), 'Jenis pelatihan wajib dipilih.'],
-            [form.querySelector('#id_nama_pelatihan'), 'Nama pelatihan wajib diisi.'],
-            [startDateInput, 'Mulai tanggal pelatihan wajib diisi.'],
-            [endDateInput, 'Selesai tanggal pelatihan wajib diisi.'],
-            [form.querySelector('#id_lokasi_pelatihan'), 'Lokasi pelatihan wajib diisi.'],
-            [form.querySelector('#id_uraian_pelatihan'), 'Uraian pelatihan wajib diisi.'],
+            [form.querySelector('#id_jenis_pelatihan'), 'Jenis kegiatan wajib dipilih.'],
+            [form.querySelector('#id_nama_pelatihan'), 'Nama kegiatan wajib diisi.'],
+            [startDateInput, 'Mulai tanggal kegiatan wajib diisi.'],
+            [endDateInput, 'Selesai tanggal kegiatan wajib diisi.'],
+            [form.querySelector('#id_lokasi_pelatihan'), 'Lokasi kegiatan wajib diisi.'],
+            [form.querySelector('#id_uraian_pelatihan'), 'Uraian kegiatan wajib diisi.'],
         ].forEach(function (item) {
             if (!validateRequiredField(item[0], item[1])) {
                 isValid = false;
@@ -2283,8 +2685,12 @@ function initPelatihanFormBehavior() {
         return isValid;
     }
 
-    dateInputs.forEach(setupDatePicker);
     syncDependentLock();
+
+    categoryField?.addEventListener('change', function () {
+        clearGroupErrors(getFormGroup(categoryField));
+        syncDependentLock();
+    });
 
     if (typeField) {
         typeField.addEventListener('change', function () {
@@ -2807,6 +3213,9 @@ function initKomponenRutin() {
         const fieldName = group.getAttribute('data-komponen-field') || 'komponen_pemeliharaan';
         const fieldId = group.getAttribute('data-komponen-id') || 'id_komponen_pemeliharaan';
         const maxLength = Number(group.getAttribute('data-komponen-max') || 100);
+        const rowLabel = group.getAttribute('data-komponen-label') || 'Komponen';
+        const removeLabel = 'Hapus ' + rowLabel.toLowerCase();
+        const isRequired = group.getAttribute('data-komponen-required') === 'true';
         const minRows = Math.max(Number(group.getAttribute('data-komponen-min') || 1), 1);
         const labelId = fieldId + '_label';
         const isGroupLocked = group.getAttribute('data-komponen-locked-all') === 'true';
@@ -2821,8 +3230,8 @@ function initKomponenRutin() {
             button.type = 'button';
             button.className = 'komponen-rutin__remove';
             button.setAttribute('data-komponen-remove', 'true');
-            button.setAttribute('title', 'Hapus komponen');
-            button.setAttribute('aria-label', 'Hapus komponen');
+            button.setAttribute('title', removeLabel);
+            button.setAttribute('aria-label', removeLabel);
 
             const icon = document.createElement('i');
             icon.className = 'bi bi-trash';
@@ -2869,9 +3278,13 @@ function initKomponenRutin() {
                 if (input) {
                     input.name = fieldName;
                     input.id = fieldId + '_' + index;
-                    input.placeholder = 'Komponen ' + (index + 1);
+                    input.placeholder = rowLabel + ' ' + (index + 1);
                     input.maxLength = maxLength;
                     input.setAttribute('aria-labelledby', labelId);
+                    if (isRequired) {
+                        input.required = true;
+                        input.dataset.requiredMessage = group.dataset.komponenRequiredMessage || 'Setiap poin wajib diisi.';
+                    }
                 }
 
                 if (removeButton) {
@@ -2879,7 +3292,7 @@ function initKomponenRutin() {
                     const isLocked = transactionLocked || conditionalLocked;
                     removeButton.disabled = isLocked || rows.length <= minRows;
                     removeButton.classList.toggle('komponen-rutin__remove--locked', isLocked);
-                    removeButton.title = isLocked ? lockMessage : 'Hapus komponen';
+                    removeButton.title = isLocked ? lockMessage : removeLabel;
                     removeButton.setAttribute('aria-disabled', String(isLocked || rows.length <= minRows));
                     removeButton.toggleAttribute('data-transaction-locked', transactionLocked);
                 }
@@ -7666,14 +8079,35 @@ function initMasterShowEntriesControl() {
     const forms = document.querySelectorAll('[data-master-entries-form="true"]');
 
     forms.forEach(function (form) {
-        const selects = form.querySelectorAll('.js-show-entries-select, .js-master-filter-select');
         const search = form.querySelector('[data-master-search]');
         const searchClear = form.querySelector('[data-master-search-clear]');
         const pageInput = form.querySelector('input[name="page"]');
+        const liveFilter = form.hasAttribute('data-master-live-filter');
+        const panel = form.closest('.table-panel');
+        const periods = form.querySelectorAll('select[data-search-period]');
+        const periodValues = form.querySelectorAll('[data-period-value]');
         let lastSearch = normalizeSearchText(search?.value);
         let searchTimer = null;
         let searchRequest = null;
         let composing = false;
+
+        function syncSearchPeriod() {
+            const locked = Boolean(normalizeSearchText(search?.value));
+            const title = locked ? 'Periode dikunci selama pencarian aktif' : '';
+            periods.forEach(function (select) {
+                if (locked) select.value = 'all';
+                select.disabled = locked;
+                select.title = title;
+                const toggle = select.closest('.user-select')?.querySelector('.user-select__toggle');
+                if (toggle) toggle.title = title;
+            });
+            periodValues.forEach(function (input) {
+                input.value = 'all';
+                input.disabled = !locked;
+            });
+        }
+
+        syncSearchPeriod();
 
         function submitForm() {
             if (pageInput) {
@@ -7692,7 +8126,7 @@ function initMasterShowEntriesControl() {
             const scope = panel || root;
 
             return {
-                info: targetForm.closest('.master-list-controls')?.querySelector('.master-entries-info') || null,
+                info: (targetForm.closest('.master-list-controls') || targetForm).querySelector('.master-entries-info'),
                 pagination: scope.querySelector('.master-pagination-bar'),
                 result: scope.querySelector('.table-scroll--list') || scope.querySelector('.notif-list-card'),
             };
@@ -7700,18 +8134,21 @@ function initMasterShowEntriesControl() {
 
         function getSearchUrl() {
             const url = new URL(form.action || window.location.href, window.location.href);
-            url.search = '';
+            if (!liveFilter) url.search = '';
+            if (liveFilter && form.dataset.pageParam) url.searchParams.delete(form.dataset.pageParam);
 
             new FormData(form).forEach(function (value, key) {
-                url.searchParams.append(key, value);
+                if (liveFilter) url.searchParams.set(key, value);
+                else url.searchParams.append(key, value);
             });
 
             return url;
         }
 
-        async function updateSearchResult() {
+        async function updateSearchResult(force = false, pageUrl = null) {
+            syncSearchPeriod();
             const value = normalizeSearchText(search?.value);
-            if (!search || value === lastSearch) {
+            if (!search || (!force && value === lastSearch)) {
                 return;
             }
 
@@ -7730,6 +8167,11 @@ function initMasterShowEntriesControl() {
             }
 
             const url = getSearchUrl();
+            if (pageUrl && form.dataset.pageParam) {
+                url.searchParams.set(form.dataset.pageParam, new URL(pageUrl).searchParams.get(form.dataset.pageParam) || '1');
+            }
+            const errorNode = panel?.querySelector('[data-live-error]');
+            if (errorNode) errorNode.hidden = true;
             const start = search.selectionStart ?? search.value.length;
             const end = search.selectionEnd ?? start;
             currentRegion.result.setAttribute('aria-busy', 'true');
@@ -7747,7 +8189,8 @@ function initMasterShowEntriesControl() {
                 }
 
                 const remoteDoc = new DOMParser().parseFromString(await response.text(), 'text/html');
-                const remoteForm = remoteDoc.querySelector('[data-master-entries-form="true"]');
+                const remoteForm = form.id ? remoteDoc.getElementById(form.id)
+                    : remoteDoc.querySelector('[data-master-entries-form="true"]');
                 if (!remoteForm) {
                     throw new Error('Form pencarian tidak ditemukan pada respons.');
                 }
@@ -7756,6 +8199,7 @@ function initMasterShowEntriesControl() {
                 if (!remoteRegion.result) {
                     throw new Error('Hasil pencarian tidak ditemukan pada respons.');
                 }
+                if (request.signal.aborted) return;
 
                 const nextResult = document.importNode(remoteRegion.result, true);
                 currentRegion.result.replaceWith(nextResult);
@@ -7773,7 +8217,21 @@ function initMasterShowEntriesControl() {
                 }
 
                 lastSearch = value;
-                window.history.replaceState(window.history.state, '', url);
+                const nextUrl = liveFilter ? new URL(window.location.href) : url;
+                if (liveFilter) {
+                    new FormData(form).forEach((value, key) => nextUrl.searchParams.set(key, url.searchParams.get(key) ?? value));
+                    if (form.dataset.pageParam) {
+                        nextUrl.searchParams.delete(form.dataset.pageParam);
+                        if (pageUrl) nextUrl.searchParams.set(form.dataset.pageParam, url.searchParams.get(form.dataset.pageParam));
+                    }
+                    document.querySelectorAll(
+                        '.sdm-user-filter input[type="hidden"], ' +
+                        '#sdm-training-filter input[type="hidden"], #sdm-logbook-filter input[type="hidden"]'
+                    ).forEach(function (input) {
+                        input.value = nextUrl.searchParams.get(input.name) || '';
+                    });
+                }
+                window.history.replaceState(window.history.state, '', nextUrl);
                 initSortableListTables(nextResult);
                 if (document.activeElement === search) {
                     search.setSelectionRange(start, end);
@@ -7781,6 +8239,10 @@ function initMasterShowEntriesControl() {
             } catch (error) {
                 if (error.name !== 'AbortError') {
                     console.error(error);
+                    if (errorNode) {
+                        errorNode.textContent = 'Data gagal dimuat. Silakan ubah filter atau coba kembali.';
+                        errorNode.hidden = false;
+                    }
                 }
             } finally {
                 if (searchRequest === request) {
@@ -7800,15 +8262,30 @@ function initMasterShowEntriesControl() {
             searchTimer = window.setTimeout(updateSearchResult, 350);
         }
 
-        selects.forEach(function (select) {
-            select.addEventListener('change', function () {
-                if (!select.value) {
-                    return;
-                }
+        form.addEventListener('change', function (event) {
+            const select = event.target.closest('.js-show-entries-select, .js-master-filter-select');
+            if (!select || !select.value) return;
 
-                submitForm();
-            });
+            if (liveFilter) {
+                window.clearTimeout(searchTimer);
+                updateSearchResult(true);
+            } else submitForm();
         });
+
+        if (liveFilter) {
+            form.addEventListener('submit', function (event) {
+                event.preventDefault();
+                window.clearTimeout(searchTimer);
+                updateSearchResult(true);
+            });
+            panel?.addEventListener('click', function (event) {
+                const link = event.target.closest('.master-pagination a');
+                if (!link || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+                event.preventDefault();
+                window.clearTimeout(searchTimer);
+                updateSearchResult(true, link.href);
+            });
+        }
 
         search?.addEventListener('compositionstart', function () {
             composing = true;
@@ -7820,6 +8297,7 @@ function initMasterShowEntriesControl() {
         });
 
         search?.addEventListener('input', function () {
+            syncSearchPeriod();
             const value = normalizeSearchText(search.value);
             if (searchClear) {
                 searchClear.hidden = !value;

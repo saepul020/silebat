@@ -505,14 +505,6 @@ textarea {
     margin-top: 0;
 }
 
-.input-help-text {
-    margin: 6px 0 0;
-    color: var(--text-soft);
-    font-size: 0.83rem;
-    font-style: italic;
-    line-height: 1.45;
-}
-
 .user-form-card input[disabled],
 .user-form-card select[disabled],
 .user-form-card textarea[disabled] {
@@ -1389,6 +1381,14 @@ textarea {
     margin-top: 14px;
 }
 
+.upload-field {
+    min-width: 0;
+}
+
+.upload-field > .upload-input-wrap {
+    margin-top: 0;
+}
+
 .upload-preview-section {
     display: grid;
     gap: 8px;
@@ -1463,19 +1463,19 @@ textarea {
     object-position: center;
 }
 
-.upload-card--signature .upload-preview-card:not(.is-empty),
-.upload-card--signature .upload-preview-card:not(.is-empty) .upload-preview-card__body,
-.upload-card--signature .upload-preview-card:not(.is-empty) .upload-preview-frame {
+:is(.upload-card--signature, .upload-card--original) .upload-preview-card:not(.is-empty),
+:is(.upload-card--signature, .upload-card--original) .upload-preview-card:not(.is-empty) .upload-preview-card__body,
+:is(.upload-card--signature, .upload-card--original) .upload-preview-card:not(.is-empty) .upload-preview-frame {
     height: auto;
     min-height: 0;
     max-height: none;
 }
 
-.upload-card--signature .upload-preview-card:not(.is-empty) .upload-preview-frame {
+:is(.upload-card--signature, .upload-card--original) .upload-preview-card:not(.is-empty) .upload-preview-frame {
     background: transparent;
 }
 
-.upload-card--signature .upload-preview-frame img {
+:is(.upload-card--signature, .upload-card--original) .upload-preview-frame img {
     width: auto;
     height: auto;
     max-width: 100%;
@@ -3616,10 +3616,6 @@ input[type="hidden"] {
 .table-scroll--list .table-data th.is-sorted-asc .table-sort-button__icon,
 .table-scroll--list .table-data th.is-sorted-desc .table-sort-button__icon {
     color: var(--primary);
-}
-
-.list-table--pengguna {
-    min-width: 760px;
 }
 
 .list-table--operasional-simple {
@@ -6105,7 +6101,7 @@ select.return-status-select option:disabled {
     min-width: 180px;
 }
 
-.verify-note-error {
+.verify-note-form .verify-note-error {
     margin-top: 8px;
 }
 
@@ -6840,9 +6836,10 @@ select.return-status-select option:disabled {
 
 .input-help-text {
     display: block;
-    margin-top: 6px;
+    margin: 6px 0 0;
     color: var(--text-muted);
     font-size: 0.85rem;
+    font-style: italic;
     line-height: 1.45;
 }
 
@@ -6955,7 +6952,7 @@ select.return-status-select option:disabled {
 
 .form-help-text {
     display: block;
-    margin-top: 8px;
+    margin: 6px 0 0;
     color: var(--text-soft);
     font-size: 0.84rem;
     line-height: 1.45;
@@ -7144,6 +7141,7 @@ select.return-status-select option:disabled {
 }
 
 .import-file-group .import-file-input-proxy {
+    margin-bottom: 0;
     display: flex !important;
     align-items: stretch !important;
     width: 100% !important;
@@ -9279,6 +9277,94 @@ select.return-status-select option:disabled {
 /* =========================
    DATA PELATIHAN PENGGUNA
 ========================= */
+.user-files .upload-input-wrap {
+    margin-top: 0;
+}
+
+.user-field__note {
+    font-weight: 400;
+    font-style: italic;
+}
+
+.user-files--aligned .pelatihan-file-card {
+    margin: 0 0 6px;
+}
+
+@media (min-width: 769px) {
+    .user-files--aligned {
+        row-gap: 0;
+    }
+
+    .user-files--aligned > .form-group {
+        display: grid;
+        grid-row: span 4;
+        grid-template-rows: subgrid;
+        row-gap: 0;
+    }
+
+    .user-files--aligned .form-group > label {
+        grid-row: 1;
+    }
+
+    .user-files--aligned .pelatihan-file-card {
+        grid-row: 2;
+    }
+
+    .user-files--aligned .form-group > :is(input, .upload-input-wrap) {
+        grid-row: 3;
+        align-self: start;
+    }
+
+    .user-files--aligned .form-group > .upload-input-wrap {
+        align-self: stretch;
+    }
+
+    .user-files--aligned .file-input-proxy {
+        height: 100%;
+    }
+
+    .user-files--aligned .user-field__notes {
+        grid-row: 4;
+    }
+}
+
+.karir-form__end {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px 12px;
+    margin-bottom: 6px;
+}
+
+.karir-form__end label {
+    margin: 0;
+    color: var(--text);
+}
+
+.karir-form__check {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+    font-weight: 400;
+    cursor: pointer;
+}
+
+.karir-form__check input {
+    width: 16px;
+    height: 16px;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    accent-color: var(--color-primary-navy);
+}
+
+.karir-form__check:has(input:disabled) {
+    opacity: 0.58;
+    cursor: not-allowed;
+}
+
 .pelatihan-form-card .master-fieldset-stack {
     gap: 18px;
 }
@@ -9302,6 +9388,11 @@ select.return-status-select option:disabled {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
     align-items: start;
+}
+
+.peserta-form__row--names {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
 }
 
 .peserta-form__row > .form-group {
@@ -9346,18 +9437,8 @@ select.return-status-select option:disabled {
     margin-top: 16px;
 }
 
-.peserta-list {
-    margin: 0;
-    padding-left: 20px;
-    overflow-wrap: anywhere;
-}
-
-.peserta-list li + li {
-    margin-top: 8px;
-}
-
 @media (max-width: 767px) {
-    .peserta-form__row {
+    .peserta-form__row:not(.peserta-form__row--names) {
         grid-template-columns: minmax(0, 1fr);
     }
 }

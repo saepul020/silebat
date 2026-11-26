@@ -1,0 +1,50 @@
+.sertifikat-modal {
+    width: min(960px, calc(100% - 32px));
+    max-width: none;
+    max-height: calc(100dvh - 32px);
+    margin: auto;
+    padding: 0;
+    border: 0;
+    border-radius: 16px;
+    background: #fff;
+    color: #1c2541;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+}
+
+.sertifikat-modal::backdrop {
+    background: rgba(0, 0, 0, 0.55);
+}
+
+.sertifikat-modal__header,
+.sertifikat-modal__footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px;
+}
+
+.sertifikat-modal__header h2 {
+    margin: 0;
+    font-size: 1.1rem;
+    overflow-wrap: anywhere;
+}
+
+.sertifikat-modal__body {
+    height: min(65dvh, 700px);
+    padding: 12px;
+    overflow: auto;
+    background: #f3f4f6;
+}
+
+.sertifikat-modal__image {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.sertifikat-modal__frame {
+    width: 100%;
+    height: 100%;
+    border: 0;
+}

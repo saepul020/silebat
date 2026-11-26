@@ -2,6 +2,10 @@
     max-width: 1040px;
 }
 
+.pemeliharaan-form-card .input-error-text {
+    margin: 8px 0 0;
+}
+
 .pemeliharaan-form-card .landing-gallery-thumb {
     width: 120px;
     height: auto;
@@ -131,10 +135,6 @@
     font-weight: 700;
 }
 
-.pemeliharaan-komponen__errors {
-    margin: 0;
-}
-
 .pemeliharaan-action-panel {
     display: flex;
     flex-direction: column;
@@ -166,6 +166,47 @@
 
 .pemeliharaan-head-actions {
     gap: 10px;
+}
+
+.pemeliharaan-send-lock {
+    display: inline-flex;
+    cursor: not-allowed;
+}
+
+.pemeliharaan-send-lock > .btn {
+    pointer-events: none;
+}
+
+.pemeliharaan-missing {
+    max-height: 50vh;
+    overflow-y: auto;
+}
+
+.pemeliharaan-missing__list {
+    margin: 8px 0 0;
+    padding-left: 20px;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+    list-style-type: disc;
+}
+
+.pemeliharaan-missing__list li + li {
+    margin-top: 6px;
+}
+
+.pemeliharaan-missing__groups {
+    margin: 8px 0 0;
+    padding-left: 24px;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
+.pemeliharaan-missing__groups > li::marker {
+    font-weight: 700;
+}
+
+.pemeliharaan-missing__groups > li + li {
+    margin-top: 16px;
 }
 
 .pemeliharaan-vendor-grid {

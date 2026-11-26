@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% block title %}Riwayat Karir{% endblock %}
+{% block content %}
+<div class="page-header"><h1>Riwayat Karir</h1><p>Kelola pengalaman kerja dan dokumen pendukung Anda.</p></div>
+<div class="table-wrapper table-panel">
+    <div class="table-toolbar">
+        <h3 class="table-title">Data Riwayat Karir</h3>
+        <div class="table-toolbar-actions">
+            {% include 'pengguna/excel_actions.html' with kind='karir' %}
+            <a href="{% url 'pengguna:data' %}" class="btn btn-secondary">Kembali</a>
+            <a href="{% url 'pengguna:karir_tambah' %}" class="btn btn-primary"><i class="bi bi-plus-circle" aria-hidden="true"></i>&nbsp;Tambah Data</a>
+        </div>
+    </div>
+    {% include 'components/entry_control.html' %}
+    <div class="table-scroll-area table-scroll--list" tabindex="0" aria-label="Tabel riwayat karir">
+        <table class="table-data user-table user-table--career{% if can_view_all %} user-table--owner{% endif %}">
+            <thead><tr>
+                {% if can_view_all %}<th class="cell-wrap">Pengguna</th>{% endif %}
+                <th class="cell-wrap">Nama Perusahaan / Instansi</th><th class="cell-wrap">Jabatan / Posisi</th><th>Status</th>
+                <th>Tanggal Mulai</th><th>Tanggal Selesai</th><th class="cell-wrap">Uraian Pekerjaan</th>
+                <th>Dokumen Pendukung</th><th class="cell-action">Aksi</th>
+            </tr></thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    {% if can_view_all %}<td class="cell-wrap" data-sort-value="{{ item.user.get_full_name|default:item.user.username }}"><div class="user-table__owner">{{ item.user.get_full_name|default:item.user.username }}</div></td>{% endif %}
+                    <td class="cell-wrap" data-sort-value="{{ item.perusahaan }}"><div class="user-table__person">{{ item.perusahaan }}</div></td>
+                    <td class="cell-wrap" data-sort-value="{{ item.jabatan }}"><div class="user-table__person">{{ item.jabatan }}</div></td>
+                    <td class="user-table__nowrap">{{ item.get_status_display }}</td>
+                    <td class="user-table__nowrap">{{ item.tanggal_mulai|date:'d M Y' }}</td><td class="user-table__nowrap">{% if item.masih_bekerja %}Masih Bekerja{% else %}{{ item.tanggal_selesai|date:'d M Y' }}{% endif %}</td>
+                    <td class="cell-wrap" data-sort-value="{{ item.uraian }}"><ul>{% for point in item.uraian_poin %}<li><span class="user-table__description">{{ point }}</span></li>{% endfor %}</ul></td>
+                    <td class="user-table__media user-table__nowrap">{% if item.dokumen %}<a href="{% url 'pengguna:karir_dokumen' item.pk 'dokumen' %}" class="btn btn-secondary btn-sm" title="Download dokumen pendukung" aria-label="Download dokumen pendukung {{ item.perusahaan }}"><i class="bi bi-download" aria-hidden="true"></i></a>{% else %}-{% endif %}</td>
+                    <td class="cell-action user-table__nowrap"><div class="table-action-group">
+                        <a href="{% url 'pengguna:karir_edit' item.pk %}" class="btn btn-warning btn-sm" title="Edit" aria-label="Edit riwayat karir {{ item.perusahaan }}"><i class="bi bi-pencil-square" aria-hidden="true"></i></a>
+                        <a href="{% url 'pengguna:karir_hapus' item.pk %}" class="btn btn-danger btn-sm" title="Hapus" aria-label="Hapus riwayat karir {{ item.perusahaan }}"><i class="bi bi-trash3-fill" aria-hidden="true"></i></a>
+                    </div></td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="{% if can_view_all %}9{% else %}8{% endif %}"><div class="empty-state">Belum ada riwayat karir.</div></td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% include 'components/pagination.html' %}
+</div>
+{% include 'pengguna/excel_modal.html' with kind='karir' title='Import Riwayat Karir' %}
+{% endblock %}

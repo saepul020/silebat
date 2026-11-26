@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% block title %}Hapus Logbook Harian{% endblock %}
+{% block content %}
+<div class="page-header"><h1>Hapus Logbook Harian</h1></div>
+<div class="card">
+    <p>{% if can_view_all %}Hapus kegiatan tanggal {{ obj.tanggal|date:'d M Y' }} beserta seluruh peserta dan dokumentasinya?{% else %}Hapus keikutsertaan Anda pada kegiatan tanggal {{ obj.tanggal|date:'d M Y' }}? Data peserta lain tetap tersedia.{% endif %}</p>
+    <form method="post" class="form-actions">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">Ya, Hapus</button>
+        <a href="{% url 'pengguna:logbook_daftar' %}" class="btn btn-secondary">Batal</a>
+    </form>
+</div>
+{% endblock %}

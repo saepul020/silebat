@@ -1,6 +1,6 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
-from django.db.models import Case, IntegerField, Value, When
+from django.db.models import Case, F, IntegerField, Q, Value, When
 
 
 DEFAULT_ROLE_NAMES = [
@@ -102,7 +102,12 @@ class User(AbstractUser):
 
 
 class UserProfile(models.Model):
+    JENIS_KELAMIN_CHOICES = [('Laki-Laki', 'Laki-Laki'), ('Perempuan', 'Perempuan')]
+
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="profile")
+    tempat_lahir = models.CharField(max_length=100, blank=True)
+    tanggal_lahir = models.DateField(blank=True, null=True)
+    jenis_kelamin = models.CharField(max_length=10, choices=JENIS_KELAMIN_CHOICES, blank=True)
     role = models.ForeignKey(Role, on_delete=models.SET_NULL, null=True, blank=True)
     foto_profil = models.ImageField(upload_to="profile/", blank=True, null=True)
     ttd_digital = models.ImageField(upload_to="ttd_digital/", blank=True, null=True)
@@ -120,7 +125,112 @@ class UserProfile(models.Model):
         return f"Profil {self.user.get_full_name() or self.user.username}"
 
 
+class Logbook(models.Model):
+    LINGKUP_CHOICES = [(value, value) for value in (
+        'Dukungan Manajemen', 'Laboratorium', 'Layanan Teknis', 'Pengembangan Penerapan',
+    )]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='logbook_input')
+    lingkup = models.CharField('Lingkup Kegiatan', max_length=30, choices=LINGKUP_CHOICES)
+    tanggal = models.DateField()
+    uraian = models.TextField()
+    dokumen = models.FileField(upload_to='pengguna/logbook/', blank=True)
+    peserta_user = models.ManyToManyField(User, through='PesertaLogbook', related_name='logbook_diikuti')
+
+    class Meta:
+        ordering = ['-tanggal', '-pk']
+
+    def __str__(self):
+        return f'Logbook {self.tanggal}'
+
+
+class PesertaLogbook(models.Model):
+    logbook = models.ForeignKey(Logbook, on_delete=models.CASCADE, related_name='peserta')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='peserta_logbook')
+
+    class Meta:
+        ordering = ['pk']
+        constraints = [models.UniqueConstraint(fields=['logbook', 'user'], name='logbook_user_unik')]
+
+
+class Portofolio(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='portofolio')
+    nama = models.CharField(max_length=255)
+    lokasi = models.CharField(max_length=255)
+    uraian = models.JSONField(default=list)
+    tahun = models.PositiveSmallIntegerField()
+    dokumen = models.FileField(upload_to='pengguna/portofolio/', blank=True)
+    nomor_dokumen = models.CharField(max_length=100, blank=True)
+
+    class Meta:
+        ordering = ['-tahun', '-pk']
+
+    def __str__(self):
+        return self.nama
+
+
+class RiwayatKarir(models.Model):
+    STATUS_CHOICES = [(value, value) for value in ('Karyawan Tetap', 'Kontrak', 'Magang', 'Part-time', 'Freelance')]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='riwayat_karir')
+    perusahaan = models.CharField(max_length=255)
+    jabatan = models.CharField(max_length=255)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES)
+    tanggal_mulai = models.DateField()
+    tanggal_selesai = models.DateField(blank=True, null=True)
+    masih_bekerja = models.BooleanField(default=False)
+    uraian = models.TextField()
+    dokumen = models.FileField(upload_to='pengguna/karir/', blank=True)
+    nomor_dokumen = models.CharField(max_length=100, blank=True)
+
+    class Meta:
+        ordering = ['-tanggal_mulai', '-pk']
+        constraints = [models.CheckConstraint(
+            condition=(
+                Q(masih_bekerja=True, tanggal_selesai__isnull=True)
+                | (Q(masih_bekerja=False, tanggal_selesai__isnull=False)
+                   & Q(tanggal_selesai__gte=F('tanggal_mulai')))
+            ), name='karir_tanggal_urut',
+        )]
+
+    def __str__(self):
+        return f'{self.jabatan} - {self.perusahaan}'
+
+    @property
+    def uraian_poin(self):
+        return [line for line in self.uraian.splitlines() if line.strip()]
+
+
+class Pendidikan(models.Model):
+    TINGKAT_CHOICES = [(value, value) for value in (
+        'SD / Sederajat', 'SMP / Sederajat', 'SMA / SMK / Sederajat',
+        'Diploma I (D1)', 'Diploma II (D2)', 'Diploma III (D3)', 'Diploma IV (D4)',
+        'Sarjana (S1)', 'Magister (S2)', 'Doktor (S3)',
+    )]
+    LOKASI_CHOICES = [('Dalam Negeri', 'Dalam Negeri'), ('Luar Negeri', 'Luar Negeri')]
+    NILAI_CHOICES = [(value, value) for value in ('IPK', 'GPA', 'Nilai Rata-Rata Ijazah', 'Nilai US/UN')]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='pendidikan')
+    tingkat = models.CharField(max_length=30, choices=TINGKAT_CHOICES)
+    lokasi = models.CharField(max_length=15, choices=LOKASI_CHOICES)
+    lembaga = models.CharField(max_length=255)
+    jurusan = models.CharField(max_length=255, blank=True)
+    tanggal_lulus = models.DateField()
+    jenis_nilai = models.CharField(max_length=30, choices=NILAI_CHOICES)
+    nilai = models.DecimalField(max_digits=7, decimal_places=2)
+    ijazah = models.FileField(upload_to='pengguna/pendidikan/ijazah/')
+    transkrip = models.FileField(upload_to='pengguna/pendidikan/transkrip/')
+
+    class Meta:
+        ordering = ['-tanggal_lulus', '-pk']
+
+    def __str__(self):
+        return f'{self.tingkat} - {self.lembaga}'
+
+
 class Pelatihan(models.Model):
+    KATEGORI_CHOICES = [(value, value) for value in ('Diklat', 'Pelatihan', 'Seminar', 'Workshop')]
+
     TIPE_INTERNAL = "Pelatihan Internal"
     TIPE_EKSTERNAL = "Pelatihan Eksternal"
     TIPE_CHOICES = [
@@ -143,6 +253,7 @@ class Pelatihan(models.Model):
         null=True,
         blank=True,
     )
+    kategori_kegiatan = models.CharField(max_length=20, choices=KATEGORI_CHOICES)
     tipe_pelatihan = models.CharField(max_length=30, choices=TIPE_CHOICES)
     jenis_pelatihan = models.CharField(max_length=30, choices=JENIS_CHOICES)
     nama_pelatihan = models.CharField(max_length=255)

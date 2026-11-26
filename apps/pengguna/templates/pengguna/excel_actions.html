@@ -1,0 +1,6 @@
+{% if request.user.is_authenticated %}
+{% with export_route='pengguna:'|add:kind|add:'_export' %}
+<a href="{% url export_route %}" class="btn btn-secondary"><i class="bi bi-download" aria-hidden="true"></i>&nbsp;Export Data</a>
+{% endwith %}
+<button type="button" class="btn btn-secondary js-import-data-btn" data-import-target="#{{ kind }}-import"><i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i>&nbsp;Import Data</button>
+{% endif %}

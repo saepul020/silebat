@@ -60,6 +60,7 @@
 {% include 'pemeliharaan/timeline.html' %}
 
 </div>
+{% include 'pemeliharaan/foto_modal.html' %}
 <div class="delete-modal {% if open_action_modal %}show{% endif %}" id="verificationNoteModal" data-open-on-load="{% if open_action_modal %}true{% else %}false{% endif %}">
     <div class="delete-modal-backdrop" id="verificationNoteModalBackdrop"></div>
     <div class="delete-modal-card verify-note-modal" role="dialog" aria-modal="true" aria-labelledby="verificationNoteModalTitle">
@@ -73,6 +74,15 @@
             <input type="hidden" name="aksi" id="verificationActionInput" value="{{ selected_action|default:'' }}">
 
             <div class="delete-modal-body">
+                {% if requires_repair_method %}
+                <div data-repair-method {% if selected_action != 'setujui' %}hidden{% endif %}>
+                    <div class="form-group {% if form.metode_perbaikan.errors %}has-error{% endif %}">
+                        <label for="{{ form.metode_perbaikan.id_for_label }}">{{ form.metode_perbaikan.label }}</label>
+                        {{ form.metode_perbaikan }}
+                        {% for error in form.metode_perbaikan.errors %}<p class="input-error-text verify-note-error">{{ error }}</p>{% endfor %}
+                    </div>
+                </div>
+                {% endif %}
                 <div class="form-group {% if form.catatan.errors %}has-error{% endif %}">
                     <label for="verificationCatatanInput" id="verificationNoteLabel">{{ active_action.note_label|default:'Catatan / Alasan' }}</label>
                     <textarea
@@ -646,5 +656,11 @@
         </form>
     </div>
 </div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{% if verification_mode == 'pemeliharaan' %}
+<script src="{% static 'js/pemeliharaan.js' %}?v=20261124-repair-flow-v1" defer></script>
 {% endif %}
 {% endblock %}

@@ -1,22 +1,24 @@
-from io import BytesIO
+from pathlib import Path
+from datetime import date
 
 from django.contrib import messages
 from django.db import transaction
-from django.db.models import Count, Exists, OuterRef
+from django.db.models import Count, Exists, OuterRef, Prefetch, Q, Subquery
 from django.db.models.functions import ExtractYear
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
-from django.http import HttpResponse, JsonResponse
+from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.urls import reverse
 from django.contrib.auth import password_validation, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.utils.dates import MONTHS
+from django.views.decorators.clickjacking import xframe_options_sameorigin
 
-from apps.core.file_cleanup import delete_file_if_unused
-from apps.core.list_pagination import paginate_list
+from apps.core.list_pagination import normalize_search, paginate_list
 from apps.core.navigation import get_next_url, redirect_next
-from apps.core.excel_utils import build_excel_response
+from apps.core.excel_utils import build_excel_response, build_import_template
 from apps.core.import_utils import (
     import_cell as _import_cell,
     json_response_or_none as _import_json_response,
@@ -37,8 +39,9 @@ from apps.core.permissions import (
     is_super_admin,
 )
 
-from .forms import PelatihanForm, PesertaFormSet, UserForm, UserProfileForm, UserUpdateForm
-from .models import Pelatihan, PesertaPelatihan, Role, User, UserProfile, get_default_role_queryset, get_sdm_users
+from .forms import DrhForm, PelatihanForm, PesertaFormSet, UserForm, UserProfileForm, UserUpdateForm
+from .logbook_images import IMAGE_EXTENSIONS, preview_image
+from .models import Logbook, Portofolio, Pelatihan, PesertaPelatihan, Role, User, UserProfile, get_default_role_queryset, get_sdm_users
 
 IMPORT_PENGGUNA_SESSION_KEY = "pengguna_import_validated_rows"
 IMPORT_PENGGUNA_HEADERS = [
@@ -344,58 +347,6 @@ def _handle_pengguna_import_post(request):
     return redirect('pengguna:daftar')
 
 
-def _download_import_template(*, headers, sample, references, validations, worksheet_title, filename):
-    try:
-        from openpyxl import Workbook
-        from openpyxl.styles import Font, PatternFill
-        from openpyxl.worksheet.datavalidation import DataValidation
-    except ImportError as exc:
-        raise RuntimeError('Library openpyxl belum tersedia. Jalankan: pip install openpyxl') from exc
-
-    workbook = Workbook()
-    worksheet = workbook.active
-    worksheet.title = worksheet_title
-
-    for column_index, header in enumerate(headers, start=1):
-        cell = worksheet.cell(row=1, column=column_index, value=header)
-        cell.font = Font(bold=True)
-        cell.fill = PatternFill('solid', fgColor='EAF2FF')
-        worksheet.column_dimensions[cell.column_letter].width = 28
-
-    for column_index, value in enumerate(sample, start=1):
-        worksheet.cell(row=2, column=column_index, value=value)
-
-    if references:
-        lists_sheet = workbook.create_sheet('Referensi Pilihan')
-        for col_index, (title, values) in enumerate(references, start=1):
-            lists_sheet.cell(row=1, column=col_index, value=title).font = Font(bold=True)
-            lists_sheet.column_dimensions[lists_sheet.cell(row=1, column=col_index).column_letter].width = 34
-            for row_index, value in enumerate(values, start=2):
-                lists_sheet.cell(row=row_index, column=col_index, value=value)
-
-    for header, values in (validations or {}).items():
-        if header not in headers:
-            continue
-        column_index = headers.index(header) + 1
-        column_letter = worksheet.cell(row=1, column=column_index).column_letter
-        formula = '"' + ','.join(values) + '"'
-        validator = DataValidation(type='list', formula1=formula, allow_blank=False)
-        worksheet.add_data_validation(validator)
-        validator.add(f'{column_letter}2:{column_letter}1000')
-
-    output = BytesIO()
-    workbook.save(output)
-    output.seek(0)
-    response = HttpResponse(
-        output.getvalue(),
-        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    )
-    response['Content-Disposition'] = f'attachment; filename="{filename}"'
-    return response
-
-
-
-
 @login_required
 def export_pengguna(request):
     if not can_access_pengguna_app(request.user):
@@ -458,7 +409,7 @@ def download_format_import_pengguna(request):
 
     role_values = [role.nama for role in get_default_role_queryset()]
     tim_values = [normalize_tim_kegiatan_name(tim.nama_tim) for tim in TimKegiatan.objects.order_by('nama_tim')]
-    return _download_import_template(
+    return build_import_template(
         headers=IMPORT_PENGGUNA_HEADERS,
         sample=[
             'budi.santoso',
@@ -631,6 +582,11 @@ def hapus_pengguna(request, pk):
 
 
 @login_required
+def data_pengguna(request):
+    return render(request, 'pengguna/data_pengguna.html', {'drh_form': DrhForm(user=request.user)})
+
+
+@login_required
 def detail_pengguna(request, pk):
     user = get_object_or_404(
         User.objects.select_related('profile', 'profile__role', 'profile__nama_tim'),
@@ -661,32 +617,75 @@ def _get_sdm_user_options():
             'name': user.get_full_name() or user.username,
             'user': user,
         }
-        for user in get_sdm_users()
+        for user in User.objects.order_by('first_name', 'username')
     ]
 
 
 def _resolve_sdm_user_filter(request, role_name, user_options):
     can_filter = role_name in SDM_MONITOR_ROLES
-    option_map = {item['id']: item for item in user_options}
-
     if not can_filter:
         return False, str(request.user.pk), request.user
 
-    raw_user_id = request.GET.get('user')
-    if raw_user_id is None:
-        raw_user_id = '' if role_name == ROLE_SUPER_ADMIN else str(request.user.pk)
-
-    raw_user_id = str(raw_user_id).strip()
-    if raw_user_id == '':
-        return True, '', None
-
+    option_map = {item['id']: item for item in user_options}
+    raw_user_id = str(request.GET.get('user', 'all')).strip()
+    if raw_user_id == 'all':
+        return True, 'all', None
     option = option_map.get(raw_user_id)
     if option:
         return True, raw_user_id, option['user']
 
-    fallback_id = '' if role_name == ROLE_SUPER_ADMIN else str(request.user.pk)
-    option = option_map.get(fallback_id)
-    return True, fallback_id if option else '', option['user'] if option else None
+    return True, '', None
+
+
+def _sdm_period(request, prefix, today):
+    if normalize_search(request.GET.get(prefix + '_q')):
+        return 'all', 'all'
+    try:
+        year = request.GET.get(prefix + '_year', today.year)
+        month = request.GET.get(prefix + '_month', today.month)
+        period = date(today.year if year == 'all' else int(year), 1 if month == 'all' else int(month), 1)
+        return 'all' if year == 'all' else period.year, 'all' if month == 'all' else period.month
+    except (ValueError, TypeError, OverflowError):
+        return today.year, today.month
+
+
+def _sdm_queryset(user, queryset):
+    if get_role_name(user) in SDM_MONITOR_ROLES:
+        records = queryset.model.objects.filter(peserta__user__in=get_sdm_users())
+        return queryset.filter(pk__in=records.values('pk'))
+    return queryset.filter(peserta__user=user)
+
+
+def _materi_response(obj):
+    if not obj.file_materi:
+        raise Http404('Materi belum tersedia.')
+    try:
+        file = obj.file_materi.open('rb')
+    except FileNotFoundError:
+        raise Http404('File materi tidak ditemukan.')
+    response = FileResponse(file, as_attachment=True)
+    response['Cache-Control'] = 'private, no-store'
+    return response
+
+
+@login_required
+def sdm_materi(request, pk):
+    obj = get_object_or_404(Pelatihan, pk=pk)
+    return _materi_response(obj)
+
+
+@login_required
+def sdm_preview(request, pk):
+    obj = get_object_or_404(Logbook, pk=pk)
+    if not obj.dokumen:
+        raise Http404('Dokumentasi belum tersedia.')
+    try:
+        with obj.dokumen.open('rb') as file:
+            response = HttpResponse(preview_image(file), content_type='image/jpeg')
+    except (FileNotFoundError, ValidationError):
+        raise Http404('Preview dokumentasi tidak tersedia.')
+    response['Cache-Control'] = 'private, no-store'
+    return response
 
 
 @login_required
@@ -694,19 +693,39 @@ def dashboard_sdm(request):
     role_name = get_role_name(request.user)
     user_options = _get_sdm_user_options() if role_name in SDM_MONITOR_ROLES else []
     can_filter_sdm, selected_user_id, selected_user = _resolve_sdm_user_filter(request, role_name, user_options)
-    pelatihan_qs = Pelatihan.objects.select_related('user', 'user__profile', 'user__profile__role')
-
-    if can_filter_sdm:
-        participants = PesertaPelatihan.objects.filter(user__in=get_sdm_users())
-        if selected_user is not None:
-            participants = participants.filter(user=selected_user)
-        pelatihan_qs = pelatihan_qs.filter(pk__in=participants.values('pelatihan_id'))
-    else:
-        pelatihan_qs = pelatihan_qs.filter(peserta__user=request.user)
+    pelatihan_qs = _sdm_queryset(request.user, Pelatihan.objects.select_related(
+        'user', 'user__profile', 'user__profile__role',
+    ))
+    if can_filter_sdm and selected_user is not None:
+        pelatihan_qs = pelatihan_qs.filter(peserta__user=selected_user)
 
     total_pelatihan = pelatihan_qs.count()
-    pelatihan_terbaru = pelatihan_qs.order_by('-tanggal_mulai', '-created_at')[:5]
-    current_year = timezone.localtime().year
+    today = timezone.localdate()
+    training_year, training_month = _sdm_period(request, 'training', today)
+    training_rows = Pelatihan.objects.select_related('user').prefetch_related(
+        Prefetch('peserta', queryset=PesertaPelatihan.objects.select_related('user')),
+    )
+    if can_filter_sdm and selected_user is not None:
+        training_rows = training_rows.filter(peserta__user=selected_user)
+    training_year_options = sorted(
+        {day.year for day in training_rows.dates('tanggal_mulai', 'year')}
+        | {today.year, today.year if training_year == 'all' else training_year},
+        reverse=True,
+    )
+    pelatihan_terbaru = training_rows
+    if training_year != 'all':
+        pelatihan_terbaru = pelatihan_terbaru.filter(tanggal_mulai__year=training_year)
+    if training_month != 'all':
+        pelatihan_terbaru = pelatihan_terbaru.filter(tanggal_mulai__month=training_month)
+    training_list = paginate_list(
+        request, pelatihan_terbaru.order_by('-tanggal_mulai', '-created_at', '-pk'),
+        entries_param='training_entries', page_param='training_page', search_param='training_q',
+        search_fields=('nama_pelatihan', 'tipe_pelatihan', 'jenis_pelatihan',
+                       'user__username', 'user__first_name', 'user__last_name',
+                       'peserta__user__username', 'peserta__user__first_name', 'peserta__user__last_name'),
+    )
+    training_search = training_list['search_query']
+    current_year = today.year
 
     tipe_rows = list(
         pelatihan_qs.annotate(year=ExtractYear('tanggal_mulai'))
@@ -763,14 +782,94 @@ def dashboard_sdm(request):
         ],
     }
 
+    kategori_rows = pelatihan_qs.annotate(year=ExtractYear('tanggal_mulai')).values(
+        'year', 'kategori_kegiatan',
+    ).annotate(total=Count('id')).order_by('year', 'kategori_kegiatan')
+    sdm_kategori_chart = {
+        'rows': [{'year': row['year'], 'key': row['kategori_kegiatan'], 'total': row['total']}
+                 for row in kategori_rows],
+        'availableYears': available_years,
+        'defaultYear': current_year,
+        'categories': [{'id': value, 'label': label} for value, label in Pelatihan.KATEGORI_CHOICES],
+    }
+    portfolio = Portofolio.objects.all()
+    logbook = Logbook.objects.select_related('user').prefetch_related('peserta__user')
+    if can_filter_sdm:
+        users = get_sdm_users()
+        portfolio = portfolio.filter(user__in=users)
+        if selected_user is not None:
+            portfolio = portfolio.filter(user=selected_user)
+            logbook = logbook.filter(peserta__user=selected_user)
+    else:
+        portfolio = portfolio.filter(user=request.user)
+    task_rows = logbook.filter(tanggal__year=current_year)
+    if not can_filter_sdm:
+        task_rows = task_rows.filter(peserta__user=request.user)
+    total_tugas = task_rows.count()
+    project_rows = list(portfolio.values('tahun').annotate(total=Count('id')).order_by('tahun'))
+    project_years = sorted({row['tahun'] for row in project_rows} | {current_year})
+    sdm_portofolio_chart = {
+        'rows': [{'year': row['tahun'], 'key': str(row['tahun']), 'total': row['total']} for row in project_rows],
+        'categories': [{'id': str(year), 'label': str(year)} for year in project_years],
+        'label': 'Jumlah Proyek',
+    }
+    log_year, log_month = _sdm_period(request, 'log', today)
+    log_year_options = sorted(
+        {day.year for day in logbook.dates('tanggal', 'year')}
+        | {today.year, today.year if log_year == 'all' else log_year}, reverse=True,
+    )
+    if log_year != 'all':
+        logbook = logbook.filter(tanggal__year=log_year)
+    if log_month != 'all':
+        logbook = logbook.filter(tanggal__month=log_month)
+    log_list = paginate_list(
+        request, logbook.order_by('-tanggal', '-pk'),
+        entries_param='log_entries', page_param='log_page', search_param='log_q',
+        search_fields=('uraian', 'user__username', 'user__first_name', 'user__last_name',
+                       'peserta__user__username', 'peserta__user__first_name', 'peserta__user__last_name'),
+    )
+    for item in log_list['items']:
+        is_image = item.dokumen and Path(item.dokumen.name).suffix.lower().lstrip('.') in IMAGE_EXTENSIONS
+        item.preview_url = reverse('pengguna:sdm_preview', args=[item.pk]) if is_image else ''
+    log_search = log_list['search_query']
+    query = request.GET.copy()
+    filters = {'user': selected_user_id, 'log_year': log_year, 'log_month': log_month,
+                  'training_year': training_year, 'training_month': training_month,
+                  'log_q': log_search, 'training_q': training_search,
+                  'log_entries': log_list['selected_entries'],
+                  'training_entries': training_list['selected_entries']}
+    for key, value in filters.items():
+        query[key] = value
+    for prefix, listing in (('training', training_list), ('log', log_list)):
+        params = query.copy()
+        params.pop(prefix + '_page', None)
+        listing['query'] = params.urlencode()
+
     return render(
         request,
         'pengguna/dashboard_sdm.html',
         {
             'total_pelatihan': total_pelatihan,
-            'pelatihan_terbaru': pelatihan_terbaru,
+            'total_tugas': total_tugas,
+            'sdm_year': current_year,
+            'pelatihan_terbaru': training_list['items'],
+            'training_list': training_list,
+            'log_list': log_list,
             'sdm_tipe_chart': sdm_tipe_chart,
             'sdm_jenis_chart': sdm_jenis_chart,
+            'sdm_kategori_chart': sdm_kategori_chart,
+            'sdm_portofolio_chart': sdm_portofolio_chart,
+            'logbook_page': log_list['page_obj'] if log_list['page_obj'] is not None else log_list['items'],
+            'log_year': log_year,
+            'log_month': log_month,
+            'log_year_options': log_year_options,
+            'month_options': [{'value': 'all', 'label': 'Semua'}] + [{'value': value, 'label': str(label)} for value, label in MONTHS.items()],
+            'training_year': training_year,
+            'training_month': training_month,
+            'training_search': training_search,
+            'training_year_options': training_year_options,
+            'log_search': log_search,
+            'log_query': log_list['query'],
             'show_sdm_user_filter': can_filter_sdm,
             'sdm_user_options': user_options,
             'selected_sdm_user_id': selected_user_id,
@@ -803,12 +902,20 @@ def _get_pelatihan_forms(request, pelatihan=None):
 
 
 @login_required
-def daftar_pelatihan(request):
-    queryset = _get_pelatihan_queryset_for_user(request.user)
+def daftar_pelatihan(request, import_context=None):
+    can_view_all = is_super_admin(request.user)
+    sertifikat = PesertaPelatihan.objects.filter(
+        pelatihan_id=OuterRef('pk'),
+        user_id=OuterRef('user_id') if can_view_all else request.user.pk,
+    )
+    queryset = _get_pelatihan_queryset_for_user(request.user).annotate(
+        sertifikat_pk=Subquery(sertifikat.values('pk')[:1]),
+        sertifikat_file=Subquery(sertifikat.values('file_sertifikat')[:1]),
+    )
     pagination_context = paginate_list(request, queryset, search_fields=PELATIHAN_LIST_SEARCH_FIELDS)
     context = {
-        'items': pagination_context['items'],
-        'can_view_all_pelatihan': is_super_admin(request.user),
+        'can_view_all_pelatihan': can_view_all,
+        'import_context': import_context or {},
     }
     context.update(pagination_context)
     return render(request, 'pengguna/daftar_pelatihan.html', context)
@@ -825,7 +932,7 @@ def tambah_pelatihan(request):
             pelatihan.user = request.user
             pelatihan.save()
             peserta.save(pelatihan)
-            messages.success(request, 'Data pelatihan berhasil ditambahkan.')
+            messages.success(request, 'Data kegiatan berhasil ditambahkan.')
             return redirect('pengguna:pelatihan_daftar')
 
     return render(
@@ -834,8 +941,8 @@ def tambah_pelatihan(request):
         {
             'form': form,
             'peserta': peserta,
-            'page_title': 'Tambah Pelatihan',
-            'page_subtitle': 'Masukkan data pelatihan pengguna.',
+            'page_title': 'Tambah Kegiatan',
+            'page_subtitle': 'Masukkan data kegiatan pengguna.',
             'submit_label': 'Simpan',
             'is_edit': False,
             'obj': None,
@@ -847,7 +954,6 @@ def tambah_pelatihan(request):
 @transaction.atomic
 def edit_pelatihan(request, pk):
     pelatihan = _get_pelatihan_for_user_or_404(request, pk, lock=request.method == 'POST')
-    old_file_materi = pelatihan.file_materi
     form, peserta = _get_pelatihan_forms(request, pelatihan)
 
     if request.method == 'POST':
@@ -856,10 +962,7 @@ def edit_pelatihan(request, pk):
             updated = form.save()
             peserta.save(updated)
 
-            if old_file_materi and getattr(old_file_materi, 'name', '') != getattr(updated.file_materi, 'name', ''):
-                transaction.on_commit(lambda: delete_file_if_unused(Pelatihan, 'file_materi', old_file_materi))
-
-            messages.success(request, 'Data pelatihan berhasil diperbarui.')
+            messages.success(request, 'Data kegiatan berhasil diperbarui.')
             return redirect_next(request, 'pengguna:pelatihan_detail', pk=updated.pk)
 
     return render(
@@ -868,14 +971,33 @@ def edit_pelatihan(request, pk):
         {
             'form': form,
             'peserta': peserta,
-            'page_title': 'Edit Pelatihan',
-            'page_subtitle': 'Perbarui data pelatihan pengguna.',
+            'page_title': 'Edit Kegiatan',
+            'page_subtitle': 'Perbarui data kegiatan pengguna.',
             'submit_label': 'Update',
             'is_edit': True,
             'obj': pelatihan,
             'next_url': get_next_url(request),
         },
     )
+
+
+@login_required
+def download_materi(request, pk):
+    return _materi_response(_get_pelatihan_for_user_or_404(request, pk))
+
+
+@login_required
+@xframe_options_sameorigin
+def preview_sertifikat(request, pk, peserta_pk):
+    pelatihan = _get_pelatihan_for_user_or_404(request, pk)
+    peserta = get_object_or_404(pelatihan.peserta, pk=peserta_pk)
+    if not peserta.file_sertifikat:
+        raise Http404('Sertifikat belum tersedia.')
+    try:
+        file = peserta.file_sertifikat.open('rb')
+    except FileNotFoundError:
+        raise Http404('File sertifikat tidak ditemukan.')
+    return FileResponse(file, as_attachment=False)
 
 
 @login_required
@@ -887,7 +1009,6 @@ def detail_pelatihan(request, pk):
         {
             'obj': pelatihan,
             'peserta': pelatihan.peserta.select_related('user'),
-            'keikutsertaan': pelatihan.peserta.filter(user=request.user).first(),
             'can_view_all_pelatihan': is_super_admin(request.user),
         },
     )
@@ -901,13 +1022,13 @@ def hapus_pelatihan(request, pk):
         nama_pelatihan = pelatihan.nama_pelatihan
         if is_super_admin(request.user):
             pelatihan.delete()
-            messages.success(request, f'Data pelatihan "{nama_pelatihan}" beserta seluruh pesertanya berhasil dihapus.')
+            messages.success(request, f'Data kegiatan "{nama_pelatihan}" beserta seluruh pesertanya berhasil dihapus.')
         else:
             peserta = get_object_or_404(pelatihan.peserta, user=request.user)
             peserta.delete()
             if not pelatihan.peserta.exists():
                 pelatihan.delete()
-            messages.success(request, f'Keikutsertaan Anda pada pelatihan "{nama_pelatihan}" berhasil dihapus.')
+            messages.success(request, f'Keikutsertaan Anda pada kegiatan "{nama_pelatihan}" berhasil dihapus.')
         return redirect('pengguna:pelatihan_daftar')
 
     return redirect('pengguna:pelatihan_daftar')

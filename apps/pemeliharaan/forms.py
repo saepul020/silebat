@@ -5,7 +5,7 @@ from django.core.validators import RegexValidator
 from django.db import transaction
 from django.utils import timezone
 
-from apps.peminjaman.forms import parse_flexible_date
+from apps.peminjaman.forms import VerifikasiAksiForm, parse_flexible_date
 from apps.core.upload_validation import (
     MAX_UPLOAD_SIZE_BYTES,
     build_max_upload_size_message,
@@ -18,6 +18,7 @@ from .models import (
     JenisFotoPemeliharaanChoices,
     KondisiPemeliharaanChoices,
     MAX_PEMELIHARAAN_PHOTOS,
+    MetodePerbaikanChoices,
     PemeliharaanFoto,
     PemeliharaanItem,
     PemeliharaanPengajuan,
@@ -28,6 +29,27 @@ from .models import (
 
 DATE_TIME_INPUT_FORMATS = ["%Y-%m-%dT%H:%M", "%Y-%m-%d %H:%M"]
 MONTH_NAMES_SHORT_ID = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"]
+
+
+class VerifikasiPemeliharaanForm(VerifikasiAksiForm):
+    metode_perbaikan = forms.ChoiceField(
+        label="Metode Perbaikan",
+        choices=[("", "Pilih metode perbaikan"), *MetodePerbaikanChoices.choices],
+        required=False,
+        widget=forms.Select(attrs={"class": "form-control"}),
+    )
+
+    def __init__(self, *args, requires_method=False, **kwargs):
+        self.requires_method = requires_method
+        super().__init__(*args, **kwargs)
+        if not requires_method or (self.is_bound and self.data.get("aksi") != "setujui"):
+            self.fields["metode_perbaikan"].disabled = True
+
+    def clean(self):
+        data = super().clean()
+        if self.requires_method and data.get("aksi") == "setujui" and not data.get("metode_perbaikan"):
+            self.add_error("metode_perbaikan", "Metode perbaikan wajib dipilih.")
+        return data
 
 
 def format_display_date(value):
@@ -234,6 +256,10 @@ class PemeliharaanForm(forms.Form):
     def __init__(self, *args, **kwargs):
         self.actor = kwargs.pop("actor", None)
         self.instance = kwargs.pop("instance", None)
+        self.repair_mode = kwargs.pop("repair_mode", False)
+        self.require_complete = kwargs.pop("require_complete", not self.repair_mode)
+        self.require_photos = kwargs.pop("require_photos", False)
+        self.saved_components = kwargs.pop("components", None)
         self.tanggal_pemeriksaan_value = kwargs.pop("tanggal_pemeriksaan", None) or timezone.now()
         if self.instance and self.instance.pk:
             self.tanggal_pemeriksaan_value = self.instance.tanggal_pemeriksaan
@@ -246,6 +272,9 @@ class PemeliharaanForm(forms.Form):
         if self.instance and self.instance.alat_id:
             self.fields["pilih_alat"].initial = self.instance.alat
         self.fields["tanggal_pemeriksaan"].initial = format_display_date(self.tanggal_pemeriksaan_value)
+        if self.repair_mode:
+            self.fields["pilih_alat"].disabled = True
+            self.fields["tanggal_pemeriksaan"].disabled = True
         self._set_common_widget_style()
         self.fields["pilih_alat"].widget.attrs["data-preserve-placeholder"] = "true"
 
@@ -270,11 +299,13 @@ class PemeliharaanForm(forms.Form):
     def _setup_photo_delete_field(self):
         photo_ids = []
         if self.instance and self.instance.pk:
-            photo_ids = list(
-                PemeliharaanFoto.objects.filter(
-                    item__pengajuan=self.instance,
-                ).values_list("pk", flat=True)
-            )
+            photos = PemeliharaanFoto.objects.filter(item__pengajuan=self.instance)
+            if self.repair_mode:
+                photos = photos.filter(
+                    jenis=JenisFotoPemeliharaanChoices.PERBAIKAN,
+                    item__tindakan_perbaikan=TindakanPerbaikanChoices.LANJUTAN,
+                )
+            photo_ids = list(photos.values_list("pk", flat=True))
 
         valid_ids = {str(photo_id) for photo_id in photo_ids}
         self.fields["hapus_foto_ids"].choices = [
@@ -314,6 +345,8 @@ class PemeliharaanForm(forms.Form):
         return f"{label} wajib diisi."
 
     def _get_selected_alat(self):
+        if self.repair_mode:
+            return self.instance.alat
         raw_value = self.data.get(self.add_prefix("pilih_alat")) if self.is_bound else None
         if not raw_value:
             return self.initial.get("pilih_alat") or getattr(self.instance, "alat", None)
@@ -323,6 +356,10 @@ class PemeliharaanForm(forms.Form):
             return None
 
     def _get_components(self, alat=None):
+        if self.saved_components is not None:
+            return self.saved_components
+        if self.repair_mode:
+            return [item.komponen for item in self.instance.items.all() if item.is_lanjutan]
         alat = alat or self._get_selected_alat()
         values = getattr(alat, "komponen_pemeliharaan", None) or []
         if isinstance(values, str):
@@ -335,12 +372,13 @@ class PemeliharaanForm(forms.Form):
     def _get_files(self, name):
         return list(self.files.getlist(name)) if self.files else []
 
-    def _add_component_error(self, index, message, *, area="komponen"):
+    def _add_component_error(self, index, message, *, area="komponen", field="kondisi"):
         error_data = self.component_errors.setdefault(
             index,
             {"komponen": [], "perbaikan": []},
         )
         error_data.setdefault(area, []).append(message)
+        error_data.setdefault("fields", {}).setdefault(field, []).append(message)
 
     def _validate_photos(
         self,
@@ -420,25 +458,37 @@ class PemeliharaanForm(forms.Form):
     def existing_pemeriksaan_fotos(self):
         return self._existing_photo_data(JenisFotoPemeliharaanChoices.PEMERIKSAAN)
 
-    def _parse_datetime(self, index, field_name, label):
+    def _parse_datetime(self, index, field_name, label, *, required=True, end_of_day=True):
         value = self._get_value(field_name)
         if not value:
-            self._add_component_error(index, f"{label} wajib diisi.", area="perbaikan")
+            if required:
+                self._add_component_error(index, f"{label} wajib diisi.", area="perbaikan", field=field_name.rsplit("_", 1)[0])
             return None
 
         try:
-            field = forms.DateTimeField(input_formats=DATE_TIME_INPUT_FORMATS)
-            return field.clean(value)
-        except forms.ValidationError:
-            try:
-                return date_to_end_of_day(value)
-            except (TypeError, ValueError, forms.ValidationError):
-                self._add_component_error(
-                    index,
-                    f"{label} harus berupa tanggal yang valid.",
-                    area="perbaikan",
-                )
-                return None
+            if ":" in value:
+                field = forms.DateTimeField(input_formats=DATE_TIME_INPUT_FORMATS)
+                return field.clean(value)
+            parsed = date_to_end_of_day(value)
+            return parsed if end_of_day or not parsed else parsed.replace(hour=0, minute=0)
+        except (TypeError, ValueError, forms.ValidationError):
+            self._add_component_error(
+                index,
+                f"{label} harus berupa tanggal yang valid.",
+                area="perbaikan",
+                field=field_name.rsplit("_", 1)[0],
+            )
+            return None
+
+    def _row_errors(self, index):
+        form_errors = self.errors if self.is_bound else {}
+        errors = {
+            field: list(messages)
+            for field, messages in self.component_errors.get(index, {}).get("fields", {}).items()
+        }
+        if self.is_bound and self.repair_mode and index == 0:
+            errors.setdefault("dokumentasi_perbaikan", []).extend(form_errors.get("hapus_foto_ids", []))
+        return errors
 
     def _build_bound_rows(self, components):
         rows = []
@@ -455,6 +505,7 @@ class PemeliharaanForm(forms.Form):
                     "kondisi": condition,
                     "tindakan": action,
                     "uraian_perbaikan": self._get_value(f"uraian_perbaikan_{index}"),
+                    "tanggal_mulai_perbaikan": self._get_value(f"tanggal_mulai_perbaikan_{index}"),
                     "tanggal_selesai_perbaikan": self._get_value(f"tanggal_selesai_perbaikan_{index}"),
                     "uraian_kerusakan": self._get_value(f"uraian_kerusakan_{index}"),
                     "existing_perbaikan_fotos": self._existing_photo_data(
@@ -465,8 +516,7 @@ class PemeliharaanForm(forms.Form):
                         JenisFotoPemeliharaanChoices.KERUSAKAN,
                         component,
                     ),
-                    "errors": self.component_errors.get(index, {}).get("komponen", []),
-                    "repair_errors": self.component_errors.get(index, {}).get("perbaikan", []),
+                    "field_errors": self._row_errors(index),
                 }
             )
         return rows
@@ -486,6 +536,9 @@ class PemeliharaanForm(forms.Form):
                     "kondisi": getattr(item, "kondisi", "") if item else "",
                     "tindakan": getattr(item, "tindakan_perbaikan", "") if item else "",
                     "uraian_perbaikan": getattr(item, "uraian_perbaikan", "") if item else "",
+                    "tanggal_mulai_perbaikan": format_display_date(item.tanggal_mulai_perbaikan)
+                    if item and item.tanggal_mulai_perbaikan
+                    else "",
                     "tanggal_selesai_perbaikan": format_display_date(item.tanggal_selesai_perbaikan)
                     if item and item.tanggal_selesai_perbaikan
                     else "",
@@ -498,8 +551,7 @@ class PemeliharaanForm(forms.Form):
                         JenisFotoPemeliharaanChoices.KERUSAKAN,
                         component,
                     ),
-                    "errors": self.component_errors.get(index, {}).get("komponen", []),
-                    "repair_errors": self.component_errors.get(index, {}).get("perbaikan", []),
+                    "field_errors": self._row_errors(index),
                 }
             )
         return rows
@@ -521,12 +573,12 @@ class PemeliharaanForm(forms.Form):
                 "kondisi": "",
                 "tindakan": "",
                 "uraian_perbaikan": "",
+                "tanggal_mulai_perbaikan": "",
                 "tanggal_selesai_perbaikan": "",
                 "uraian_kerusakan": "",
                 "existing_perbaikan_fotos": [],
                 "existing_kerusakan_fotos": [],
-                "errors": [],
-                "repair_errors": [],
+                "field_errors": {},
             }
             for index, component in enumerate(components)
         ]
@@ -572,7 +624,7 @@ class PemeliharaanForm(forms.Form):
         existing_pemeriksaan_count = self._existing_photo_count(
             JenisFotoPemeliharaanChoices.PEMERIKSAAN
         )
-        self.pemeriksaan_files = self._validate_photos(
+        self.pemeriksaan_files = [] if self.repair_mode else self._validate_photos(
             "dokumentasi_pemeriksaan",
             "Dokumentasi Pemeriksaan",
             required=existing_pemeriksaan_count == 0,
@@ -587,7 +639,10 @@ class PemeliharaanForm(forms.Form):
             if posted_component and posted_component != component:
                 self._add_component_error(index, "Data komponen tidak sesuai dengan Data Master.")
 
-            condition = self._get_value(f"kondisi_{index}")
+            condition = (
+                KondisiPemeliharaanChoices.PERLU_PERBAIKAN
+                if self.repair_mode else self._get_value(f"kondisi_{index}")
+            )
             if condition not in condition_values:
                 self._add_component_error(index, "Kondisi pemeliharaan wajib dipilih.")
 
@@ -604,43 +659,80 @@ class PemeliharaanForm(forms.Form):
             }
 
             if condition == KondisiPemeliharaanChoices.PERLU_PERBAIKAN:
-                action = self._get_value(f"tindakan_{index}")
+                action = (
+                    TindakanPerbaikanChoices.LANJUTAN
+                    if self.repair_mode else self._get_value(f"tindakan_{index}")
+                )
                 if action not in action_values:
                     self._add_component_error(
                         index,
                         "Tindakan perbaikan wajib dipilih.",
                         area="perbaikan",
+                        field="tindakan",
                     )
                 row["tindakan_perbaikan"] = action
 
-                if action == TindakanPerbaikanChoices.MANDIRI:
+                if action == TindakanPerbaikanChoices.LANGSUNG or self.repair_mode:
                     uraian = self._get_value(f"uraian_perbaikan_{index}")
-                    if not uraian:
+                    if not uraian and self.require_complete:
                         self._add_component_error(
                             index,
                             "Uraian Perbaikan wajib diisi.",
                             area="perbaikan",
+                            field="uraian_perbaikan",
                         )
+                    mulai = self.tanggal_pemeriksaan_value
+                    if self.repair_mode:
+                        mulai = self._parse_datetime(
+                            index,
+                            f"tanggal_mulai_perbaikan_{index}",
+                            "Tanggal mulai perbaikan",
+                            required=self.require_complete,
+                            end_of_day=False,
+                        )
+                        if mulai and timezone.localdate(mulai) < timezone.localdate(self.tanggal_pemeriksaan_value):
+                            self._add_component_error(
+                                index,
+                                "Tanggal mulai perbaikan tidak boleh lebih awal dari tanggal pemeriksaan.",
+                                area="perbaikan",
+                                field="tanggal_mulai_perbaikan",
+                            )
                     selesai = self._parse_datetime(
                         index,
                         f"tanggal_selesai_perbaikan_{index}",
                         "Tanggal selesai perbaikan",
+                        required=self.require_complete,
                     )
+                    if self.repair_mode and selesai and not mulai:
+                        self._add_component_error(
+                            index,
+                            "Isi tanggal mulai perbaikan terlebih dahulu sebelum mengisi tanggal selesai perbaikan.",
+                            area="perbaikan",
+                            field="tanggal_selesai_perbaikan",
+                        )
                     if selesai and selesai < self.tanggal_pemeriksaan_value:
                         self._add_component_error(
                             index,
                             "Tanggal selesai perbaikan tidak boleh lebih awal dari tanggal pemeriksaan.",
                             area="perbaikan",
+                            field="tanggal_selesai_perbaikan",
+                        )
+                    elif mulai and selesai and selesai < mulai:
+                        self._add_component_error(
+                            index,
+                            "Tanggal selesai perbaikan tidak boleh lebih awal dari tanggal mulai perbaikan.",
+                            area="perbaikan",
+                            field="tanggal_selesai_perbaikan",
                         )
                     row.update(
                         {
                             "uraian_perbaikan": uraian,
-                            "tanggal_mulai_perbaikan": self.tanggal_pemeriksaan_value,
+                            "tanggal_mulai_perbaikan": mulai,
                             "tanggal_selesai_perbaikan": selesai,
                             "perbaikan_files": self._validate_photos(
                                 f"dokumentasi_perbaikan_{index}",
                                 "Dokumentasi Perbaikan",
-                                required=not self._has_existing_item_photos(
+                                required=self.require_photos and not self._has_existing_item_photos(
                                     component,
                                     JenisFotoPemeliharaanChoices.PERBAIKAN,
                                 ),
@@ -652,17 +744,19 @@ class PemeliharaanForm(forms.Form):
                                     row_index,
                                     message,
                                     area="perbaikan",
+                                    field="dokumentasi_perbaikan",
                                 ),
                             ),
                         }
                     )
-                elif action == TindakanPerbaikanChoices.EKSTERNAL:
+                elif action == TindakanPerbaikanChoices.LANJUTAN:
                     uraian = self._get_value(f"uraian_kerusakan_{index}")
                     if not uraian:
                         self._add_component_error(
                             index,
                             "Uraian Kerusakan wajib diisi.",
                             area="perbaikan",
+                            field="uraian_kerusakan",
                         )
                     row.update(
                         {
@@ -670,7 +764,7 @@ class PemeliharaanForm(forms.Form):
                             "kerusakan_files": self._validate_photos(
                                 f"dokumentasi_kerusakan_{index}",
                                 "Dokumentasi Kerusakan",
-                                required=not self._has_existing_item_photos(
+                                required=self.require_photos and not self._has_existing_item_photos(
                                     component,
                                     JenisFotoPemeliharaanChoices.KERUSAKAN,
                                 ),
@@ -682,6 +776,7 @@ class PemeliharaanForm(forms.Form):
                                     row_index,
                                     message,
                                     area="perbaikan",
+                                    field="dokumentasi_kerusakan",
                                 ),
                             ),
                         }
@@ -696,6 +791,17 @@ class PemeliharaanForm(forms.Form):
         return cleaned_data
 
     def save(self):
+        if self.repair_mode:
+            with transaction.atomic():
+                self._delete_photos(self.instance)
+                item_map = {item.komponen: item for item in self.instance.items.all()}
+                for row in self.cleaned_items:
+                    item = item_map[row["komponen"]]
+                    for field in ("uraian_perbaikan", "tanggal_mulai_perbaikan", "tanggal_selesai_perbaikan"):
+                        setattr(item, field, row[field])
+                    item.save(update_fields=["uraian_perbaikan", "tanggal_mulai_perbaikan", "tanggal_selesai_perbaikan"])
+                    self._save_photos(item, JenisFotoPemeliharaanChoices.PERBAIKAN, row["perbaikan_files"])
+            return self.instance
         alat = self.cleaned_data["pilih_alat"]
         with transaction.atomic():
             pengajuan = self.instance if self.instance and self.instance.pk else None
@@ -787,6 +893,21 @@ class PemeliharaanForm(forms.Form):
                         update_fields.extend(["tanggal_pemeliharaan", "tanggal_perbaikan"])
                     old_alat.save(update_fields=update_fields)
         return pengajuan
+
+    @classmethod
+    def saved(cls, pengajuan, actor, *, repair_mode=False):
+        components = [item.komponen for item in pengajuan.items.all() if not repair_mode or item.is_lanjutan]
+        form = cls(instance=pengajuan, actor=actor, repair_mode=repair_mode, components=components)
+        data = {
+            "pilih_alat": pengajuan.alat_id,
+            "tanggal_pemeriksaan": format_display_date(pengajuan.tanggal_pemeriksaan),
+        }
+        for row in form.component_rows:
+            index = row["index"]
+            for field in ("komponen", "kondisi", "tindakan", "uraian_perbaikan", "tanggal_mulai_perbaikan", "tanggal_selesai_perbaikan", "uraian_kerusakan"):
+                data[f"{field}_{index}"] = row[field]
+        return cls(data, instance=pengajuan, actor=actor, repair_mode=repair_mode, components=components,
+                   require_complete=True, require_photos=True)
 
     def _delete_photos(self, pengajuan):
         delete_ids = {

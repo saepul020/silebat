@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% block title %}Data Pendidikan{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>Data Pendidikan</h1>
+    <p>Kelola riwayat pendidikan dan dokumen pendukung Anda.</p>
+</div>
+<div class="table-wrapper table-panel">
+    <div class="table-toolbar">
+        <h3 class="table-title">Riwayat Pendidikan</h3>
+        <div class="table-toolbar-actions">
+            {% include 'pengguna/excel_actions.html' with kind='pendidikan' %}
+            <a href="{% url 'pengguna:data' %}" class="btn btn-secondary">Kembali</a>
+            <a href="{% url 'pengguna:pendidikan_tambah' %}" class="btn btn-primary"><i class="bi bi-plus-circle" aria-hidden="true"></i>&nbsp;Tambah Data</a>
+        </div>
+    </div>
+    {% include 'components/entry_control.html' %}
+    <div class="table-scroll-area table-scroll--list" tabindex="0" aria-label="Tabel riwayat pendidikan">
+        <table class="table-data user-table user-table--education{% if can_view_all %} user-table--owner{% endif %}">
+            <colgroup>
+                {% if can_view_all %}<col class="user-table__col--user">{% endif %}
+                <col class="user-table__col--name">
+                <col class="user-table__col--text">
+                <col class="user-table__col--compact">
+                <col class="user-table__col--date">
+                <col class="user-table__col--name">
+                <col class="user-table__col--file">
+                <col class="user-table__col--file">
+                <col class="user-table__col--action">
+            </colgroup>
+            <thead><tr>
+                {% if can_view_all %}<th class="cell-wrap">Pengguna</th>{% endif %}
+                <th>Tingkat Pendidikan</th><th class="cell-wrap">Nama Lembaga Pendidikan</th>
+                <th class="cell-wrap">Jurusan</th><th>Tanggal Kelulusan</th><th>Nilai Akhir</th>
+                <th>Ijazah</th><th>Transkrip</th><th class="cell-action">Aksi</th>
+            </tr></thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    {% if can_view_all %}<td class="cell-wrap" data-sort-value="{{ item.user.get_full_name|default:item.user.username }}"><div class="user-table__owner">{{ item.user.get_full_name|default:item.user.username }}</div></td>{% endif %}
+                    <td class="user-table__nowrap">{{ item.get_tingkat_display }}</td>
+                    <td class="user-table__nowrap">{{ item.lembaga }}</td><td class="cell-wrap" data-sort-value="{{ item.jurusan|default:'-' }}"><div class="user-table__person">{{ item.jurusan|default:'-' }}</div></td>
+                    <td class="user-table__nowrap">{{ item.tanggal_lulus|date:'d M Y' }}</td><td>{{ item.get_jenis_nilai_display }}: <strong>{{ item.nilai }}</strong></td>
+                    <td class="user-table__media user-table__nowrap">{% if item.ijazah %}<a href="{% url 'pengguna:pendidikan_dokumen' item.pk 'ijazah' %}" class="btn btn-secondary btn-sm" title="Download ijazah" aria-label="Download ijazah {{ item.lembaga }}"><i class="bi bi-download" aria-hidden="true"></i></a>{% else %}-{% endif %}</td>
+                    <td class="user-table__media user-table__nowrap">{% if item.transkrip %}<a href="{% url 'pengguna:pendidikan_dokumen' item.pk 'transkrip' %}" class="btn btn-secondary btn-sm" title="Download transkrip" aria-label="Download transkrip {{ item.lembaga }}"><i class="bi bi-download" aria-hidden="true"></i></a>{% else %}-{% endif %}</td>
+                    <td class="cell-action user-table__nowrap"><div class="table-action-group">
+                        <a href="{% url 'pengguna:pendidikan_edit' item.pk %}" class="btn btn-warning btn-sm" title="Edit" aria-label="Edit pendidikan {{ item.lembaga }}"><i class="bi bi-pencil-square" aria-hidden="true"></i></a>
+                        <a href="{% url 'pengguna:pendidikan_hapus' item.pk %}" class="btn btn-danger btn-sm" title="Hapus" aria-label="Hapus pendidikan {{ item.lembaga }}"><i class="bi bi-trash3-fill" aria-hidden="true"></i></a>
+                    </div></td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="{% if can_view_all %}9{% else %}8{% endif %}"><div class="empty-state">Belum ada data pendidikan.</div></td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% include 'components/pagination.html' %}
+</div>
+{% include 'pengguna/excel_modal.html' with kind='pendidikan' title='Import Pendidikan' %}
+{% endblock %}

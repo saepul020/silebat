@@ -1,0 +1,6 @@
+<div class="peserta-form__row peserta-form__row--names" data-peserta-row{% if row.cleaned_data.DELETE %} hidden data-peserta-deleted="true"{% endif %}>
+    {{ row.DELETE.as_hidden }}
+    {% include 'pengguna/user_field.html' with field=row.user %}
+    <button type="button" class="btn btn-danger btn-sm peserta-form__remove" data-peserta-remove title="{% if row.removable %}Hapus baris peserta{% else %}Baris peserta ini terkunci{% endif %}" aria-label="Hapus baris peserta"{% if not row.removable %} disabled data-training-locked="true"{% endif %}><i class="bi bi-trash3-fill" aria-hidden="true"></i></button>
+    {% for error in row.non_field_errors %}<p class="input-error-text">*{{ error }}</p>{% endfor %}
+</div>

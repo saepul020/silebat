@@ -1,0 +1,27 @@
+<template data-maint-missing>
+    {% if obj.current_step == 'vendor_draft' %}
+    <ul class="pemeliharaan-missing__list">
+        {% for field in obj.kirim_errors %}<li>{{ field }}</li>{% endfor %}
+    </ul>
+    {% else %}
+    {% with notes=obj.kirim_groups %}
+    {% if notes.fields %}
+    <ul class="pemeliharaan-missing__list">
+        {% for field in notes.fields %}<li>{{ field }}</li>{% endfor %}
+    </ul>
+    {% endif %}
+    {% if notes.components %}
+    <ol class="pemeliharaan-missing__groups">
+        {% for group in notes.components %}
+        <li>
+            <strong>{{ group.name }}</strong>:
+            <ul class="pemeliharaan-missing__list">
+                {% for field in group.fields %}<li>{{ field }}</li>{% endfor %}
+            </ul>
+        </li>
+        {% endfor %}
+    </ol>
+    {% endif %}
+    {% endwith %}
+    {% endif %}
+</template>

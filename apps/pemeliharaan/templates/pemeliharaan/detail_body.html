@@ -60,7 +60,7 @@
                     <span class="badge badge-warning">{{ item.tindakan_perbaikan|default:'-' }}</span>
                 </div>
 
-                {% if item.is_mandiri %}
+                {% if item.has_repair_data %}
                     <div class="pemeliharaan-note">
                         <span>Uraian Perbaikan</span>
                         <p>{{ item.uraian_perbaikan|linebreaksbr }}</p>
@@ -87,7 +87,8 @@
                             {% endfor %}
                         </div>
                     </div>
-                {% elif item.is_eksternal %}
+                {% endif %}
+                {% if item.is_lanjutan %}
                     <div class="pemeliharaan-note">
                         <span>Uraian Kerusakan</span>
                         <p>{{ item.uraian_kerusakan|linebreaksbr }}</p>

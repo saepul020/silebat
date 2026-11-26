@@ -11,6 +11,7 @@ from apps.operasional.models import TIM_LAYANAN_TEKNIS_NAME, TimKegiatan
 from apps.pemeliharaan.models import (
     ACTIVE_PEMELIHARAAN_STEPS,
     KondisiPemeliharaanChoices,
+    MetodePerbaikanChoices,
     PemeliharaanItem,
     PemeliharaanPengajuan,
     StepPemeliharaanChoices,
@@ -49,13 +50,14 @@ class DashboardActiveTests(TestCase):
             obj = PemeliharaanPengajuan.objects.create(
                 pemohon=cls.users["admin"],
                 current_step=step,
+                metode_perbaikan=MetodePerbaikanChoices.MANDIRI if step == StepPemeliharaanChoices.PERBAIKAN_MANDIRI else MetodePerbaikanChoices.EKSTERNAL,
                 snapshot_nama_barang=f"Alat {step}",
             )
             PemeliharaanItem.objects.create(
                 pengajuan=obj,
                 komponen="Sensor",
                 kondisi=KondisiPemeliharaanChoices.PERLU_PERBAIKAN,
-                tindakan_perbaikan=TindakanPerbaikanChoices.EKSTERNAL,
+                tindakan_perbaikan=TindakanPerbaikanChoices.LANJUTAN,
             )
             cls.maintenance[step] = obj
 
@@ -106,6 +108,7 @@ class DashboardActiveTests(TestCase):
             ("admin", StepPemeliharaanChoices.DRAFT, "pemeliharaan:list"),
             ("admin", StepPemeliharaanChoices.DIKEMBALIKAN, "pemeliharaan:list"),
             ("admin", StepPemeliharaanChoices.VENDOR_DRAFT, "pemeliharaan:list"),
+            ("admin", StepPemeliharaanChoices.PERBAIKAN_MANDIRI, "pemeliharaan:list"),
             ("kepala", StepPemeliharaanChoices.KEPALA_LAB, "verifikasi:index"),
             ("kepala", StepPemeliharaanChoices.VENDOR_KEPALA_LAB, "verifikasi:index"),
             ("pimpinan", StepPemeliharaanChoices.PIMPINAN, "verifikasi:index"),
@@ -192,7 +195,7 @@ class DashboardActiveTests(TestCase):
         self.assertContains(response, f'data-item-open="itemModal{loan.pk}"')
         self.assertContains(response, f'id="itemModal{loan.pk}"')
         self.assertContains(response, 'aria-label="Cari pemeliharaan aktif"')
-        self.assertContains(response, 'class="btn btn-primary btn-sm"', count=4)
+        self.assertContains(response, 'class="btn btn-primary btn-sm"', count=5)
         self.assertNotContains(response, 'disabled title="Menunggu giliran tindak lanjut"')
         self.assertContains(response, 'title="Buka menu Verifikasi %s"' % loan.nomor_pengajuan)
         for step, item in self.maintenance.items():

@@ -8,6 +8,7 @@ from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
 from django.template.loader import get_template
 from django.test import SimpleTestCase, TestCase, TransactionTestCase, override_settings
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from apps.core.upload_validation import MAX_UPLOAD_SIZE_BYTES
@@ -38,6 +39,7 @@ class PelatihanTests(TestCase):
 
     def payload(self, **changes):
         data = {
+            "kategori_kegiatan": "Pelatihan",
             "tipe_pelatihan": Pelatihan.TIPE_INTERNAL,
             "jenis_pelatihan": Pelatihan.JENIS_LABORATORIUM,
             "nama_pelatihan": "Pelatihan Bersama",
@@ -57,6 +59,39 @@ class PelatihanTests(TestCase):
         self.assertEqual(response.status_code, 302)
         return Pelatihan.objects.get()
 
+    def test_category_options_and_initial_lock(self):
+        response = self.client.get(reverse('pengguna:pelatihan_tambah'))
+        form = response.context['form']
+        self.assertEqual(list(form.fields['kategori_kegiatan'].choices), [
+            ('', 'Pilih kategori kegiatan'), ('Diklat', 'Diklat'),
+            ('Pelatihan', 'Pelatihan'), ('Seminar', 'Seminar'), ('Workshop', 'Workshop'),
+        ])
+        self.assertTrue(form.fields['tipe_pelatihan'].widget.attrs['disabled'])
+        html = response.content.decode()
+        self.assertLess(html.index('id="id_kategori_kegiatan"'), html.index('id="id_tipe_pelatihan"'))
+
+    def test_category_required_and_invalid_post_does_not_save(self):
+        for value in ('', 'Tidak valid'):
+            with self.subTest(category=value):
+                response = self.client.post(reverse('pengguna:pelatihan_tambah'), self.payload(kategori_kegiatan=value))
+                self.assertEqual(response.status_code, 200)
+                self.assertIn('kategori_kegiatan', response.context['form'].errors)
+                self.assertFalse(Pelatihan.objects.exists())
+                self.assertFalse(PesertaPelatihan.objects.exists())
+
+    def test_category_persists_and_edit_restores_selection(self):
+        obj = self.create_training(kategori_kegiatan='Workshop')
+        self.assertEqual(obj.kategori_kegiatan, 'Workshop')
+        response = self.client.get(reverse('pengguna:pelatihan_edit', args=[obj.pk]))
+        self.assertEqual(response.context['form']['kategori_kegiatan'].value(), 'Workshop')
+        self.assertNotIn('disabled', response.context['form'].fields['tipe_pelatihan'].widget.attrs)
+        response = self.client.post(reverse('pengguna:pelatihan_edit', args=[obj.pk]), self.payload(**{
+            'kategori_kegiatan': 'Seminar', 'peserta-INITIAL_FORMS': '2',
+        }))
+        self.assertEqual(response.status_code, 302)
+        obj.refresh_from_db()
+        self.assertEqual(obj.kategori_kegiatan, 'Seminar')
+
     def test_create_locks_actor_and_shares_list_dashboard_and_detail(self):
         obj = self.create_training(**{
             "peserta-0-user": self.outsider.pk,
@@ -74,8 +109,9 @@ class PelatihanTests(TestCase):
             self.assertEqual(response.context["total_pelatihan"], 1)
             response = self.client.get(reverse("pengguna:pelatihan_detail", args=[obj.pk]))
             self.assertContains(response, "Peserta Kedua")
-            self.assertContains(response, "peserta-list")
-            self.assertEqual(response.context["keikutsertaan"].user_id, user.pk)
+            self.assertContains(response, "user-table--participants")
+            self.assertIn(user.pk, [item.user_id for item in response.context["peserta"]])
+            self.assertNotContains(response, '<label>File Sertifikat</label>')
 
     def test_form_starts_with_actor_only_and_certificate_in_peserta_fieldset(self):
         response = self.client.get(reverse("pengguna:pelatihan_tambah"))
@@ -87,21 +123,140 @@ class PelatihanTests(TestCase):
         self.assertFalse(empty_form.fields["user"].disabled)
         self.assertEqual(response.context["peserta"].management_form.initial["TOTAL_FORMS"], 1)
         html = response.content.decode()
-        self.assertLess(html.index("<legend>Detail Pelatihan"), html.index("<legend>Peserta Pelatihan"))
-        documents = html.split("<legend>Dokumen Pelatihan</legend>")[1]
+        self.assertLess(html.index("<legend>Detail Kegiatan"), html.index("<legend>Peserta Kegiatan"))
+        documents = html.split("<legend>Dokumen Kegiatan</legend>")[1]
         self.assertNotIn("file_sertifikat", documents)
         self.assertNotIn(self.admin.pk, empty_form.fields["user"].queryset.values_list("pk", flat=True))
 
     def test_admin_detail_renders_creator_and_optional_participant_certificates(self):
         obj = self.create_training(**{"peserta-0-file_sertifikat": upload("penginput.pdf")})
-        certificate = obj.peserta.get(user=self.actor).file_sertifikat
         self.client.force_login(self.admin)
         response = self.client.get(reverse("pengguna:pelatihan_detail", args=[obj.pk]))
         self.assertContains(response, "Penginput: Penginput")
         self.assertContains(response, "Peserta Kedua")
-        self.assertContains(response, 'href="' + certificate.url + '"', count=1)
+        participant = obj.peserta.get(user=self.actor)
+        preview_url = reverse('pengguna:sertifikat_preview', args=[obj.pk, participant.pk])
+        self.assertContains(response, 'href="' + preview_url + '"', count=1)
+        self.assertContains(response, '<th scope="col">No</th>')
+        self.assertContains(response, '<th scope="col">Nama Peserta</th>')
+        self.assertContains(response, '<th scope="col">Sertifikat</th>')
+        self.assertContains(response, 'data-sertifikat-open', count=1)
+        self.assertContains(response, 'id="sertifikat-modal"')
+        self.assertNotContains(response, 'peserta-list')
+        self.assertNotContains(response, '<label>File Sertifikat</label>')
+        self.assertRegex(response.content.decode(), r'Peserta Kedua</td>\s*<td>\s*-\s*</td>')
         self.assertNotContains(response, "{{")
         self.assertNotContains(response, "{%")
+
+    def test_certificate_preview_checks_access_and_returns_inline_pdf(self):
+        obj = self.create_training(**{'peserta-0-file_sertifikat': upload('peserta.pdf')})
+        participant = obj.peserta.get(user=self.actor)
+        url = reverse('pengguna:sertifikat_preview', args=[obj.pk, participant.pk])
+        for actor in (self.actor, self.other, self.admin):
+            self.client.force_login(actor)
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response['Content-Type'], 'application/pdf')
+            self.assertTrue(response['Content-Disposition'].startswith('inline;'))
+            self.assertEqual(response['X-Frame-Options'], 'SAMEORIGIN')
+            self.assertEqual(b''.join(response.streaming_content), b'%PDF-1.4 sertifikat')
+        self.client.force_login(self.outsider)
+        self.assertEqual(self.client.get(url).status_code, 404)
+        self.client.logout()
+        self.assertEqual(self.client.get(url).status_code, 302)
+
+    def test_certificate_preview_rejects_empty_missing_and_unrelated_files(self):
+        obj = self.create_training()
+        participant = obj.peserta.get(user=self.actor)
+        url = reverse('pengguna:sertifikat_preview', args=[obj.pk, participant.pk])
+        self.assertEqual(self.client.get(url).status_code, 404)
+        participant.file_sertifikat = 'sertifikat/tidak-ada.pdf'
+        participant.save(update_fields=['file_sertifikat'])
+        self.assertEqual(self.client.get(url).status_code, 404)
+        other_training = Pelatihan.objects.create(
+            user=self.actor, nama_pelatihan='Lain', tipe_pelatihan=obj.tipe_pelatihan,
+            jenis_pelatihan=obj.jenis_pelatihan, tanggal_mulai=obj.tanggal_mulai,
+            tanggal_selesai=obj.tanggal_selesai, lokasi_pelatihan='Bandung',
+        )
+        self.assertEqual(self.client.get(reverse('pengguna:sertifikat_preview', args=[other_training.pk, participant.pk])).status_code, 404)
+
+    def test_list_shows_own_certificate_or_creator_certificate_for_admin(self):
+        obj = self.create_training(**{
+            'peserta-0-file_sertifikat': upload('penginput.pdf'),
+            'peserta-1-file_sertifikat': upload('peserta.pdf'),
+            'file_materi': upload('materi.pdf'),
+        })
+        creator = obj.peserta.get(user=self.actor)
+        other = obj.peserta.get(user=self.other)
+        for actor, selected, excluded in (
+            (self.actor, creator, other),
+            (self.other, other, creator),
+            (self.admin, creator, other),
+        ):
+            with self.subTest(actor=actor.username):
+                self.client.force_login(actor)
+                response = self.client.get(reverse('pengguna:pelatihan_daftar'))
+                self.assertContains(response, '<th>Sertifikat</th>')
+                self.assertContains(response, '<th>Materi</th>')
+                self.assertNotContains(response, '<th class="cell-wrap">Lokasi</th>')
+                self.assertContains(response, reverse('pengguna:sertifikat_preview', args=[obj.pk, selected.pk]))
+                self.assertNotContains(response, reverse('pengguna:sertifikat_preview', args=[obj.pk, excluded.pk]))
+                self.assertContains(response, 'data-sertifikat-open', count=1)
+                self.assertContains(response, 'id="sertifikat-modal"', count=1)
+                self.assertContains(response, reverse('pengguna:materi_download', args=[obj.pk]))
+
+    def test_list_does_not_replace_missing_creator_certificate_with_other_participant(self):
+        obj = self.create_training(**{'peserta-1-file_sertifikat': upload('peserta.pdf')})
+        for remove_creator in (False, True):
+            if remove_creator:
+                obj.peserta.filter(user=self.actor).delete()
+            self.client.force_login(self.admin)
+            response = self.client.get(reverse('pengguna:pelatihan_daftar'))
+            self.assertNotContains(response, 'data-sertifikat-open')
+            self.assertNotContains(response, reverse('pengguna:materi_download', args=[obj.pk]))
+
+    def test_list_empty_colspan_matches_role(self):
+        for actor, columns in ((self.actor, 9), (self.admin, 10)):
+            self.client.force_login(actor)
+            self.assertContains(self.client.get(reverse('pengguna:pelatihan_daftar')), f'colspan="{columns}"')
+
+    def test_list_certificate_query_count_does_not_grow_per_row(self):
+        self.create_training(**{'peserta-0-file_sertifikat': upload('penginput.pdf')})
+        for actor in (self.actor, self.admin):
+            self.client.force_login(actor)
+            with CaptureQueriesContext(connection) as single:
+                self.assertEqual(self.client.get(reverse('pengguna:pelatihan_daftar')).status_code, 200)
+            single_count = len(single)
+            self.client.force_login(self.actor)
+            self.client.post(reverse('pengguna:pelatihan_tambah'), self.payload())
+            self.client.force_login(actor)
+            with CaptureQueriesContext(connection) as multiple:
+                self.assertEqual(self.client.get(reverse('pengguna:pelatihan_daftar')).status_code, 200)
+            self.assertEqual(single_count, len(multiple))
+
+    def test_material_download_checks_access_and_forces_attachment(self):
+        obj = self.create_training(**{'file_materi': upload('materi.pdf')})
+        url = reverse('pengguna:materi_download', args=[obj.pk])
+        for actor in (self.actor, self.other, self.admin):
+            self.client.force_login(actor)
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, 200)
+            self.assertTrue(response['Content-Disposition'].startswith('attachment;'))
+            self.assertIn('materi.pdf', response['Content-Disposition'])
+            self.assertEqual(b''.join(response.streaming_content), b'%PDF-1.4 sertifikat')
+        self.client.force_login(self.outsider)
+        self.assertEqual(self.client.get(url).status_code, 404)
+        self.client.logout()
+        self.assertEqual(self.client.get(url).status_code, 302)
+
+    def test_material_download_rejects_empty_missing_and_unknown_files(self):
+        obj = self.create_training()
+        url = reverse('pengguna:materi_download', args=[obj.pk])
+        self.assertEqual(self.client.get(url).status_code, 404)
+        obj.file_materi = 'pengguna/pelatihan/materi/tidak-ada.pdf'
+        obj.save(update_fields=['file_materi'])
+        self.assertEqual(self.client.get(url).status_code, 404)
+        self.assertEqual(self.client.get(reverse('pengguna:materi_download', args=[obj.pk + 1])).status_code, 404)
 
     def test_optional_other_participant(self):
         obj = self.create_training(**{"peserta-TOTAL_FORMS": "1", "peserta-1-user": ""})
@@ -465,7 +620,7 @@ class PelatihanTests(TestCase):
         self.client.force_login(self.admin)
         response = self.client.get(reverse("pengguna:pelatihan_daftar"))
         self.assertContains(response, 'data-delete-url="' + reverse("pengguna:pelatihan_hapus", args=[obj.pk]) + '"')
-        self.assertContains(response, "seluruh data pelatihan")
+        self.assertContains(response, "seluruh data kegiatan")
         self.client.get(reverse("pengguna:pelatihan_hapus", args=[obj.pk]))
         self.assertTrue(Pelatihan.objects.filter(pk=obj.pk).exists())
         with self.captureOnCommitCallbacks(execute=True):
@@ -560,3 +715,4 @@ class PelatihanMigrationTests(TransactionTestCase):
         self.assertEqual(peserta.user_id, user.pk)
         self.assertEqual(peserta.file_sertifikat.name, "pengguna/pelatihan/sertifikat/legacy.pdf")
         self.assertEqual(migrated.file_materi.name, "pengguna/pelatihan/materi/legacy.zip")
+        self.assertEqual(migrated.kategori_kegiatan, 'Pelatihan')

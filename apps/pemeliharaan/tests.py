@@ -1,10 +1,11 @@
 from datetime import date, datetime, timedelta
 from io import BytesIO
+from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.http import QueryDict
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils.datastructures import MultiValueDict
 from django.utils import timezone
@@ -26,6 +27,7 @@ from apps.pemeliharaan.forms import PemeliharaanForm, PemeliharaanVendorForm
 from apps.pemeliharaan.models import (
     JenisFotoPemeliharaanChoices,
     KondisiPemeliharaanChoices,
+    MetodePerbaikanChoices,
     PemeliharaanFoto,
     PemeliharaanItem,
     PemeliharaanPengajuan,
@@ -99,6 +101,12 @@ class LaporanPemeliharaanExportTests(TestCase):
 
 class PemeliharaanVerifikasiTests(TestCase):
     @classmethod
+    def setUpClass(cls):
+        media = cls.enterClassContext(TemporaryDirectory())
+        cls.enterClassContext(override_settings(MEDIA_ROOT=media))
+        super().setUpClass()
+
+    @classmethod
     def setUpTestData(cls):
         cls.users = {}
         for role_name in ("Super Admin", "Admin Lab", "Kepala Lab", "Pimpinan"):
@@ -141,10 +149,16 @@ class PemeliharaanVerifikasiTests(TestCase):
             komponen="Kamera",
             kondisi=KondisiPemeliharaanChoices.PERLU_PERBAIKAN,
             tindakan_perbaikan=tindakan,
+            uraian_perbaikan="Perbaikan selesai." if tindakan == TindakanPerbaikanChoices.LANGSUNG else "",
+            uraian_kerusakan="Komponen rusak." if tindakan == TindakanPerbaikanChoices.LANJUTAN else "",
+            tanggal_mulai_perbaikan=pengajuan.tanggal_pemeriksaan,
             tanggal_selesai_perbaikan=timezone.now()
-            if tindakan == TindakanPerbaikanChoices.MANDIRI
+            if tindakan == TindakanPerbaikanChoices.LANGSUNG
             else None,
         )
+        item = pengajuan.items.get()
+        for jenis in (JenisFotoPemeliharaanChoices.PEMERIKSAAN, JenisFotoPemeliharaanChoices.PERBAIKAN if tindakan == TindakanPerbaikanChoices.LANGSUNG else JenisFotoPemeliharaanChoices.KERUSAKAN):
+            PemeliharaanFoto.objects.create(item=item, jenis=jenis, foto=self._image_upload(f"{jenis}.png"))
         pengajuan.tandai_alat_dalam_pemeliharaan()
         return pengajuan
 
@@ -267,7 +281,7 @@ class PemeliharaanVerifikasiTests(TestCase):
                 "tanggal_pemeriksaan": "12 Jun 2026",
                 "komponen_0": "Kamera",
                 "kondisi_0": KondisiPemeliharaanChoices.PERLU_PERBAIKAN,
-                "tindakan_0": TindakanPerbaikanChoices.MANDIRI,
+                "tindakan_0": TindakanPerbaikanChoices.LANGSUNG,
                 "uraian_perbaikan_0": "Kalibrasi ulang kamera.",
                 "tanggal_selesai_perbaikan_0": "12 Jun 2026",
             },
@@ -362,7 +376,7 @@ class PemeliharaanVerifikasiTests(TestCase):
         form = PemeliharaanForm(data={
             "pilih_alat": self.alat.pk, "tanggal_pemeriksaan": "16 Jun 2026",
             "komponen_0": "Kamera", "kondisi_0": KondisiPemeliharaanChoices.PERLU_PERBAIKAN,
-            "tindakan_0": TindakanPerbaikanChoices.MANDIRI,
+            "tindakan_0": TindakanPerbaikanChoices.LANGSUNG,
             "uraian_perbaikan_0": "Kalibrasi", "tanggal_selesai_perbaikan_0": "15 Jun 2026",
         }, files=MultiValueDict({
             "dokumentasi_pemeriksaan": [self._image_upload("check-date.png")],
@@ -372,13 +386,13 @@ class PemeliharaanVerifikasiTests(TestCase):
         self.assertIn("lebih awal dari tanggal pemeriksaan", str(form.component_errors))
 
     def test_edit_invalid_mempertahankan_tanggal_manual_tanpa_menyimpan(self):
-        pengajuan = self._create_pengajuan(TindakanPerbaikanChoices.MANDIRI)
+        pengajuan = self._create_pengajuan(TindakanPerbaikanChoices.LANGSUNG)
         original = pengajuan.tanggal_pemeriksaan
         self._login("Admin Lab")
         response = self.client.post(reverse("pemeliharaan:edit", args=[pengajuan.pk]), {
             "pilih_alat": self.alat.pk, "tanggal_pemeriksaan": "12 Jun 2026",
             "komponen_0": "Kamera", "kondisi_0": KondisiPemeliharaanChoices.PERLU_PERBAIKAN,
-            "tindakan_0": TindakanPerbaikanChoices.MANDIRI,
+            "tindakan_0": TindakanPerbaikanChoices.LANGSUNG,
             "uraian_perbaikan_0": "", "tanggal_selesai_perbaikan_0": "13 Jun 2026",
         })
         self.assertEqual(response.status_code, 200)
@@ -389,12 +403,488 @@ class PemeliharaanVerifikasiTests(TestCase):
         self.assertEqual(pengajuan.tanggal_pemeriksaan, original)
 
     def test_picker_tanggal_selesai_memakai_tanggal_mulai_perbaikan(self):
-        pengajuan = self._create_pengajuan(TindakanPerbaikanChoices.MANDIRI)
+        pengajuan = self._create_pengajuan(TindakanPerbaikanChoices.LANGSUNG)
         self._login("Admin Lab")
         response = self.client.get(reverse("pemeliharaan:edit", args=[pengajuan.pk]))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'data-maint-min-source="id_tanggal_pemeriksaan"')
         self.assertContains(response, 'name="tanggal_selesai_perbaikan_0"')
+
+    def test_error_perbaikan_ditampilkan_di_bawah_kolom_masing_masing(self):
+        obj = self._create_pengajuan(TindakanPerbaikanChoices.LANGSUNG)
+        self._login("Admin Lab")
+        repair_photos = list(obj.items.get().fotos.filter(
+            jenis=JenisFotoPemeliharaanChoices.PERBAIKAN,
+        ).values_list("pk", flat=True))
+        response = self.client.post(reverse("pemeliharaan:edit", args=[obj.pk]), {
+            "pilih_alat": self.alat.pk,
+            "tanggal_pemeriksaan": timezone.localdate(obj.tanggal_pemeriksaan).isoformat(),
+            "kondisi_0": KondisiPemeliharaanChoices.PERLU_PERBAIKAN,
+            "tindakan_0": TindakanPerbaikanChoices.LANGSUNG,
+            "uraian_perbaikan_0": "", "tanggal_selesai_perbaikan_0": "bukan tanggal",
+            "hapus_foto_ids": repair_photos,
+        })
+        self.assertEqual(response.status_code, 200)
+        errors = response.context["form"].component_rows[0]["field_errors"]
+        self.assertEqual(set(errors), {"uraian_perbaikan", "tanggal_selesai_perbaikan"})
+        self.assertNotContains(response, "pemeliharaan-komponen__errors")
+        html = response.content.decode()
+        for field, messages in errors.items():
+            for message in messages:
+                self.assertGreater(html.index(message), html.index(f'id="id_{field}_0"'))
+        self.assertLess(html.index(errors["uraian_perbaikan"][0]), html.index('id="id_tanggal_selesai_perbaikan_0"'))
+        self.assertTrue(PemeliharaanFoto.objects.filter(pk__in=repair_photos).exists())
+
+    def test_error_kondisi_dan_tindakan_memiliki_target_kolom(self):
+        self._login("Admin Lab")
+        for condition, action, field in (("", "", "kondisi"),
+                                        (KondisiPemeliharaanChoices.PERLU_PERBAIKAN, "", "tindakan")):
+            response = self.client.post(reverse("pemeliharaan:tambah"), {
+                "pilih_alat": self.alat.pk, "tanggal_pemeriksaan": "12 Jun 2026",
+                "kondisi_0": condition, "tindakan_0": action,
+                "dokumentasi_pemeriksaan": self._image_upload("field-target.png"),
+            })
+            self.assertEqual(response.status_code, 200)
+            errors = response.context["form"].component_rows[0]["field_errors"]
+            self.assertIn(field, errors)
+            html = response.content.decode()
+            self.assertGreater(html.index(errors[field][0]), html.index(f'id="id_{field}_0"'))
+            self.assertNotContains(response, "pemeliharaan-komponen__errors")
+
+    def test_simpan_ajax_validasi_lalu_simpan_semua_jenis_dokumentasi(self):
+        self._login("Admin Lab")
+        self.alat.komponen_pemeliharaan = ["Kamera", "Baterai"]
+        self.alat.save(update_fields=["komponen_pemeliharaan"])
+        data = {
+            "pilih_alat": self.alat.pk, "tanggal_pemeriksaan": "12 Jun 2026",
+            "kondisi_0": KondisiPemeliharaanChoices.PERLU_PERBAIKAN,
+            "tindakan_0": TindakanPerbaikanChoices.LANGSUNG,
+            "tanggal_selesai_perbaikan_0": "12 Jun 2026",
+            "kondisi_1": KondisiPemeliharaanChoices.PERLU_PERBAIKAN,
+            "tindakan_1": TindakanPerbaikanChoices.LANJUTAN,
+            "uraian_kerusakan_1": "Baterai rusak",
+        }
+        files = {name: self._image_upload(f"{name}.png").read() for name in (
+            "dokumentasi_pemeriksaan", "dokumentasi_perbaikan_0", "dokumentasi_kerusakan_1",
+        )}
+        def submit():
+            uploads = {name: SimpleUploadedFile(f"{name}.png", content, content_type="image/png")
+                       for name, content in files.items()}
+            return self.client.post(reverse("pemeliharaan:tambah"), data | uploads,
+                                    HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+        response = submit()
+        self.assertEqual(response.status_code, 422)
+        self.assertEqual(set(response.json()["errors"]), {"uraian_perbaikan_0"})
+        self.assertFalse(PemeliharaanPengajuan.objects.exists())
+        self.assertFalse(PemeliharaanFoto.objects.exists())
+        data["uraian_perbaikan_0"] = "Perbaikan selesai"
+        response = submit()
+        self.assertEqual(response.status_code, 200)
+        obj = PemeliharaanPengajuan.objects.get()
+        self.assertEqual(response.json(), {"redirect_url": reverse("pemeliharaan:detail", args=[obj.pk])})
+        self.assertEqual(PemeliharaanFoto.objects.filter(item__pengajuan=obj).count(), 3)
+        detail = self.client.get(response.json()["redirect_url"])
+        self.assertContains(detail, "Pengajuan pemeliharaan berhasil disimpan.")
+
+    def test_edit_ajax_gagal_tidak_menghapus_foto_dan_bisa_diperbaiki(self):
+        obj = self._create_pengajuan(TindakanPerbaikanChoices.LANGSUNG)
+        self._login("Admin Lab")
+        original_ids = set(obj.items.get().fotos.values_list("pk", flat=True))
+        data = {
+            "pilih_alat": self.alat.pk,
+            "tanggal_pemeriksaan": timezone.localdate(obj.tanggal_pemeriksaan).isoformat(),
+            "kondisi_0": KondisiPemeliharaanChoices.PERLU_PERBAIKAN,
+            "tindakan_0": TindakanPerbaikanChoices.LANGSUNG,
+            "tanggal_selesai_perbaikan_0": timezone.localdate(obj.tanggal_pemeriksaan).isoformat(),
+        }
+        url = reverse("pemeliharaan:edit", args=[obj.pk])
+        response = self.client.post(url, data | {"dokumentasi_perbaikan_0": self._image_upload("retry.png")},
+                                    HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+        self.assertEqual(response.status_code, 422)
+        self.assertIn("uraian_perbaikan_0", response.json()["errors"])
+        self.assertEqual(set(obj.items.get().fotos.values_list("pk", flat=True)), original_ids)
+        data["uraian_perbaikan_0"] = "Diperbaiki"
+        response = self.client.post(url, data | {"dokumentasi_perbaikan_0": self._image_upload("retry.png")},
+                                    HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(obj.items.get().fotos.count(), len(original_ids) + 1)
+
+    def test_mandiri_ajax_tetap_validasi_tanggal_dan_upload(self):
+        obj = self._create_mandiri()
+        url = reverse("pemeliharaan:perbaikan", args=[obj.pk])
+        data = {"tanggal_mulai_perbaikan_0": "14 Jun 2026", "tanggal_selesai_perbaikan_0": "13 Jun 2026"}
+        response = self.client.post(url, data | {"dokumentasi_perbaikan_0": self._image_upload("retry.png")},
+                                    HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+        self.assertEqual(response.status_code, 422)
+        self.assertIn("tanggal_selesai_perbaikan_0", response.json()["errors"])
+        self.assertFalse(obj.items.get().fotos.filter(jenis=JenisFotoPemeliharaanChoices.PERBAIKAN).exists())
+        data["tanggal_selesai_perbaikan_0"] = "14 Jun 2026"
+        response = self.client.post(url, data | {"dokumentasi_perbaikan_0": SimpleUploadedFile("bad.txt", b"invalid")},
+                                    HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+        self.assertEqual(response.status_code, 422)
+        self.assertIn("dokumentasi_perbaikan_0", response.json()["errors"])
+        response = self.client.post(url, data | {"dokumentasi_perbaikan_0": self._image_upload("retry.png")},
+                                    HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(obj.items.get().fotos.filter(jenis=JenisFotoPemeliharaanChoices.PERBAIKAN).exists())
+        self.assertFalse(obj.perbaikan_lengkap)
+        obj.refresh_from_db()
+        self.assertEqual(obj.current_step, StepPemeliharaanChoices.PERBAIKAN_MANDIRI)
+
+    def test_vendor_ajax_memakai_validasi_server_dan_redirect_json(self):
+        obj = self._create_pengajuan(TindakanPerbaikanChoices.LANJUTAN)
+        obj.current_step = StepPemeliharaanChoices.VENDOR_DRAFT
+        obj.metode_perbaikan = MetodePerbaikanChoices.EKSTERNAL
+        obj.save(update_fields=["current_step", "metode_perbaikan"])
+        self._login("Admin Lab")
+        url = reverse("pemeliharaan:vendor", args=[obj.pk])
+        response = self.client.post(url, {}, HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+        self.assertEqual(response.status_code, 422)
+        self.assertIn("nama_vendor", response.json()["errors"])
+        response = self.client.post(url, {
+            "nama_vendor": "Vendor", "nama_pic": "PIC", "nomor_hp_pic": "081234567890",
+            "alamat": "Alamat vendor", "tanggal_mulai": timezone.localdate().isoformat(),
+            "tanggal_selesai": timezone.localdate().isoformat(),
+        }, HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"redirect_url": reverse("pemeliharaan:detail", args=[obj.pk])})
+
+    def test_dokumentasi_perbaikan_dan_kerusakan_opsional_simpan_wajib_kirim(self):
+        self._login("Admin Lab")
+        for action in (TindakanPerbaikanChoices.LANGSUNG, TindakanPerbaikanChoices.LANJUTAN):
+            with self.subTest(action=action):
+                data = {
+                    "pilih_alat": self.alat.pk, "tanggal_pemeriksaan": "12 Jun 2026",
+                    "kondisi_0": KondisiPemeliharaanChoices.PERLU_PERBAIKAN, "tindakan_0": action,
+                    "uraian_perbaikan_0": "Perbaikan selesai", "tanggal_selesai_perbaikan_0": "13 Jun 2026",
+                    "uraian_kerusakan_0": "Komponen rusak",
+                }
+                response = self.client.post(reverse("pemeliharaan:tambah"), data | {
+                    "dokumentasi_pemeriksaan": self._image_upload("pemeriksaan.png"),
+                })
+                self.assertEqual(response.status_code, 302)
+                obj = PemeliharaanPengajuan.objects.latest("pk")
+                detail_url = reverse("pemeliharaan:detail", args=[obj.pk])
+                detail = self.client.get(detail_url)
+                self.assertFalse(detail.context["can_submit_pengajuan"])
+                self.assertContains(detail, 'data-maint-incomplete role="button"')
+                self.assertContains(detail, "Data Belum Lengkap")
+                self.assertContains(detail, "Silakan lengkapi Data Pengajuan Pemeliharaan terlebih dahulu.")
+                self.assertContains(detail, 'data-incomplete-label="Pengajuan Pemeliharaan"')
+                listing = self.client.get(reverse("pemeliharaan:list"))
+                row = next(row for row in listing.context["items"] if row.pk == obj.pk)
+                self.assertFalse(row.can_kirim)
+                self.assertTrue(row.show_submit_pengajuan)
+                self.assertContains(listing, 'data-incomplete-label="Pengajuan Pemeliharaan"')
+                form = PemeliharaanForm.saved(obj, self.users["Admin Lab"])
+                self.assertFalse(form.is_valid())
+                field = "dokumentasi_perbaikan" if action == TindakanPerbaikanChoices.LANGSUNG else "dokumentasi_kerusakan"
+                label = "Dokumentasi Perbaikan" if action == TindakanPerbaikanChoices.LANGSUNG else "Dokumentasi Kerusakan"
+                missing = f"Kamera: {label}"
+                self.assertEqual(detail.context["obj"].kirim_errors, [missing])
+                for page in (detail, listing):
+                    self.assertContains(page, 'class="pemeliharaan-missing__groups"')
+                    self.assertContains(page, '<strong>Kamera</strong>', html=True)
+                    self.assertNotContains(page, '(Nama Komponen)')
+                    self.assertContains(page, f'<li>{label}</li>', html=True)
+                self.assertIn(field, form.component_rows[0]["field_errors"])
+                before = obj.timeline_entries.count()
+                response = self.client.post(reverse("pemeliharaan:kirim", args=[obj.pk]))
+                self.assertRedirects(response, reverse("pemeliharaan:edit", args=[obj.pk]), fetch_redirect_response=False)
+                obj.refresh_from_db()
+                self.assertEqual(obj.current_step, StepPemeliharaanChoices.DRAFT)
+                self.assertEqual(obj.timeline_entries.count(), before)
+                response = self.client.post(reverse("pemeliharaan:edit", args=[obj.pk]), data | {
+                    field + "_0": self._image_upload("lengkap.png"),
+                })
+                self.assertEqual(response.status_code, 302)
+                detail = self.client.get(detail_url)
+                self.assertTrue(detail.context["can_submit_pengajuan"])
+                self.assertNotContains(detail, 'data-maint-incomplete role="button"')
+                ready = PemeliharaanPengajuan.objects.prefetch_related("items__fotos").get(pk=obj.pk)
+                with self.assertNumQueries(0):
+                    self.assertTrue(ready.pengajuan_lengkap)
+                    self.assertEqual(ready.kirim_errors, [])
+                response = self.client.post(reverse("pemeliharaan:kirim", args=[obj.pk]))
+                self.assertRedirects(response, reverse("pemeliharaan:list"), fetch_redirect_response=False)
+                obj.refresh_from_db()
+                expected = StepPemeliharaanChoices.SELESAI if action == TindakanPerbaikanChoices.LANGSUNG else StepPemeliharaanChoices.KEPALA_LAB
+                self.assertEqual(obj.current_step, expected)
+
+    def test_dokumentasi_opsional_tetap_memvalidasi_file_saat_simpan(self):
+        self._login("Admin Lab")
+        for action, field in ((TindakanPerbaikanChoices.LANGSUNG, "dokumentasi_perbaikan"),
+                              (TindakanPerbaikanChoices.LANJUTAN, "dokumentasi_kerusakan")):
+            for files in ([SimpleUploadedFile("invalid.txt", b"invalid")],
+                          [self._image_upload(f"{i}.png") for i in range(4)]):
+                response = self.client.post(reverse("pemeliharaan:tambah"), {
+                    "pilih_alat": self.alat.pk, "tanggal_pemeriksaan": "12 Jun 2026",
+                    "kondisi_0": KondisiPemeliharaanChoices.PERLU_PERBAIKAN, "tindakan_0": action,
+                    "uraian_perbaikan_0": "Selesai", "tanggal_selesai_perbaikan_0": "13 Jun 2026",
+                    "uraian_kerusakan_0": "Rusak", "dokumentasi_pemeriksaan": self._image_upload("pemeriksaan.png"),
+                    field + "_0": files,
+                })
+                self.assertEqual(response.status_code, 200)
+                self.assertIn(field, response.context["form"].component_rows[0]["field_errors"])
+        self.assertFalse(PemeliharaanPengajuan.objects.exists())
+
+    def test_popup_kirim_vendor_muncul_sebelum_data_vendor_lengkap(self):
+        obj = self._create_pengajuan(TindakanPerbaikanChoices.LANJUTAN)
+        obj.current_step = StepPemeliharaanChoices.VENDOR_DRAFT
+        obj.metode_perbaikan = MetodePerbaikanChoices.EKSTERNAL
+        obj.save(update_fields=["current_step", "metode_perbaikan"])
+        self._login("Admin Lab")
+        for has_record in (False, True):
+            if has_record:
+                PemeliharaanVendor.objects.create(pengajuan=obj, nama_vendor="", nama_pic="PIC",
+                    nomor_hp_pic="081234567890", alamat="Alamat", tanggal_mulai=timezone.localdate(),
+                    tanggal_selesai=timezone.localdate())
+            detail = self.client.get(reverse("pemeliharaan:detail", args=[obj.pk]))
+            self.assertFalse(detail.context["can_submit_vendor"])
+            self.assertContains(detail, 'data-maint-incomplete role="button"')
+            self.assertContains(detail, 'data-incomplete-label="Vendor"')
+            fields = detail.context["obj"].kirim_errors
+            self.assertIn("Nama Vendor", fields)
+            if not has_record:
+                self.assertEqual(len(fields), 6)
+            else:
+                self.assertEqual(fields, ["Nama Vendor"])
+            listing = self.client.get(reverse("pemeliharaan:list"))
+            self.assertContains(listing, 'data-maint-incomplete role="button"')
+            self.assertContains(listing, 'data-incomplete-label="Vendor"')
+            for page in (detail, listing):
+                self.assertNotContains(page, 'class="pemeliharaan-missing__groups"')
+                self.assertContains(page, '<li>Nama Vendor</li>', html=True)
+            response = self.client.post(reverse("pemeliharaan:vendor_kirim", args=[obj.pk]))
+            self.assertRedirects(response, reverse("dashboard:index"), fetch_redirect_response=False)
+            obj.refresh_from_db()
+            self.assertEqual(obj.current_step, StepPemeliharaanChoices.VENDOR_DRAFT)
+
+    def test_popup_kirim_mandiri_dan_batas_akses(self):
+        obj = self._create_mandiri()
+        detail = self.client.get(reverse("pemeliharaan:detail", args=[obj.pk]))
+        self.assertContains(detail, 'data-maint-incomplete role="button"')
+        self.assertContains(detail, 'data-incomplete-label="Perbaikan Mandiri"')
+        self.assertEqual(detail.context["obj"].kirim_errors, [
+            "Kamera: Uraian Perbaikan", "Kamera: Tanggal Perbaikan Mulai",
+            "Kamera: Tanggal Perbaikan Selesai", "Kamera: Dokumentasi Perbaikan",
+        ])
+        listing = self.client.get(reverse("pemeliharaan:list"))
+        self.assertContains(listing, 'data-incomplete-label="Perbaikan Mandiri"')
+        self.assertFalse(detail.context["can_submit_pengajuan"])
+        self._login("Kepala Lab")
+        detail = self.client.get(reverse("pemeliharaan:detail", args=[obj.pk]))
+        self.assertFalse(detail.context["show_submit_pengajuan"])
+        self.assertNotContains(detail, 'data-maint-incomplete role="button"')
+
+    def test_kolom_belum_lengkap_memuat_komponen_dan_tanggal_tidak_valid(self):
+        obj = self._create_mandiri()
+        item = obj.items.get()
+        item.uraian_perbaikan = "Selesai"
+        item.tanggal_mulai_perbaikan = obj.tanggal_pemeriksaan - timedelta(days=1)
+        item.tanggal_selesai_perbaikan = obj.tanggal_pemeriksaan - timedelta(days=2)
+        item.save()
+        PemeliharaanFoto.objects.create(item=item, jenis=JenisFotoPemeliharaanChoices.PERBAIKAN,
+                                       foto=self._image_upload("lengkap.png"))
+        PemeliharaanItem.objects.create(pengajuan=obj, komponen="Baterai", kondisi=KondisiPemeliharaanChoices.PERLU_PERBAIKAN,
+                                       tindakan_perbaikan=TindakanPerbaikanChoices.LANJUTAN)
+        loaded = PemeliharaanPengajuan.objects.prefetch_related("items__fotos").get(pk=obj.pk)
+        with self.assertNumQueries(0):
+            self.assertEqual(loaded.kirim_errors, [
+                "Kamera: Tanggal Perbaikan Mulai", "Kamera: Tanggal Perbaikan Selesai",
+                "Baterai: Uraian Perbaikan", "Baterai: Tanggal Perbaikan Mulai",
+                "Baterai: Tanggal Perbaikan Selesai", "Baterai: Dokumentasi Perbaikan",
+            ])
+            self.assertFalse(loaded.perbaikan_lengkap)
+            self.assertEqual(loaded.kirim_groups, {
+                "fields": [], "components": [
+                    {"name": "Kamera", "fields": ["Tanggal Perbaikan Mulai", "Tanggal Perbaikan Selesai"]},
+                    {"name": "Baterai", "fields": ["Uraian Perbaikan", "Tanggal Perbaikan Mulai",
+                                                    "Tanggal Perbaikan Selesai", "Dokumentasi Perbaikan"]},
+                ],
+            })
+
+    def test_kelompok_popup_memisahkan_kolom_umum_dan_nama_komponen_bertitik_dua(self):
+        obj = self._create_pengajuan(TindakanPerbaikanChoices.LANJUTAN)
+        item = obj.items.get()
+        item.komponen = "Sensor"
+        item.uraian_kerusakan = ""
+        item.save(update_fields=["komponen", "uraian_kerusakan"])
+        item.fotos.filter(jenis=JenisFotoPemeliharaanChoices.PEMERIKSAAN).delete()
+        PemeliharaanItem.objects.create(pengajuan=obj, komponen="Sensor: Kamera",
+            kondisi=KondisiPemeliharaanChoices.PERLU_PERBAIKAN,
+            tindakan_perbaikan=TindakanPerbaikanChoices.LANJUTAN)
+        loaded = PemeliharaanPengajuan.objects.prefetch_related("items__fotos").get(pk=obj.pk)
+        with self.assertNumQueries(0):
+            self.assertEqual(loaded.kirim_groups, {
+                "fields": ["Dokumentasi Pemeriksaan"], "components": [
+                    {"name": "Sensor", "fields": ["Uraian Kerusakan"]},
+                    {"name": "Sensor: Kamera", "fields": ["Uraian Kerusakan", "Dokumentasi Kerusakan"]},
+                ],
+            })
+
+    def _create_mandiri(self):
+        obj = self._create_pengajuan(TindakanPerbaikanChoices.LANJUTAN)
+        obj.current_step = StepPemeliharaanChoices.PERBAIKAN_MANDIRI
+        obj.metode_perbaikan = MetodePerbaikanChoices.MANDIRI
+        obj.tanggal_pemeriksaan = timezone.make_aware(datetime(2026, 6, 12, 9))
+        obj.save(update_fields=["current_step", "metode_perbaikan", "tanggal_pemeriksaan"])
+        obj.items.update(tanggal_mulai_perbaikan=None)
+        self._login("Admin Lab")
+        return obj
+
+    def test_mandiri_simpan_kosong_dan_parsial_tetap_belum_bisa_kirim(self):
+        obj = self._create_mandiri()
+        for data in ({}, {"uraian_perbaikan_0": "Sedang diperbaiki"}):
+            with self.subTest(data=data):
+                response = self.client.post(reverse("pemeliharaan:perbaikan", args=[obj.pk]), data)
+                self.assertRedirects(response, reverse("pemeliharaan:detail", args=[obj.pk]), fetch_redirect_response=False)
+                item = obj.items.get()
+                self.assertEqual(item.uraian_perbaikan, data.get("uraian_perbaikan_0", ""))
+                self.assertIsNone(item.tanggal_mulai_perbaikan)
+                self.assertFalse(obj.perbaikan_lengkap)
+                detail = self.client.get(reverse("pemeliharaan:detail", args=[obj.pk]))
+                self.assertFalse(detail.context["can_submit_pengajuan"])
+                listing = self.client.get(reverse("pemeliharaan:list"))
+                self.assertFalse(next(row for row in listing.context["items"] if row.pk == obj.pk).can_kirim)
+                response = self.client.post(reverse("pemeliharaan:kirim", args=[obj.pk]))
+                self.assertRedirects(response, reverse("pemeliharaan:perbaikan", args=[obj.pk]), fetch_redirect_response=False)
+                obj.refresh_from_db()
+                self.assertEqual(obj.current_step, StepPemeliharaanChoices.PERBAIKAN_MANDIRI)
+
+    def test_mandiri_tanggal_mulai_manual_disimpan_dan_dirender(self):
+        obj = self._create_mandiri()
+        for value in ("12 Jun 2026", "14 Jun 2026", "2026-06-14"):
+            with self.subTest(value=value):
+                response = self.client.post(reverse("pemeliharaan:perbaikan", args=[obj.pk]), {
+                    "tanggal_mulai_perbaikan_0": value,
+                })
+                self.assertEqual(response.status_code, 302)
+                item = obj.items.get()
+                self.assertEqual(timezone.localdate(item.tanggal_mulai_perbaikan),
+                                 date(2026, 6, 12 if value.startswith("12") else 14))
+                self.assertIsNone(item.tanggal_selesai_perbaikan)
+        response = self.client.get(reverse("pemeliharaan:perbaikan", args=[obj.pk]))
+        self.assertContains(response, 'name="tanggal_mulai_perbaikan_0"')
+        self.assertContains(response, 'value="14 Jun 2026"')
+        self.assertNotContains(response, 'data-maint-start-date')
+        self.assertContains(response, 'data-maint-min-source="id_tanggal_pemeriksaan"')
+
+    def test_mandiri_tanggal_tidak_valid_ditolak_meski_hanya_simpan(self):
+        obj = self._create_mandiri()
+        for data, message in (
+            ({"tanggal_selesai_perbaikan_0": "14 Jun 2026"}, "Isi tanggal mulai perbaikan terlebih dahulu"),
+            ({"tanggal_mulai_perbaikan_0": "11 Jun 2026"}, "lebih awal dari tanggal pemeriksaan"),
+            ({"tanggal_mulai_perbaikan_0": "31 Feb 2026"}, "tanggal yang valid"),
+            ({"tanggal_selesai_perbaikan_0": "bukan tanggal"}, "tanggal yang valid"),
+            ({"tanggal_selesai_perbaikan_0": "11 Jun 2026"}, "lebih awal dari tanggal pemeriksaan"),
+            ({"tanggal_mulai_perbaikan_0": "15 Jun 2026", "tanggal_selesai_perbaikan_0": "14 Jun 2026"},
+             "lebih awal dari tanggal mulai perbaikan"),
+        ):
+            with self.subTest(data=data):
+                response = self.client.post(reverse("pemeliharaan:perbaikan", args=[obj.pk]), data)
+                self.assertEqual(response.status_code, 200)
+                self.assertIn(message, str(response.context["form"].component_errors))
+                self.assertIsNone(obj.items.get().tanggal_mulai_perbaikan)
+
+    def test_mandiri_kirim_harus_lengkap_semua_komponen(self):
+        obj = self._create_mandiri()
+        PemeliharaanItem.objects.create(
+            pengajuan=obj, komponen="Baterai", kondisi=KondisiPemeliharaanChoices.PERLU_PERBAIKAN,
+            tindakan_perbaikan=TindakanPerbaikanChoices.LANJUTAN, uraian_kerusakan="Baterai rusak",
+        )
+        damage_ids = set(obj.items.get(komponen="Kamera").fotos.values_list("pk", flat=True))
+        data = {"uraian_perbaikan_0": "Selesai diperbaiki", "tanggal_mulai_perbaikan_0": "14 Jun 2026",
+                "tanggal_selesai_perbaikan_0": "14 Jun 2026",
+                "dokumentasi_perbaikan_0": self._image_upload("mandiri.png")}
+        self.assertEqual(self.client.post(reverse("pemeliharaan:perbaikan", args=[obj.pk]), data).status_code, 302)
+        self.assertFalse(obj.perbaikan_lengkap)
+        self.assertFalse(PemeliharaanForm.saved(obj, self.users["Admin Lab"], repair_mode=True).is_valid())
+        response = self.client.post(reverse("pemeliharaan:kirim", args=[obj.pk]))
+        self.assertRedirects(response, reverse("pemeliharaan:perbaikan", args=[obj.pk]), fetch_redirect_response=False)
+        data.pop("dokumentasi_perbaikan_0")
+        data.update({key.replace("_0", "_1"): value for key, value in list(data.items())})
+        data["dokumentasi_perbaikan_1"] = self._image_upload("baterai.png")
+        self.assertEqual(self.client.post(reverse("pemeliharaan:perbaikan", args=[obj.pk]), data).status_code, 302)
+        self.assertTrue(obj.perbaikan_lengkap)
+        self.assertEqual(PemeliharaanFoto.objects.filter(pk__in=damage_ids).count(), len(damage_ids))
+        response = self.client.post(reverse("pemeliharaan:kirim", args=[obj.pk]))
+        self.assertRedirects(response, reverse("pemeliharaan:list"), fetch_redirect_response=False)
+        obj.refresh_from_db()
+        self.assertEqual(obj.current_step, StepPemeliharaanChoices.SELESAI)
+
+    def test_mandiri_data_tanpa_foto_atau_tanggal_mulai_tidak_bisa_dikirim(self):
+        obj = self._create_mandiri()
+        data = {"uraian_perbaikan_0": "Selesai"}
+        for with_start in (False, True):
+            with self.subTest(with_start=with_start):
+                if with_start:
+                    data["tanggal_mulai_perbaikan_0"] = "14 Jun 2026"
+                    data["tanggal_selesai_perbaikan_0"] = "14 Jun 2026"
+                self.assertEqual(self.client.post(reverse("pemeliharaan:perbaikan", args=[obj.pk]), data).status_code, 302)
+                self.assertFalse(obj.perbaikan_lengkap)
+                response = self.client.post(reverse("pemeliharaan:kirim", args=[obj.pk]))
+                self.assertRedirects(response, reverse("pemeliharaan:perbaikan", args=[obj.pk]), fetch_redirect_response=False)
+
+    def test_mandiri_validasi_upload_tetap_aktif_saat_simpan_parsial(self):
+        obj = self._create_mandiri()
+        for files in ([self._image_upload(f"{i}.png") for i in range(4)],
+                      [SimpleUploadedFile("foto.txt", b"invalid")],
+                      [SimpleUploadedFile("besar.png", b"x" * (7 * 1024 * 1024 + 1))]):
+            response = self.client.post(reverse("pemeliharaan:perbaikan", args=[obj.pk]), {
+                "dokumentasi_perbaikan_0": files,
+            })
+            self.assertEqual(response.status_code, 200)
+            self.assertTrue(response.context["form"].component_errors)
+
+    def test_mandiri_kirim_memeriksa_ulang_data_tersimpan(self):
+        obj = self._create_mandiri()
+        item = obj.items.get()
+        mulai = obj.tanggal_pemeriksaan + timedelta(days=1)
+        selesai = mulai + timedelta(days=1)
+        PemeliharaanFoto.objects.create(
+            item=item, jenis=JenisFotoPemeliharaanChoices.PERBAIKAN,
+            foto=self._image_upload("saved-repair.png"),
+        )
+        complete = {"uraian_perbaikan": "Selesai", "tanggal_mulai_perbaikan": mulai,
+                    "tanggal_selesai_perbaikan": selesai}
+        for field, value in (
+            ("uraian_perbaikan", "   "),
+            ("tanggal_mulai_perbaikan", None),
+            ("tanggal_mulai_perbaikan", obj.tanggal_pemeriksaan - timedelta(days=1)),
+            ("tanggal_selesai_perbaikan", None),
+            ("tanggal_selesai_perbaikan", mulai - timedelta(hours=1)),
+        ):
+            with self.subTest(field=field, value=value):
+                obj.items.update(**(complete | {field: value}))
+                self.assertFalse(obj.perbaikan_lengkap)
+                response = self.client.post(reverse("pemeliharaan:kirim", args=[obj.pk]))
+                self.assertRedirects(response, reverse("pemeliharaan:perbaikan", args=[obj.pk]), fetch_redirect_response=False)
+                obj.refresh_from_db()
+                self.assertEqual(obj.current_step, StepPemeliharaanChoices.PERBAIKAN_MANDIRI)
+
+    def test_mandiri_hapus_foto_terakhir_boleh_disimpan_tetapi_tidak_dikirim(self):
+        obj = self._create_mandiri()
+        photo = PemeliharaanFoto.objects.create(
+            item=obj.items.get(), jenis=JenisFotoPemeliharaanChoices.PERBAIKAN,
+            foto=self._image_upload("delete-repair.png"),
+        )
+        response = self.client.post(reverse("pemeliharaan:perbaikan", args=[obj.pk]), {
+            "uraian_perbaikan_0": "Selesai", "tanggal_mulai_perbaikan_0": "14 Jun 2026",
+            "tanggal_selesai_perbaikan_0": "14 Jun 2026", "hapus_foto_ids": [photo.pk],
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(PemeliharaanFoto.objects.filter(pk=photo.pk).exists())
+        self.assertFalse(obj.perbaikan_lengkap)
+        response = self.client.post(reverse("pemeliharaan:kirim", args=[obj.pk]))
+        self.assertRedirects(response, reverse("pemeliharaan:perbaikan", args=[obj.pk]), fetch_redirect_response=False)
+
+    def test_mandiri_simpan_parsial_tetap_memeriksa_pemilik(self):
+        obj = self._create_mandiri()
+        self._login("Kepala Lab")
+        response = self.client.post(reverse("pemeliharaan:perbaikan", args=[obj.pk]), {})
+        self.assertRedirects(response, reverse("dashboard:index"), fetch_redirect_response=False)
+        self.assertFalse(obj.timeline_entries.filter(action="Data perbaikan mandiri disimpan").exists())
 
     def test_edit_form_menampilkan_dokumentasi_tersimpan(self):
         pengajuan = self._create_pengajuan_baik()
@@ -436,16 +926,18 @@ class PemeliharaanVerifikasiTests(TestCase):
         storage = foto_hapus.foto.storage
 
         self._login("Admin Lab")
-        response = self.client.post(
-            reverse("pemeliharaan:edit", args=[pengajuan.pk]),
-            {
-                "pilih_alat": str(self.alat.pk),
-                "komponen_0": "Kamera",
-                "kondisi_0": KondisiPemeliharaanChoices.BAIK,
-                "hapus_foto_ids": str(foto_hapus.pk),
-                "tanggal_pemeriksaan": timezone.localdate(pengajuan.tanggal_pemeriksaan).isoformat(),
-            },
-        )
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.client.post(
+                reverse("pemeliharaan:edit", args=[pengajuan.pk]),
+                {
+                    "pilih_alat": str(self.alat.pk),
+                    "komponen_0": "Kamera",
+                    "kondisi_0": KondisiPemeliharaanChoices.BAIK,
+                    "hapus_foto_ids": str(foto_hapus.pk),
+                    "tanggal_pemeriksaan": timezone.localdate(pengajuan.tanggal_pemeriksaan).isoformat(),
+                },
+            )
+            self.assertTrue(storage.exists(deleted_name))
 
         self.assertRedirects(
             response,
@@ -538,7 +1030,7 @@ class PemeliharaanVerifikasiTests(TestCase):
         self.assertIn("maksimal 3 foto", str(form.errors["dokumentasi_pemeriksaan"]))
 
     def test_master_data_menolak_hapus_komponen_dan_barang_aktif(self):
-        pengajuan = self._create_pengajuan(TindakanPerbaikanChoices.MANDIRI)
+        pengajuan = self._create_pengajuan(TindakanPerbaikanChoices.LANGSUNG)
         pengajuan.tandai_alat_dalam_pemeliharaan()
 
         form = BarangLaboratoriumForm(
@@ -563,7 +1055,7 @@ class PemeliharaanVerifikasiTests(TestCase):
         tanggal_pemeliharaan_awal = date(2025, 12, 20)
         self.alat.tanggal_pemeliharaan = tanggal_pemeliharaan_awal
         self.alat.save(update_fields=["tanggal_pemeliharaan", "updated_at"])
-        pengajuan = self._create_pengajuan(TindakanPerbaikanChoices.EKSTERNAL)
+        pengajuan = self._create_pengajuan(TindakanPerbaikanChoices.LANJUTAN)
         self.assertEqual(pengajuan.jenis_pengajuan_label, "Perbaikan")
         item = pengajuan.items.get()
         item.uraian_kerusakan = "Kamera tidak dapat merekam."
@@ -577,17 +1069,21 @@ class PemeliharaanVerifikasiTests(TestCase):
             pengajuan=pengajuan,
             komponen="Sensor",
             kondisi=KondisiPemeliharaanChoices.PERLU_PERBAIKAN,
-            tindakan_perbaikan=TindakanPerbaikanChoices.EKSTERNAL,
+            tindakan_perbaikan=TindakanPerbaikanChoices.LANJUTAN,
             uraian_kerusakan="Sensor tidak membaca data.",
         )
         PemeliharaanItem.objects.create(
             pengajuan=pengajuan,
             komponen="Baterai",
+            uraian_perbaikan="Perbaikan baterai selesai.",
+            tanggal_mulai_perbaikan=pengajuan.tanggal_pemeriksaan,
             kondisi=KondisiPemeliharaanChoices.PERLU_PERBAIKAN,
-            tindakan_perbaikan=TindakanPerbaikanChoices.MANDIRI,
+            tindakan_perbaikan=TindakanPerbaikanChoices.LANGSUNG,
             tanggal_selesai_perbaikan=timezone.now() + timedelta(days=30),
         )
 
+        for component in pengajuan.items.exclude(pk=item.pk):
+            PemeliharaanFoto.objects.create(item=component, jenis=JenisFotoPemeliharaanChoices.PERBAIKAN if component.is_langsung else JenisFotoPemeliharaanChoices.KERUSAKAN, foto=self._image_upload("komponen.png"))
         self._login("Admin Lab")
         response = self.client.post(reverse("pemeliharaan:kirim", args=[pengajuan.pk]))
         self.assertRedirects(
@@ -617,7 +1113,7 @@ class PemeliharaanVerifikasiTests(TestCase):
 
         response = self.client.post(
             reverse("verifikasi:detail_pemeliharaan", args=[pengajuan.pk]),
-            {"aksi": "setujui", "catatan": ""},
+            {"aksi": "setujui", "catatan": "", "metode_perbaikan": MetodePerbaikanChoices.EKSTERNAL},
         )
         self.assertRedirects(response, reverse("verifikasi:index"))
         pengajuan.refresh_from_db()
@@ -626,7 +1122,7 @@ class PemeliharaanVerifikasiTests(TestCase):
         self._login("Pimpinan")
         response = self.client.post(
             reverse("verifikasi:detail_pemeliharaan", args=[pengajuan.pk]),
-            {"aksi": "setujui", "catatan": ""},
+            {"aksi": "setujui", "catatan": "", "metode_perbaikan": MetodePerbaikanChoices.EKSTERNAL},
         )
         self.assertRedirects(response, reverse("verifikasi:index"))
         pengajuan.refresh_from_db()
@@ -740,7 +1236,7 @@ class PemeliharaanVerifikasiTests(TestCase):
         self._login("Kepala Lab")
         self.client.post(
             reverse("verifikasi:detail_pemeliharaan", args=[pengajuan.pk]),
-            {"aksi": "setujui", "catatan": ""},
+            {"aksi": "setujui", "catatan": "", "metode_perbaikan": MetodePerbaikanChoices.EKSTERNAL},
         )
         pengajuan.refresh_from_db()
         self.assertEqual(
@@ -751,7 +1247,7 @@ class PemeliharaanVerifikasiTests(TestCase):
         self._login("Pimpinan")
         self.client.post(
             reverse("verifikasi:detail_pemeliharaan", args=[pengajuan.pk]),
-            {"aksi": "setujui", "catatan": ""},
+            {"aksi": "setujui", "catatan": "", "metode_perbaikan": MetodePerbaikanChoices.EKSTERNAL},
         )
         pengajuan.refresh_from_db()
         vendor.refresh_from_db()
@@ -761,12 +1257,13 @@ class PemeliharaanVerifikasiTests(TestCase):
         self.alat.refresh_from_db()
         self.assertEqual(self.alat.kondisi_barang, KondisiBarangChoices.BAIK)
         self.assertEqual(self.alat.tanggal_pemeliharaan, tanggal_pemeliharaan_awal)
-        self.assertEqual(self.alat.tanggal_perbaikan, tanggal_selesai)
+        self.assertEqual(self.alat.tanggal_perbaikan, timezone.localdate(pengajuan.items.get(komponen="Baterai").tanggal_selesai_perbaikan))
 
     def test_revisi_vendor_kembali_ke_draft_tanpa_membuka_edit_pengajuan(self):
-        pengajuan = self._create_pengajuan(TindakanPerbaikanChoices.EKSTERNAL)
+        pengajuan = self._create_pengajuan(TindakanPerbaikanChoices.LANJUTAN)
+        pengajuan.metode_perbaikan = MetodePerbaikanChoices.EKSTERNAL
         pengajuan.current_step = StepPemeliharaanChoices.VENDOR_KEPALA_LAB
-        pengajuan.save(update_fields=["current_step", "updated_at"])
+        pengajuan.save(update_fields=["current_step", "metode_perbaikan", "updated_at"])
         PemeliharaanVendor.objects.create(
             pengajuan=pengajuan,
             nama_vendor="Vendor Revisi",
@@ -799,9 +1296,10 @@ class PemeliharaanVerifikasiTests(TestCase):
         self.assertContains(response, "Vendor Revisi")
 
     def test_form_vendor_mengunci_tanggal_selesai_dan_nomor_hp_hanya_angka(self):
-        pengajuan = self._create_pengajuan(TindakanPerbaikanChoices.EKSTERNAL)
+        pengajuan = self._create_pengajuan(TindakanPerbaikanChoices.LANJUTAN)
+        pengajuan.metode_perbaikan = MetodePerbaikanChoices.EKSTERNAL
         pengajuan.current_step = StepPemeliharaanChoices.VENDOR_DRAFT
-        pengajuan.save(update_fields=["current_step", "updated_at"])
+        pengajuan.save(update_fields=["current_step", "metode_perbaikan", "updated_at"])
 
         form = PemeliharaanVendorForm(pengajuan=pengajuan)
         selesai_attrs = form.fields["tanggal_selesai"].widget.attrs
@@ -837,10 +1335,11 @@ class PemeliharaanVerifikasiTests(TestCase):
         self.assertNotIn("disabled", form.fields["tanggal_selesai"].widget.attrs)
 
     def test_vendor_tanggal_mulai_minimum_adalah_tanggal_pemeriksaan(self):
-        pengajuan = self._create_pengajuan(TindakanPerbaikanChoices.EKSTERNAL)
+        pengajuan = self._create_pengajuan(TindakanPerbaikanChoices.LANJUTAN)
         pengajuan.tanggal_pemeriksaan = timezone.make_aware(datetime(2026, 6, 12, 9, 30))
+        pengajuan.metode_perbaikan = MetodePerbaikanChoices.EKSTERNAL
         pengajuan.current_step = StepPemeliharaanChoices.VENDOR_DRAFT
-        pengajuan.save(update_fields=["tanggal_pemeriksaan", "current_step"])
+        pengajuan.save(update_fields=["tanggal_pemeriksaan", "current_step", "metode_perbaikan"])
         self._login("Admin Lab")
         response = self.client.get(reverse("pemeliharaan:vendor", args=[pengajuan.pk]))
         self.assertEqual(response.status_code, 200)
@@ -860,7 +1359,7 @@ class PemeliharaanVerifikasiTests(TestCase):
                     self.assertIn("lebih awal dari tanggal pemeriksaan", str(form.errors["tanggal_mulai"]))
 
     def test_list_dan_detail_memakai_badge_seragam_dan_modal_hapus_custom(self):
-        pengajuan = self._create_pengajuan(TindakanPerbaikanChoices.EKSTERNAL)
+        pengajuan = self._create_pengajuan(TindakanPerbaikanChoices.LANJUTAN)
         self._login("Super Admin")
 
         response = self.client.get(reverse("pemeliharaan:list"))
@@ -882,7 +1381,7 @@ class PemeliharaanVerifikasiTests(TestCase):
         self.assertNotContains(response, "onclick=\"return confirm(")
 
     def test_kirim_pengajuan_membuat_notifikasi_kepala_lab(self):
-        pengajuan = self._create_pengajuan(TindakanPerbaikanChoices.MANDIRI)
+        pengajuan = self._create_pengajuan(TindakanPerbaikanChoices.LANJUTAN)
 
         self._login("Admin Lab")
         self.client.post(reverse("pemeliharaan:kirim", args=[pengajuan.pk]))
@@ -910,6 +1409,7 @@ class PemeliharaanVerifikasiTests(TestCase):
         self.alat.tanggal_perbaikan = tanggal_perbaikan_awal
         self.alat.save(update_fields=["tanggal_perbaikan", "updated_at"])
         pengajuan = self._create_pengajuan_baik()
+        PemeliharaanFoto.objects.create(item=pengajuan.items.get(), jenis=JenisFotoPemeliharaanChoices.PEMERIKSAAN, foto=self._image_upload("pemeriksaan.png"))
         pengajuan.tanggal_pemeriksaan = tanggal_pemeriksaan
         pengajuan.save(update_fields=["tanggal_pemeriksaan", "updated_at"])
         self.assertEqual(pengajuan.jenis_pengajuan_label, "Pemeliharaan")
@@ -957,7 +1457,7 @@ class PemeliharaanVerifikasiTests(TestCase):
         )
 
     def test_persetujuan_final_menutup_notifikasi_lama_dan_mengabari_pemohon(self):
-        pengajuan = self._create_pengajuan(TindakanPerbaikanChoices.MANDIRI)
+        pengajuan = self._create_pengajuan(TindakanPerbaikanChoices.LANJUTAN)
 
         self._login("Admin Lab")
         self.client.post(reverse("pemeliharaan:kirim", args=[pengajuan.pk]))
@@ -965,7 +1465,7 @@ class PemeliharaanVerifikasiTests(TestCase):
         self._login("Kepala Lab")
         self.client.post(
             reverse("verifikasi:detail_pemeliharaan", args=[pengajuan.pk]),
-            {"aksi": "setujui", "catatan": ""},
+            {"aksi": "setujui", "catatan": "", "metode_perbaikan": MetodePerbaikanChoices.MANDIRI},
         )
 
         kepala_notification = Notification.objects.get(
@@ -975,6 +1475,16 @@ class PemeliharaanVerifikasiTests(TestCase):
         )
         self.assertTrue(kepala_notification.is_read)
 
+        self._login("Admin Lab")
+        self.client.post(reverse("pemeliharaan:perbaikan", args=[pengajuan.pk]), {
+            "uraian_perbaikan_0": "Perbaikan selesai.",
+            "tanggal_mulai_perbaikan_0": timezone.localdate().isoformat(),
+            "tanggal_selesai_perbaikan_0": timezone.localdate().isoformat(),
+            "dokumentasi_perbaikan_0": self._image_upload("selesai.png"),
+        })
+        pengajuan.refresh_from_db()
+        self.assertEqual(pengajuan.current_step, StepPemeliharaanChoices.PERBAIKAN_MANDIRI)
+        self.client.post(reverse("pemeliharaan:kirim", args=[pengajuan.pk]))
         status_notification = Notification.objects.get(
             recipient=self.users["Admin Lab"],
             source_pemeliharaan=pengajuan,
@@ -991,7 +1501,7 @@ class PemeliharaanVerifikasiTests(TestCase):
             reverse("pemeliharaan:detail", args=[pengajuan.pk]),
         )
 
-    def test_alur_mandiri_selesai_di_kepala_lab(self):
+    def test_alur_langsung_selesai_saat_kirim(self):
         tanggal_pemeliharaan_awal = date(2025, 10, 10)
         tanggal_selesai = timezone.make_aware(datetime(2026, 7, 8, 15, 45))
         self.alat.kondisi_barang = KondisiBarangChoices.RUSAK
@@ -999,21 +1509,18 @@ class PemeliharaanVerifikasiTests(TestCase):
         self.alat.save(
             update_fields=["kondisi_barang", "tanggal_pemeliharaan", "updated_at"]
         )
-        pengajuan = self._create_pengajuan(TindakanPerbaikanChoices.MANDIRI)
+        pengajuan = self._create_pengajuan(TindakanPerbaikanChoices.LANGSUNG)
+        pengajuan.tanggal_pemeriksaan = tanggal_selesai - timedelta(days=1)
+        pengajuan.save(update_fields=["tanggal_pemeriksaan"])
         item = pengajuan.items.get()
+        item.tanggal_mulai_perbaikan = pengajuan.tanggal_pemeriksaan
         item.tanggal_selesai_perbaikan = tanggal_selesai
-        item.save(update_fields=["tanggal_selesai_perbaikan"])
+        item.save(update_fields=["tanggal_mulai_perbaikan", "tanggal_selesai_perbaikan"])
         self.assertEqual(pengajuan.jenis_pengajuan_label, "Perbaikan")
 
         self._login("Admin Lab")
         self.client.post(reverse("pemeliharaan:kirim", args=[pengajuan.pk]))
 
-        self._login("Kepala Lab")
-        response = self.client.post(
-            reverse("verifikasi:detail_pemeliharaan", args=[pengajuan.pk]),
-            {"aksi": "setujui", "catatan": ""},
-        )
-        self.assertRedirects(response, reverse("verifikasi:index"))
         pengajuan.refresh_from_db()
         self.assertEqual(pengajuan.current_step, StepPemeliharaanChoices.SELESAI)
         self.alat.refresh_from_db()
@@ -1022,7 +1529,7 @@ class PemeliharaanVerifikasiTests(TestCase):
         self.assertEqual(self.alat.tanggal_perbaikan, date(2026, 7, 8))
 
     def test_edit_detail_terkunci_setelah_dikirim_dan_aktif_saat_dikembalikan(self):
-        pengajuan = self._create_pengajuan(TindakanPerbaikanChoices.MANDIRI)
+        pengajuan = self._create_pengajuan(TindakanPerbaikanChoices.LANJUTAN)
         self._login("Admin Lab")
 
         self.client.post(reverse("pemeliharaan:kirim", args=[pengajuan.pk]))
@@ -1036,14 +1543,14 @@ class PemeliharaanVerifikasiTests(TestCase):
         self.assertNotContains(response, reverse("pemeliharaan:edit", args=[pengajuan.pk]))
 
         pengajuan.current_step = StepPemeliharaanChoices.DIKEMBALIKAN
-        pengajuan.save(update_fields=["current_step", "updated_at"])
+        pengajuan.save(update_fields=["current_step", "metode_perbaikan", "updated_at"])
         response = self.client.get(reverse("pemeliharaan:detail", args=[pengajuan.pk]))
 
         self.assertContains(response, reverse("pemeliharaan:edit", args=[pengajuan.pk]))
         self.assertNotContains(response, 'disabled>Edit Pengajuan</button>')
 
     def test_perbaiki_mengembalikan_ke_pemohon(self):
-        pengajuan = self._create_pengajuan(TindakanPerbaikanChoices.MANDIRI)
+        pengajuan = self._create_pengajuan(TindakanPerbaikanChoices.LANJUTAN)
         self._login("Admin Lab")
         self.client.post(reverse("pemeliharaan:kirim", args=[pengajuan.pk]))
 
@@ -1068,7 +1575,7 @@ class PemeliharaanVerifikasiTests(TestCase):
                 "updated_at",
             ]
         )
-        pengajuan = self._create_pengajuan(TindakanPerbaikanChoices.MANDIRI)
+        pengajuan = self._create_pengajuan(TindakanPerbaikanChoices.LANJUTAN)
         self._login("Admin Lab")
         self.client.post(reverse("pemeliharaan:kirim", args=[pengajuan.pk]))
 
@@ -1099,7 +1606,7 @@ class PemeliharaanVerifikasiTests(TestCase):
                 "updated_at",
             ]
         )
-        pengajuan = self._create_pengajuan(TindakanPerbaikanChoices.MANDIRI)
+        pengajuan = self._create_pengajuan(TindakanPerbaikanChoices.LANGSUNG)
         pengajuan.add_timeline("Pelaksana Pemeliharaan", "Data uji dibuat")
 
         self._login("Admin Lab")
@@ -1107,7 +1614,7 @@ class PemeliharaanVerifikasiTests(TestCase):
         self._login("Kepala Lab")
         self.client.post(
             reverse("verifikasi:detail_pemeliharaan", args=[pengajuan.pk]),
-            {"aksi": "setujui", "catatan": ""},
+            {"aksi": "setujui", "catatan": "", "metode_perbaikan": MetodePerbaikanChoices.EKSTERNAL},
         )
         self.alat.refresh_from_db()
         self.assertEqual(self.alat.kondisi_barang, KondisiBarangChoices.BAIK)
@@ -1130,11 +1637,11 @@ class PemeliharaanVerifikasiTests(TestCase):
         self.assertEqual(self.alat.tanggal_perbaikan, date(2025, 1, 11))
 
     def test_hapus_pengajuan_lama_tidak_mengubah_hasil_pengajuan_lebih_baru(self):
-        pengajuan_lama = self._create_pengajuan(TindakanPerbaikanChoices.MANDIRI)
+        pengajuan_lama = self._create_pengajuan(TindakanPerbaikanChoices.LANGSUNG)
         pengajuan_lama.current_step = StepPemeliharaanChoices.SELESAI
         pengajuan_lama.save(update_fields=["current_step", "updated_at"])
 
-        pengajuan_baru = self._create_pengajuan(TindakanPerbaikanChoices.MANDIRI)
+        pengajuan_baru = self._create_pengajuan(TindakanPerbaikanChoices.LANGSUNG)
         pengajuan_baru.current_step = StepPemeliharaanChoices.SELESAI
         pengajuan_baru.save(update_fields=["current_step", "updated_at"])
         pengajuan_baru.catat_riwayat_alat_disetujui()
@@ -1153,9 +1660,9 @@ class PemeliharaanVerifikasiTests(TestCase):
         self.assertEqual(self.alat.tanggal_perbaikan, perbaikan_terbaru)
 
     def test_hapus_laporan_hanya_super_admin_dan_kembali_ke_laporan(self):
-        pengajuan = self._create_pengajuan(TindakanPerbaikanChoices.MANDIRI)
+        pengajuan = self._create_pengajuan(TindakanPerbaikanChoices.LANGSUNG)
         pengajuan.current_step = StepPemeliharaanChoices.SELESAI
-        pengajuan.save(update_fields=["current_step", "updated_at"])
+        pengajuan.save(update_fields=["current_step", "metode_perbaikan", "updated_at"])
         delete_url = reverse("pemeliharaan:hapus", args=[pengajuan.pk])
 
         self._login("Admin Lab")
@@ -1181,7 +1688,7 @@ class PemeliharaanVerifikasiTests(TestCase):
         self.assertIn(KondisiBarangChoices.DALAM_PEMELIHARAAN, values)
 
     def test_pengajuan_final_masuk_laporan_dan_tidak_masuk_daftar_berjalan(self):
-        selesai = self._create_pengajuan(TindakanPerbaikanChoices.MANDIRI)
+        selesai = self._create_pengajuan(TindakanPerbaikanChoices.LANGSUNG)
         selesai.current_step = StepPemeliharaanChoices.SELESAI
         selesai.kepala_lab_by = self.users["Kepala Lab"]
         selesai.kepala_lab_at = timezone.now()
@@ -1193,7 +1700,7 @@ class PemeliharaanVerifikasiTests(TestCase):
                 "updated_at",
             ]
         )
-        ditolak = self._create_pengajuan(TindakanPerbaikanChoices.MANDIRI)
+        ditolak = self._create_pengajuan(TindakanPerbaikanChoices.LANGSUNG)
         ditolak.current_step = StepPemeliharaanChoices.DITOLAK
         ditolak.kepala_lab_by = self.users["Kepala Lab"]
         ditolak.kepala_lab_at = timezone.now()
@@ -1205,7 +1712,7 @@ class PemeliharaanVerifikasiTests(TestCase):
                 "updated_at",
             ]
         )
-        berjalan = self._create_pengajuan(TindakanPerbaikanChoices.MANDIRI)
+        berjalan = self._create_pengajuan(TindakanPerbaikanChoices.LANGSUNG)
 
         self._login("Admin Lab")
         response = self.client.get(reverse("pemeliharaan:list"))
@@ -1233,7 +1740,7 @@ class PemeliharaanVerifikasiTests(TestCase):
         self.assertContains(response, 'title="Hapus laporan"', html=False)
 
     def test_pdf_laporan_hanya_tersedia_setelah_proses_final(self):
-        pengajuan = self._create_pengajuan(TindakanPerbaikanChoices.MANDIRI)
+        pengajuan = self._create_pengajuan(TindakanPerbaikanChoices.LANGSUNG)
         self._login("Admin Lab")
 
         response = self.client.get(reverse("pemeliharaan:download_pdf", args=[pengajuan.pk]))
@@ -1277,7 +1784,7 @@ class PemeliharaanVerifikasiTests(TestCase):
         self.assertTrue(response.content.startswith(b"%PDF"))
 
     def test_pdf_memakai_penanda_tangan_dari_data_master(self):
-        pengajuan = self._create_pengajuan(TindakanPerbaikanChoices.EKSTERNAL)
+        pengajuan = self._create_pengajuan(TindakanPerbaikanChoices.LANJUTAN)
         pengajuan.current_step = StepPemeliharaanChoices.SELESAI
         pengajuan.kepala_lab_by = self.users["Admin Lab"]
         pengajuan.pimpinan_by = self.users["Admin Lab"]
@@ -1314,7 +1821,7 @@ class PemeliharaanVerifikasiTests(TestCase):
         )
 
     def test_laporan_memakai_snapshot_status_barang(self):
-        pengajuan = self._create_pengajuan(TindakanPerbaikanChoices.MANDIRI)
+        pengajuan = self._create_pengajuan(TindakanPerbaikanChoices.LANGSUNG)
         self.assertEqual(pengajuan.snapshot_status_barang, StatusBarangChoices.NON_BMN)
 
         BarangLaboratorium.objects.filter(pk=self.alat.pk).update(
@@ -1325,13 +1832,13 @@ class PemeliharaanVerifikasiTests(TestCase):
         self.assertEqual(pengajuan.status_barang_label, StatusBarangChoices.NON_BMN)
 
     def test_pdf_tanpa_riwayat_proses_dan_foto_sesuai_bagian(self):
-        pengajuan = self._create_pengajuan(TindakanPerbaikanChoices.EKSTERNAL)
+        pengajuan = self._create_pengajuan(TindakanPerbaikanChoices.LANJUTAN)
         item = pengajuan.items.get()
         mandiri = PemeliharaanItem.objects.create(
             pengajuan=pengajuan,
             komponen="Baterai",
             kondisi=KondisiPemeliharaanChoices.PERLU_PERBAIKAN,
-            tindakan_perbaikan=TindakanPerbaikanChoices.MANDIRI,
+            tindakan_perbaikan=TindakanPerbaikanChoices.LANGSUNG,
             uraian_perbaikan="Kalibrasi baterai.",
             tanggal_selesai_perbaikan=timezone.now(),
         )
@@ -1372,19 +1879,19 @@ class PemeliharaanVerifikasiTests(TestCase):
         self.assertEqual(data_mock.call_args.kwargs["valign"], "MIDDLE")
         self.assertEqual(
             [call.args[0] for call in repair_mock.call_args_list],
-            ["Perbaikan Mandiri", "Perbaikan Eksternal"],
+            ["Perbaikan Langsung", "Perbaikan Lanjutan"],
         )
         self.assertTrue(sign_mock.call_args.kwargs["centered"])
         self.assertEqual(sign_mock.call_args.kwargs["approval_label"], "Menyetujui:")
 
     def test_pdf_memberi_jarak_antar_tabel(self):
-        pengajuan = self._create_pengajuan(TindakanPerbaikanChoices.EKSTERNAL)
+        pengajuan = self._create_pengajuan(TindakanPerbaikanChoices.LANJUTAN)
         item = pengajuan.items.get()
         PemeliharaanItem.objects.create(
             pengajuan=pengajuan,
             komponen="Baterai",
             kondisi=KondisiPemeliharaanChoices.PERLU_PERBAIKAN,
-            tindakan_perbaikan=TindakanPerbaikanChoices.MANDIRI,
+            tindakan_perbaikan=TindakanPerbaikanChoices.LANGSUNG,
             uraian_perbaikan="Kalibrasi baterai.",
             tanggal_selesai_perbaikan=timezone.now(),
         )
@@ -1422,13 +1929,13 @@ class PemeliharaanVerifikasiTests(TestCase):
         self.assertEqual(eksternal_index, mandiri_index + 2)
 
     def test_tabel_perbaikan_terpisah_tanpa_kolom_tindakan(self):
-        pengajuan = self._create_pengajuan(TindakanPerbaikanChoices.EKSTERNAL)
+        pengajuan = self._create_pengajuan(TindakanPerbaikanChoices.LANJUTAN)
         eksternal = pengajuan.items.get()
         mandiri = PemeliharaanItem.objects.create(
             pengajuan=pengajuan,
             komponen="Baterai",
             kondisi=KondisiPemeliharaanChoices.PERLU_PERBAIKAN,
-            tindakan_perbaikan=TindakanPerbaikanChoices.MANDIRI,
+            tindakan_perbaikan=TindakanPerbaikanChoices.LANGSUNG,
             uraian_perbaikan="Kalibrasi baterai.",
             tanggal_selesai_perbaikan=timezone.now(),
         )

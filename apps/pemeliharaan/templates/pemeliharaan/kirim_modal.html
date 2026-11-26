@@ -18,3 +18,21 @@
         </form>
     </div>
 </div>
+
+<div class="delete-modal" id="maint-incomplete-modal">
+    <div class="delete-modal-backdrop" data-maint-incomplete-close></div>
+    <div class="delete-modal-card" role="dialog" aria-modal="true" aria-labelledby="maint-incomplete-title">
+        <div class="delete-modal-header">
+            <h3 id="maint-incomplete-title">Data Belum Lengkap</h3>
+            <button type="button" class="delete-modal-close" data-maint-incomplete-close aria-label="Tutup">&times;</button>
+        </div>
+        <div class="delete-modal-body pemeliharaan-missing">
+            <p data-maint-incomplete-note>Silakan lengkapi Data Pengajuan Pemeliharaan terlebih dahulu.</p>
+            <p data-maint-missing-title hidden>Kolom yang perlu dilengkapi atau diperbaiki:</p>
+            <div data-maint-missing-list hidden></div>
+        </div>
+        <div class="delete-modal-actions">
+            <button type="button" class="btn btn-secondary" data-maint-incomplete-close>Tutup</button>
+        </div>
+    </div>
+</div>

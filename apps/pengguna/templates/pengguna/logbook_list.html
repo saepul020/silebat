@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+{% block title %}Logbook Harian{% endblock %}
+{% block content %}
+<div class="page-header"><h1>Logbook Harian</h1><p>Daftar kegiatan harian yang Anda ikuti.</p></div>
+<div class="table-wrapper table-panel">
+    <div class="table-toolbar">
+        <h3 class="table-title">Data Logbook Harian</h3>
+        <div class="table-toolbar-actions">
+            {% include 'pengguna/excel_actions.html' with kind='logbook' %}
+            <a href="{% url 'pengguna:logbook_tambah' %}" class="btn btn-primary"><i class="bi bi-plus-circle" aria-hidden="true"></i>&nbsp;Tambah Data</a>
+        </div>
+    </div>
+    {% include 'components/entry_control.html' %}
+    <div class="table-scroll-area table-scroll--list" tabindex="0" aria-label="Tabel logbook harian">
+        <table class="table-data user-table user-table--logbook{% if can_view_all %} user-table--owner{% endif %}">
+            <colgroup>
+                {% if can_view_all %}<col class="user-table__col--user">{% endif %}
+                <col class="user-table__col--compact">
+                <col>
+                <col class="user-table__col--compact">
+                <col class="user-table__col--text">
+                <col class="user-table__col--action">
+            </colgroup>
+            <thead><tr>
+                {% if can_view_all %}<th>Penginput</th>{% endif %}
+                <th class="user-table__compact">Tanggal Pelaksanaan</th><th class="cell-wrap">Uraian Kegiatan</th><th class="user-table__compact">Dokumentasi Kegiatan</th><th class="cell-wrap">Peserta Kegiatan</th><th class="cell-action">Aksi</th>
+            </tr></thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    {% if can_view_all %}<td class="cell-wrap" data-sort-value="{{ item.user.get_full_name|default:item.user.username }}"><div class="user-table__owner">{{ item.user.get_full_name|default:item.user.username }}</div></td>{% endif %}
+                    <td class="user-table__compact user-table__nowrap">{{ item.tanggal|date:'d M Y' }}</td><td class="cell-wrap" data-sort-value="{{ item.uraian }}"><div class="user-table__description">{{ item.uraian }}</div></td>
+                    <td class="user-table__compact user-table__media user-table__nowrap">
+                        {% if item.preview_url %}
+                        <button type="button" class="inventory-photo__trigger" data-inventory-photo-open data-photo-src="{{ item.preview_url }}" data-photo-alt="Dokumentasi kegiatan {{ item.tanggal|date:'d M Y' }}" data-photo-caption="Dokumentasi kegiatan {{ item.tanggal|date:'d M Y' }}" aria-label="Preview dokumentasi kegiatan {{ item.tanggal|date:'d M Y' }}" aria-haspopup="dialog" aria-controls="logbook-photo-modal" title="Preview dokumentasi">
+                            <img class="inventory-photo__thumb" src="{{ item.preview_url }}" alt="Dokumentasi kegiatan {{ item.tanggal|date:'d M Y' }}" loading="lazy">
+                        </button>
+                        {% elif item.dokumen %}<a href="{% url 'pengguna:logbook_dokumen' item.pk %}" class="btn btn-secondary btn-sm" title="Download dokumentasi" aria-label="Download dokumentasi"><i class="bi bi-download" aria-hidden="true"></i></a>{% else %}-{% endif %}
+                    </td>
+                    <td class="user-table__nowrap" data-sort-value="{% for row in item.peserta.all %}{{ row.user.get_full_name|default:row.user.username }}{% if not forloop.last %}; {% endif %}{% endfor %}"><ul>{% for row in item.peserta.all %}<li>{{ row.user.get_full_name|default:row.user.username }}</li>{% endfor %}</ul></td>
+                    <td class="cell-action user-table__nowrap"><div class="table-action-group">
+                        <a href="{% url 'pengguna:logbook_edit' item.pk %}" class="btn btn-warning btn-sm" title="Edit" aria-label="Edit logbook"><i class="bi bi-pencil-square" aria-hidden="true"></i></a>
+                        <a href="{% url 'pengguna:logbook_hapus' item.pk %}" class="btn btn-danger btn-sm" title="Hapus" aria-label="Hapus logbook"><i class="bi bi-trash3-fill" aria-hidden="true"></i></a>
+                    </div></td>
+                </tr>
+                {% empty %}<tr><td colspan="{% if can_view_all %}6{% else %}5{% endif %}"><div class="empty-state">Belum ada logbook harian.</div></td></tr>{% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% include 'components/pagination.html' %}
+</div>
+<div class="inventory-photo" id="logbook-photo-modal" data-inventory-photo-modal hidden aria-hidden="true">
+    <div class="inventory-photo__backdrop" data-inventory-photo-close></div>
+    <div class="inventory-photo__card" role="dialog" aria-modal="true" aria-labelledby="logbook-photo-title" tabindex="-1">
+        <div class="inventory-photo__head">
+            <h3 id="logbook-photo-title">Preview Dokumentasi Kegiatan</h3>
+            <button type="button" class="inventory-photo__close" data-inventory-photo-close aria-label="Tutup preview dokumentasi" title="Tutup"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+        </div>
+        <div class="inventory-photo__stage"><img alt="" data-inventory-photo-image></div>
+        <p class="inventory-photo__caption" data-inventory-photo-caption></p>
+    </div>
+</div>
+{% include 'pengguna/excel_modal.html' with kind='logbook' title='Import Logbook Harian' %}
+{% endblock %}

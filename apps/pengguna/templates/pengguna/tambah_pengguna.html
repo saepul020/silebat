@@ -9,7 +9,7 @@
 </div>
 
 <div class="card user-form-card">
-    <form method="post" enctype="multipart/form-data" class="pengguna-form"{% if not is_edit %} data-pengguna-create-form="true" novalidate{% endif %}>
+    <form method="post" enctype="multipart/form-data" class="pengguna-form" data-profile-form{% if not is_edit %} data-pengguna-create-form="true" novalidate{% endif %}>
         {% csrf_token %}
         {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
 
@@ -41,54 +41,12 @@
 
         <fieldset>
             <legend>Data Akun</legend>
-
             <div class="form-row">
-                <div class="form-group {% if form_user.username.errors %}has-error{% endif %}">
-                    <label for="{{ form_user.username.id_for_label }}">{{ form_user.username.label }}</label>
-                    {{ form_user.username }}
-                    {% if form_user.username.help_text %}
-                        <p class="input-help-text">{{ form_user.username.help_text }}</p>
-                    {% endif %}
-                    {% for error in form_user.username.errors %}
-                        <p class="input-error-text">*{{ error }}</p>
-                    {% endfor %}
-                </div>
-
-                <div class="form-group {% if form_user.nama_lengkap.errors %}has-error{% endif %}">
-                    <label for="{{ form_user.nama_lengkap.id_for_label }}">{{ form_user.nama_lengkap.label }}</label>
-                    {{ form_user.nama_lengkap }}
-                    {% for error in form_user.nama_lengkap.errors %}
-                        <p class="input-error-text">*{{ error }}</p>
-                    {% endfor %}
-                </div>
+                {% include 'pengguna/user_field.html' with field=form_user.username %}
+                {% include 'pengguna/user_field.html' with field=form_user.email %}
             </div>
-
             <div class="form-row">
-                <div class="form-group {% if form_user.email.errors %}has-error{% endif %}">
-                    <label for="{{ form_user.email.id_for_label }}">{{ form_user.email.label }}</label>
-                    {{ form_user.email }}
-                    {% for error in form_user.email.errors %}
-                        <p class="input-error-text">*{{ error }}</p>
-                    {% endfor %}
-                </div>
-
-                <div class="form-group {% if form_user.nip.errors %}has-error{% endif %}">
-                    <label for="{{ form_user.nip.id_for_label }}">{{ form_user.nip.label }}</label>
-                    {{ form_user.nip }}
-                    {% for error in form_user.nip.errors %}
-                        <p class="input-error-text">*{{ error }}</p>
-                    {% endfor %}
-                </div>
-            </div>
-
-            <div class="form-row">
-                <div class="form-group {% if form_user.no_hp.errors %}has-error{% endif %}">
-                    <label for="{{ form_user.no_hp.id_for_label }}">{{ form_user.no_hp.label }}</label>
-                    {{ form_user.no_hp }}
-                    {% for error in form_user.no_hp.errors %}
-                        <p class="input-error-text">*{{ error }}</p>
-                    {% endfor %}
-                </div>
+                {% include 'pengguna/user_field.html' with field=form_user.no_hp %}
 
                 {% if not is_edit %}
                 <div class="form-group {% if form_user.password1.errors %}has-error{% endif %}">
@@ -122,6 +80,9 @@
                 </div>
             </div>
             {% endif %}
+            <div class="form-row form-row-1">
+                {% include 'pengguna/user_field.html' with field=form_profile.role %}
+            </div>
         </fieldset>
 
         {% if is_edit %}
@@ -173,17 +134,19 @@
         {% endif %}
 
         <fieldset>
-            <legend>Profil Pengguna</legend>
+            <legend>Detail Profil</legend>
 
-            <div class="form-group {% if form_profile.role.errors %}has-error{% endif %}">
-                <label for="{{ form_profile.role.id_for_label }}">{{ form_profile.role.label }}</label>
-                {{ form_profile.role }}
-                {% if form_profile.role.help_text %}
-                    <p class="input-help-text">{{ form_profile.role.help_text }}</p>
-                {% endif %}
-                {% for error in form_profile.role.errors %}
-                    <p class="input-error-text">*{{ error }}</p>
-                {% endfor %}
+            <div class="form-row">
+                {% include 'pengguna/user_field.html' with field=form_user.nama_lengkap %}
+                {% include 'pengguna/user_field.html' with field=form_user.nip %}
+            </div>
+
+            <div class="form-row">
+                {% include 'pengguna/user_field.html' with field=form_profile.tempat_lahir %}
+                {% include 'pengguna/user_field.html' with field=form_profile.tanggal_lahir %}
+            </div>
+            <div class="form-row form-row-1">
+                {% include 'pengguna/user_field.html' with field=form_profile.jenis_kelamin %}
             </div>
 
             <div class="upload-grid">
@@ -200,7 +163,7 @@
 
                     <div class="upload-card__head">
                         <label for="{{ form_profile.foto_profil.id_for_label }}">{{ form_profile.foto_profil.label }}</label>
-                        <span class="upload-card__hint">Auto crop 1:1</span>
+                        <span class="upload-card__hint">Auto crop 2:3</span>
                     </div>
 
                     <div class="upload-preview-stack">

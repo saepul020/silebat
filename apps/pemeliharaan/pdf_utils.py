@@ -18,7 +18,7 @@ from apps.peminjaman.pdf_utils import (
     title_block,
 )
 
-from .models import JenisFotoPemeliharaanChoices, TindakanPerbaikanChoices
+from .models import JenisFotoPemeliharaanChoices
 
 
 TABLE_GAP = 3 * mm
@@ -191,38 +191,22 @@ def render_pemeliharaan_pdf(target, obj, format_date):
             photo_grid(examination_photos, header="Dokumentasi Pemeriksaan")
         )
 
-    mandiri_items = [
-        item for item in items
-        if item.perlu_perbaikan
-        and item.tindakan_perbaikan == TindakanPerbaikanChoices.MANDIRI
+    repair_groups = [
+        ("Perbaikan Langsung", [item for item in items if item.is_langsung], JenisFotoPemeliharaanChoices.PERBAIKAN),
+        ("Perbaikan Mandiri", [item for item in items if item.is_mandiri], JenisFotoPemeliharaanChoices.PERBAIKAN),
+        ("Perbaikan Lanjutan" + (f" - {obj.metode_perbaikan}" if obj.metode_perbaikan else ""),
+         [item for item in items if item.is_lanjutan], JenisFotoPemeliharaanChoices.KERUSAKAN),
     ]
-    eksternal_items = [
-        item for item in items
-        if item.perlu_perbaikan
-        and item.tindakan_perbaikan == TindakanPerbaikanChoices.EKSTERNAL
-    ]
-    if mandiri_items or eksternal_items:
+    if any(group[1] for group in repair_groups):
         story.append(section("C. Tindak Lanjut Perbaikan"))
-    if mandiri_items:
-        story.extend(
-            _repair_table(
-                "Perbaikan Mandiri",
-                mandiri_items,
-                JenisFotoPemeliharaanChoices.PERBAIKAN,
-                format_date,
-            )
-        )
-    if eksternal_items:
-        if mandiri_items:
+    rendered = False
+    for label, repair_items, photo_kind in repair_groups:
+        if not repair_items:
+            continue
+        if rendered:
             story.append(Spacer(1, TABLE_GAP))
-        story.extend(
-            _repair_table(
-                "Perbaikan Eksternal",
-                eksternal_items,
-                JenisFotoPemeliharaanChoices.KERUSAKAN,
-                format_date,
-            )
-        )
+        story.extend(_repair_table(label, repair_items, photo_kind, format_date))
+        rendered = True
     if obj.has_vendor_data:
         story.extend(
             [

@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block title %}{{ page_title }}{% endblock %}
+{% block content %}
+<div class="page-header"><h1>{{ page_title }}</h1><p>Lengkapi pengalaman kerja dan dokumen pendukung Anda.</p></div>
+<div class="card master-form-card">
+    <form method="post" enctype="multipart/form-data" class="pengguna-form" data-karir-form novalidate>
+        {% csrf_token %}
+        {% for error in form.non_field_errors %}<p class="input-error-text">{{ error }}</p>{% endfor %}
+        <fieldset>
+            <legend>Data Pekerjaan</legend>
+            <div class="form-row">
+                {% include 'pengguna/user_field.html' with field=form.perusahaan %}
+                {% include 'pengguna/user_field.html' with field=form.jabatan %}
+            </div>
+            <div class="form-row form-row-1">
+                {% include 'pengguna/user_field.html' with field=form.status %}
+            </div>
+            <div class="form-row">
+                {% include 'pengguna/user_field.html' with field=form.tanggal_mulai %}
+                {% include 'pengguna/user_field.html' with field=form.tanggal_selesai end_checkbox=form.masih_bekerja %}
+            </div>
+            <div class="form-row form-row-1">
+                {% include 'pengguna/user_field.html' with field=form.uraian %}
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>Dokumen Pendukung</legend>
+            <div class="form-row user-files user-files--aligned">
+                {% include 'pengguna/user_field.html' with field=form.dokumen label_note='(opsional)' stored_card=True stored_name=form.dokumen.value.name|cut:'pengguna/karir/' group_notes=True %}
+                {% include 'pengguna/user_field.html' with field=form.nomor_dokumen group_notes=True %}
+            </div>
+        </fieldset>
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Simpan</button>
+            <a href="{% url 'pengguna:karir_daftar' %}" class="btn btn-secondary">Kembali</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

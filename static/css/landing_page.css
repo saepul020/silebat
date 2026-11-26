@@ -1202,24 +1202,13 @@ input {
 
 .peralatan-filter__select-wrap {
   display: none;
-}
-
-.peralatan-filter__select-wrap select {
-  width: 100%;
-  min-height: 42px;
-  padding: 0 40px 0 14px;
-  border: 1px solid #dbe6ef;
-  border-radius: 12px;
-  background: var(--white);
-  color: var(--navy);
-  cursor: pointer;
-  font: inherit;
-  font-weight: 600;
-}
-
-.peralatan-filter__select-wrap select:focus {
-  border-color: var(--teal);
-  outline: 3px solid rgba(100, 205, 209, .24);
+  --surface: var(--white);
+  --surface-soft: var(--offwhite);
+  --border-strong: #dbe6ef;
+  --text-main: var(--navy);
+  --text-soft: var(--gray);
+  --color-soft-blue: var(--sky);
+  --color-aqua-teal: var(--teal);
 }
 
 @media (min-width: 861px) {

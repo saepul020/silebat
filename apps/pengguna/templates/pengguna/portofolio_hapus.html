@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% block title %}Hapus Portofolio{% endblock %}
+{% block content %}
+<div class="page-header"><h1>Hapus Portofolio</h1><p>Konfirmasi penghapusan proyek atau kegiatan.</p></div>
+<div class="card">
+    <p>Hapus portofolio {{ obj.nama }} beserta uraian tugas dan dokumen pendukungnya?</p>
+    <form method="post" class="form-actions">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">Ya, Hapus</button>
+        <a href="{% url 'pengguna:portofolio_daftar' %}" class="btn btn-secondary">Batal</a>
+    </form>
+</div>
+{% endblock %}

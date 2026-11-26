@@ -15,7 +15,7 @@ from apps.core.permissions import (
 )
 from apps.operasional.models import TIM_LAYANAN_TEKNIS_NAME, TimKegiatan
 from apps.peminjaman.models import DecisionChoices, ReturnStepChoices, StepChoices
-from apps.pemeliharaan.models import StepPemeliharaanChoices
+from apps.pemeliharaan.models import ACTIVE_PEMELIHARAAN_STEPS, StepPemeliharaanChoices
 
 from .models import Announcement, Notification, NotificationCategory
 
@@ -157,6 +157,7 @@ def _verification_recipients(pengajuan):
         if step in {
             StepPemeliharaanChoices.DIKEMBALIKAN,
             StepPemeliharaanChoices.VENDOR_DRAFT,
+            StepPemeliharaanChoices.PERBAIKAN_MANDIRI,
         }:
             return _merge_users(pengajuan.pemohon)
         return []
@@ -209,14 +210,11 @@ def _is_pemeliharaan(pengajuan):
 
 
 def _is_active_pemeliharaan(pengajuan):
-    return _is_pemeliharaan(pengajuan) and pengajuan.current_step in {
-        StepPemeliharaanChoices.KEPALA_LAB,
-        StepPemeliharaanChoices.PIMPINAN,
-        StepPemeliharaanChoices.VENDOR_DRAFT,
-        StepPemeliharaanChoices.VENDOR_KEPALA_LAB,
-        StepPemeliharaanChoices.VENDOR_PIMPINAN,
-        StepPemeliharaanChoices.DIKEMBALIKAN,
-    }
+    return (
+        _is_pemeliharaan(pengajuan)
+        and pengajuan.current_step in ACTIVE_PEMELIHARAAN_STEPS
+        and pengajuan.current_step != StepPemeliharaanChoices.DRAFT
+    )
 
 
 def _source_filter(pengajuan):
@@ -233,6 +231,8 @@ def _source_defaults(pengajuan):
 
 def _verification_link(pengajuan):
     if _is_pemeliharaan(pengajuan):
+        if pengajuan.current_step == StepPemeliharaanChoices.PERBAIKAN_MANDIRI:
+            return reverse("pemeliharaan:perbaikan", args=[pengajuan.pk])
         if pengajuan.current_step in {
             StepPemeliharaanChoices.DIKEMBALIKAN,
             StepPemeliharaanChoices.VENDOR_DRAFT,
@@ -687,15 +687,8 @@ def ensure_user_pending_notifications(user):
 
     pemeliharaan_queryset = PemeliharaanPengajuan.objects.select_related(
         "pemohon", "alat"
-    ).filter(
-        current_step__in=[
-            StepPemeliharaanChoices.KEPALA_LAB,
-            StepPemeliharaanChoices.PIMPINAN,
-            StepPemeliharaanChoices.VENDOR_DRAFT,
-            StepPemeliharaanChoices.VENDOR_KEPALA_LAB,
-            StepPemeliharaanChoices.VENDOR_PIMPINAN,
-            StepPemeliharaanChoices.DIKEMBALIKAN,
-        ]
+    ).filter(current_step__in=ACTIVE_PEMELIHARAAN_STEPS).exclude(
+        current_step=StepPemeliharaanChoices.DRAFT,
     ).distinct()
 
     for pengajuan in pemeliharaan_queryset[:75]:

@@ -18,6 +18,7 @@ urlpatterns = [
     path("tambah/", pemeliharaan_guard(views.tambah_pengajuan), name="tambah"),
     path("<int:pk>/edit/", pemeliharaan_guard(views.edit_pengajuan), name="edit"),
     path("<int:pk>/vendor/", pemeliharaan_guard(views.data_vendor), name="vendor"),
+    path("<int:pk>/perbaikan/", pemeliharaan_guard(views.data_perbaikan), name="perbaikan"),
     path("<int:pk>/", pemeliharaan_guard(views.detail_pengajuan), name="detail"),
     path("<int:pk>/kirim/", pemeliharaan_guard(views.kirim_pengajuan), name="kirim"),
     path("<int:pk>/vendor/kirim/", pemeliharaan_guard(views.kirim_vendor), name="vendor_kirim"),

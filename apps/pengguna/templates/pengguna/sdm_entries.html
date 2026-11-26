@@ -1,0 +1,5 @@
+<select id="{{ prefix }}-entries" name="{{ prefix }}_entries" class="master-entries-select js-show-entries-select" data-skip-placeholder="true" aria-label="Jumlah data {{ filter_label }}">
+    {% for value in listing.entry_options %}
+    <option value="{{ value }}"{% if value == listing.selected_entries %} selected{% endif %}>{% if value == 'all' %}Semua{% else %}{{ value }}{% endif %}</option>
+    {% endfor %}
+</select>

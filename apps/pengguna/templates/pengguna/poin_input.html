@@ -1,0 +1,11 @@
+<div class="komponen-rutin" data-komponen data-komponen-field="{{ widget.name }}" data-komponen-id="{{ widget.attrs.id }}" data-komponen-max="1000" data-komponen-min="1" data-komponen-label="{{ widget.row_label }}" data-komponen-required="true" data-komponen-title="{{ widget.field_label }}" data-komponen-required-message="Setiap poin {{ widget.field_label }} wajib diisi.">
+    <div class="komponen-rutin__list" data-komponen-list>
+        {% for value in widget.rows %}
+        <div class="komponen-rutin__row" data-komponen-row>
+            <input type="text" name="{{ widget.name }}" id="{{ widget.attrs.id }}_{{ forloop.counter0 }}" value="{{ value }}" placeholder="{{ widget.row_label }} {{ forloop.counter }}" maxlength="1000" autocomplete="off" data-komponen-input required data-required-message="Setiap poin {{ widget.field_label }} wajib diisi." aria-labelledby="{{ widget.attrs.id }}_label">
+            <button type="button" class="komponen-rutin__remove" data-komponen-remove title="Hapus {{ widget.row_label|lower }}" aria-label="Hapus {{ widget.row_label|lower }}"><i class="bi bi-trash" aria-hidden="true"></i></button>
+        </div>
+        {% endfor %}
+    </div>
+    <button type="button" class="btn btn-secondary komponen-rutin__add" data-komponen-add><i class="bi bi-plus-circle" aria-hidden="true"></i>Tambah {{ widget.row_label }}</button>
+</div>
