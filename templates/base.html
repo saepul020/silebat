@@ -14,7 +14,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
     {% block extra_css %}{% endblock %}
     {% if request.resolver_match.app_name == 'pengguna' or request.resolver_match.app_name == 'verifikasi' or request.resolver_match.app_name == 'pemeliharaan' or request.resolver_match.app_name == 'peminjaman' or request.resolver_match.app_name == 'master_data' or request.resolver_match.app_name == 'operasional' or request.resolver_match.app_name == 'landing' or request.resolver_match.app_name == 'notifikasi' or request.resolver_match.view_name == 'dashboard:index' %}
-    <link rel="stylesheet" href="{% static 'css/user_select.css' %}?v=20261126-global-v3">
+    <link rel="stylesheet" href="{% static 'css/user_select.css' %}?v=20261126-global-v4">
     {% endif %}
     {% if request.resolver_match.app_name == 'pengguna' %}
     <link rel="stylesheet" href="{% static 'css/user_table.css' %}?v=20261126-5">
@@ -84,7 +84,7 @@
     <script src="{% static 'js/navbar.js' %}?v=20260429-notifikasi-v7" defer></script>
     {% block extra_js %}{% endblock %}
     {% if request.resolver_match.app_name == 'pengguna' or request.resolver_match.app_name == 'verifikasi' or request.resolver_match.app_name == 'pemeliharaan' or request.resolver_match.app_name == 'peminjaman' or request.resolver_match.app_name == 'master_data' or request.resolver_match.app_name == 'operasional' or request.resolver_match.app_name == 'landing' or request.resolver_match.app_name == 'notifikasi' or request.resolver_match.view_name == 'dashboard:index' %}
-    <script src="{% static 'js/user_select.js' %}?v=20261126-global-v3" defer></script>
+    <script src="{% static 'js/user_select.js' %}?v=20261126-global-v4" defer></script>
     {% endif %}
 </body>
 </html>

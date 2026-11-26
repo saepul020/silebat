@@ -18,8 +18,9 @@ document.addEventListener('DOMContentLoaded', function () {
     window.visualViewport?.addEventListener('resize', reposition);
     window.visualViewport?.addEventListener('scroll', reposition);
 
-    function floatPanel(wrapper, panel) {
-        if (adaptive && wrapper.closest('.table-scroll') && typeof panel.showPopover === 'function') {
+    function floatPanel(panel) {
+        // The top layer escapes clipping and stacking contexts without moving form controls.
+        if (adaptive && typeof panel.showPopover === 'function') {
             panel.popover = 'manual';
             panel.classList.add('user-select__panel--floating');
         }
@@ -67,7 +68,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const options = wrapper.querySelector('[data-select-options]');
         if (!toggle || !panel || !options) return;
         wrapper.dataset.selectReady = 'true';
-        floatPanel(wrapper, panel);
+        floatPanel(panel);
         if (!panel.id) panel.id = 'user-select-' + (++nextId);
         toggle.setAttribute('aria-controls', panel.id);
         function close(focus = false) {
@@ -170,7 +171,7 @@ document.addEventListener('DOMContentLoaded', function () {
         toggle.setAttribute('aria-controls', options.id);
         select.before(wrapper);
         wrapper.append(select, toggle, panel);
-        floatPanel(wrapper, panel);
+        floatPanel(panel);
         select.classList.add('user-select__native');
         select.setAttribute('aria-hidden', 'true');
         select.tabIndex = -1;
